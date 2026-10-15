@@ -1,0 +1,214 @@
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index d1f44bb..23ecb35 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -42,6 +42,7 @@ internal interface ISdkLifecycleDriver
+     ISdkOverlayDriver Overlay { get; }
+     SUI.ISdkPanelBlurDriver Blur { get; }
+     SUI.ISdkUiPrefabDriver UiPrefabs { get; }
++    SUI.ISdkUiPanelDriver UiPanels { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);
+diff --git a/SonsSdk/GlobalInput.cs b/SonsSdk/GlobalInput.cs
+index f537d3a..ccaa68f 100644
+--- a/SonsSdk/GlobalInput.cs
++++ b/SonsSdk/GlobalInput.cs
+@@ -42,6 +42,12 @@ public class GlobalInput
+             _keySnapshot = null;
+     }
+ 
++    internal static void UnregisterKey(KeyCode key, Action action)
++    {
++        if (_keyRegistrations.RemoveAll(k => k.Key == key && ReferenceEquals(k.Action, action)) > 0)
++            _keySnapshot = null;
++    }
++
+     internal static void Init()
+     {
+         GlobalEvents.OnUpdate.Subscribe(OnUpdate);
+diff --git a/SonsSdk/SUI/SUI.cs b/SonsSdk/SUI/SUI.cs
+index 91f86db..8500386 100644
+--- a/SonsSdk/SUI/SUI.cs
++++ b/SonsSdk/SUI/SUI.cs
+@@ -31,6 +31,12 @@ internal interface ISdkUiPrefabDriver
+     void Initialize();
+ }
+ 
++internal interface ISdkUiPanelDriver
++{
++    SPanelOptions Register(string id, Transform parent, bool enableInput, KeyCode? toggleKey);
++    bool Remove(string id);
++}
++
+ public partial class SUI
+ {
+     public static readonly Color BG_CYAN = new(0, 0.5f, 0.5f, 0.2f);
+@@ -401,9 +407,17 @@ public partial class SUI
+     /// <param name="parent">The transform to parent the panel to</param>
+     /// <param name="enableInput">If true enables the mouse and disables game keyboard input once the panel is showing</param>
+     /// <param name="toggleKey">Optional key by which you can toggle the panel</param>
++    /// <exception cref="ArgumentException">The panel ID is already registered.</exception>
+     /// <returns></returns>
+     public static SPanelOptions RegisterNewPanel(string id, Transform parent, bool enableInput = false, KeyCode? toggleKey = null)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.UiPanels.Register(id, parent, enableInput, toggleKey);
++
++        if (_panels.ContainsKey(id))
++            throw new ArgumentException("A panel with this ID is already registered.", nameof(id));
++
+         var panel = CreatePanel(parent);
+         panel.Id = id;
+         panel.Root.name = id;
+@@ -423,12 +437,7 @@ public partial class SUI
+         }
+         
+         if (toggleKey != null)
+-        {
+-            if (!GlobalInput.RegisterKey(toggleKey.Value, () => panel.Toggle()))
+-            {
+-                RLog.Error("Key already registered: " + toggleKey.Value);
+-            }
+-        }
++            panel.RegisterToggleKey(toggleKey.Value);
+ 
+         return panel;
+     }
+@@ -460,6 +469,10 @@ public partial class SUI
+     
+     public static bool RemovePanel(string id)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.UiPanels.Remove(id);
++
+         var panel = GetPanel(id);
+         if (panel == null)
+             return false;
+@@ -468,6 +481,14 @@ public partial class SUI
+         return true;
+     }
+ 
++    internal static void ReleasePanel(SPanelOptions panel)
++    {
++        if (panel.Id != null && _panels.TryGetValue(panel.Id, out var registered) && ReferenceEquals(registered, panel))
++            _panels.Remove(panel.Id);
++
++        panel.ReleaseInputBindings();
++    }
++
+     internal static void OnPauseMenuCreated(PauseMenu menu)
+     {
+         var buttonHub = menu.transform.Find("Panel/BottomMenuPanel/LeftPanel");
+@@ -830,7 +851,7 @@ public partial class SUI
+         }
+     }
+ 
+-    private class EventSystemEnabler : MonoBehaviour
++    internal class EventSystemEnabler : MonoBehaviour
+     {
+         private static int ActiveEnablers = 0;
+         
+diff --git a/SonsSdk/SUI/SPanelOptions.cs b/SonsSdk/SUI/SPanelOptions.cs
+index ceb34e6..b19257e 100644
+--- a/SonsSdk/SUI/SPanelOptions.cs
++++ b/SonsSdk/SUI/SPanelOptions.cs
+@@ -9,6 +9,9 @@ public class SPanelOptions : SContainerOptions
+     public string Id { get; internal set; }
+ 
+     private bool _closeOnKeyRelease;
++    private KeyCode? _toggleKey;
++    private Action _toggleAction;
++    private ModKeybind _boundKeybind;
+     
+     public SPanelOptions(GameObject root) : base(root)
+     {
+@@ -16,13 +19,51 @@ public class SPanelOptions : SContainerOptions
+     
+     public SPanelOptions BindKeyConfig(KeybindConfigEntry keybind, bool closeOnKeyRelease = false)
+     {
++        var nextKeybind = keybind.GetKeybind();
++        _boundKeybind?.RemoveNotify(KeyPressed, KeyReleased);
+         _closeOnKeyRelease = closeOnKeyRelease;
+-        keybind.Notify(KeyPressed, KeyReleased);
++        _boundKeybind = nextKeybind;
++        _boundKeybind.Notify(KeyPressed, KeyReleased);
+         return this;
+     }
+ 
++    internal void RegisterToggleKey(KeyCode key)
++    {
++        Action toggle = () =>
++        {
++            if (Root && ReferenceEquals(SUI.GetPanel(Id), this))
++                Toggle();
++        };
++
++        if (!GlobalInput.RegisterKey(key, toggle))
++        {
++            RLog.Error("Key already registered: " + key);
++            return;
++        }
++
++        _toggleKey = key;
++        _toggleAction = toggle;
++    }
++
++    internal void ReleaseInputBindings()
++    {
++        var key = _toggleKey;
++        var action = _toggleAction;
++        var keybind = _boundKeybind;
++        _toggleKey = null;
++        _toggleAction = null;
++        _boundKeybind = null;
++
++        if (key.HasValue)
++            GlobalInput.UnregisterKey(key.Value, action);
++        keybind?.RemoveNotify(KeyPressed, KeyReleased);
++    }
++
+     private void KeyPressed()
+     {
++        if (_boundKeybind == null || !Root)
++            return;
++
+         if (_closeOnKeyRelease)
+         {
+             Active(true);
+@@ -34,7 +75,10 @@ public class SPanelOptions : SContainerOptions
+ 
+     private void KeyReleased()
+     {
++        if (_boundKeybind == null || !Root)
++            return;
++
+         if(_closeOnKeyRelease)
+             Active(false);
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/SonsSdk/SUI/SUiElement.cs b/SonsSdk/SUI/SUiElement.cs
+index 1dda302..a52d368 100644
+--- a/SonsSdk/SUI/SUiElement.cs
++++ b/SonsSdk/SUI/SUiElement.cs
+@@ -43,6 +43,9 @@ public class SUiElement
+ 
+     public void Remove()
+     {
++        if (this is SPanelOptions panel)
++            SUI.ReleasePanel(panel);
++
+         Object.Destroy(Root);
+     }
+     
+@@ -869,4 +872,4 @@ public class SUiElement<T, TData> : SUiElement<T>
+     
+     protected virtual void OnObservaleChanged(TData value)
+     { }
+-}
+\ No newline at end of file
++}

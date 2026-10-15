@@ -1,0 +1,14 @@
+Subject: [PATCH] Allow owned patcher engine to reuse compatibility contracts
+
+Keep BasePatcher, PatcherContext and attribute identities in their original
+assembly while OpenACAI owns discovery, execution and assembly lifetime.
+Friend access allows metadata parsing and setting the context's dump path.
+
+diff --git a/BepInEx.Preloader.Core/Properties/AssemblyInfo.cs b/BepInEx.Preloader.Core/Properties/AssemblyInfo.cs
+--- a/BepInEx.Preloader.Core/Properties/AssemblyInfo.cs
++++ b/BepInEx.Preloader.Core/Properties/AssemblyInfo.cs
+@@ -4,3 +4,4 @@ using System.Runtime.CompilerServices;
+ [assembly: InternalsVisibleTo("BepInEx.NET.Framework.Launcher")]
+ [assembly: InternalsVisibleTo("BepInEx.NET.CoreCLR")]
+ [assembly: InternalsVisibleTo("BepInEx.Unity.IL2CPP")]
++[assembly: InternalsVisibleTo("OpenACAI.Endnight.Loader.Preloader")]

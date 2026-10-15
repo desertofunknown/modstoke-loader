@@ -1,0 +1,29 @@
+OpenACAI Endnight Loader
+Copyright (C) 2026 Alex Cooper
+
+OpenACAI Endnight Loader contains original compatibility glue code by Alex Cooper.
+It is intentionally built on top of BepInEx's Unity IL2CPP loader work and
+RedLoader/SonsSdk's Sons Of The Forest modding work. OpenACAI preserves and
+credits both upstream projects:
+
+- BepInEx, by the BepInEx team: https://github.com/BepInEx/BepInEx
+- Dobby, BepInEx fork based on jmpews/Dobby: https://github.com/BepInEx/Dobby
+- RedLoader/SonsSdk, by Toni Macaroni: https://github.com/ToniMacaroni/RedLoader
+- Tomlet and SemanticVersioning, used as small managed compatibility and SDK
+  support dependencies while OpenACAI absorbs RedLoader/SonsSdk behavior.
+
+Those upstream components remain under their own licenses and copyright notices.
+
+This package includes the client-only Modstoke Client Companion. Its inventory
+audit protocol and reader were adapted from the owner's private OpenACAI Admin
+source. The owner authorized public source and binary distribution of these
+Modstoke components and licensed the adapted client companion code under MIT.
+Its scoped license is in `src/Modstoke.ClientCompanion/LICENSE` with
+Copyright (c) 2026 Alex Cooper. This MIT grant does not apply to the separate
+host Admin mod, which is not included in this package.
+
+Third-party license texts for identified dependencies and incorporated source
+are collected in `LICENSES/THIRD_PARTY/`. The RedLoader source tree contains
+an LGPL-2.1 root license and a conflicting AGPL-2.0 package metadata value;
+both are preserved and the conflict remains unresolved. This local snapshot is
+not a corresponding, reproducible source release for the frozen preview ZIP.

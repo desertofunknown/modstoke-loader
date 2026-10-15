@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Description>Core classes and utilities for BepInEx Preloader</Description>
+        <TargetFrameworks>netstandard2.1;net11.0</TargetFrameworks>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\BepInEx.Core\BepInEx.Core.csproj"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="HarmonyX" Version="2.16.1" />
+        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.5-openacai-net11.5"/>
+        <PackageReference Include="MonoMod.Utils" Version="25.0.13-openacai-net11.5"/>
+    </ItemGroup>
+</Project>

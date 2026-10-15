@@ -1,0 +1,88 @@
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index d8f4374..6079a14 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -39,6 +39,7 @@ internal enum SaveHookPatchState
+ 
+ internal interface ISdkLifecycleDriver
+ {
++    void InitializeBootstrapPatches();
+     void RegisterGameEvents();
+     void PatchGameplayEvents();
+     void OnSceneInitialized(int sceneIndex, string sceneName);
+@@ -165,26 +166,32 @@ public static class SdkEvents
+         ArgumentNullException.ThrowIfNull(driver);
+         if (ReferenceEquals(_lifecycleDriver, driver))
+             return;
+-        if (_lifecycleDriver != null || _eventSetupStarted)
+-            throw new InvalidOperationException("SDK lifecycle ownership must be selected before event setup.");
++        if (_lifecycleDriver != null || _lifecycleSetupStarted)
++            throw new InvalidOperationException("SDK lifecycle ownership must be selected before bootstrap or event setup.");
+ 
+         _lifecycleDriver = driver;
+     }
+ 
++    internal static ISdkLifecycleDriver BeginLifecycleSetup()
++    {
++        _lifecycleSetupStarted = true;
++        return _lifecycleDriver;
++    }
++
+     internal static void Init()
+     {
+         if (_isInitialized)
+         {
+             return;
+         }
+-        _eventSetupStarted = true;
++        var driver = BeginLifecycleSetup();
+         
+         GlobalEvents.OnSceneWasInitialized.Subscribe(OnSceneWasInitialized, Priority.First);
+         GlobalEvents.OnUpdate.Subscribe(OnUpdateInternal, Priority.First);
+         
+-        if (_lifecycleDriver != null)
++        if (driver != null)
+         {
+-            _lifecycleDriver.RegisterGameEvents();
++            driver.RegisterGameEvents();
+         }
+         else
+         {
+@@ -195,8 +202,8 @@ public static class SdkEvents
+             EventRegistry.Register(GameEvent.ArmorEquipped, (EventRegistry.SubscriberCallback)SonsEventOnArmorEquipped);
+         }
+ 
+-        if (_lifecycleDriver != null)
+-            _lifecycleDriver.PatchGameplayEvents();
++        if (driver != null)
++            driver.PatchGameplayEvents();
+         else
+             Patches.Patch();
+ 
+@@ -327,7 +334,7 @@ public static class SdkEvents
+     private const string GameSceneName = "SonsMain";
+     
+     private static ISdkLifecycleDriver _lifecycleDriver;
+-    private static bool _eventSetupStarted;
++    private static bool _lifecycleSetupStarted;
+     private static bool _isInitialized;
+     private static bool _onAfterSpawnCalled;
+     
+diff --git a/SonsSdk/MiscPatches.cs b/SonsSdk/MiscPatches.cs
+index f0ab4a2..3f9c702 100644
+--- a/SonsSdk/MiscPatches.cs
++++ b/SonsSdk/MiscPatches.cs
+@@ -14,6 +14,13 @@ internal class MiscPatches
+     
+     internal static void Init()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.InitializeBootstrapPatches();
++            return;
++        }
++
+         _patcher = new ConfiguredPatcher<MiscPatches>(SdkEntryPoint.Harmony);
+         _patcher.Prefix<SonsLaunch>(nameof(SonsLaunch.Start), nameof(SonsLaunchStart));
+ 

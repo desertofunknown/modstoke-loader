@@ -1,0 +1,426 @@
+diff --git a/SonsSdk/GenericModalDialog.cs b/SonsSdk/GenericModalDialog.cs
+index e1f7e6e..b90b12a 100644
+--- a/SonsSdk/GenericModalDialog.cs
++++ b/SonsSdk/GenericModalDialog.cs
+@@ -1,5 +1,6 @@
+ ﻿using System.Reflection;
+ using Il2CppInterop.Runtime;
++using Il2CppInterop.Runtime.Attributes;
+ using Il2CppInterop.Runtime.Injection;
+ using Il2CppInterop.Runtime.InteropTypes.Arrays;
+ using Il2CppInterop.Runtime.Runtime;
+@@ -19,6 +20,20 @@ using Object = UnityEngine.Object;
+ 
+ namespace SonsSdk;
+ 
++internal interface ISdkModalDialogDriver
++{
++    void Setup();
++    GenericModalDialog Show(string title, string message);
++    void Close();
++    void Open(GenericModalDialog dialog, string title, string message);
++    void Close(GenericModalDialog dialog);
++    void Complete(GenericModalDialog dialog, Action callback);
++    void SetOption1(GenericModalDialog dialog, string text, Action action);
++    void SetOption2(GenericModalDialog dialog, string text, Action action);
++    void SetOption3(GenericModalDialog dialog, string text, Action action);
++    void SetCancel(GenericModalDialog dialog, Action action);
++}
++
+ public class GenericModalDialog : MonoBehaviour
+ {
+     static GenericModalDialog()
+@@ -26,58 +41,68 @@ public class GenericModalDialog : MonoBehaviour
+         ClassInjector.RegisterTypeInIl2Cpp<GenericModalDialog>();
+     }
+ 
+-    private static GenericModalDialog Instance;
++    internal static GenericModalDialog Instance;
+     
+-    private LinkTextGui _titleTextObject;
+-    private TextMeshProUGUI _contentTextObject;
++    internal LinkTextGui _titleTextObject;
++    internal TextMeshProUGUI _contentTextObject;
+     
+-    private LinkTextGui _cancelTextObject;
+-    private LinkTextGui _option1TextObject;
+-    private LinkTextGui _option2TextObject;
+-    private LinkTextGui _option3TextObject;
++    internal LinkTextGui _cancelTextObject;
++    internal LinkTextGui _option1TextObject;
++    internal LinkTextGui _option2TextObject;
++    internal LinkTextGui _option3TextObject;
+ 
+-    private Button _option1Button;
+-    private Button _option2Button;
+-    private Button _option3Button;
+-    private Button _cancelButton;
++    internal Button _option1Button;
++    internal Button _option2Button;
++    internal Button _option3Button;
++    internal Button _cancelButton;
+ 
+-    private Image _background;
++    internal Image _background;
+ 
+-    private TMP_InputField _inputField;
++    internal TMP_InputField _inputField;
+     
+-    private InputGamepadMenuHelper _gamepadMenuHelper;
+-    private Canvas _canvas;
++    internal InputGamepadMenuHelper _gamepadMenuHelper;
++    internal Canvas _canvas;
+ 
+-    private event Action OnCancel;
+-    private event Action OnOption1;
+-    private event Action OnOption2;
+-    private event Action OnOption3;
++    internal event Action OnCancel;
++    internal event Action OnOption1;
++    internal event Action OnOption2;
++    internal event Action OnOption3;
+     
+-    private void Option1Clicked()
++    internal void Option1Clicked()
+     {
+-        OnOption1?.Invoke();
+-        CloseInternal();
++        Complete(OnOption1);
+     }
+     
+-    private void Option2Clicked()
++    internal void Option2Clicked()
+     {
+-        OnOption2?.Invoke();
+-        CloseInternal();
++        Complete(OnOption2);
+     }
+     
+-    private void Option3Clicked()
++    internal void Option3Clicked()
+     {
+-        OnOption3?.Invoke();
+-        CloseInternal();
++        Complete(OnOption3);
+     }
+     
+-    private void CancelClicked()
++    internal void CancelClicked()
+     {
+-        OnCancel?.Invoke();
++        Complete(OnCancel);
++    }
++
++    [HideFromIl2Cpp]
++    private void Complete(Action callback)
++    {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Dialogs.Complete(this, callback);
++            return;
++        }
++
+         CloseInternal();
++        callback?.Invoke();
+     }
+ 
+-    private void SetData(string title, string message)
++    internal void SetData(string title, string message)
+     {
+         _titleTextObject.SetText(title);
+         _contentTextObject.text = message;
+@@ -85,6 +110,13 @@ public class GenericModalDialog : MonoBehaviour
+     
+     public void SetOption1(string text, Action action)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Dialogs.SetOption1(this, text, action);
++            return;
++        }
++
+         _option1TextObject.SetText(text);
+         _option1Button.gameObject.SetActive(true);
+         OnOption1 += action;
+@@ -92,6 +124,13 @@ public class GenericModalDialog : MonoBehaviour
+     
+     public void SetOption2(string text, Action action)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Dialogs.SetOption2(this, text, action);
++            return;
++        }
++
+         _option2TextObject.SetText(text);
+         _option2Button.gameObject.SetActive(true);
+         OnOption2 += action;
+@@ -99,6 +138,13 @@ public class GenericModalDialog : MonoBehaviour
+     
+     public void SetOption3(string text, Action action)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Dialogs.SetOption3(this, text, action);
++            return;
++        }
++
+         _option3TextObject.SetText(text);
+         _option3Button.gameObject.SetActive(true);
+         OnOption3 += action;
+@@ -106,28 +152,55 @@ public class GenericModalDialog : MonoBehaviour
+     
+     public void SetCancel(Action action)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Dialogs.SetCancel(this, action);
++            return;
++        }
++
+         OnCancel += action;
+     }
+ 
+     private void CloseInternal()
++    {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Dialogs.Close(this);
++            return;
++        }
++
++        ClearCallbacks();
++        gameObject.SetActive(false);
++    }
++
++    [HideFromIl2Cpp]
++    internal void ClearCallbacks()
+     {
+         OnCancel = null;
+         OnOption1 = null;
+         OnOption2 = null;
+         OnOption3 = null;
+-
+-        gameObject.SetActive(false);
+     }
+     
+     private void OpenInternal(string title, string message)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Dialogs.Open(this, title, message);
++            return;
++        }
++
++        ClearCallbacks();
+         ResetGui();
+         SetData(title, message);
+         gameObject.SetActive(true);
+         _canvas.overrideSorting = true;
+     }
+ 
+-    private void ResetGui()
++    internal void ResetGui()
+     {
+         _option1Button.gameObject.SetActive(false);
+         _option2Button.gameObject.SetActive(false);
+@@ -139,6 +212,10 @@ public class GenericModalDialog : MonoBehaviour
+ 
+     public static GenericModalDialog ShowDialog(string title, string message)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.Dialogs.Show(title, message);
++
+         Setup();
+         Instance.OpenInternal(title, message);
+         RLog.Debug("Shown dialog");
+@@ -147,6 +224,13 @@ public class GenericModalDialog : MonoBehaviour
+ 
+     public static void Close()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Dialogs.Close();
++            return;
++        }
++
+         if(!Instance)
+             return;
+         
+@@ -155,6 +239,13 @@ public class GenericModalDialog : MonoBehaviour
+ 
+     internal static void Setup()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Dialogs.Setup();
++            return;
++        }
++
+         if (Instance)
+             return;
+ 
+@@ -218,4 +309,4 @@ public class GenericModalDialog : MonoBehaviour
+ 
+         Destroy(gui);
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/SonsSdk/SUI/TooltipProvider.cs b/SonsSdk/SUI/TooltipProvider.cs
+index aa62d53..e45437f 100644
+--- a/SonsSdk/SUI/TooltipProvider.cs
++++ b/SonsSdk/SUI/TooltipProvider.cs
+@@ -12,26 +12,43 @@ using static SUI.SUI;
+ 
+ namespace SonsSdk;
+ 
++internal interface ISdkTooltipDriver
++{
++    void Setup();
++    void Show(string text);
++    void Hide();
++    void RaycastFor(GraphicRaycaster raycaster);
++    void StopRaycasting();
++    void Update();
++}
++
+ public class TooltipProvider
+ {
+-    private static bool _initialized;
++    internal static bool _initialized;
+     
+-    private static Canvas _canvas;
+-    private static GameObject _tooltipObject;
+-    private static RectTransform _tooltipRect;
+-    private static RectTransform _textRect;
+-    private static Observable<string> _tooltipText = new("");
+-    private static GraphicRaycaster _currentRaycaster;
++    internal static Canvas _canvas;
++    internal static GameObject _tooltipObject;
++    internal static RectTransform _tooltipRect;
++    internal static RectTransform _textRect;
++    internal static Observable<string> _tooltipText = new("");
++    internal static GraphicRaycaster _currentRaycaster;
+ 
+     private static readonly BackgroundDefinition TooltipBackground = new("#000", GetBackgroundSprite(EBackground.Round10), Image.Type.Sliced);
+     
+-    private static readonly BackgroundDefinition CardButtonBg = new(
++    internal static readonly BackgroundDefinition CardButtonBg = new(
+         "#222", 
+         GetBackgroundSprite(EBackground.ShadowPanel),
+         Image.Type.Sliced);
+     
+     public static void Setup()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Tooltips.Setup();
++            return;
++        }
++
+         if (_initialized)
+             return;
+ 
+@@ -74,6 +91,13 @@ public class TooltipProvider
+     
+     public static void ShowTooltip(string text)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Tooltips.Show(text);
++            return;
++        }
++
+         _tooltipText.Value = text;
+         
+         var mousePos = Input.mousePosition;
+@@ -86,11 +110,25 @@ public class TooltipProvider
+     
+     public static void HideTooltip()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Tooltips.Hide();
++            return;
++        }
++
+         _tooltipObject.SetActive(false);
+     }
+ 
+     public static void RaycastFor(GraphicRaycaster raycaster)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Tooltips.RaycastFor(raycaster);
++            return;
++        }
++
+         _currentRaycaster = raycaster;
+         _canvas.gameObject.SetActive(true);
+         
+@@ -100,6 +138,13 @@ public class TooltipProvider
+ 
+     public static void StopRaycasting()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Tooltips.StopRaycasting();
++            return;
++        }
++
+         GlobalEvents.OnUpdate.Unsubscribe(OnUpdate);
+         
+         _currentRaycaster = null;
+@@ -107,8 +152,15 @@ public class TooltipProvider
+         _canvas.gameObject.SetActive(false);
+     }
+ 
+-    private static void OnUpdate()
++    internal static void OnUpdate()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Tooltips.Update();
++            return;
++        }
++
+         if (!_currentRaycaster)
+             return;
+ 
+@@ -123,4 +175,4 @@ public class TooltipProvider
+         
+         HideTooltip();
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 3842e2b..f3a7438 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -49,6 +49,8 @@ internal interface ISdkLifecycleDriver
+     ISdkKeybindDriver Keybinds { get; }
+     ISdkGlobalInputDriver GlobalInput { get; }
+     SUI.ISdkSettingsRegistrationDriver Settings { get; }
++    ISdkModalDialogDriver Dialogs { get; }
++    ISdkTooltipDriver Tooltips { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);

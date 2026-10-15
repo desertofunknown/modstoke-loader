@@ -1,0 +1,144 @@
+diff --git a/SonsSdk/Building/CustomBlueprintManager.cs b/SonsSdk/Building/CustomBlueprintManager.cs
+index a8d5741..614251b 100644
+--- a/SonsSdk/Building/CustomBlueprintManager.cs
++++ b/SonsSdk/Building/CustomBlueprintManager.cs
+@@ -31,6 +31,13 @@ internal interface ISdkBlueprintRegistrationDriver
+     StructureRecipe CreateNewRecipe(int id, string name, StructureCraftingNode node, GameObject built);
+     StructureCraftingNode CreateCraftingNode(Transform transformToWrap, int? ingredientItemId);
+     void SetupObjectAsCraftingNode(ScrewStructureRegistration registration);
++    void ProcessFreeformStructure(Transform freeformStructure);
++    List<StructureCraftingNodeIngredient> ProcessStructure(Transform structureRoot, int itemId);
++    Il2CppArrayBase<StructureCraftingNodeIngredient> GetIngredients(Transform structureRoot);
++    void InitObjectInteraction(StructureCraftingNode node);
++    void InitRecipeLocalization(StructureRecipe recipe);
++    void CreateBookPage(StructureRecipe topRecipe, StructureRecipe bottomRecipe, Texture2D background);
++    string ToDisplayName(string name);
+ }
+ 
+ public record ScrewStructureRegistration(
+@@ -302,6 +309,13 @@ public class CustomBlueprintManager
+     /// <param name="freeformStructure"></param>
+     public static void ProcessFreeformStructure(Transform freeformStructure)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Blueprints.ProcessFreeformStructure(freeformStructure);
++            return;
++        }
++
+         foreach (var structureElement in freeformStructure.GetComponentsInChildren<StructureElement>())
+         {
+             foreach (var rend in structureElement.gameObject.GetComponentsInChildren<Renderer>(true))
+@@ -341,6 +355,10 @@ public class CustomBlueprintManager
+     /// <param name="itemId">The item id for the ingredients.</param>
+     public static List<StructureCraftingNodeIngredient> ProcessStructure(Transform structureRoot, int itemId)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.Blueprints.ProcessStructure(structureRoot, itemId);
++
+         var ingredients = new List<StructureCraftingNodeIngredient>();
+         
+         foreach (var rend in structureRoot.GetComponentsInChildren<Renderer>(true))
+@@ -369,7 +387,12 @@ public class CustomBlueprintManager
+     /// </summary>
+     /// <param name="structureRoot"></param>
+     public static Il2CppArrayBase<StructureCraftingNodeIngredient> GetIngredients(Transform structureRoot)
+-        => structureRoot.GetComponentsInChildren<StructureCraftingNodeIngredient>(true);
++    {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        return driver != null
++            ? driver.Blueprints.GetIngredients(structureRoot)
++            : structureRoot.GetComponentsInChildren<StructureCraftingNodeIngredient>(true);
++    }
+ 
+     /// <summary>
+     /// Wraps <see cref="transformToWrap"/> with a crafting node setting up all ingredients and ghosts for the structure.
+@@ -459,24 +482,51 @@ public class CustomBlueprintManager
+ 
+     public static void InitObjectInteraction(StructureCraftingNode node)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Blueprints.InitObjectInteraction(node);
++            return;
++        }
++
+         if (node._ingredientUiTemplate)
+             return;
+         
+         var newInteraction = _craftingNodePrefab.transform.Find("StructureInteractionObjects").gameObject.Instantiate();
+-        var t = newInteraction.transform;
+-        t.SetParent(node.transform, false);
+-        t.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+-        
+-        node._ingredientUiTemplate = t.Find("Canvas/UiRoot/Ingredients/IngredientUiTemplate").gameObject;
+-        node._cancelStructureInteractionElement = t.Find("Canvas/UiRoot/CancelStructureInteractionElement").gameObject;
+-        node._ingredientUi = new Il2CppSystem.Collections.Generic.List<StructureCraftingNodeIngredientUi>();
+-        node._ingredientUi.Add(t.Find("Canvas/UiRoot/Ingredients/IngredientUi").GetComponent<StructureCraftingNodeIngredientUi>());
+-
+-        t.Find("UiLocator").localPosition = node.GetComponent<BoxCollider>().center;
++        try
++        {
++            var t = newInteraction.transform;
++            t.SetParent(node.transform, false);
++            t.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
++
++            var ingredientTemplate = t.Find("Canvas/UiRoot/Ingredients/IngredientUiTemplate").gameObject;
++            var cancelElement = t.Find("Canvas/UiRoot/CancelStructureInteractionElement").gameObject;
++            var ingredients = new Il2CppSystem.Collections.Generic.List<StructureCraftingNodeIngredientUi>();
++            ingredients.Add(t.Find("Canvas/UiRoot/Ingredients/IngredientUi").GetComponent<StructureCraftingNodeIngredientUi>());
++            t.Find("UiLocator").localPosition = node.GetComponent<BoxCollider>().center;
++
++            node._cancelStructureInteractionElement = cancelElement;
++            node._ingredientUi = ingredients;
++            node._ingredientUiTemplate = ingredientTemplate;
++        }
++        catch
++        {
++            try { newInteraction.SetActive(false); }
++            catch (Exception exception) { ReportPrefabCleanupFailure(exception); }
++            DiscardPrefabCandidate(newInteraction);
++            throw;
++        }
+     }
+     
+     public static void InitRecipeLocalization(StructureRecipe recipe)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Blueprints.InitRecipeLocalization(recipe);
++            return;
++        }
++
+         var key = LocalizationUtils.GetLocalizationKey(recipe._displayName);
+         LocalizationTools.BlueprintBookTable.AddEntry(key, recipe._displayName);
+         recipe._localizationId = key;
+@@ -513,6 +563,13 @@ public class CustomBlueprintManager
+     /// <param name="background"></param>
+     public static void CreateBookPage(StructureRecipe topRecipe, StructureRecipe bottomRecipe, Texture2D background)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Blueprints.CreateBookPage(topRecipe, bottomRecipe, background);
++            return;
++        }
++
+         if(topRecipe)
+         {
+             InitRecipeLocalization(topRecipe);
+@@ -636,6 +693,10 @@ public class CustomBlueprintManager
+     
+     public static string ToDisplayName(string str)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.Blueprints.ToDisplayName(str);
++
+         str = str.Replace("Recipe", "");
+         str = str.Split('.')[0];
+         return PascalToHumanRegex.Replace(str, m => $"{m.Value[0]} {char.ToLower(m.Value[1])}");

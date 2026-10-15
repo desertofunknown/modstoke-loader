@@ -1,0 +1,57 @@
+diff --git a/SonsSdk/GameCommands.cs b/SonsSdk/GameCommands.cs
+index 04e9865..1fc0cb7 100644
+--- a/SonsSdk/GameCommands.cs
++++ b/SonsSdk/GameCommands.cs
+@@ -420,7 +420,7 @@ public static class GameCommands
+             var attribute = method.GetCustomAttribute<DebugCommandAttribute>();
+             if (attribute != null)
+             {
+-                var fastDelegate = method.GetFastDelegate();
++                var fastDelegate = method.GetFastInvoker();
+ 
+                 bool Wrapper(string s)
+                 {
+diff --git a/SonsSdk/MemberDebugger.cs b/SonsSdk/MemberDebugger.cs
+index a400f7e..eed2bc1 100644
+--- a/SonsSdk/MemberDebugger.cs
++++ b/SonsSdk/MemberDebugger.cs
+@@ -133,13 +133,13 @@ public class MemberDebugger
+     {
+         public Type Type;
+         public string Name;
+-        public FastReflectionDelegate Getter;
++        public FastReflectionHelper.FastInvoker Getter;
+         
+         public DebuggingComponent(PropertyInfo prop)
+         {
+             Type = prop.PropertyType;
+             Name = prop.Name;
+-            Getter = prop.GetGetMethod().GetFastDelegate();
++            Getter = prop.GetGetMethod().GetFastInvoker();
+         }
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/SonsSdk/SonsSdk.csproj b/SonsSdk/SonsSdk.csproj
+index 4dca65e..01f7268 100644
+--- a/SonsSdk/SonsSdk.csproj
++++ b/SonsSdk/SonsSdk.csproj
+@@ -9,6 +9,7 @@
+       <CopyToOuput>true</CopyToOuput>
+       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+       <DeployToGame Condition="'$(DeployToGame)' == ''">false</DeployToGame>
++      <AssemblySearchPaths Condition="'$(ReferencePath)' != ''">$(AssemblySearchPaths);$(ReferencePath)</AssemblySearchPaths>
+     </PropertyGroup>
+     
+     <ItemGroup>
+@@ -87,9 +88,6 @@
+       <Reference Include="Il2CppSystem.Core">
+         <HintPath>$(GamePath)\$(ProjectAlias)\Game\Il2CppSystem.Core.dll</HintPath>
+       </Reference>
+-      <Reference Include="iTween">
+-        <HintPath>$(GamePath)\$(ProjectAlias)\Game\iTween.dll</HintPath>
+-      </Reference>
+       <Reference Include="Newtonsoft.Json">
+         <HintPath>$(GamePath)\$(ProjectAlias)\Game\Newtonsoft.Json.dll</HintPath>
+       </Reference>

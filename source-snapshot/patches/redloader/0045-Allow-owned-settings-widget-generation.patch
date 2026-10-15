@@ -1,0 +1,37 @@
+diff --git a/SonsSdk/SUI/SettingsRegistry.cs b/SonsSdk/SUI/SettingsRegistry.cs
+index d5bd332..e845a4b 100644
+--- a/SonsSdk/SUI/SettingsRegistry.cs
++++ b/SonsSdk/SUI/SettingsRegistry.cs
+@@ -19,6 +19,8 @@ internal interface ISdkSettingsRegistrationDriver
+ {
+     void Create(ModBase mod, object settingsObject, Type settingsType,
+         bool changesNeedRestart, Action callback, SContainerOptions userContent);
++    void GenerateUi(ModBase mod, object settingsObject, Type settingsType,
++        SContainerOptions container, List<SettingsRegistry.SettingsConfigEntry> outConfigList);
+ }
+ 
+ public class SettingsRegistry
+@@ -121,6 +123,13 @@ public class SettingsRegistry
+         SContainerOptions container,
+         List<SettingsConfigEntry> outConfigList)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Settings.GenerateUi(mod, settingsObject, settingsType, container, outConfigList);
++            return;
++        }
++
+         SContainerOptions Wrap(SUiElement element, ConfigEntry config, float prefHeight, Action customRevertAction = null)
+         {
+             return SContainer.Horizontal(0, "CE")
+@@ -375,6 +384,9 @@ public class SettingsRegistry
+         
+         foreach (var property in properties)
+         {
++            if (!property.CanRead || property.GetIndexParameters().Length != 0)
++                continue;
++
+             if (mode == SettingsUiMode.ESettingsUiMode.OptOut && property.GetCustomAttribute<SettingsUiIgnore>() != null)
+             {
+                 RLog.Debug("Ignored field: " + property.Name + " in settings");

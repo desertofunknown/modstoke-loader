@@ -1,0 +1,339 @@
+diff --git a/SonsSdk/Private/MainInitializer.cs b/SonsSdk/Private/MainInitializer.cs
+index a7219d0..bd7b4cf 100644
+--- a/SonsSdk/Private/MainInitializer.cs
++++ b/SonsSdk/Private/MainInitializer.cs
+@@ -15,6 +15,8 @@ using SonsSdk.Private;
+ using TheForest.Utils;
+ using UnityEngine;
+ using UnityEngine.AddressableAssets;
++using UnityEngine.AddressableAssets.ResourceLocators;
++using UnityEngine.ResourceManagement.AsyncOperations;
+ using UnityEngine.SceneManagement;
+ using Color = System.Drawing.Color;
+ 
+@@ -22,15 +24,148 @@ namespace SonsSdk;
+ 
+ internal class MainInitializer
+ {
++    internal static bool InitializationFailed { get; private set; }
++
+     internal static void InitTitleScene()
+     {
+-        if (_isInitialized)
++        if (_initializationStarted || SdkEvents.OnSdkInitializationCompleted.Disposed)
++        {
++            return;
++        }
++        _initializationStarted = true;
++
++        try
++        {
++            RunInitialization().RunCoro();
++        }
++        catch (Exception exception)
++        {
++            ReportInitializationFailure(exception);
++        }
++    }
++
++    internal static void InitDedicatedServer()
++    {
++        if (_initializationStarted || SdkEvents.OnSdkInitializationCompleted.Disposed)
+         {
+             return;
+         }
+-        _isInitialized = true;
+ 
+-        InitCoro().RunCoro();
++        _initializationStarted = true;
++        try
++        {
++            InitSystems();
++            _initializationFinished = true;
++            TryCompleteInitialization();
++        }
++        catch (Exception exception)
++        {
++            ReportInitializationFailure(exception);
++            throw;
++        }
++    }
++
++    internal static void CompleteEventSetup()
++    {
++        _eventSetupCompleted = true;
++        TryCompleteInitialization();
++    }
++
++    private static void TryCompleteInitialization()
++    {
++        if (_eventSetupCompleted && _initializationFinished)
++        {
++            SdkEvents.OnSdkInitializationCompleted.Invoke(null);
++        }
++    }
++
++    internal static void ReportInitializationFailure(Exception exception)
++    {
++        if (SdkEvents.OnSdkInitializationCompleted.Disposed)
++        {
++            return;
++        }
++
++        InitializationFailed = true;
++        SdkEvents.OnSdkInitializationCompleted.Invoke(exception);
++        try
++        {
++            RLog.Error($"Shared SDK initialization failed: {exception}");
++        }
++        catch
++        {
++            // Diagnostic listeners cannot prevent startup failure cleanup.
++        }
++
++        try
++        {
++            GlobalOverlays.ToggleOverlay(false);
++        }
++        catch
++        {
++            // The overlay may be only partially constructed; keep the original failure.
++        }
++    }
++
++    private static IEnumerator RunInitialization()
++    {
++        // Advance this SDK's managed child routines here so their failures reach the host.
++        var routines = new Stack<IEnumerator>();
++        routines.Push(InitCoro());
++        try
++        {
++            while (routines.Count > 0)
++            {
++                object current;
++                try
++                {
++                    var routine = routines.Peek();
++                    if (!routine.MoveNext())
++                    {
++                        routines.Pop();
++                        (routine as IDisposable)?.Dispose();
++                        continue;
++                    }
++
++                    current = routine.Current;
++                    if (current is IEnumerator child)
++                    {
++                        routines.Push(child);
++                        continue;
++                    }
++                }
++                catch (Exception exception)
++                {
++                    ReportInitializationFailure(exception);
++                    yield break;
++                }
++
++                yield return current;
++            }
++
++            _initializationFinished = true;
++            TryCompleteInitialization();
++        }
++        finally
++        {
++            while (routines.Count > 0)
++            {
++                var routine = routines.Pop();
++                try
++                {
++                    (routine as IDisposable)?.Dispose();
++                }
++                catch (Exception exception)
++                {
++                    ReportInitializationFailure(exception);
++                }
++            }
++
++            if (!_initializationFinished && !SdkEvents.OnSdkInitializationCompleted.Disposed)
++            {
++                ReportInitializationFailure(new OperationCanceledException("Shared SDK initialization stopped before completion."));
++            }
++        }
+     }
+ 
+     private static IEnumerator AddProgress(int index, int total, float totalWorkload)
+@@ -68,19 +203,68 @@ internal class MainInitializer
+ 
+             foreach (var catalog in catalogs)
+             {
+-                object operation;
++                yield return LoadCatalog(catalog);
++            }
++        }
++    }
++
++    private static IEnumerator LoadCatalog(string catalog)
++    {
++        AsyncOperationHandle<IResourceLocator> operation;
++        try
++        {
++            RLog.Msg(Color.Orange, "Loading addressables catalog " + catalog);
++            operation = Addressables.LoadContentCatalogAsync(catalog, false);
++        }
++        catch (Exception exception)
++        {
++            AssetLoaders.ReportAssetError($"Couldn't start loading addressables catalog {catalog}.", exception);
++            yield break;
++        }
++
++        try
++        {
++            while (true)
++            {
++                yield return null;
+                 try
+                 {
+-                    RLog.Msg(Color.Orange, "Loading addressables catalog " + catalog);
+-                    operation = Addressables.LoadContentCatalogAsync(catalog);
++                    if (!operation.IsValid())
++                    {
++                        AssetLoaders.ReportAssetError($"Addressables catalog {catalog} returned an invalid operation handle.");
++                        break;
++                    }
++
++                    if (!operation.IsDone)
++                    {
++                        continue;
++                    }
++
++                    if (operation.Status != AsyncOperationStatus.Succeeded)
++                    {
++                        AssetLoaders.ReportAssetError($"Couldn't load addressables catalog {catalog}: {operation.OperationException}");
++                    }
+                 }
+                 catch (Exception exception)
+                 {
+-                    AssetLoaders.ReportAssetError($"Couldn't start loading addressables catalog {catalog}.", exception);
+-                    continue;
++                    AssetLoaders.ReportAssetError($"Couldn't observe addressables catalog {catalog}.", exception);
+                 }
+ 
+-                yield return operation;
++                break;
++            }
++        }
++        finally
++        {
++            try
++            {
++                if (operation != null && operation.IsValid())
++                {
++                    Addressables.Release(operation);
++                }
++            }
++            catch (Exception exception)
++            {
++                AssetLoaders.ReportAssetError($"Couldn't release the operation for addressables catalog {catalog}.", exception);
+             }
+         }
+     }
+@@ -117,8 +301,7 @@ internal class MainInitializer
+         GlobalOverlays.ToggleOverlay(false);
+     }
+ 
+-    // Gets called either through InitCoro or through SonsGameManager when it's a dedicated server
+-    internal static void InitSystems()
++    private static void InitSystems()
+     {
+         if (!LoaderEnvironment.IsDedicatedServer)
+         {
+@@ -156,5 +339,7 @@ internal class MainInitializer
+         }
+     }
+ 
+-    private static bool _isInitialized;
++    private static bool _initializationStarted;
++    private static bool _initializationFinished;
++    private static bool _eventSetupCompleted;
+ }
+diff --git a/SonsSdk/Private/SdkEntryPoint.cs b/SonsSdk/Private/SdkEntryPoint.cs
+index 2448605..4f6fe93 100644
+--- a/SonsSdk/Private/SdkEntryPoint.cs
++++ b/SonsSdk/Private/SdkEntryPoint.cs
+@@ -470,17 +470,38 @@ public class SdkEntryPoint : IModProcessor
+ 
+     public void InitAfterUnity()
+     {
+-        GlobalEvents.OnApplicationLateStart.Subscribe(OnAppLateStart);
+-        SdkEvents.OnSdkInitialized.Subscribe(OnSdkInitialized);
+-        SdkEvents.OnGameStart.Subscribe(OnGameStart, priority:999);
+-        SdkEvents.OnCheatsEnabledChanged.Subscribe(OnCheatsEnabledChanged);
+-        MiscPatches.Init();
++        try
++        {
++            GlobalEvents.OnApplicationLateStart.Subscribe(OnAppLateStart);
++            SdkEvents.OnSdkInitialized.Subscribe(OnSdkInitialized);
++            SdkEvents.OnGameStart.Subscribe(OnGameStart, priority:999);
++            SdkEvents.OnCheatsEnabledChanged.Subscribe(OnCheatsEnabledChanged);
++            MiscPatches.Init();
++        }
++        catch (Exception exception)
++        {
++            MainInitializer.ReportInitializationFailure(exception);
++            throw;
++        }
+     }
+ 
+     private void OnAppLateStart()
+     {
+-        GlobalOverlays.CreateBlackScreen();
+-        SdkEvents.Init();
++        if (MainInitializer.InitializationFailed)
++        {
++            return;
++        }
++
++        try
++        {
++            GlobalOverlays.CreateBlackScreen();
++            SdkEvents.Init();
++            MainInitializer.CompleteEventSetup();
++        }
++        catch (Exception exception)
++        {
++            MainInitializer.ReportInitializationFailure(exception);
++        }
+     }
+ 
+     private void OnSdkInitialized()
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 8958017..efa3366 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -47,6 +47,12 @@ public static class SdkEvents
+     /// Otherwise just use <see cref="OnSdkInitialized"/>
+     /// </summary>
+     public static readonly MelonEvent OnSdkLateInitialized = new();
++
++    /// <summary>
++    /// Called once when shared SDK startup finishes on a client or dedicated server.
++    /// A null exception indicates success; mod callback failures are reported separately.
++    /// </summary>
++    public static readonly MelonEvent<Exception> OnSdkInitializationCompleted = new(oneTimeUse: true);
+     
+     /// <summary>
+     /// Called on update when the player is in the world
+diff --git a/SonsSdk/MiscPatches.cs b/SonsSdk/MiscPatches.cs
+index ed051c7..f0ab4a2 100644
+--- a/SonsSdk/MiscPatches.cs
++++ b/SonsSdk/MiscPatches.cs
+@@ -46,7 +46,7 @@ internal class MiscPatches
+ 
+     private static void BeforeServerCreation(DedicatedServerBoostrap __instance)
+     {
+-        MainInitializer.InitSystems();
++        MainInitializer.InitDedicatedServer();
+     }
+     
+     private static void AlterServerName(ref string pszServerName)

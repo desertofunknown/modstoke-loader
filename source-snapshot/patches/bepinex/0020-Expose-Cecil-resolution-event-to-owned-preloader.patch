@@ -1,0 +1,28 @@
+diff --git a/BepInEx.Core/Bootstrap/TypeLoader.cs b/BepInEx.Core/Bootstrap/TypeLoader.cs
+index 69a7775..9ee5edc 100644
+--- a/BepInEx.Core/Bootstrap/TypeLoader.cs
++++ b/BepInEx.Core/Bootstrap/TypeLoader.cs
+@@ -105,9 +105,12 @@ public static class TypeLoader
+                 return assembly;
+         }
+ 
+-        return AssemblyResolve?.Invoke(sender, reference);
++        return InvokeAssemblyResolve(sender, reference);
+     }
+ 
++    internal static AssemblyDefinition InvokeAssemblyResolve(object sender, AssemblyNameReference reference) =>
++        AssemblyResolve?.Invoke(sender, reference);
++
+     /// <summary>
+     ///     Event fired when <see cref="TypeLoader" /> fails to resolve a type during type loading.
+     /// </summary>
+diff --git a/BepInEx.Core/Properties/AssemblyInfo.cs b/BepInEx.Core/Properties/AssemblyInfo.cs
+index 0768fe0..52e1186 100644
+--- a/BepInEx.Core/Properties/AssemblyInfo.cs
++++ b/BepInEx.Core/Properties/AssemblyInfo.cs
+@@ -6,4 +6,5 @@ using System.Runtime.CompilerServices;
+ [assembly: InternalsVisibleTo("BepInEx.NET.CoreCLR")]
+ [assembly: InternalsVisibleTo("BepInEx.Unity.IL2CPP")]
+ [assembly: InternalsVisibleTo("OpenACAI.Endnight.Loader.Core")]
++[assembly: InternalsVisibleTo("OpenACAI.Endnight.Loader.Preloader")]
+ [assembly: InternalsVisibleTo("BepInExTests")]

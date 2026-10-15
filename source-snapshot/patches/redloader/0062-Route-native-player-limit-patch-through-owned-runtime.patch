@@ -1,0 +1,30 @@
+diff --git a/SonsSdk/MiscPatches.cs b/SonsSdk/MiscPatches.cs
+index 3f9c702..d3a1f90 100644
+--- a/SonsSdk/MiscPatches.cs
++++ b/SonsSdk/MiscPatches.cs
+@@ -63,6 +63,13 @@ internal class MiscPatches
+     
+     public static unsafe void PatchMaxPlayerLimit()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.PatchMaxPlayerLimit();
++            return;
++        }
++
+         var address = Reflow.GetInMethod<ServerDedicatedConfig>(
+                                                                 nameof(ServerDedicatedConfig.Validate), 
+                                                                 "\x8B\x40\x28\x83\xF8\x08".ToCharArray(),
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 5aa7330..20aaa58 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -57,6 +57,7 @@ internal interface ISdkLifecycleDriver
+     Networking.ISdkServerCommandDriver ServerCommands { get; }
+     ISdkGameManagerDriver GameManagers { get; }
+     void InitializeBootstrapPatches();
++    void PatchMaxPlayerLimit();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);
+     void OnSdkGameStart();

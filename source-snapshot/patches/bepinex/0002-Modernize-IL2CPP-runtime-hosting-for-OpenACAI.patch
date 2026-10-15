@@ -1,0 +1,375 @@
+From 1dab0b0778a5625b80e7cf1d74e070ff3178387e Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Thu, 4 Jun 2026 08:53:52 -0500
+Subject: [PATCH 02/13] Modernize IL2CPP runtime hosting for OpenACAI
+
+Carry the .NET 10 IL2CPP hosting path forward with hostfxr initialization parameters, preload search path setup, native detour compatibility tweaks, and startup diagnostics. Brand the BepInEx console window and startup log as OpenACAI Loader while preserving BepInEx runtime credit.
+---
+ BepInEx.Core/Bootstrap/BaseChainloader.cs     |  2 +-
+ .../Logging/ChainloaderLogHelper.cs           |  3 +-
+ .../RuntimeFixes/ConsoleSetOutFix.cs          |  6 ++-
+ .../BepInEx.Unity.Common.csproj               |  2 +
+ .../BepInEx.Unity.IL2CPP.csproj               |  4 +-
+ .../DoorstopEntrypoint.cs                     | 30 ++++++++++++-
+ .../Hook/BaseNativeDetour.cs                  |  6 +--
+ .../Unity/BepInEx.Unity.IL2CPP/Preloader.cs   | 42 +++++++++++++++++++
+ .../UnityPreloadRunner.cs                     | 29 +++++++++++++
+ 9 files changed, 115 insertions(+), 9 deletions(-)
+
+diff --git a/BepInEx.Core/Bootstrap/BaseChainloader.cs b/BepInEx.Core/Bootstrap/BaseChainloader.cs
+index c6fe182..32ab0a9 100644
+--- a/BepInEx.Core/Bootstrap/BaseChainloader.cs
++++ b/BepInEx.Core/Bootstrap/BaseChainloader.cs
+@@ -111,7 +111,7 @@ public abstract class BaseChainloader<TPlugin>
+ 
+     #region Contract
+ 
+-    protected virtual string ConsoleTitle => $"BepInEx {Paths.BepInExVersion} - {Paths.ProcessName}";
++    protected virtual string ConsoleTitle => $"OpenACAI Loader {Paths.BepInExVersion} - {Paths.ProcessName}";
+ 
+     private bool _initialized;
+ 
+diff --git a/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs b/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs
+index 43e48e0..88a7060 100644
+--- a/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs
++++ b/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs
+@@ -38,8 +38,9 @@ public static class ChainloaderLogHelper
+         var bepinVersion = Paths.BepInExVersion;
+         var versionMini = new SemanticVersioning.Version(bepinVersion.Major, bepinVersion.Minor, bepinVersion.Patch,
+                                                          bepinVersion.PreRelease);
+-        var consoleTitle = $"BepInEx {versionMini} - {Paths.ProcessName}";
++        var consoleTitle = $"OpenACAI Loader {versionMini} - {Paths.ProcessName}";
+         log.Log(LogLevel.Message, $"{consoleTitle} ({File.GetLastWriteTime(Paths.ExecutablePath)})");
++        log.Log(LogLevel.Message, $"BepInEx IL2CPP runtime {versionMini} with OpenACAI RedLoader compatibility");
+ 
+         if (ConsoleManager.ConsoleActive)
+             ConsoleManager.SetConsoleTitle(consoleTitle);
+diff --git a/BepInEx.Preloader.Core/RuntimeFixes/ConsoleSetOutFix.cs b/BepInEx.Preloader.Core/RuntimeFixes/ConsoleSetOutFix.cs
+index 7b08dda..82f8491 100644
+--- a/BepInEx.Preloader.Core/RuntimeFixes/ConsoleSetOutFix.cs
++++ b/BepInEx.Preloader.Core/RuntimeFixes/ConsoleSetOutFix.cs
+@@ -15,7 +15,11 @@ public static class ConsoleSetOutFix
+     {
+         loggedTextWriter = new LoggedTextWriter { Parent = Console.Out };
+         Console.SetOut(loggedTextWriter);
+-        Harmony.CreateAndPatchAll(typeof(ConsoleSetOutFix));
++
++        // HarmonyX/MonoMod can crash CoreCLR 10 when detouring framework methods this early.
++        // Keeping the initial writer redirect is enough for preloader logging on the .NET 10 path.
++        if (Environment.Version.Major < 10)
++            Harmony.CreateAndPatchAll(typeof(ConsoleSetOutFix));
+     }
+ 
+     [HarmonyPatch(typeof(Console), nameof(Console.SetOut))]
+diff --git a/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj b/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj
+index 240e981..45c8640 100644
+--- a/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj
++++ b/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj
+@@ -8,6 +8,8 @@
+     <ItemGroup>
+         <PackageReference Include="AssetRipper.Primitives" Version="3.1.3" />
+         <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all"/>
++    </ItemGroup>
++    <ItemGroup>
+         <PackageReference Include="MonoMod.Utils" Version="22.7.31.1"/>
+     </ItemGroup>
+ 
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+index dc65aaa..f41bf7b 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+@@ -19,8 +19,8 @@
+         <PackageReference Include="Il2CppInterop.HarmonySupport" Version="1.5.1-ci.829"/>
+         <PackageReference Include="Il2CppInterop.ReferenceLibs" Version="1.0.0" IncludeAssets="compile" PrivateAssets="all"/>
+         <PackageReference Include="Il2CppInterop.Runtime" Version="1.5.1-ci.829"/>
+-        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" IncludeAssets="compile" PrivateAssets="all"/>
+-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" IncludeAssets="compile" PrivateAssets="all"/>
++        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" PrivateAssets="all"/>
++        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" PrivateAssets="all"/>
+         <PackageReference Include="MonoMod.RuntimeDetour" Version="22.7.31.1"/>
+         <PackageReference Include="Samboy063.Cpp2IL.Core" Version="2022.1.0-development.1452"/>
+     </ItemGroup>
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/DoorstopEntrypoint.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/DoorstopEntrypoint.cs
+index 66e2353..5808edc 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/DoorstopEntrypoint.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/DoorstopEntrypoint.cs
+@@ -11,13 +11,32 @@ using MonoMod.Utils;
+ // ReSharper disable once CheckNamespace
+ namespace Doorstop;
+ 
+-internal static class Entrypoint
++public static class Entrypoint
+ {
++    private static void TraceBootstrap(string message)
++    {
++        try
++        {
++            var processPath = Environment.GetEnvironmentVariable("DOORSTOP_PROCESS_PATH");
++            var root = string.IsNullOrWhiteSpace(processPath)
++                ? Environment.CurrentDirectory
++                : Path.GetDirectoryName(processPath);
++            var path = Path.Combine(root ?? Environment.CurrentDirectory, "openacai-bepinex-net10-bootstrap.log");
++            File.AppendAllText(path, $"{DateTimeOffset.UtcNow:O} {message}{Environment.NewLine}");
++        }
++        catch
++        {
++            // This diagnostic must never become the reason bootstrap fails.
++        }
++    }
++
+     /// <summary>
+     ///     The main entrypoint of BepInEx, called from Doorstop.
+     /// </summary>
+     public static void Start()
+     {
++        TraceBootstrap("Doorstop.Entrypoint.Start entered");
++
+         // We set it to the current directory first as a fallback, but try to use the same location as the .exe file.
+         var silentExceptionLog = Environment.GetEnvironmentVariable("BEPINEX_PRELOADER_LOG") ??
+                                  $"preloader_{DateTime.Now:yyyyMMdd_HHmmss_fff}.log";
+@@ -25,21 +44,29 @@ internal static class Entrypoint
+ 
+         try
+         {
++            TraceBootstrap("Loading Doorstop environment variables");
+             EnvVars.LoadVars();
++            TraceBootstrap("Doorstop environment variables loaded");
+ 
+             silentExceptionLog =
+                 Path.Combine(Path.GetDirectoryName(EnvVars.DOORSTOP_PROCESS_PATH), silentExceptionLog);
+ 
++            TraceBootstrap("Computing preloader mutex id");
+             var mutexId = Utility.HashStrings(Process.GetCurrentProcess().ProcessName, EnvVars.DOORSTOP_PROCESS_PATH,
+                                               typeof(Entrypoint).FullName);
+ 
++            TraceBootstrap("Creating preloader mutex");
+             mutex = new Mutex(false, $"Global\\{mutexId}");
++            TraceBootstrap("Waiting on preloader mutex");
+             mutex.WaitOne();
++            TraceBootstrap("Starting UnityPreloaderRunner.PreloaderMain");
+ 
+             UnityPreloaderRunner.PreloaderMain();
++            TraceBootstrap("UnityPreloaderRunner.PreloaderMain returned");
+         }
+         catch (Exception ex)
+         {
++            TraceBootstrap($"Managed bootstrap exception: {ex}");
+             File.WriteAllText(silentExceptionLog, ex.ToString());
+ 
+             try
+@@ -67,6 +94,7 @@ internal static class Entrypoint
+         }
+         finally
+         {
++            TraceBootstrap("Doorstop.Entrypoint.Start finally");
+             mutex?.ReleaseMutex();
+         }
+     }
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/BaseNativeDetour.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/BaseNativeDetour.cs
+index a8b0ae9..9699ed0 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/BaseNativeDetour.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/BaseNativeDetour.cs
+@@ -18,7 +18,7 @@ internal abstract class BaseNativeDetour<T> : INativeDetour where T : BaseNative
+     }
+ 
+     public bool IsPrepared { get; protected set; }
+-    protected MethodInfo TrampolineMethod { get; set; }
++    protected MethodBase TrampolineMethod { get; set; }
+     protected Delegate DetourMethod { get; set; }
+ 
+     public nint OriginalMethodPtr { get; }
+@@ -63,7 +63,7 @@ internal abstract class BaseNativeDetour<T> : INativeDetour where T : BaseNative
+         if (TrampolineMethod == null)
+         {
+             Prepare();
+-            TrampolineMethod = DetourHelper.GenerateNativeProxy(TrampolinePtr, signature);
++            TrampolineMethod = signature;
+         }
+ 
+         return TrampolineMethod;
+@@ -74,7 +74,7 @@ internal abstract class BaseNativeDetour<T> : INativeDetour where T : BaseNative
+         if (!typeof(Delegate).IsAssignableFrom(typeof(TDelegate)))
+             throw new InvalidOperationException($"Type {typeof(TDelegate)} not a delegate type.");
+ 
+-        _ = GenerateTrampoline(typeof(TDelegate).GetMethod("Invoke"));
++        Prepare();
+ 
+         return Marshal.GetDelegateForFunctionPointer<TDelegate>(TrampolinePtr);
+     }
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Preloader.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Preloader.cs
+index 690d4ef..8af25e0 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Preloader.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Preloader.cs
+@@ -1,4 +1,5 @@
+ using System;
++using System.IO;
+ using System.Reflection;
+ using System.Runtime.InteropServices;
+ using BepInEx.IL2CPP.RuntimeFixes;
+@@ -21,29 +22,57 @@ public static class Preloader
+     // TODO: This is not needed, maybe remove? (Instance is saved in IL2CPPChainloader itself)
+     private static IL2CPPChainloader Chainloader { get; set; }
+ 
++    private static void TraceBootstrap(string message)
++    {
++        try
++        {
++            var processPath = Environment.GetEnvironmentVariable("DOORSTOP_PROCESS_PATH");
++            var root = string.IsNullOrWhiteSpace(processPath)
++                ? Environment.CurrentDirectory
++                : Path.GetDirectoryName(processPath);
++            var path = Path.Combine(root ?? Environment.CurrentDirectory, "openacai-bepinex-net10-bootstrap.log");
++            File.AppendAllText(path, $"{DateTimeOffset.UtcNow:O} {message}{Environment.NewLine}");
++        }
++        catch
++        {
++        }
++    }
++
+     public static void Run()
+     {
+         try
+         {
++            TraceBootstrap("Preloader.Run entered");
++            TraceBootstrap("HarmonyBackendFix.Initialize");
+             HarmonyBackendFix.Initialize();
++            TraceBootstrap("ConsoleSetOutFix.Apply");
+             ConsoleSetOutFix.Apply();
++            TraceBootstrap("UnityInfo.Initialize");
+             UnityInfo.Initialize(Paths.ExecutablePath, Paths.GameDataPath);
+ 
++            TraceBootstrap("ConsoleManager.Initialize");
+             ConsoleManager.Initialize(false, true);
+ 
++            TraceBootstrap("Creating PreloaderConsoleListener");
+             PreloaderLog = new PreloaderConsoleListener();
++            TraceBootstrap("Adding PreloaderConsoleListener");
+             Logger.Listeners.Add(PreloaderLog);
+ 
+             if (ConsoleManager.ConsoleEnabled)
+             {
++                TraceBootstrap("Creating BepInEx console");
+                 ConsoleManager.CreateConsole();
++                TraceBootstrap("Adding ConsoleLogListener");
+                 Logger.Listeners.Add(new ConsoleLogListener());
+             }
+ 
++            TraceBootstrap("RedirectStdErrFix.Apply");
+             RedirectStdErrFix.Apply();
+ 
++            TraceBootstrap("ChainloaderLogHelper.PrintLogInfo");
+             ChainloaderLogHelper.PrintLogInfo(Log);
+ 
++            TraceBootstrap("Writing runtime log lines");
+             Logger.Log(LogLevel.Info, $"Running under Unity {UnityInfo.Version}");
+             Logger.Log(LogLevel.Info, $"Runtime version: {Environment.Version}");
+             Logger.Log(LogLevel.Info, $"Runtime information: {RuntimeInformation.FrameworkDescription}");
+@@ -61,33 +90,46 @@ public static class Preloader
+                 }
+             }
+ 
++            TraceBootstrap("NativeLibrary.SetDllImportResolver");
+             NativeLibrary.SetDllImportResolver(typeof(Il2CppInterop.Runtime.IL2CPP).Assembly, DllImportResolver);
+ 
++            TraceBootstrap("Il2CppInteropManager.Initialize");
+             Il2CppInteropManager.Initialize();
++            TraceBootstrap("Il2CppInteropManager.Initialize returned");
+ 
++            TraceBootstrap("Creating AssemblyPatcher");
+             using (var assemblyPatcher = new AssemblyPatcher((data, _) => Assembly.Load(data)))
+             {
++                TraceBootstrap("Loading patchers");
+                 assemblyPatcher.AddPatchersFromDirectory(Paths.PatcherPluginPath);
+ 
+                 Log.LogInfo($"{assemblyPatcher.PatcherContext.PatcherPlugins.Count} patcher plugin{(assemblyPatcher.PatcherContext.PatcherPlugins.Count == 1 ? "" : "s")} loaded");
+ 
++                TraceBootstrap("Loading interop assembly directories");
+                 assemblyPatcher.LoadAssemblyDirectories(Il2CppInteropManager.IL2CPPInteropAssemblyPath);
+ 
+                 Log.LogInfo($"{assemblyPatcher.PatcherContext.PatcherPlugins.Count} assemblies discovered");
+ 
++                TraceBootstrap("PatchAndLoad");
+                 assemblyPatcher.PatchAndLoad();
++                TraceBootstrap("PatchAndLoad returned");
+             }
+ 
+ 
++            TraceBootstrap("Removing PreloaderConsoleListener");
+             Logger.Listeners.Remove(PreloaderLog);
+ 
+ 
++            TraceBootstrap("Creating IL2CPPChainloader");
+             Chainloader = new IL2CPPChainloader();
+ 
++            TraceBootstrap("Initializing IL2CPPChainloader");
+             Chainloader.Initialize();
++            TraceBootstrap("IL2CPPChainloader.Initialize returned");
+         }
+         catch (Exception ex)
+         {
++            TraceBootstrap($"Preloader.Run exception: {ex}");
+             Log.Log(LogLevel.Fatal, ex);
+ 
+             throw;
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/UnityPreloadRunner.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/UnityPreloadRunner.cs
+index 4281a32..9756391 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/UnityPreloadRunner.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/UnityPreloadRunner.cs
+@@ -8,25 +8,54 @@ namespace BepInEx.Unity.IL2CPP;
+ 
+ internal static class UnityPreloaderRunner
+ {
++    private static void TraceBootstrap(string message)
++    {
++        try
++        {
++            var processPath = Environment.GetEnvironmentVariable("DOORSTOP_PROCESS_PATH");
++            var root = string.IsNullOrWhiteSpace(processPath)
++                ? Environment.CurrentDirectory
++                : Path.GetDirectoryName(processPath);
++            var path = Path.Combine(root ?? Environment.CurrentDirectory, "openacai-bepinex-net10-bootstrap.log");
++            File.AppendAllText(path, $"{DateTimeOffset.UtcNow:O} {message}{Environment.NewLine}");
++        }
++        catch
++        {
++        }
++    }
++
+     public static void PreloaderMain()
+     {
++        TraceBootstrap("UnityPreloaderRunner.PreloaderMain entered");
+         var bepinPath =
+             Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(EnvVars.DOORSTOP_INVOKE_DLL_PATH)));
++        TraceBootstrap($"Computed BepInEx path: {bepinPath}");
+ 
++        TraceBootstrap("Setting platform");
+         PlatformUtils.SetPlatform();
++        TraceBootstrap("Platform set");
+ 
++        TraceBootstrap("Setting BepInEx paths");
+         Paths.SetExecutablePath(EnvVars.DOORSTOP_PROCESS_PATH, bepinPath, EnvVars.DOORSTOP_MANAGED_FOLDER_DIR, false,
+                                 EnvVars.DOORSTOP_DLL_SEARCH_DIRS);
++        TraceBootstrap($"BepInEx paths set. ManagedPath={Paths.ManagedPath}");
+ 
+         // Cecil 0.11 requires one to manually set up list of trusted assemblies for assembly resolving
+         // The main BCL path
++        TraceBootstrap("Adding Cecil platform assemblies from ManagedPath");
+         AppDomain.CurrentDomain.AddCecilPlatformAssemblies(Paths.ManagedPath);
++        TraceBootstrap("Added Cecil platform assemblies from ManagedPath");
+         // The parent path -> .NET has some extra managed DLLs in there
++        TraceBootstrap("Adding Cecil platform assemblies from ManagedPath parent");
+         AppDomain.CurrentDomain.AddCecilPlatformAssemblies(Path.GetDirectoryName(Paths.ManagedPath));
++        TraceBootstrap("Added Cecil platform assemblies from ManagedPath parent");
+ 
++        TraceBootstrap("Registering local assembly resolver");
+         AppDomain.CurrentDomain.AssemblyResolve += LocalResolve;
++        TraceBootstrap("Calling Preloader.Run");
+ 
+         Preloader.Run();
++        TraceBootstrap("Preloader.Run returned");
+     }
+ 
+     internal static Assembly LocalResolve(object sender, ResolveEventArgs args)
+-- 
+2.54.0.windows.1
+

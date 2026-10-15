@@ -1,0 +1,114 @@
+diff --git a/BepInEx.Core/Bootstrap/BaseChainloader.cs b/BepInEx.Core/Bootstrap/BaseChainloader.cs
+index 726bf08..38b8136 100644
+--- a/BepInEx.Core/Bootstrap/BaseChainloader.cs
++++ b/BepInEx.Core/Bootstrap/BaseChainloader.cs
+@@ -136,6 +136,17 @@ public abstract class BaseChainloader<TPlugin>
+     /// </summary>
+     public event Action Finished;
+ 
++    /// <summary>
++    ///     Raises the <see cref="PluginLoaded"/> event after a plugin is loaded.
++    /// </summary>
++    /// <param name="plugin">Information about the loaded plugin.</param>
++    protected void OnPluginLoaded(PluginInfo plugin) => PluginLoaded?.Invoke(plugin);
++
++    /// <summary>
++    ///     Raises the <see cref="Finished"/> event after all plugins are loaded.
++    /// </summary>
++    protected void OnFinished() => Finished?.Invoke();
++
+     public virtual void Initialize(string gameExePath = null)
+     {
+         if (_initialized)
+@@ -315,7 +326,7 @@ public abstract class BaseChainloader<TPlugin>
+             var plugins = DiscoverPlugins();
+             Logger.Log(LogLevel.Info, $"{plugins.Count} plugin{(plugins.Count == 1 ? "" : "s")} to load");
+             LoadPlugins(plugins);
+-            Finished?.Invoke();
++            OnFinished();
+         }
+         catch (Exception ex)
+         {
+@@ -411,7 +422,7 @@ public abstract class BaseChainloader<TPlugin>
+                 plugin.Instance = LoadPlugin(plugin, ass);
+                 loadedPlugins.Add(plugin);
+ 
+-                PluginLoaded?.Invoke(plugin);
++                OnPluginLoaded(plugin);
+             }
+             catch (Exception ex)
+             {
+@@ -435,7 +446,7 @@ public abstract class BaseChainloader<TPlugin>
+     /// </remarks>
+     /// <param name="pluginsPaths">Directories to search the plugins from.</param>
+     /// <returns>List of loaded plugin infos.</returns>
+-    public IList<PluginInfo> LoadPlugins(params string[] pluginsPaths)
++    public virtual IList<PluginInfo> LoadPlugins(params string[] pluginsPaths)
+     {
+         // TODO: This is a temporary solution for 3rd party loaders. Instead, this should be done via metaplugins.
+         var plugins = new List<PluginInfo>();
+diff --git a/BepInEx.Core/Properties/AssemblyInfo.cs b/BepInEx.Core/Properties/AssemblyInfo.cs
+index 749dcc2..0768fe0 100644
+--- a/BepInEx.Core/Properties/AssemblyInfo.cs
++++ b/BepInEx.Core/Properties/AssemblyInfo.cs
+@@ -5,4 +5,5 @@ using System.Runtime.CompilerServices;
+ [assembly: InternalsVisibleTo("BepInEx.NET.Framework.Launcher")]
+ [assembly: InternalsVisibleTo("BepInEx.NET.CoreCLR")]
+ [assembly: InternalsVisibleTo("BepInEx.Unity.IL2CPP")]
++[assembly: InternalsVisibleTo("OpenACAI.Endnight.Loader.Core")]
+ [assembly: InternalsVisibleTo("BepInExTests")]
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BasePlugin.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BasePlugin.cs
+index 3b51e33..aa09f65 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BasePlugin.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BasePlugin.cs
+@@ -6,11 +6,19 @@ namespace BepInEx.Unity.IL2CPP;
+ 
+ public abstract class BasePlugin
+ {
+-    protected BasePlugin()
++    protected BasePlugin() : this(null)
++    {
++    }
++
++    /// <summary>
++    ///     Initializes the plugin with an existing log source or creates one from its metadata.
++    /// </summary>
++    /// <param name="log">The log source to reuse, or null to create a source using the plugin name.</param>
++    protected BasePlugin(ManualLogSource log)
+     {
+         var metadata = MetadataHelper.GetMetadata(this);
+ 
+-        Log = Logger.CreateLogSource(metadata.Name);
++        Log = log ?? Logger.CreateLogSource(metadata.Name);
+ 
+         Config = new ConfigFile(Utility.CombinePaths(Paths.ConfigPath, metadata.GUID + ".cfg"), false, metadata);
+     }
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs
+index 0984fc7..62ddf1b 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs
+@@ -53,6 +53,15 @@ public class IL2CPPChainloader : BaseChainloader<BasePlugin>
+     /// </summary>
+     public event Action<PluginInfo, Assembly, BasePlugin> PluginLoad;
+ 
++    /// <summary>
++    ///     Raises the <see cref="PluginLoad"/> event before the plugin's <see cref="BasePlugin.Load"/> method is called.
++    /// </summary>
++    /// <param name="pluginInfo">Information about the plugin being loaded.</param>
++    /// <param name="pluginAssembly">The assembly containing the plugin.</param>
++    /// <param name="plugin">The instantiated plugin.</param>
++    protected void OnPluginLoad(PluginInfo pluginInfo, Assembly pluginAssembly, BasePlugin plugin) =>
++        PluginLoad?.Invoke(pluginInfo, pluginAssembly, plugin);
++
+     public override void Initialize(string gameExePath = null)
+     {
+         base.Initialize(gameExePath);
+@@ -183,7 +192,7 @@ public class IL2CPPChainloader : BaseChainloader<BasePlugin>
+ 
+         var pluginInstance = (BasePlugin) Activator.CreateInstance(type);
+ 
+-        PluginLoad?.Invoke(pluginInfo, pluginAssembly, pluginInstance);
++        OnPluginLoad(pluginInfo, pluginAssembly, pluginInstance);
+         pluginInstance.Load();
+ 
+         return pluginInstance;

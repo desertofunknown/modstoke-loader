@@ -1,0 +1,130 @@
+diff --git a/SonsSdk/ModInputCache.cs b/SonsSdk/ModInputCache.cs
+index 4b2e8d7..d145519 100644
+--- a/SonsSdk/ModInputCache.cs
++++ b/SonsSdk/ModInputCache.cs
+@@ -17,6 +17,8 @@ public static class ModInputCache
+         }
+ 
+         Keybinds[config] = action = new ModKeybind(config);
++        // Refresh the action before ordinary config listeners read its binding.
++        config.OnValueChanged.Subscribe(action.OnConfigValueChanged, priority: int.MinValue);
+         _keybindSnapshot = null;
+         RLog.Msg("Registered keybind: " + config.Identifier + "::" + config.FullPath);
+         action.Enable();
+@@ -170,16 +172,65 @@ public class ModKeybind
+ 
+     public void SaveToConfig()
+     {
+-        if (Action.controls.Count == 0)
++        var bindings = Action.bindings;
++        if (bindings.Count == 0)
+             return;
+-        
+-        ConfigEntry.Value = Action.controls[0].name;
++
++        var bindingIndex = 0;
++        if (bindings.Count != 1)
++        {
++            var controls = Action.controls;
++            if (controls.Count == 0)
++                return;
++
++            bindingIndex = Action.GetBindingIndexForControl(controls[0]);
++            if (bindingIndex < 0)
++                return;
++        }
++
++        if (!bindings[bindingIndex].isComposite)
++            SaveBindingPath(bindings[bindingIndex].effectivePath);
++    }
++
++    internal void SaveBindingPath(string path)
++    {
++        if (string.IsNullOrEmpty(path))
++            return;
++
++        const string keyboardPrefix = "<Keyboard>/";
++        if (path.StartsWith(keyboardPrefix, StringComparison.OrdinalIgnoreCase))
++        {
++            var keyName = path.Substring(keyboardPrefix.Length);
++            if (!keyName.Contains('/'))
++                path = keyName;
++        }
++
++        ConfigEntry.Value = path;
+     }
+     
+     public void RevertToDefault()
+     {
+         ConfigEntry.ResetToDefault();
+-        Action.ApplyBindingOverride(ConfigEntry.FullPath);
++        RefreshBinding();
++    }
++
++    internal void OnConfigValueChanged(string oldValue, string newValue)
++    {
++        RefreshBinding();
++    }
++
++    private void RefreshBinding()
++    {
++        var path = ConfigEntry.FullPath;
++        var bindings = Action.bindings;
++        for (var i = 0; i < bindings.Count; i++)
++        {
++            if (string.Equals(bindings[i].effectivePath, path, StringComparison.Ordinal))
++                continue;
++
++            Action.ApplyBindingOverride(path);
++            return;
++        }
+     }
+     
+     /// <summary>
+diff --git a/SonsSdk/SUI/SKeybindOptions.cs b/SonsSdk/SUI/SKeybindOptions.cs
+index a1e9af4..6455cf1 100644
+--- a/SonsSdk/SUI/SKeybindOptions.cs
++++ b/SonsSdk/SUI/SKeybindOptions.cs
+@@ -90,6 +90,7 @@ public class SKeybindOptions : SUiElement<SKeybindOptions>
+         try
+         {
+             session.Keybind.Action.ApplyBindingOverride(path);
++            session.AppliedPath = path;
+             RLog.Msg(Color.Orange, $"Applied binding override to {session.Keybind.Action.name} [Path: {path}]");
+         }
+         catch
+@@ -126,9 +127,9 @@ public class SKeybindOptions : SUiElement<SKeybindOptions>
+ 
+             if (completed)
+             {
++                session.Keybind.SaveBindingPath(session.AppliedPath);
+                 if (Root)
+                     CreateNewInstance();
+-                session.Keybind.SaveToConfig();
+             }
+         }
+         finally
+@@ -186,6 +187,7 @@ public class SKeybindOptions : SUiElement<SKeybindOptions>
+         internal readonly bool EventSystemWasActive;
+         internal readonly long Generation;
+         internal readonly InputActionRebindingExtensions.RebindingOperation Operation;
++        internal string AppliedPath;
+         internal bool BindingModeEntered;
+         internal bool EventSystemDisabled;
+         internal bool InputBindingEntered;
+diff --git a/SonsSdk/SUI/SettingsRegistry.cs b/SonsSdk/SUI/SettingsRegistry.cs
+index 737fb9b..d6d7809 100644
+--- a/SonsSdk/SUI/SettingsRegistry.cs
++++ b/SonsSdk/SUI/SettingsRegistry.cs
+@@ -637,7 +637,10 @@ public class SettingsRegistry
+         {
+             foreach (var configEntry in ConfigEntries)
+             {
+-                configEntry.ConfigEntry.ResetToDefault();
++                if (configEntry.WrappedElement is SKeybindOptions keybind)
++                    keybind.RevertToDefault();
++                else
++                    configEntry.ConfigEntry.ResetToDefault();
+             }
+         }
+ 

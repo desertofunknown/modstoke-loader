@@ -1,0 +1,78 @@
+diff --git a/RedLoader/UnityEngine/GlobalBehaviour.cs b/RedLoader/UnityEngine/GlobalBehaviour.cs
+index 7c69981..388da25 100644
+--- a/RedLoader/UnityEngine/GlobalBehaviour.cs
++++ b/RedLoader/UnityEngine/GlobalBehaviour.cs
+@@ -10,10 +10,31 @@ using Color = System.Drawing.Color;
+ 
+ namespace RedLoader.Unity.IL2CPP.UnityEngine;
+ 
++internal interface IGlobalBehaviourHost
++{
++    void Initialize();
++    void Create();
++    void Maintain(GlobalBehaviour behaviour);
++}
++
+ public class GlobalBehaviour : MonoBehaviour
+ {
+     public static GlobalBehaviour Instance;
+ 
++    private static IGlobalBehaviourHost host;
++    private static bool hostStarted;
++
++    internal static void SetHost(IGlobalBehaviourHost value)
++    {
++        ArgumentNullException.ThrowIfNull(value);
++        if (ReferenceEquals(host, value))
++            return;
++        if (host != null || hostStarted)
++            throw new InvalidOperationException("Coroutine host ownership must be selected before initialization.");
++
++        host = value;
++    }
++
+     internal static bool HasExternalLifecycle { get; private set; }
+ 
+     internal static void UseExternalLifecycle()
+@@ -25,6 +46,13 @@ public class GlobalBehaviour : MonoBehaviour
+     
+     public static void Init()
+     {
++        hostStarted = true;
++        if (host != null)
++        {
++            host.Initialize();
++            return;
++        }
++
+         ClassInjector.RegisterTypeInIl2Cpp<GlobalBehaviour>();
+         SetAsLastSiblingDelegateField = Il2CppInterop.Runtime.IL2CPP.ResolveICall<SetAsLastSiblingDelegate>("UnityEngine.Transform::SetAsLastSibling");
+         
+@@ -36,6 +64,13 @@ public class GlobalBehaviour : MonoBehaviour
+ 
+     private static void Create()
+     {
++        hostStarted = true;
++        if (host != null)
++        {
++            host.Create();
++            return;
++        }
++
+         var go = new GameObject();
+         DontDestroyOnLoad(go);
+         go.hideFlags = HideFlags.DontSave;
+@@ -45,6 +80,13 @@ public class GlobalBehaviour : MonoBehaviour
+ 
+     private void SiblingFix()
+     {
++        hostStarted = true;
++        if (host != null)
++        {
++            host.Maintain(this);
++            return;
++        }
++
+         SetAsLastSiblingDelegateField(Il2CppInterop.Runtime.IL2CPP.Il2CppObjectBaseToPtrNotNull(gameObject.transform));
+         SetAsLastSiblingDelegateField(Il2CppInterop.Runtime.IL2CPP.Il2CppObjectBaseToPtrNotNull(transform));
+     }

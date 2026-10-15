@@ -1,0 +1,174 @@
+diff --git a/SonsSdk/Building/CustomBlueprintManager.cs b/SonsSdk/Building/CustomBlueprintManager.cs
+index a2d3ae6..a8d5741 100644
+--- a/SonsSdk/Building/CustomBlueprintManager.cs
++++ b/SonsSdk/Building/CustomBlueprintManager.cs
+@@ -24,6 +24,13 @@ internal interface ISdkBlueprintRegistrationDriver
+     void Register(ScrewStructureRegistration registration);
+     Task LoadGltfObjectsFromDirectory(string directory);
+     int? GetRecipeIdFromName(string name);
++    void OnGameActivated();
++    void SetupRecipeIngredients(StructureRecipe recipe);
++    void PrepareBuiltStructure(GameObject built, StructureRecipe recipe);
++    bool AddRecipeToDatabase(StructureRecipe recipe);
++    StructureRecipe CreateNewRecipe(int id, string name, StructureCraftingNode node, GameObject built);
++    StructureCraftingNode CreateCraftingNode(Transform transformToWrap, int? ingredientItemId);
++    void SetupObjectAsCraftingNode(ScrewStructureRegistration registration);
+ }
+ 
+ public record ScrewStructureRegistration(
+@@ -48,10 +55,10 @@ public class CustomBlueprintManager
+     public static StructureRecipe.CategoryType StructureCategory = StructureRecipe.CategoryType.Decoration;
+     
+     private static readonly Regex PascalToHumanRegex = new("[a-z][A-Z]", RegexOptions.Compiled);
+-    private static StructureCraftingNode _craftingNodePrefab;
+-    private static StructureRecipe _recipePrefab;
++    internal static StructureCraftingNode _craftingNodePrefab;
++    internal static StructureRecipe _recipePrefab;
+     internal static readonly Dictionary<int, ScrewStructureRegistration> LoadedObjects = new();
+-    private static readonly Dictionary<int, StructureRecipe> ProcessedObjects = new();
++    internal static readonly Dictionary<int, StructureRecipe> ProcessedObjects = new();
+ 
+     /// <summary>
+     /// Make an empty crafting node setup from the lean to structure.
+@@ -63,16 +70,42 @@ public class CustomBlueprintManager
+         
+         var structure = ConstructionTools.GetRecipe(25)._structureNodePrefab;
+         var go = structure.Instantiate();
+-        go.name = "CustomStructurePrefab";
+-        var structureCraftingNode = go.GetComponent<StructureCraftingNode>();
+-        go.transform.Find("Ingredients").gameObject.TryDestroy();
+-        go.DontDestroyOnLoad().SetActive(false);
+-        
+-        _craftingNodePrefab = structureCraftingNode;
+-        _recipePrefab = structureCraftingNode._recipe;
+-        var newRecipe = Object.Instantiate(structureCraftingNode._recipe);
+-        newRecipe._id = 777;
+-        structureCraftingNode._recipe = newRecipe;
++        StructureRecipe newRecipe = null;
++        try
++        {
++            go.name = "CustomStructurePrefab";
++            var structureCraftingNode = go.GetComponent<StructureCraftingNode>();
++            go.transform.Find("Ingredients").gameObject.TryDestroy();
++            go.DontDestroyOnLoad().SetActive(false);
++
++            var recipePrefab = structureCraftingNode._recipe;
++            newRecipe = Object.Instantiate(recipePrefab);
++            newRecipe._id = 777;
++            structureCraftingNode._recipe = newRecipe;
++
++            _recipePrefab = recipePrefab;
++            _craftingNodePrefab = structureCraftingNode;
++        }
++        catch
++        {
++            try { go.SetActive(false); }
++            catch (Exception exception) { ReportPrefabCleanupFailure(exception); }
++            DiscardPrefabCandidate(go);
++            DiscardPrefabCandidate(newRecipe);
++            throw;
++        }
++    }
++
++    private static void DiscardPrefabCandidate(Object candidate)
++    {
++        try { if (candidate) Object.Destroy(candidate); }
++        catch (Exception exception) { ReportPrefabCleanupFailure(exception); }
++    }
++
++    private static void ReportPrefabCleanupFailure(Exception exception)
++    {
++        try { RLog.Error($"Could not clean up blueprint template: {exception}"); }
++        catch { }
+     }
+ 
+     /// <summary>
+@@ -105,6 +138,13 @@ public class CustomBlueprintManager
+     
+     internal static void OnGameActivated()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Blueprints.OnGameActivated();
++            return;
++        }
++
+         InitializePrefabs();
+ 
+         foreach (var loadedObject in LoadedObjects.Values)
+@@ -134,6 +174,13 @@ public class CustomBlueprintManager
+ 
+     public static void SetupRecipeIngredients(StructureRecipe recipe)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Blueprints.SetupRecipeIngredients(recipe);
++            return;
++        }
++
+         var node = recipe._structureNodePrefab.GetComponent<StructureCraftingNode>();
+         var ingredients = recipe._ingredients = new Il2CppSystem.Collections.Generic.List<StructureCraftingRecipeIngredient>();
+         foreach (var link in node._craftingIngredientLinks)
+@@ -151,6 +198,13 @@ public class CustomBlueprintManager
+     /// <param name="recipe"></param>
+     public static void PrepareBuiltStructure(GameObject built, StructureRecipe recipe)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Blueprints.PrepareBuiltStructure(built, recipe);
++            return;
++        }
++
+         foreach (var ingredient in built.GetComponentsInChildren<StructureCraftingNodeIngredient>(true))
+         {
+             Object.Destroy(ingredient);
+@@ -185,6 +239,10 @@ public class CustomBlueprintManager
+     /// <returns>True if the recipe got registered successfully</returns>
+     public static bool AddRecipeToDatabase(StructureRecipe recipe)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.Blueprints.AddRecipeToDatabase(recipe);
++
+         if (!StructureCraftingSystem.TryGetInstance(out var system))
+         {
+             return false;
+@@ -209,6 +267,10 @@ public class CustomBlueprintManager
+     /// <returns></returns>
+     public static StructureRecipe CreateNewRecipe(int id, string name, StructureCraftingNode node = null, GameObject built = null)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.Blueprints.CreateNewRecipe(id, name, node, built);
++
+         var recipe = Object.Instantiate(_recipePrefab);
+         recipe._id = id;
+         recipe._boltPrefabId = id - 1;
+@@ -321,6 +383,10 @@ public class CustomBlueprintManager
+         Transform transformToWrap,
+         int? ingredientItemId = null)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.Blueprints.CreateCraftingNode(transformToWrap, ingredientItemId);
++
+         var ingredients = 
+             ingredientItemId == null 
+             ? GetIngredients(transformToWrap).ToList() 
+@@ -476,6 +542,13 @@ public class CustomBlueprintManager
+     /// <param name="reg"></param>
+     public static void SetupObjectAsCraftingNode(ScrewStructureRegistration reg)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Blueprints.SetupObjectAsCraftingNode(reg);
++            return;
++        }
++
+         if (ProcessedObjects.TryGetValue(reg.recipeId, out var existingRecipe))
+         {
+             AddRecipeToDatabase(existingRecipe);

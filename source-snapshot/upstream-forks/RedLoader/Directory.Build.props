@@ -1,0 +1,22 @@
+<Project>
+    <PropertyGroup>
+        <VersionPrefix>0.8.6</VersionPrefix>
+        <Authors>BepInEx, Toni Macaroni</Authors>
+        <LangVersion>latest</LangVersion>
+        <Nullable>disable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <PackageLicenseExpression>AGPL-2.0</PackageLicenseExpression>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <DebugType>embedded</DebugType>
+        <Configurations>Debug;Release</Configurations>
+        <RepositoryUrl>https://github.com/ToniMacaroni/RedLoader</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <BuildDir>$(SolutionDir)bin</BuildDir>
+        
+        <Cpp2IlVersion>2022.1.0-pre-release.19</Cpp2IlVersion>
+        <Il2CppInteropVersion>1.4.6-ci.602</Il2CppInteropVersion>
+
+        <ProjectAlias>_Redloader</ProjectAlias>
+        <GamePath Condition="'$(GamePath)' == ''">$(SOTF_GAME_ROOT)</GamePath>
+    </PropertyGroup>
+</Project>

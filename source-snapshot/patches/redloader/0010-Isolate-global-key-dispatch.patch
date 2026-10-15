@@ -1,0 +1,87 @@
+diff --git a/SonsSdk/GlobalInput.cs b/SonsSdk/GlobalInput.cs
+index 9974fb0..f537d3a 100644
+--- a/SonsSdk/GlobalInput.cs
++++ b/SonsSdk/GlobalInput.cs
+@@ -10,7 +10,8 @@ public class GlobalInput
+     public static MelonEvent OnUsePerformed = new();
+ 
+     
+-    private static List<KeyRegistration> _keyRegistrations = new();
++    private static readonly List<KeyRegistration> _keyRegistrations = new();
++    private static KeyRegistration[] _keySnapshot;
+ 
+     private static InputAction _useAction;
+ 
+@@ -30,13 +31,15 @@ public class GlobalInput
+             Key = key,
+             Action = action
+         });
++        _keySnapshot = null;
+ 
+         return true;
+     }
+     
+     public static void UnregisterKey(KeyCode key)
+     {
+-        _keyRegistrations.RemoveAll(k => k.Key == key);
++        if (_keyRegistrations.RemoveAll(k => k.Key == key) > 0)
++            _keySnapshot = null;
+     }
+ 
+     internal static void Init()
+@@ -52,18 +55,41 @@ public class GlobalInput
+ 
+     private static void OnUpdate()
+     {
+-        foreach (var keyRegistration in _keyRegistrations)
++        // Callback mutations affect the next dispatch, not this snapshot.
++        var registrations = _keySnapshot ??= _keyRegistrations.ToArray();
++        foreach (var keyRegistration in registrations)
+         {
+-            if (Input.GetKeyDown(keyRegistration.Key))
+-                keyRegistration.Action();
++            try
++            {
++                if (Input.GetKeyDown(keyRegistration.Key))
++                    keyRegistration.Action();
++            }
++            catch (Exception exception)
++            {
++                ReportFailure("key " + keyRegistration.Key, exception);
++            }
+         }
+ 
+-        if (_useAction != null)
++        try
+         {
+-            if (_useAction.WasPerformedThisFrame())
+-            {
++            if (_useAction != null && _useAction.WasPerformedThisFrame())
+                 OnUsePerformed.Invoke();
+-            }
++        }
++        catch (Exception exception)
++        {
++            ReportFailure("Use action", exception);
++        }
++    }
++
++    private static void ReportFailure(string operation, Exception exception)
++    {
++        try
++        {
++            RLog.Error("Global input " + operation + " failed.", exception);
++        }
++        catch
++        {
++            // A log listener must not interrupt the remaining input dispatch.
+         }
+     }
+ 
+@@ -72,4 +98,4 @@ public class GlobalInput
+         public KeyCode Key;
+         public Action Action;
+     }
+-}
+\ No newline at end of file
++}

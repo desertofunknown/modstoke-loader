@@ -1,0 +1,42 @@
+From 9c449f8f1e98c28aa220680654b410ef6943cb77 Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Fri, 5 Jun 2026 08:36:16 -0500
+Subject: [PATCH 09/13] Clean up net11 preview runtime warnings
+
+---
+ BepInEx.Core/Logging/InterpolatedStringHandlerAttribute.cs | 4 +++-
+ Runtimes/Unity/BepInEx.Unity.Common/UnityInfo.cs           | 2 +-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/BepInEx.Core/Logging/InterpolatedStringHandlerAttribute.cs b/BepInEx.Core/Logging/InterpolatedStringHandlerAttribute.cs
+index 9def31e..ac426ae 100644
+--- a/BepInEx.Core/Logging/InterpolatedStringHandlerAttribute.cs
++++ b/BepInEx.Core/Logging/InterpolatedStringHandlerAttribute.cs
+@@ -1,4 +1,5 @@
+-﻿// ReSharper disable once CheckNamespace
++#if NET35 || NETSTANDARD2_0
++// ReSharper disable once CheckNamespace
+ 
+ namespace System.Runtime.CompilerServices;
+ 
+@@ -20,3 +21,4 @@ internal sealed class InterpolatedStringHandlerArgumentAttribute : Attribute
+ 
+     public string[] Arguments { get; }
+ }
++#endif
+diff --git a/Runtimes/Unity/BepInEx.Unity.Common/UnityInfo.cs b/Runtimes/Unity/BepInEx.Unity.Common/UnityInfo.cs
+index 663a736..4e74dae 100644
+--- a/Runtimes/Unity/BepInEx.Unity.Common/UnityInfo.cs
++++ b/Runtimes/Unity/BepInEx.Unity.Common/UnityInfo.cs
+@@ -131,7 +131,7 @@ public static class UnityInfo
+                     version = UnityVersion.Parse(sb.ToString());
+                     return true;
+                 }
+-                catch (Exception e)
++                catch (Exception)
+                 {
+                     // Ignore
+                 }
+-- 
+2.54.0.windows.1
+

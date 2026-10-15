@@ -1,0 +1,47 @@
+diff --git a/SonsSdk/SonsMod.cs b/SonsSdk/SonsMod.cs
+index b228066..9aeea6f 100644
+--- a/SonsSdk/SonsMod.cs
++++ b/SonsSdk/SonsMod.cs
+@@ -112,18 +112,35 @@ public abstract class SonsMod : ModTypeBase<SonsMod>
+         RegisterCallback(SdkEvents.OnGameStart, RegisterCommands);
+     }
+     
+-    internal Dictionary<string, Action<SBgButtonOptions>> GetModPanelActions()
++    /// <summary>
++    /// Returns newly bound callbacks for this mod instance that accept the real SUI button context.
++    /// </summary>
++    public Dictionary<string, Action<SBgButtonOptions>> GetModPanelActions()
+     {
+         var actions = new Dictionary<string, Action<SBgButtonOptions>>();
+         var methods = GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+         foreach (var method in methods)
+         {
+-            var attr = method.GetCustomAttribute<ModPanelActionAttribute>();
+-            if (attr == null)
+-                continue;
+-
+-            var action = (Action<SBgButtonOptions>) Delegate.CreateDelegate(typeof(Action<SBgButtonOptions>), this, method);
+-            actions[attr.Name] = action;
++            try
++            {
++                var attr = method.GetCustomAttribute<ModPanelActionAttribute>();
++                if (attr == null)
++                    continue;
++
++                var action = (Action<SBgButtonOptions>) Delegate.CreateDelegate(typeof(Action<SBgButtonOptions>), this, method);
++                actions[attr.Name] = action;
++            }
++            catch (Exception ex)
++            {
++                try
++                {
++                    RLog.Error($"Failed to bind mod panel action '{method.DeclaringType?.FullName}.{method.Name}' for mod '{GetType().FullName}': {ex}");
++                }
++                catch
++                {
++                    // Logging must not prevent the remaining actions from binding.
++                }
++            }
+         }
+ 
+         return actions;

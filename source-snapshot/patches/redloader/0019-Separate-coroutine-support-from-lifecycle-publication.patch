@@ -1,0 +1,141 @@
+diff --git a/RedLoader/UnityEngine/GlobalBehaviour.cs b/RedLoader/UnityEngine/GlobalBehaviour.cs
+index 95c0578..7c69981 100644
+--- a/RedLoader/UnityEngine/GlobalBehaviour.cs
++++ b/RedLoader/UnityEngine/GlobalBehaviour.cs
+@@ -13,6 +13,13 @@ namespace RedLoader.Unity.IL2CPP.UnityEngine;
+ public class GlobalBehaviour : MonoBehaviour
+ {
+     public static GlobalBehaviour Instance;
++
++    internal static bool HasExternalLifecycle { get; private set; }
++
++    internal static void UseExternalLifecycle()
++    {
++        HasExternalLifecycle = true;
++    }
+     
+     private bool isQuitting;
+     
+@@ -53,7 +60,8 @@ public class GlobalBehaviour : MonoBehaviour
+                 return;
+ 
+             SiblingFix();
+-            GlobalEvents.OnApplicationLateStart.Invoke();
++            if (!HasExternalLifecycle)
++                GlobalEvents.OnApplicationLateStart.Invoke();
+         }
+ 
+         void Awake()
+@@ -74,8 +82,11 @@ public class GlobalBehaviour : MonoBehaviour
+             isQuitting = false;
+             SiblingFix();
+ 
+-            SceneHandler.OnUpdate();
+-            GlobalEvents.OnUpdate.Invoke();
++            if (!HasExternalLifecycle)
++            {
++                SceneHandler.OnUpdate();
++                GlobalEvents.OnUpdate.Invoke();
++            }
+             
+             if(CorePreferences.EnableScriptLoader.Value)
+                 RedScriptManager.Update();
+@@ -101,11 +112,15 @@ public class GlobalBehaviour : MonoBehaviour
+                 return;
+ 
+             isQuitting = true;
+-            GlobalEvents.OnApplicationQuit.Invoke();
++            if (!HasExternalLifecycle)
++                GlobalEvents.OnApplicationQuit.Invoke();
+         }
+ 
+         void OnApplicationDefiniteQuit()
+         {
++            if (HasExternalLifecycle)
++                return;
++
+             ConfigSystem.Save();
+             GlobalEvents.OnApplicationDefiniteQuit.Invoke();
+             
+@@ -115,6 +130,9 @@ public class GlobalBehaviour : MonoBehaviour
+ 
+         void FixedUpdate()
+         {
++            if (HasExternalLifecycle)
++                return;
++
+             if ((Instance!= null) && (Instance!= this))
+                 return;
+ 
+@@ -123,6 +141,9 @@ public class GlobalBehaviour : MonoBehaviour
+ 
+         void LateUpdate()
+         {
++            if (HasExternalLifecycle)
++                return;
++
+             if ((Instance!= null) && (Instance!= this))
+                 return;
+ 
+@@ -131,6 +152,9 @@ public class GlobalBehaviour : MonoBehaviour
+ 
+         void OnGUI()
+         {
++            if (HasExternalLifecycle)
++                return;
++
+             if ((Instance!= null) && (Instance!= this))
+                 return;
+ 
+diff --git a/RedLoader/UnityEngine/SceneHandler.cs b/RedLoader/UnityEngine/SceneHandler.cs
+index cd24869..2ad6aae 100644
+--- a/RedLoader/UnityEngine/SceneHandler.cs
++++ b/RedLoader/UnityEngine/SceneHandler.cs
+@@ -1,6 +1,7 @@
+ ﻿using System;
+ using UnityEngine.SceneManagement;
+ using System.Collections.Generic;
++using RedLoader.Unity.IL2CPP.UnityEngine;
+ using UnityEngine.Events;
+ #if SM_Il2Cpp
+ using UnityEngine.Events;
+@@ -21,6 +22,9 @@ namespace RedLoader.Support
+ 
+         internal static void Init()
+         {
++            if (GlobalBehaviour.HasExternalLifecycle)
++                return;
++
+             try
+             {
+                 SceneManager.sceneLoaded = (
+@@ -44,6 +48,9 @@ namespace RedLoader.Support
+ 
+         private static void OnSceneLoad(Scene scene, LoadSceneMode mode)
+         {
++            if (GlobalBehaviour.HasExternalLifecycle)
++                return;
++
+             if (ReferenceEquals(scene, null))
+                 return;
+ 
+@@ -53,6 +60,9 @@ namespace RedLoader.Support
+ 
+         private static void OnSceneUnload(Scene scene)
+         {
++            if (GlobalBehaviour.HasExternalLifecycle)
++                return;
++
+             if (ReferenceEquals(scene, null))
+                 return;
+ 
+@@ -61,6 +71,9 @@ namespace RedLoader.Support
+ 
+         internal static void OnUpdate()
+         {
++            if (GlobalBehaviour.HasExternalLifecycle)
++                return;
++
+             if (scenesLoaded.Count > 0)
+             {
+                 Queue<SceneInitEvent> requeue = new Queue<SceneInitEvent>();

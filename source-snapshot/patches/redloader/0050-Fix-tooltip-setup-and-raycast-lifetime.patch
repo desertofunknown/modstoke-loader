@@ -1,0 +1,169 @@
+diff --git a/SonsSdk/SUI/TooltipProvider.cs b/SonsSdk/SUI/TooltipProvider.cs
+index e45437f..b475c6c 100644
+--- a/SonsSdk/SUI/TooltipProvider.cs
++++ b/SonsSdk/SUI/TooltipProvider.cs
+@@ -1,5 +1,7 @@
+ ﻿using Il2CppInterop.Runtime.Injection;
+ using RedLoader;
++using System;
++using System.Collections.Generic;
+ using SUI;
+ using TMPro;
+ using UnityEngine;
+@@ -52,41 +54,78 @@ public class TooltipProvider
+         if (_initialized)
+             return;
+ 
+-        _initialized = true;
+-        
+-        var go = new GameObject("TooltipCanvas");
+-        Object.DontDestroyOnLoad(go);
+-        go.hideFlags |= HideFlags.HideAndDontSave;
+-        go.layer = 5;
+-        
+-        _canvas = go.AddComponent<Canvas>();
+-        _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+-        _canvas.sortingOrder = 999;
+-        
+-        var scaler = go.AddComponent<CanvasScaler>();
+-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+-        scaler.referenceResolution = new Vector2(1920, 1080);
+-        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+-        scaler.matchWidthOrHeight = 0;
+-        
+-        CreateTooltip(_canvas);
+-        _canvas.gameObject.SetActive(false);
++        var createdObjects = new List<GameObject>(3);
++        SLabelOptions label = null;
++        try
++        {
++            var root = new GameObject("TooltipCanvas");
++            createdObjects.Add(root);
++            Object.DontDestroyOnLoad(root);
++            root.hideFlags |= HideFlags.HideAndDontSave;
++            root.layer = 5;
++
++            var canvas = root.AddComponent<Canvas>();
++            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
++            canvas.sortingOrder = 999;
++
++            var scaler = root.AddComponent<CanvasScaler>();
++            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
++            scaler.referenceResolution = new Vector2(1920, 1080);
++            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
++            scaler.matchWidthOrHeight = 0;
++
++            var tooltip = SContainer;
++            createdObjects.Add(tooltip.Root);
++            tooltip.Pivot(0, 0).Anchor(AnchorType.BottomLeft).Position(0, 0)
++                .Size(400, 100).Background(CardButtonBg);
++
++            label = SLabel;
++            createdObjects.Add(label.Root);
++            label.Bind(_tooltipText).Dock(EDockType.Fill).FontSize(18)
++                .Font(EFont.RobotoLight).FontColor("#ea2f4e60").Alignment(TextAlignmentOptions.Center);
++            tooltip.Add(label);
++
++            var fitter = label.Root.AddComponent<ContentSizeFitter>();
++            fitter.verticalFit = fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
++            tooltip.Root.AddComponent<FollowMouseHandler>();
++            tooltip.SetParent(canvas.transform);
++            tooltip.Root.SetActive(false);
++            root.SetActive(false);
++
++            // Publish only after every control is ready and hidden.
++            _canvas = canvas;
++            _tooltipObject = tooltip.Root;
++            _tooltipRect = tooltip.RectTransform;
++            _textRect = label.RectTransform;
++            _initialized = true;
++        }
++        catch
++        {
++            DiscardFailedSetup(createdObjects, label);
++            throw;
++        }
+     }
+ 
+-    private static void CreateTooltip(Canvas canvas)
++    private static void DiscardFailedSetup(List<GameObject> createdObjects, SLabelOptions label)
+     {
+-        SLabelOptions label;
+-        var tooltip = SContainer.Pivot(0, 0).Anchor(AnchorType.BottomLeft).Position(0,0).Size(400, 100).Background(CardButtonBg)
+-                      - (label = SLabel.Bind(_tooltipText).Dock(EDockType.Fill).FontSize(18).Font(EFont.RobotoLight).FontColor("#ea2f4e60").Alignment(TextAlignmentOptions.Center));
+-        _tooltipObject = tooltip.Root;
+-        _tooltipRect = tooltip.RectTransform;
+-        _textRect = label.RectTransform;
+-        var csf = label.Root.AddComponent<ContentSizeFitter>();
+-        csf.verticalFit = csf.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+-        _tooltipObject.AddComponent<FollowMouseHandler>();
+-        tooltip.SetParent(canvas.transform);
++        try { label?.Unbind(); }
++        catch (Exception exception) { ReportCleanupFailure(exception); }
+ 
+-        HideTooltip();
++        for (var i = createdObjects.Count - 1; i >= 0; i--)
++        {
++            var gameObject = createdObjects[i];
++            try { gameObject.SetActive(false); }
++            catch (Exception exception) { ReportCleanupFailure(exception); }
++
++            try { Object.Destroy(gameObject); }
++            catch (Exception exception) { ReportCleanupFailure(exception); }
++        }
++    }
++
++    private static void ReportCleanupFailure(Exception exception)
++    {
++        try { RLog.Warning("Failed to clean up an incomplete tooltip: " + exception); }
++        catch { /* Preserve the original setup failure. */ }
+     }
+     
+     public static void ShowTooltip(string text)
+@@ -117,7 +156,8 @@ public class TooltipProvider
+             return;
+         }
+ 
+-        _tooltipObject.SetActive(false);
++        if (_tooltipObject)
++            _tooltipObject.SetActive(false);
+     }
+ 
+     public static void RaycastFor(GraphicRaycaster raycaster)
+@@ -129,6 +169,13 @@ public class TooltipProvider
+             return;
+         }
+ 
++        if (!raycaster)
++        {
++            StopRaycasting();
++            return;
++        }
++
++        HideTooltip();
+         _currentRaycaster = raycaster;
+         _canvas.gameObject.SetActive(true);
+         
+@@ -148,8 +195,9 @@ public class TooltipProvider
+         GlobalEvents.OnUpdate.Unsubscribe(OnUpdate);
+         
+         _currentRaycaster = null;
+-        
+-        _canvas.gameObject.SetActive(false);
++        HideTooltip();
++        if (_canvas)
++            _canvas.gameObject.SetActive(false);
+     }
+ 
+     internal static void OnUpdate()
+@@ -162,7 +210,10 @@ public class TooltipProvider
+         }
+ 
+         if (!_currentRaycaster)
++        {
++            StopRaycasting();
+             return;
++        }
+ 
+         foreach (var obj in GetHoveredUiObjects(_currentRaycaster))
+         {

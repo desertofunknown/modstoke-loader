@@ -1,0 +1,603 @@
+From 76bb58ecda542467ee01b45a1abf66d8cf18e2ba Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Fri, 5 Jun 2026 12:30:31 -0500
+Subject: [PATCH 10/13] Modernize Harmony and MonoMod for net11
+
+---
+ BepInEx.Core/BepInEx.Core.csproj              |   9 +-
+ BepInEx.Core/Console/Unix/UnixStreamHelper.cs |  60 +++++++----
+ BepInEx.Core/Console/Windows/ConsoleWindow.cs |   9 +-
+ .../Console/Windows/WindowsConsoleDriver.cs   |  11 +-
+ BepInEx.Core/OpenACAI/PlatformHelperCompat.cs | 102 ++++++++++++++++++
+ .../BepInEx.Preloader.Core.csproj             |   9 +-
+ Directory.Build.props                         |   7 ++
+ Directory.Build.targets                       |   9 ++
+ OPENACAI_FORK_NOTES.md                        |  54 ++++++++++
+ .../BepInEx.NET.Common.csproj                 |   2 +-
+ .../BepInEx.NET.Framework.Launcher.csproj     |   2 +-
+ .../BepInEx.Unity.Common.csproj               |   5 +-
+ .../Unity/BepInEx.Unity.Common/UnityInfo.cs   |   4 +-
+ .../BepInEx.Unity.IL2CPP.csproj               |   4 +-
+ .../Hook/BaseNativeDetour.cs                  |   1 +
+ .../Hook/INativeDetour.cs                     |   7 +-
+ .../BepInEx.Unity.Mono.Preloader.csproj       |   2 +-
+ .../BepInEx.Unity.Mono.csproj                 |   2 +-
+ 18 files changed, 251 insertions(+), 48 deletions(-)
+ create mode 100644 BepInEx.Core/OpenACAI/PlatformHelperCompat.cs
+ create mode 100644 Directory.Build.targets
+ create mode 100644 OPENACAI_FORK_NOTES.md
+
+diff --git a/BepInEx.Core/BepInEx.Core.csproj b/BepInEx.Core/BepInEx.Core.csproj
+index a07687d..2f5a305 100644
+--- a/BepInEx.Core/BepInEx.Core.csproj
++++ b/BepInEx.Core/BepInEx.Core.csproj
+@@ -1,16 +1,15 @@
+ ﻿<Project Sdk="Microsoft.NET.Sdk">
+     <PropertyGroup>
+         <Description>BepInEx Core library</Description>
+-        <TargetFrameworks>net35;netstandard2.0;net11.0</TargetFrameworks>
++        <TargetFrameworks>netstandard2.1;net11.0</TargetFrameworks>
+         <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+-        <!-- Force nuget assembly output on netstandard2.0 -->
++        <!-- Force nuget assembly output on netstandard2.1 -->
+         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+     </PropertyGroup>
+     <ItemGroup>
+-        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All"/>
+-        <PackageReference Include="HarmonyX" Version="2.10.2" />
++        <PackageReference Include="HarmonyX" Version="2.16.1" />
+         <PackageReference Include="SemanticVersioning" Version="2.0.2"/>
+-        <PackageReference Include="MonoMod.Utils" Version="22.7.31.1"/>
++        <PackageReference Include="MonoMod.Utils" Version="25.0.12"/>
+     </ItemGroup>
+     <ItemGroup>
+         <Compile Remove="Contract\IPlugin.cs"/>
+diff --git a/BepInEx.Core/Console/Unix/UnixStreamHelper.cs b/BepInEx.Core/Console/Unix/UnixStreamHelper.cs
+index f308fb8..8cc42ea 100644
+--- a/BepInEx.Core/Console/Unix/UnixStreamHelper.cs
++++ b/BepInEx.Core/Console/Unix/UnixStreamHelper.cs
+@@ -1,12 +1,21 @@
+-﻿using System;
+-using System.Collections.Generic;
++using System;
+ using System.IO;
++using System.Runtime.InteropServices;
+ using MonoMod.Utils;
+ 
+ namespace BepInEx.Unix;
+ 
+ internal static class UnixStreamHelper
+ {
++    private static readonly string[] LibcCandidates =
++    {
++        "libc.so.6",
++        "libc",
++        "/usr/lib/libSystem.dylib"
++    };
++
++    private static IntPtr libc;
++
+     public delegate int dupDelegate(int fd);
+ 
+     public delegate int fcloseDelegate(IntPtr stream);
+@@ -21,40 +30,30 @@ internal static class UnixStreamHelper
+ 
+     public delegate int isattyDelegate(int fd);
+ 
+-    [DynDllImport("libc")]
+     public static dupDelegate dup;
+ 
+-    [DynDllImport("libc")]
+     public static fdopenDelegate fdopen;
+ 
+-    [DynDllImport("libc")]
+     public static freadDelegate fread;
+ 
+-    [DynDllImport("libc")]
+     public static fwriteDelegate fwrite;
+ 
+-    [DynDllImport("libc")]
+     public static fcloseDelegate fclose;
+ 
+-    [DynDllImport("libc")]
+     public static fflushDelegate fflush;
+ 
+-    [DynDllImport("libc")]
+     public static isattyDelegate isatty;
+ 
+     static UnixStreamHelper()
+     {
+-        var libcMapping = new Dictionary<string, List<DynDllMapping>>
+-        {
+-            ["libc"] = new()
+-            {
+-                "libc.so.6",               // Ubuntu glibc
+-                "libc",                    // Linux glibc
+-                "/usr/lib/libSystem.dylib" // OSX POSIX
+-            }
+-        };
+-
+-        typeof(UnixStreamHelper).ResolveDynDllImports(libcMapping);
++        libc = OpenLibc();
++        dup = LoadFunction<dupDelegate>("dup");
++        fdopen = LoadFunction<fdopenDelegate>("fdopen");
++        fread = LoadFunction<freadDelegate>("fread");
++        fwrite = LoadFunction<fwriteDelegate>("fwrite");
++        fclose = LoadFunction<fcloseDelegate>("fclose");
++        fflush = LoadFunction<fflushDelegate>("fflush");
++        isatty = LoadFunction<isattyDelegate>("isatty");
+     }
+ 
+     public static Stream CreateDuplicateStream(int fileDescriptor)
+@@ -63,4 +62,25 @@ internal static class UnixStreamHelper
+ 
+         return new UnixStream(newFd, FileAccess.Write);
+     }
++
++    private static IntPtr OpenLibc()
++    {
++        foreach (var candidate in LibcCandidates)
++        {
++            IntPtr handle;
++            if (DynDll.TryOpenLibrary(candidate, out handle))
++            {
++                return handle;
++            }
++        }
++
++        throw new DllNotFoundException("Could not load libc from any known POSIX library name.");
++    }
++
++    private static TDelegate LoadFunction<TDelegate>(string exportName)
++        where TDelegate : Delegate
++    {
++        var pointer = DynDll.GetExport(libc, exportName);
++        return Marshal.GetDelegateForFunctionPointer<TDelegate>(pointer);
++    }
+ }
+diff --git a/BepInEx.Core/Console/Windows/ConsoleWindow.cs b/BepInEx.Core/Console/Windows/ConsoleWindow.cs
+index dbf1855..cb25197 100644
+--- a/BepInEx.Core/Console/Windows/ConsoleWindow.cs
++++ b/BepInEx.Core/Console/Windows/ConsoleWindow.cs
+@@ -8,7 +8,6 @@ using System.ComponentModel;
+ using System.Runtime.InteropServices;
+ using BepInEx;
+ using BepInEx.ConsoleUtil;
+-using MonoMod.Utils;
+ 
+ namespace UnityInjector.ConsoleUtil;
+ 
+@@ -125,10 +124,10 @@ internal class ConsoleWindow
+ 
+         // Some games may ship user32.dll with some methods missing. As such, we load the DLL explicitly from system folder
+         var user32Dll = LoadLibraryEx("user32.dll", IntPtr.Zero, LOAD_LIBRARY_SEARCH_SYSTEM32);
+-        setForeground = GetProcAddress(user32Dll, "SetForegroundWindow").AsDelegate<SetForegroundWindowDelegate>();
+-        getForeground = GetProcAddress(user32Dll, "GetForegroundWindow").AsDelegate<GetForegroundWindowDelegate>();
+-        getSystemMenu = GetProcAddress(user32Dll, "GetSystemMenu").AsDelegate<GetSystemMenuDelegate>();
+-        deleteMenu = GetProcAddress(user32Dll, "DeleteMenu").AsDelegate<DeleteMenuDelegate>();
++        setForeground = Marshal.GetDelegateForFunctionPointer<SetForegroundWindowDelegate>(GetProcAddress(user32Dll, "SetForegroundWindow"));
++        getForeground = Marshal.GetDelegateForFunctionPointer<GetForegroundWindowDelegate>(GetProcAddress(user32Dll, "GetForegroundWindow"));
++        getSystemMenu = Marshal.GetDelegateForFunctionPointer<GetSystemMenuDelegate>(GetProcAddress(user32Dll, "GetSystemMenu"));
++        deleteMenu = Marshal.GetDelegateForFunctionPointer<DeleteMenuDelegate>(GetProcAddress(user32Dll, "DeleteMenu"));
+     }
+ 
+     [DllImport("kernel32.dll", SetLastError = true)]
+diff --git a/BepInEx.Core/Console/Windows/WindowsConsoleDriver.cs b/BepInEx.Core/Console/Windows/WindowsConsoleDriver.cs
+index 1edb857..2638002 100644
+--- a/BepInEx.Core/Console/Windows/WindowsConsoleDriver.cs
++++ b/BepInEx.Core/Console/Windows/WindowsConsoleDriver.cs
+@@ -143,7 +143,7 @@ internal class WindowsConsoleDriver : IConsoleDriver
+ 
+     private static Stream OpenFileStream(IntPtr handle)
+     {
+-        if (ReflectionHelper.IsCore)
++        if (IsCoreRuntime())
+         {
+             var windowsConsoleStreamType = Type.GetType("System.ConsolePal+WindowsConsoleStream, System.Console", true);
+             var constructor = AccessTools.Constructor(windowsConsoleStreamType,
+@@ -161,6 +161,15 @@ internal class WindowsConsoleDriver : IConsoleDriver
+         return (FileStream) Activator.CreateInstance(typeof(FileStream), ctorParams);
+     }
+ 
++    private static bool IsCoreRuntime()
++    {
++#if NETFRAMEWORK
++        return false;
++#else
++        return true;
++#endif
++    }
++
+     private IntPtr GetOutHandle()
+     {
+         switch (ConsoleManager.ConfigConsoleOutRedirectType.Value)
+diff --git a/BepInEx.Core/OpenACAI/PlatformHelperCompat.cs b/BepInEx.Core/OpenACAI/PlatformHelperCompat.cs
+new file mode 100644
+index 0000000..5122ee2
+--- /dev/null
++++ b/BepInEx.Core/OpenACAI/PlatformHelperCompat.cs
+@@ -0,0 +1,102 @@
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (C) 2026 Alex Cooper
++//
++// MonoMod.Utils 25.x no longer exposes the old PlatformHelper surface used by
++// BepInEx 6. Keep the small compatibility surface here while OpenACAI carries
++// the Sons Of The Forest .NET 11 branch forward.
++
++using System;
++
++namespace MonoMod.Utils
++{
++    [Flags]
++    public enum Platform
++    {
++        Unknown = 0,
++        Windows = 1 << 0,
++        Unix = 1 << 1,
++        MacOS = Unix | (1 << 2),
++        Linux = Unix | (1 << 3),
++        Android = Linux | (1 << 4),
++        iOS = Unix | (1 << 5),
++        Bits64 = 1 << 6,
++        Wine = 1 << 7,
++        ARM = 1 << 8
++    }
++
++    public static class PlatformHelper
++    {
++        public static Platform Current
++        {
++            get
++            {
++                return DeterminePlatform();
++            }
++            set
++            {
++                // BepInEx 6 assigned MonoMod's old PlatformHelper.Current during
++                // preloader startup. MonoMod 25 now owns platform state through
++                // PlatformDetection, so assignments are intentionally ignored.
++            }
++        }
++
++        public static string LibrarySuffix
++        {
++            get
++            {
++                return DynDll.DllExtension;
++            }
++        }
++
++        public static bool Is(Platform platform)
++        {
++            return (Current & platform) == platform;
++        }
++
++        private static Platform DeterminePlatform()
++        {
++            var detected = Platform.Unknown;
++            if (PlatformDetection.OS.Is(OSKind.Windows))
++            {
++                detected = Platform.Windows;
++            }
++            else if (PlatformDetection.OS.Is(OSKind.OSX))
++            {
++                detected = Platform.MacOS;
++            }
++            else if (PlatformDetection.OS.Is(OSKind.Linux))
++            {
++                detected = Platform.Linux;
++            }
++
++            if (PlatformDetection.OS.Is(OSKind.Android))
++            {
++                detected = Platform.Android;
++            }
++            else if (PlatformDetection.OS.Is(OSKind.IOS))
++            {
++                detected = Platform.iOS;
++            }
++
++            if (PlatformDetection.OS.Is(OSKind.Wine))
++            {
++                detected |= Platform.Wine;
++            }
++
++            if (PlatformDetection.Architecture.HasFlag(ArchitectureKind.Bits64))
++            {
++                detected |= Platform.Bits64;
++            }
++
++            switch (PlatformDetection.Architecture)
++            {
++                case ArchitectureKind.Arm:
++                case ArchitectureKind.Arm64:
++                    detected |= Platform.ARM;
++                    break;
++            }
++
++            return detected;
++        }
++    }
++}
+diff --git a/BepInEx.Preloader.Core/BepInEx.Preloader.Core.csproj b/BepInEx.Preloader.Core/BepInEx.Preloader.Core.csproj
+index b71f16a..db1e3b9 100644
+--- a/BepInEx.Preloader.Core/BepInEx.Preloader.Core.csproj
++++ b/BepInEx.Preloader.Core/BepInEx.Preloader.Core.csproj
+@@ -1,15 +1,14 @@
+ ﻿<Project Sdk="Microsoft.NET.Sdk">
+     <PropertyGroup>
+         <Description>Core classes and utilities for BepInEx Preloader</Description>
+-        <TargetFrameworks>net35;netstandard2.0;net11.0</TargetFrameworks>
++        <TargetFrameworks>netstandard2.1;net11.0</TargetFrameworks>
+     </PropertyGroup>
+     <ItemGroup>
+         <ProjectReference Include="..\BepInEx.Core\BepInEx.Core.csproj"/>
+     </ItemGroup>
+     <ItemGroup>
+-        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All"/>
+-        <PackageReference Include="HarmonyX" Version="2.10.2" />
+-        <PackageReference Include="MonoMod.RuntimeDetour" Version="22.7.31.1"/>
+-        <PackageReference Include="MonoMod.Utils" Version="22.7.31.1"/>
++        <PackageReference Include="HarmonyX" Version="2.16.1" />
++        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.4"/>
++        <PackageReference Include="MonoMod.Utils" Version="25.0.12"/>
+     </ItemGroup>
+ </Project>
+diff --git a/Directory.Build.props b/Directory.Build.props
+index 70bf814..d1d53d9 100644
+--- a/Directory.Build.props
++++ b/Directory.Build.props
+@@ -17,6 +17,13 @@
+         <PackageOutputPath>$(BuildDir)/NuGet</PackageOutputPath>
+         <PackageIcon>logo.png</PackageIcon>
+     </PropertyGroup>
++    <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0'">
++        <!-- MonoMod 25.x supports net10.0 today. OpenACAI's net11 branch is an
++             intentional preview experiment, so this disables MonoMod's runtime
++             support guard only for that preview target. -->
++        <MonoMod_CheckTargetRuntime>false</MonoMod_CheckTargetRuntime>
++        <MonoMod_ReallySkipCheckTargetRuntime>true</MonoMod_ReallySkipCheckTargetRuntime>
++    </PropertyGroup>
+     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+     </PropertyGroup>
+diff --git a/Directory.Build.targets b/Directory.Build.targets
+new file mode 100644
+index 0000000..31ea814
+--- /dev/null
++++ b/Directory.Build.targets
+@@ -0,0 +1,9 @@
++<Project>
++    <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0'">
++        <!-- MonoMod 25.x supports net10.0 today. OpenACAI's net11 branch is an
++             intentional preview experiment, so this disables MonoMod's runtime
++             support guard only for that preview target. -->
++        <MonoMod_CheckTargetRuntime>false</MonoMod_CheckTargetRuntime>
++        <MonoMod_ReallySkipCheckTargetRuntime>true</MonoMod_ReallySkipCheckTargetRuntime>
++    </PropertyGroup>
++</Project>
+diff --git a/OPENACAI_FORK_NOTES.md b/OPENACAI_FORK_NOTES.md
+new file mode 100644
+index 0000000..07c2ebb
+--- /dev/null
++++ b/OPENACAI_FORK_NOTES.md
+@@ -0,0 +1,54 @@
++# OpenACAI BepInEx Fork Notes
++
++Developer: Alex Cooper
++
++This fork is transitional source for OpenACAI Loader's Sons Of The Forest
++runtime work. BepInEx remains credited upstream code under its existing license;
++OpenACAI changes are intended to unblock the `.NET 10` LTS and `.NET 11`
++preview runtime lines while the long-term loader is rewritten into
++OpenACAI-owned modules.
++
++## Current Port Focus
++
++- Build the IL2CPP runtime path for the OpenACAI `.NET 11` preview branch.
++- Preserve BepInEx plugin compatibility while OpenACAI rewrites the runtime,
++  patch host, plugin inventory, resolver, interop repair, and state reporting
++  into OpenACAI namespaces.
++- Keep RedLoader/SonsSdk support as compatibility behavior in OpenACAI Loader,
++  not as an external sidecar framework.
++
++## Harmony And MonoMod Baseline
++
++The current tested dependency set is:
++
++- HarmonyX `2.16.1`
++- MonoMod.RuntimeDetour `25.3.4`
++- MonoMod.Utils `25.0.12`
++
++MonoMod 25 currently gates official runtime support at `.NET 10`. The
++OpenACAI `.NET 11` branch intentionally sets
++`MonoMod_ReallySkipCheckTargetRuntime=true` for `net11.0` only, so runtime
++detour behavior must be treated as experimental until validated in game.
++
++## API Replacements Used
++
++- Old `MonoMod.Utils.PlatformHelper` usage is bridged through an OpenACAI
++  compatibility type backed by MonoMod 25 `PlatformDetection` and
++  `DynDll.DllExtension`.
++- Old `DynDllImport`/`ResolveDynDllImports` patterns are replaced by explicit
++  `DynDll.TryOpenLibrary`, `DynDll.GetExport`, and
++  `Marshal.GetDelegateForFunctionPointer<T>()`.
++- Old `AsDelegate<T>()` calls are replaced by
++  `Marshal.GetDelegateForFunctionPointer<T>()`.
++- Old `ReflectionHelper.IsCore` and `ReflectionHelper.IsMono` checks are
++  replaced with target-framework checks or `PlatformDetection.Runtime`.
++- RuntimeDetour 25's `IDetour` shape is adapted in the IL2CPP native-detour
++  wrapper so OpenACAI can preserve the BepInEx helper methods while compiling
++  against the modern dependency surface.
++
++## Target Framework Policy
++
++For the active Sons IL2CPP path, Core, Preloader.Core, and Unity.Common target
++`netstandard2.1;net11.0`. OpenACAI-owned runtime implementation code should use
++modern `.NET` targets. `net35` and `netstandard2.0` remain only where legacy
++Mono/reference compatibility still needs them during the transition.
+diff --git a/Runtimes/NET/BepInEx.NET.Common/BepInEx.NET.Common.csproj b/Runtimes/NET/BepInEx.NET.Common/BepInEx.NET.Common.csproj
+index 6884e40..4254ea3 100644
+--- a/Runtimes/NET/BepInEx.NET.Common/BepInEx.NET.Common.csproj
++++ b/Runtimes/NET/BepInEx.NET.Common/BepInEx.NET.Common.csproj
+@@ -6,7 +6,7 @@
+     </PropertyGroup>
+ 
+     <ItemGroup>
+-        <PackageReference Include="HarmonyX" Version="2.10.2" />
++        <PackageReference Include="HarmonyX" Version="2.16.1" />
+         <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All"/>
+     </ItemGroup>
+ 
+diff --git a/Runtimes/NET/BepInEx.NET.Framework.Launcher/BepInEx.NET.Framework.Launcher.csproj b/Runtimes/NET/BepInEx.NET.Framework.Launcher/BepInEx.NET.Framework.Launcher.csproj
+index 90a37b8..fb2ddfa 100644
+--- a/Runtimes/NET/BepInEx.NET.Framework.Launcher/BepInEx.NET.Framework.Launcher.csproj
++++ b/Runtimes/NET/BepInEx.NET.Framework.Launcher/BepInEx.NET.Framework.Launcher.csproj
+@@ -14,7 +14,7 @@
+         <ProjectReference Include="..\..\..\BepInEx.Preloader.Core\BepInEx.Preloader.Core.csproj" PrivateAssets="All"/>
+     </ItemGroup>
+     <ItemGroup>
+-        <PackageReference Include="HarmonyX" Version="2.10.2" />
++        <PackageReference Include="HarmonyX" Version="2.16.1" />
+         <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All"/>
+     </ItemGroup>
+     <Import Project="..\BepInEx.NET.Shared\BepInEx.NET.Shared.projitems" Label="Shared"/>
+diff --git a/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj b/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj
+index 9dd3c6f..8585166 100644
+--- a/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj
++++ b/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj
+@@ -2,15 +2,14 @@
+ 
+     <PropertyGroup>
+         <Description>BepInEx common code for Unity games</Description>
+-        <TargetFrameworks>net35;netstandard2.0;net11.0</TargetFrameworks>
++        <TargetFrameworks>netstandard2.1;net11.0</TargetFrameworks>
+     </PropertyGroup>
+ 
+     <ItemGroup>
+         <PackageReference Include="AssetRipper.Primitives" Version="3.1.3" />
+-        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all"/>
+     </ItemGroup>
+     <ItemGroup>
+-        <PackageReference Include="MonoMod.Utils" Version="22.7.31.1"/>
++        <PackageReference Include="MonoMod.Utils" Version="25.0.12"/>
+     </ItemGroup>
+ 
+ </Project>
+diff --git a/Runtimes/Unity/BepInEx.Unity.Common/UnityInfo.cs b/Runtimes/Unity/BepInEx.Unity.Common/UnityInfo.cs
+index 4e74dae..3523235 100644
+--- a/Runtimes/Unity/BepInEx.Unity.Common/UnityInfo.cs
++++ b/Runtimes/Unity/BepInEx.Unity.Common/UnityInfo.cs
+@@ -2,9 +2,9 @@ using System;
+ using System.Diagnostics;
+ using System.IO;
+ using System.Runtime.CompilerServices;
++using System.Runtime.InteropServices;
+ using System.Text;
+ using AssetRipper.Primitives;
+-using MonoMod.Utils;
+ 
+ [assembly: InternalsVisibleTo("BepInEx.Unity.Mono.Preloader")]
+ [assembly: InternalsVisibleTo("BepInEx.Unity.Mono")]
+@@ -70,7 +70,7 @@ public static class UnityInfo
+             }
+ 
+         // On Windows, we can try to parse executable name, but some games can mess up the file version as well 
+-        if (PlatformHelper.Is(Platform.Windows))
++        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+             try
+             {
+                 var version = FileVersionInfo.GetVersionInfo(PlayerPath);
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+index 33095d7..996ca71 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+@@ -13,14 +13,14 @@
+         <ProjectReference Include="..\BepInEx.Unity.Common\BepInEx.Unity.Common.csproj"/>
+     </ItemGroup>
+     <ItemGroup>
+-        <PackageReference Include="HarmonyX" Version="2.10.2" />
++        <PackageReference Include="HarmonyX" Version="2.16.1" />
+         <PackageReference Include="Iced" Version="1.21.0" />
+         <PackageReference Include="Il2CppInterop.Generator" Version="1.5.2-ci.1063"/>
+         <PackageReference Include="Il2CppInterop.HarmonySupport" Version="1.5.2-ci.1063"/>
+         <PackageReference Include="Il2CppInterop.ReferenceLibs" Version="1.0.0" IncludeAssets="compile" PrivateAssets="all"/>
+         <PackageReference Include="Il2CppInterop.Runtime" Version="1.5.2-ci.1063"/>
+         <PackageReference Include="Microsoft.Extensions.Logging" Version="11.0.0-preview.4.26230.115" PrivateAssets="all"/>
+-        <PackageReference Include="MonoMod.RuntimeDetour" Version="22.7.31.1"/>
++        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.4"/>
+         <PackageReference Include="Samboy063.Cpp2IL.Core" Version="2022.1.0-development.1452"/>
+     </ItemGroup>
+ 
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/BaseNativeDetour.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/BaseNativeDetour.cs
+index 59c907b..fe09cb8 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/BaseNativeDetour.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/BaseNativeDetour.cs
+@@ -32,6 +32,7 @@ internal abstract class BaseNativeDetour<T> : INativeDetour where T : BaseNative
+     public nint OriginalMethodPtr { get; }
+     public nint DetourMethodPtr { get; }
+     public nint TrampolinePtr { get; protected set; }
++    public DetourConfig Config { get; }
+     public bool IsValid { get; private set; } = true;
+     public bool IsApplied { get; private set; }
+ 
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs
+index bc6d036..fa8944a 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs
+@@ -24,6 +24,9 @@ public interface INativeDetour : IDetour
+     public nint OriginalMethodPtr { get; }
+     public nint DetourMethodPtr { get; }
+     public nint TrampolinePtr { get; }
++    public void Free();
++    public MethodBase GenerateTrampoline(MethodBase signature = null);
++    public TDelegate GenerateTrampoline<TDelegate>() where TDelegate : Delegate;
+ 
+     private static INativeDetour CreateDefault<T>(nint original, T target) where T : Delegate
+     {
+@@ -56,7 +59,7 @@ public interface INativeDetour : IDetour
+             DetourProvider.Funchook => CreateFunchook(original, target),
+             _                       => CreateDefault(original, target)
+         };
+-        if (!ReflectionHelper.IsMono)
++        if (PlatformDetection.Runtime != RuntimeKind.Mono)
+         {
+             return new CacheDetourWrapper(detour, target);
+         }
+@@ -153,6 +156,8 @@ public interface INativeDetour : IDetour
+ 
+         public bool IsApplied => _wrapped.IsApplied;
+ 
++        public DetourConfig Config => _wrapped.Config;
++
+         public nint OriginalMethodPtr => _wrapped.OriginalMethodPtr;
+ 
+         public nint DetourMethodPtr => _wrapped.DetourMethodPtr;
+diff --git a/Runtimes/Unity/BepInEx.Unity.Mono.Preloader/BepInEx.Unity.Mono.Preloader.csproj b/Runtimes/Unity/BepInEx.Unity.Mono.Preloader/BepInEx.Unity.Mono.Preloader.csproj
+index 7a33d1d..a20fecb 100644
+--- a/Runtimes/Unity/BepInEx.Unity.Mono.Preloader/BepInEx.Unity.Mono.Preloader.csproj
++++ b/Runtimes/Unity/BepInEx.Unity.Mono.Preloader/BepInEx.Unity.Mono.Preloader.csproj
+@@ -16,6 +16,6 @@
+     </ItemGroup>
+     <ItemGroup>
+         <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All"/>
+-        <PackageReference Include="HarmonyX" Version="2.10.2" />
++        <PackageReference Include="HarmonyX" Version="2.16.1" />
+     </ItemGroup>
+ </Project>
+diff --git a/Runtimes/Unity/BepInEx.Unity.Mono/BepInEx.Unity.Mono.csproj b/Runtimes/Unity/BepInEx.Unity.Mono/BepInEx.Unity.Mono.csproj
+index 81b0d72..7b587b9 100644
+--- a/Runtimes/Unity/BepInEx.Unity.Mono/BepInEx.Unity.Mono.csproj
++++ b/Runtimes/Unity/BepInEx.Unity.Mono/BepInEx.Unity.Mono.csproj
+@@ -16,7 +16,7 @@
+     </ItemGroup>
+     <ItemGroup>
+         <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All"/>
+-        <PackageReference Include="HarmonyX" Version="2.10.2" />
++        <PackageReference Include="HarmonyX" Version="2.16.1" />
+         <PackageReference Include="UnityEngine" Version="5.6.1" IncludeAssets="compile"/>
+         <PackageReference Include="Unity.InputSystem" version="1.5.0" IncludeAssets="compile"/>
+     </ItemGroup>
+-- 
+2.54.0.windows.1
+

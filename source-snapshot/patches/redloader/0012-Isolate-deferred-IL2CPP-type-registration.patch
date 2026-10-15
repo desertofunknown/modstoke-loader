@@ -1,0 +1,134 @@
+diff --git a/RedLoader/Attributes/RegisterTypeInIl2Cpp.cs b/RedLoader/Attributes/RegisterTypeInIl2Cpp.cs
+index 967a053..2b48334 100644
+--- a/RedLoader/Attributes/RegisterTypeInIl2Cpp.cs
++++ b/RedLoader/Attributes/RegisterTypeInIl2Cpp.cs
+@@ -1,6 +1,5 @@
+ ﻿using System;
+ using System.Collections.Generic;
+-using System.Linq;
+ using System.Reflection;
+ using Il2CppInterop.Runtime.Injection;
+ 
+@@ -12,6 +11,7 @@ namespace RedLoader
+         internal static List<Assembly> registrationQueue = new List<Assembly>();
+         internal static bool ready;
+         internal bool LogSuccess = true;
++        private static readonly HashSet<Assembly> RegisteringAssemblies = new();
+ 
+         public RegisterTypeInIl2Cpp() { }
+         public RegisterTypeInIl2Cpp(bool logSuccess) { LogSuccess = logSuccess; }
+@@ -24,32 +24,91 @@ namespace RedLoader
+                 return;
+             }
+ 
+-            IEnumerable<Type> typeTbl = asm.GetValidTypes();
+-            if ((typeTbl == null) || (typeTbl.Count() <= 0))
++            if (!RegisteringAssemblies.Add(asm))
+                 return;
+-            foreach (Type type in typeTbl)
++
++            try
+             {
+-                object[] attTbl = type.GetCustomAttributes(typeof(RegisterTypeInIl2Cpp), false);
+-                if ((attTbl == null) || (attTbl.Length <= 0))
+-                    continue;
+-                RegisterTypeInIl2Cpp att = (RegisterTypeInIl2Cpp)attTbl[0];
+-                if (att == null)
+-                    continue;
+-                ClassInjector.RegisterTypeInIl2Cpp(type, new RegisterTypeOptions(){LogSuccess = att.LogSuccess});
++                foreach (var type in GetTypes(asm))
++                {
++                    if (type == null)
++                        continue;
++
++                    try
++                    {
++                        var attributes = type.GetCustomAttributes(typeof(RegisterTypeInIl2Cpp), false);
++                        if (attributes.Length == 0 || attributes[0] is not RegisterTypeInIl2Cpp attribute)
++                            continue;
++
++                        ClassInjector.RegisterTypeInIl2Cpp(type, new RegisterTypeOptions { LogSuccess = attribute.LogSuccess });
++                    }
++                    catch (Exception exception)
++                    {
++                        ReportFailure("register type", asm, type, exception);
++                    }
++                }
++            }
++            finally
++            {
++                RegisteringAssemblies.Remove(asm);
+             }
+         }
+ 
+         internal static void SetReady()
+         {
++            if (ready)
++                return;
++
++            // Native registration and its log callbacks may reenter this API.
++            var pending = registrationQueue;
++            registrationQueue = null;
+             ready = true;
+ 
+-            if (registrationQueue == null)
++            if (pending == null)
+                 return;
+ 
+-            foreach (var asm in registrationQueue)
+-                RegisterAssembly(asm);
++            foreach (var asm in pending)
++            {
++                try
++                {
++                    RegisterAssembly(asm);
++                }
++                catch (Exception exception)
++                {
++                    ReportFailure("register assembly", asm, null, exception);
++                }
++            }
++        }
+ 
+-            registrationQueue = null;
++        private static Type[] GetTypes(Assembly assembly)
++        {
++            try
++            {
++                return assembly.GetTypes();
++            }
++            catch (ReflectionTypeLoadException exception)
++            {
++                ReportFailure("load all types", assembly, null, exception);
++                return exception.Types;
++            }
++            catch (Exception exception)
++            {
++                ReportFailure("load types", assembly, null, exception);
++                return Array.Empty<Type>();
++            }
++        }
++
++        private static void ReportFailure(string operation, Assembly assembly, Type type, Exception exception)
++        {
++            try
++            {
++                var target = type?.FullName ?? assembly?.FullName ?? "<unknown assembly>";
++                RLog.Error($"Could not {operation} for IL2CPP: {target}", exception);
++            }
++            catch
++            {
++                // Logging callbacks must not interrupt the rest of the registration queue.
++            }
+         }
+     }
+ }
+diff --git a/RedLoader/Properties/AssemblyInfo.cs b/RedLoader/Properties/AssemblyInfo.cs
+index beda529..dd6f26d 100644
+--- a/RedLoader/Properties/AssemblyInfo.cs
++++ b/RedLoader/Properties/AssemblyInfo.cs
+@@ -1,3 +1,4 @@
+ using System.Runtime.CompilerServices;
+ 
+ [assembly: InternalsVisibleTo("SonsSdk")]
++[assembly: InternalsVisibleTo("OpenACAI.Endnight.Loader.Core")]

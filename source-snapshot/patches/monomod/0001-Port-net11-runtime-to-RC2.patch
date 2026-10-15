@@ -1,0 +1,301 @@
+diff --git a/global.json b/global.json
+index 2c5239ca..52e7603a 100644
+--- a/global.json
++++ b/global.json
+@@ -1,6 +1,6 @@
+ {
+   "sdk": {
+-    "version": "11.0.100-preview.4.26230.115",
++    "version": "11.0.100-rc.2.26504.105",
+     "rollForward": "latestPatch",
+     "allowPrerelease": true
+   },
+diff --git a/src/MonoMod.Core/Interop/CoreCLR.V110.cs b/src/MonoMod.Core/Interop/CoreCLR.V110.cs
+index 334a29ae..3264ca52 100644
+--- a/src/MonoMod.Core/Interop/CoreCLR.V110.cs
++++ b/src/MonoMod.Core/Interop/CoreCLR.V110.cs
+@@ -1,4 +1,6 @@
++using System;
+ using System.Diagnostics.CodeAnalysis;
++using System.Runtime.InteropServices;
+ 
+ namespace MonoMod.Core.Interop
+ {
+@@ -14,17 +16,38 @@ namespace MonoMod.Core.Interop
+             public new static class ICorJitInfoVtable
+             {
+                 // Generated with build/extract-corjit-vtable against dotnet/runtime
+-                // v11.0.0-preview.4.26230.115 (commit 7e66cd737ed083ae9fcb8ede136c6c76f8a4ba1e).
+-                //
+-                // .NET 11 preview adds ICorStaticInfo.getAsyncOtherVariant,
+-                // reportAsyncDebugInfo, getWasmLowering, changes
+-                // getAsyncResumptionStub to take void**, adds getContinuationType,
+-                // getWasmTypeSymbol, and shifts ICorJitInfo.allocMem from 0xA0
+-                // to 0xA4. The wrong allocMem slot is enough to corrupt the
+-                // W^X writeable-code tracking hook, so this must not reuse V100.
++                // v11.0.0-rc.2.26504.105 (commit 474ed963699fc29809015392738a15231aaae2de).
++                // The allocation slot and argument layout both differ from Preview 4.
+ 
+-                public const int AllocMemIndex = 0xA4;
+-                public const int TotalVtableCount = 0xB4;
++                public const int AllocMemIndex = 0xA7;
++                public const int TotalVtableCount = 0xB8;
++            }
++
++            [Flags]
++            public enum CorJitAllocMemFlag
++            {
++                HotCode = 1,
++                ColdCode = 2,
++                ReadOnlyData = 4,
++                HasPointersToCode = 8,
++            }
++
++            [StructLayout(LayoutKind.Sequential)]
++            public struct AllocMemChunk
++            {
++                public uint alignment;
++                public uint size;
++                public CorJitAllocMemFlag flags;
++                public IntPtr block;
++                public IntPtr blockRW;
++            }
++
++            [StructLayout(LayoutKind.Sequential)]
++            public new struct AllocMemArgs
++            {
++                public AllocMemChunk* chunks;
++                public uint chunksCount;
++                public uint xcptnsCount;
+             }
+         }
+     }
+diff --git a/src/MonoMod.Core/Interop/Linux.Procfs.cs b/src/MonoMod.Core/Interop/Linux.Procfs.cs
+index 40aa698a..8274ba12 100644
+--- a/src/MonoMod.Core/Interop/Linux.Procfs.cs
++++ b/src/MonoMod.Core/Interop/Linux.Procfs.cs
+@@ -134,7 +134,11 @@ internal static class Linux
+ 
+             static (ulong Start, ulong Size) TryParseAddressRange(string s, ref int start, ref int end)
+             {
++#if NET11_0_OR_GREATER
++                var pos = s.IndexOf('-', start, end - start, StringComparison.Ordinal);
++#else
+                 var pos = s.IndexOf('-', start, end - start);
++#endif
+                 if (pos > 0)
+                 {
+                     if (ulong.TryParse(s.AsSpan(start, pos).ToString(), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var startingAddress) &&
+diff --git a/src/MonoMod.Core/Platforms/Runtimes/Core110Runtime.cs b/src/MonoMod.Core/Platforms/Runtimes/Core110Runtime.cs
+index d7dd4cd7..9cfa604e 100644
+--- a/src/MonoMod.Core/Platforms/Runtimes/Core110Runtime.cs
++++ b/src/MonoMod.Core/Platforms/Runtimes/Core110Runtime.cs
+@@ -7,19 +7,41 @@ namespace MonoMod.Core.Platforms.Runtimes
+     {
+         public Core110Runtime(ISystem system, IArchitecture arch) : base(system, arch) { }
+ 
+-        // dotnet/runtime v11.0.0-preview.4.26230.115
++        // dotnet/runtime v11.0.0-rc.2.26504.105
+         // src/coreclr/inc/jiteeversionguid.h
+-        // 33ed917f-a197-4abd-83af-db9fa8186898
++        // 0d18a7df-af1f-4481-a72f-aa6cf8aa0a65
+         private static readonly Guid JitVersionGuid = new(
+-            0x33ed917f,
+-            0xa197,
+-            0x4abd,
+-            0x83, 0xaf, 0xdb, 0x9f, 0xa8, 0x18, 0x68, 0x98
++            0x0d18a7df,
++            0xaf1f,
++            0x4481,
++            0xa7, 0x2f, 0xaa, 0x6c, 0xf8, 0xaa, 0x0a, 0x65
+         );
+ 
+         protected override Guid ExpectedJitVersion => JitVersionGuid;
+ 
+         protected override int VtableIndexICorJitInfoAllocMem => V110.ICorJitInfoVtable.AllocMemIndex;
+         protected override int ICorJitInfoFullVtableCount => V110.ICorJitInfoVtable.TotalVtableCount;
++
++        // The native hook copies the pre-.NET 11 allocation structure. Use the
++        // managed wrapper until that backend supports the chunk-based interface.
++        protected override bool InstallNativeJitHook(IntPtr jit) => false;
++
++        protected override unsafe void CaptureAllocatedCode(ICorJitInfoWrapper* wrapper, void* args)
++        {
++            if (wrapper == null)
++                return;
++
++            var allocation = (V110.AllocMemArgs*)args;
++            (*wrapper)[ICorJitInfoWrapper.HotCodeRW] = IntPtr.Zero;
++            (*wrapper)[ICorJitInfoWrapper.ColdCodeRW] = IntPtr.Zero;
++            for (uint i = 0; i < allocation->chunksCount; i++)
++            {
++                ref var chunk = ref allocation->chunks[i];
++                if ((chunk.flags & V110.CorJitAllocMemFlag.HotCode) != 0)
++                    (*wrapper)[ICorJitInfoWrapper.HotCodeRW] = chunk.blockRW;
++                if ((chunk.flags & V110.CorJitAllocMemFlag.ColdCode) != 0)
++                    (*wrapper)[ICorJitInfoWrapper.ColdCodeRW] = chunk.blockRW;
++            }
++        }
+     }
+ }
+diff --git a/src/MonoMod.Core/Platforms/Runtimes/Core60Runtime.cs b/src/MonoMod.Core/Platforms/Runtimes/Core60Runtime.cs
+index 9f2e4774..5068a27b 100644
+--- a/src/MonoMod.Core/Platforms/Runtimes/Core60Runtime.cs
++++ b/src/MonoMod.Core/Platforms/Runtimes/Core60Runtime.cs
+@@ -435,6 +435,16 @@ namespace MonoMod.Core.Platforms.Runtimes
+             return new AllocMemDelegateHolder(this, InvokeAllocMemPtr).AllocMemHook;
+         }
+ 
++        protected virtual unsafe void CaptureAllocatedCode(ICorJitInfoWrapper* wrapper, void* args)
++        {
++            if (wrapper == null)
++                return;
++
++            var allocation = (V60.AllocMemArgs*)args;
++            (*wrapper)[ICorJitInfoWrapper.HotCodeRW] = allocation->hotCodeBlockRW;
++            (*wrapper)[ICorJitInfoWrapper.ColdCodeRW] = allocation->coldCodeBlockRW;
++        }
++
+         private sealed class AllocMemDelegateHolder
+         {
+             public readonly Core60Runtime Runtime;
+@@ -453,7 +463,12 @@ namespace MonoMod.Core.Platforms.Runtimes
+                 ICorJitInfoAllocMemIdx = Runtime.VtableIndexICorJitInfoAllocMem;
+ 
+                 // eagerly call iamp to make sure it's compiled
+-                unsafe { iamp.InvokeAllocMem(IntPtr.Zero, IntPtr.Zero, null); }
++                unsafe
++                {
++                    iamp.InvokeAllocMem(IntPtr.Zero, IntPtr.Zero, null);
++                    // Compile the version-specific allocation reader before installing the hook.
++                    runtime.CaptureAllocatedCode(null, null);
++                }
+             }
+ 
+             private IntPtr GetRealInvokePtr(IntPtr ptr)
+@@ -475,8 +490,7 @@ namespace MonoMod.Core.Platforms.Runtimes
+                 {
+                     return;
+                 }
+-                (*wrap)[ICorJitInfoWrapper.HotCodeRW] = args->hotCodeBlockRW;
+-                (*wrap)[ICorJitInfoWrapper.ColdCodeRW] = args->coldCodeBlockRW;
++                Runtime.CaptureAllocatedCode(wrap, args);
+             }
+         }
+ 
+diff --git a/src/MonoMod.Core/Platforms/Runtimes/FxCoreBaseRuntime.cs b/src/MonoMod.Core/Platforms/Runtimes/FxCoreBaseRuntime.cs
+index d2a34a3c..616ee7e1 100644
+--- a/src/MonoMod.Core/Platforms/Runtimes/FxCoreBaseRuntime.cs
++++ b/src/MonoMod.Core/Platforms/Runtimes/FxCoreBaseRuntime.cs
+@@ -127,8 +127,9 @@ namespace MonoMod.Core.Platforms.Runtimes
+         private static readonly FieldInfo? _RuntimeMethodHandle_m_value =
+             typeof(RuntimeMethodHandle).GetField("m_value", BindingFlags.NonPublic | BindingFlags.Instance);
+ 
+-        private static readonly MethodInfo? _IRuntimeMethodInfo_get_Value =
+-            typeof(RuntimeMethodHandle).Assembly.GetType("System.IRuntimeMethodInfo")?.GetMethod("get_Value");
++        private static readonly MethodInfo? _IRuntimeMethodInfo_GetValue =
++            typeof(RuntimeMethodHandle).Assembly.GetType("System.IRuntimeMethodInfo")?.GetMethod("get_Value") ??
++            typeof(RuntimeMethodHandle).Assembly.GetType("System.IRuntimeMethodInfo")?.GetMethod("GetValue", BindingFlags.NonPublic | BindingFlags.Static);
+ 
+         private static readonly MethodInfo? _RuntimeHelpers__CompileMethod =
+             typeof(RuntimeHelpers).GetMethod("_CompileMethod", BindingFlags.NonPublic | BindingFlags.Static) ??
+@@ -263,7 +264,7 @@ namespace MonoMod.Core.Platforms.Runtimes
+             && (_RuntimeHelpers__CompileMethod_TakesIntPtr
+             || (_RuntimeMethodHandle_m_value is not null
+             && (_RuntimeHelpers__CompileMethod_TakesIRuntimeMethodInfo
+-            || (_IRuntimeMethodInfo_get_Value is not null
++            || (_IRuntimeMethodInfo_GetValue is not null
+             && _RuntimeHelpers__CompileMethod_TakesRuntimeMethodHandleInternal
+                 ))));
+ 
+@@ -293,8 +294,10 @@ namespace MonoMod.Core.Platforms.Runtimes
+                 return dmd.Generate().CreateDelegate<Action<RuntimeMethodHandle>>();
+             }
+ 
+-            Helpers.Assert(_IRuntimeMethodInfo_get_Value is not null);
+-            il.Emit(OpCodes.Callvirt, module.ImportReference(_IRuntimeMethodInfo_get_Value));
++            Helpers.Assert(_IRuntimeMethodInfo_GetValue is not null);
++            // .NET 11 replaced the interface property with a static GetValue method.
++            il.Emit(_IRuntimeMethodInfo_GetValue.IsStatic ? OpCodes.Call : OpCodes.Callvirt,
++                module.ImportReference(_IRuntimeMethodInfo_GetValue));
+             if (_RuntimeHelpers__CompileMethod_TakesRuntimeMethodHandleInternal)
+             {
+                 il.Emit(OpCodes.Call, module.ImportReference(_RuntimeHelpers__CompileMethod));
+@@ -354,9 +357,11 @@ namespace MonoMod.Core.Platforms.Runtimes
+                 _RuntimeHelpers__CompileMethod.Invoke(null, new object?[] { rtMethodInfo });
+                 return true;
+             }
+-            if (_IRuntimeMethodInfo_get_Value is null)
++            if (_IRuntimeMethodInfo_GetValue is null)
+                 return false;
+-            var rtMethodHandleInternal = _IRuntimeMethodInfo_get_Value.Invoke(rtMethodInfo, null);
++            var rtMethodHandleInternal = _IRuntimeMethodInfo_GetValue.IsStatic
++                ? _IRuntimeMethodInfo_GetValue.Invoke(null, new object?[] { rtMethodInfo })
++                : _IRuntimeMethodInfo_GetValue.Invoke(rtMethodInfo, null);
+             if (_RuntimeHelpers__CompileMethod_TakesRuntimeMethodHandleInternal)
+             {
+                 _RuntimeHelpers__CompileMethod.Invoke(null, new object?[] { rtMethodHandleInternal });
+diff --git a/src/MonoMod.Core/Utils/StringParser.cs b/src/MonoMod.Core/Utils/StringParser.cs
+index 2170160b..f0ad7ba9 100644
+--- a/src/MonoMod.Core/Utils/StringParser.cs
++++ b/src/MonoMod.Core/Utils/StringParser.cs
+@@ -61,7 +61,11 @@ namespace MonoMod.Core.Utils
+                     return false;
+                 }
+ 
++#if NET11_0_OR_GREATER
++                int nextSeparator = _buffer.IndexOf(_separator, _endIndex + 1, StringComparison.Ordinal);
++#else
+                 int nextSeparator = _buffer.IndexOf(_separator, _endIndex + 1);
++#endif
+                 _startIndex = _endIndex + 1;
+                 _endIndex = nextSeparator >= 0 ? nextSeparator : _buffer.Length;
+ 
+@@ -111,7 +115,11 @@ namespace MonoMod.Core.Utils
+ 
+             // Since we only allow for one top-level set of parentheses, find the last
+             // parenthesis in the string; it's paired with the opening one we just found.
++#if NET11_0_OR_GREATER
++            int lastParen = _buffer.LastIndexOf(')', StringComparison.Ordinal);
++#else
+             int lastParen = _buffer.LastIndexOf(')');
++#endif
+             if (lastParen == -1 || lastParen < _startIndex)
+             {
+                 ThrowForInvalidData();
+@@ -329,4 +337,4 @@ namespace MonoMod.Core.Utils
+             throw new FormatException();
+         }
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/MonoMod.Utils/Extensions.Cecil.cs b/src/MonoMod.Utils/Extensions.Cecil.cs
+index d4c05141..eec3929d 100644
+--- a/src/MonoMod.Utils/Extensions.Cecil.cs
++++ b/src/MonoMod.Utils/Extensions.Cecil.cs
+@@ -3,6 +3,8 @@ using Mono.Cecil.Cil;
+ 
+ namespace MonoMod.Utils
+ {
++    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1724",
++        Justification = "The established public Extensions type must remain binary compatible with existing consumers.")]
+     public static partial class Extensions
+     {
+ 
+diff --git a/src/MonoMod.Utils/Extensions.GetPatchName.cs b/src/MonoMod.Utils/Extensions.GetPatchName.cs
+index 45d9571b..b469592d 100644
+--- a/src/MonoMod.Utils/Extensions.GetPatchName.cs
++++ b/src/MonoMod.Utils/Extensions.GetPatchName.cs
+@@ -38,7 +38,11 @@ namespace MonoMod.Utils
+             if (patchAttrib != null)
+             {
+                 name = (string)patchAttrib.ConstructorArguments[0].Value;
++#if NET11_0_OR_GREATER
++                var dotIndex = name.LastIndexOf('.', StringComparison.Ordinal);
++#else
+                 var dotIndex = name.LastIndexOf('.');
++#endif
+                 if (dotIndex != -1 && dotIndex != name.Length - 1)
+                 {
+                     name = name.Substring(dotIndex + 1);

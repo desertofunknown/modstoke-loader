@@ -1,0 +1,135 @@
+From 5e9076f408848b1ed0bb07e92314f0789f3fead1 Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Fri, 5 Jun 2026 07:52:11 -0500
+Subject: [PATCH 07/13] Use OpenACAI loader version in runtime branding
+
+---
+ BepInEx.Core/Bootstrap/BaseChainloader.cs     |  2 +-
+ BepInEx.Core/OpenACAIBranding.cs              | 64 +++++++++++++++++++
+ .../Logging/ChainloaderLogHelper.cs           |  6 +-
+ .../DoorstopEntrypoint.cs                     |  4 +-
+ 4 files changed, 69 insertions(+), 7 deletions(-)
+ create mode 100644 BepInEx.Core/OpenACAIBranding.cs
+
+diff --git a/BepInEx.Core/Bootstrap/BaseChainloader.cs b/BepInEx.Core/Bootstrap/BaseChainloader.cs
+index 32ab0a9..726bf08 100644
+--- a/BepInEx.Core/Bootstrap/BaseChainloader.cs
++++ b/BepInEx.Core/Bootstrap/BaseChainloader.cs
+@@ -111,7 +111,7 @@ public abstract class BaseChainloader<TPlugin>
+ 
+     #region Contract
+ 
+-    protected virtual string ConsoleTitle => $"OpenACAI Loader {Paths.BepInExVersion} - {Paths.ProcessName}";
++    protected virtual string ConsoleTitle => OpenACAIBranding.ConsoleTitle;
+ 
+     private bool _initialized;
+ 
+diff --git a/BepInEx.Core/OpenACAIBranding.cs b/BepInEx.Core/OpenACAIBranding.cs
+new file mode 100644
+index 0000000..675c655
+--- /dev/null
++++ b/BepInEx.Core/OpenACAIBranding.cs
+@@ -0,0 +1,64 @@
++using System;
++using System.IO;
++using System.Text.RegularExpressions;
++
++namespace BepInEx;
++
++public static class OpenACAIBranding
++{
++    public const string LoaderName = "OpenACAI Loader";
++
++    private static readonly Regex ManifestVersionPattern =
++        new Regex("\"version\"\\s*:\\s*\"(?<version>[^\"]+)\"", RegexOptions.Compiled);
++
++    public static string LoaderVersion
++    {
++        get
++        {
++            var version = Environment.GetEnvironmentVariable("OPENACAI_LOADER_VERSION");
++            if (!string.IsNullOrEmpty(version))
++                return version;
++
++            version = TryReadInstalledManifestVersion();
++            return string.IsNullOrEmpty(version) ? BepInExRuntimeVersion : version;
++        }
++    }
++
++    public static string LoaderDisplayName => LoaderName + " v" + LoaderVersion;
++
++    public static string ConsoleTitle => LoaderDisplayName + " - " + Paths.ProcessName;
++
++    public static string BepInExRuntimeVersion
++    {
++        get
++        {
++            var version = Paths.BepInExVersion;
++            return new SemanticVersioning.Version(version.Major, version.Minor, version.Patch, version.PreRelease).ToString();
++        }
++    }
++
++    private static string TryReadInstalledManifestVersion()
++    {
++        try
++        {
++            if (string.IsNullOrEmpty(Paths.BepInExRootPath))
++                return null;
++
++            var manifestPath = Path.Combine(
++                Paths.BepInExRootPath,
++                "plugins",
++                "OpenACAILoader",
++                "openacai-loader.manifest.json");
++
++            if (!File.Exists(manifestPath))
++                return null;
++
++            var match = ManifestVersionPattern.Match(File.ReadAllText(manifestPath));
++            return match.Success ? match.Groups["version"].Value : null;
++        }
++        catch
++        {
++            return null;
++        }
++    }
++}
+diff --git a/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs b/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs
+index 88a7060..84c5dc8 100644
+--- a/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs
++++ b/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs
+@@ -36,11 +36,9 @@ public static class ChainloaderLogHelper
+     public static void PrintLogInfo(ManualLogSource log)
+     {
+         var bepinVersion = Paths.BepInExVersion;
+-        var versionMini = new SemanticVersioning.Version(bepinVersion.Major, bepinVersion.Minor, bepinVersion.Patch,
+-                                                         bepinVersion.PreRelease);
+-        var consoleTitle = $"OpenACAI Loader {versionMini} - {Paths.ProcessName}";
++        var consoleTitle = OpenACAIBranding.ConsoleTitle;
+         log.Log(LogLevel.Message, $"{consoleTitle} ({File.GetLastWriteTime(Paths.ExecutablePath)})");
+-        log.Log(LogLevel.Message, $"BepInEx IL2CPP runtime {versionMini} with OpenACAI RedLoader compatibility");
++        log.Log(LogLevel.Message, $"BepInEx IL2CPP runtime {OpenACAIBranding.BepInExRuntimeVersion} with OpenACAI RedLoader compatibility");
+ 
+         if (ConsoleManager.ConsoleActive)
+             ConsoleManager.SetConsoleTitle(consoleTitle);
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/DoorstopEntrypoint.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/DoorstopEntrypoint.cs
+index 5808edc..684d611 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/DoorstopEntrypoint.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/DoorstopEntrypoint.cs
+@@ -73,11 +73,11 @@ public static class Entrypoint
+             {
+                 if (PlatformHelper.Is(Platform.Windows))
+                 {
+-                    MessageBox.Show("Failed to start BepInEx", "BepInEx");
++                    MessageBox.Show("Failed to start OpenACAI Loader", OpenACAIBranding.LoaderName);
+                 }
+                 else if (NotifySend.IsSupported)
+                 {
+-                    NotifySend.Send("Failed to start BepInEx", "Check logs for details");
++                    NotifySend.Send("Failed to start OpenACAI Loader", "Check logs for details");
+                 }
+                 else if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("BEPINEX_FAIL_FAST")))
+                 {
+-- 
+2.54.0.windows.1
+

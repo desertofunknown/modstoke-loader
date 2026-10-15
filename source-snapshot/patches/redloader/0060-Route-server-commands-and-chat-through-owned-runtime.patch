@@ -1,0 +1,133 @@
+diff --git a/SonsSdk/Networking/ServerCommands.cs b/SonsSdk/Networking/ServerCommands.cs
+index 2b3075b..c0e440c 100644
+--- a/SonsSdk/Networking/ServerCommands.cs
++++ b/SonsSdk/Networking/ServerCommands.cs
+@@ -13,6 +13,16 @@ using Color = System.Drawing.Color;
+ 
+ namespace SonsSdk.Networking;
+ 
++internal interface ISdkServerCommandDriver
++{
++    void RegisterCommand(string command, PlayerRoles permission, Func<ServerCommands.CommandArgs, ServerCommands.EExecutionResult> action);
++    ServerCommands.EExecutionResult TryExecuteCommand(string command, bool fromUser, ulong steamId);
++    bool HandleChatEvent(ChatEvent chatEvent);
++    string ExecutionResultToText(ServerCommands.EExecutionResult result);
++    void SendChatMessage(NetworkId sender, string message, string color, BoltConnection receiver);
++    bool HasUserPermission(ulong steamId, PlayerRoles minRequiredRole);
++}
++
+ public static class ServerCommands
+ {
+     public static Dictionary<string, Command> Commands = new();
+@@ -24,11 +34,22 @@ public static class ServerCommands
+     
+     public static void RegisterCommand(string command, PlayerRoles permission, Func<CommandArgs, EExecutionResult> action)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.ServerCommands.RegisterCommand(command, permission, action);
++            return;
++        }
++
+         Commands[command.ToLower()] = new(){Action = action, Name = command, Permission = permission};
+     }
+     
+     internal static EExecutionResult TryExecuteCommand(string command, bool fromUser, ulong steamId)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.ServerCommands.TryExecuteCommand(command, fromUser, steamId);
++
+         var split = command.Split(' ');
+         var cmd = split[0].Substring(1).ToLower();
+         if (Commands.TryGetValue(cmd, out var commandInstance))
+@@ -36,7 +57,7 @@ public static class ServerCommands
+             if(fromUser && !commandInstance.CanExecute(steamId))
+                 return EExecutionResult.NoPermission;
+ 
+-            RLog.Msg(Color.GreenYellow, "we can execute!");
++            RLog.Msg(Color.GreenYellow, $"Executing server command {commandInstance.Name}");
+             
+             return commandInstance.Action(new(command, steamId));
+         }
+@@ -46,6 +67,10 @@ public static class ServerCommands
+ 
+     internal static bool HandleChatEvent(ChatEvent ev)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.ServerCommands.HandleChatEvent(ev);
++
+         var message = ev.Message;
+         if (message.StartsWith("/"))
+         {
+@@ -67,8 +92,13 @@ public static class ServerCommands
+         return false;
+     }
+     
+-    public static string ExecutionResultToText(EExecutionResult result) =>
+-        result switch
++    public static string ExecutionResultToText(EExecutionResult result)
++    {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.ServerCommands.ExecutionResultToText(result);
++
++        return result switch
+         {
+             EExecutionResult.Success => "Command executed successfully",
+             EExecutionResult.NoPermission => "You don't have permission to execute this command",
+@@ -77,6 +107,7 @@ public static class ServerCommands
+             EExecutionResult.WrongArguments => "Wrong arguments",
+             _ => "Unknown result"
+         };
++    }
+ 
+     public enum EExecutionResult
+     {
+diff --git a/SonsSdk/Networking/NetUtils.cs b/SonsSdk/Networking/NetUtils.cs
+index 92a218e..94d95b1 100644
+--- a/SonsSdk/Networking/NetUtils.cs
++++ b/SonsSdk/Networking/NetUtils.cs
+@@ -22,9 +22,16 @@ public static class NetUtils
+     /// <param name="receiver"></param>
+     public static void SendChatMessage(NetworkId sender, string message, string color = null, BoltConnection receiver = null)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.ServerCommands.SendChatMessage(sender, message, color, receiver);
++            return;
++        }
++
+         if (!BoltNetwork.isRunning || !BoltNetwork.isServer)
+         {
+-            RLog.Msg("Sending messaged is only possible in a multiplayer game and if you are the server");
++            RLog.Msg("Chat messages can only be sent by the server in a multiplayer game");
+             return;
+         }
+         
+@@ -41,6 +48,10 @@ public static class NetUtils
+ 
+     public static bool HasUserPermission(ulong steamId, PlayerRoles minRequiredRole)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.ServerCommands.HasUserPermission(steamId, minRequiredRole);
++
+         return (int)MultiplayerPlayerRoles._instance.GetRoleValue(steamId) >= (int)minRequiredRole;
+     }
+ }
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 7a097fd..9eac4e3 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -54,6 +54,7 @@ internal interface ISdkLifecycleDriver
+     Building.ISdkBlueprintRegistrationDriver Blueprints { get; }
+     Networking.ISdkNetworkPrefabDriver NetworkPrefabs { get; }
+     Networking.ISdkPacketDriver Packets { get; }
++    Networking.ISdkServerCommandDriver ServerCommands { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);

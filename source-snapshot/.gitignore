@@ -1,0 +1,27 @@
+# Local work and generated artifacts must stay out of public source imports.
+/.codex/
+/.playwright-cli/
+/.agents/
+/.tools/
+/.dotnet/
+/dist/
+/artifacts/
+/prebuilt/
+/LOCAL_*.md
+/HANDOFF.md
+
+**/bin/
+**/obj/
+**/target/
+
+*.log
+*.jsonl
+*.csv
+*.dll
+*.exe
+*.pdb
+*.zip
+*.pfx
+*.p12
+*.pem
+*.key

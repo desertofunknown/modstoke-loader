@@ -1,0 +1,364 @@
+From d1eb5c0614ab529cd387c188d87883bc58ef0974 Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Thu, 4 Jun 2026 05:45:56 -0500
+Subject: [PATCH 1/4] Add hostfxr CoreCLR bootstrap path
+
+---
+ assets/windows/doorstop_config.ini |   6 +
+ src/bootstrap.c                    | 193 ++++++++++++++++++++++++++++-
+ src/config/common.c                |   6 +-
+ src/config/config.h                |  12 +-
+ src/nix/config.c                   |  10 +-
+ src/windows/config.c               |   8 ++
+ 6 files changed, 229 insertions(+), 6 deletions(-)
+
+diff --git a/assets/windows/doorstop_config.ini b/assets/windows/doorstop_config.ini
+index 2bc726b..8fa8966 100644
+--- a/assets/windows/doorstop_config.ini
++++ b/assets/windows/doorstop_config.ini
+@@ -47,3 +47,9 @@ coreclr_path=
+ 
+ # Path to the directory containing the managed core libraries for CoreCLR (mscorlib, System, etc.)
+ corlib_dir=
++
++# Optional path to hostfxr.dll for modern CoreCLR hosting (.NET 6+)
++hostfxr_path=
++
++# Optional path to a runtimeconfig.json used with hostfxr hosting
++runtime_config_path=
+diff --git a/src/bootstrap.c b/src/bootstrap.c
+index ed38f71..37ffa6d 100644
+--- a/src/bootstrap.c
++++ b/src/bootstrap.c
+@@ -11,6 +11,72 @@
+ bool_t mono_debug_init_called = FALSE;
+ bool_t mono_is_net35 = FALSE;
+ 
++#if _WIN32
++#define HOSTFXR_CALLTYPE __cdecl
++#define CORECLR_DELEGATE_CALLTYPE __stdcall
++#else
++#define HOSTFXR_CALLTYPE
++#define CORECLR_DELEGATE_CALLTYPE
++#endif
++
++typedef void *hostfxr_handle;
++
++enum hostfxr_delegate_type {
++    hdt_com_activation,
++    hdt_load_in_memory_assembly,
++    hdt_winrt_activation,
++    hdt_com_register,
++    hdt_com_unregister,
++    hdt_load_assembly_and_get_function_pointer,
++    hdt_get_function_pointer,
++    hdt_load_assembly,
++    hdt_load_assembly_bytes,
++};
++
++typedef int(HOSTFXR_CALLTYPE *hostfxr_initialize_for_runtime_config_fn)(
++    const char_t *runtime_config_path, const void *parameters,
++    hostfxr_handle *host_context_handle);
++typedef int(HOSTFXR_CALLTYPE *hostfxr_get_runtime_delegate_fn)(
++    const hostfxr_handle host_context_handle, enum hostfxr_delegate_type type,
++    void **delegate);
++typedef int(HOSTFXR_CALLTYPE *hostfxr_close_fn)(
++    const hostfxr_handle host_context_handle);
++typedef int(CORECLR_DELEGATE_CALLTYPE
++                *load_assembly_and_get_function_pointer_fn)(
++    const char_t *assembly_path, const char_t *type_name,
++    const char_t *method_name, const char_t *delegate_type_name, void *reserved,
++    void **delegate);
++typedef void(CORECLR_DELEGATE_CALLTYPE *managed_action_fn)();
++
++typedef struct {
++    hostfxr_initialize_for_runtime_config_fn initialize_for_runtime_config;
++    hostfxr_get_runtime_delegate_fn get_runtime_delegate;
++    hostfxr_close_fn close;
++} hostfxr_funcs;
++
++static bool_t load_hostfxr_funcs(void *hostfxr_module, hostfxr_funcs *funcs) {
++    funcs->initialize_for_runtime_config =
++        (hostfxr_initialize_for_runtime_config_fn)dlsym(
++            hostfxr_module, "hostfxr_initialize_for_runtime_config");
++    funcs->get_runtime_delegate =
++        (hostfxr_get_runtime_delegate_fn)dlsym(hostfxr_module,
++                                               "hostfxr_get_runtime_delegate");
++    funcs->close = (hostfxr_close_fn)dlsym(hostfxr_module, "hostfxr_close");
++
++    return funcs->initialize_for_runtime_config &&
++           funcs->get_runtime_delegate && funcs->close;
++}
++
++static char_t *build_doorstop_entrypoint_type_name(char_t *target_name) {
++    const char_t *prefix = TEXT("Doorstop.Entrypoint, ");
++    char_t *result =
++        calloc(STR_LEN(TEXT("Doorstop.Entrypoint, ")) + strlen(target_name),
++               sizeof(char_t));
++    strcat(result, prefix);
++    strcat(result, target_name);
++    return result;
++}
++
+ void mono_doorstop_bootstrap(void *mono_domain) {
+     if (getenv(TEXT("DOORSTOP_INITIALIZED"))) {
+         LOG("DOORSTOP_INITIALIZED is set! Skipping!");
+@@ -57,7 +123,7 @@ void mono_doorstop_bootstrap(void *mono_domain) {
+     free(norm_assembly_dir);
+ 
+     LOG("Opening assembly: %s", config.target_assembly);
+-    void *file = fopen(config.target_assembly, "r");
++    void *file = fopen(config.target_assembly, TEXT("r"));
+     if (!file) {
+         LOG("Failed to open assembly: %s", config.target_assembly);
+         return;
+@@ -236,7 +302,128 @@ void *init_mono(const char *root_domain_name, const char *runtime_version) {
+     return domain;
+ }
+ 
++static bool_t il2cpp_hostfxr_doorstop_bootstrap() {
++    if (!config.clr_runtime_hostfxr_path || !config.clr_runtime_config_path) {
++        LOG("No hostfxr runtime config set, skipping modern CoreCLR hosting");
++        return FALSE;
++    }
++
++    LOG("hostfxr path: %s", config.clr_runtime_hostfxr_path);
++    LOG("runtimeconfig path: %s", config.clr_runtime_config_path);
++
++    if (!file_exists(config.clr_runtime_hostfxr_path) ||
++        !file_exists(config.clr_runtime_config_path)) {
++        LOG("hostfxr startup files are not set up, skipping modern CoreCLR "
++            "hosting");
++        return FALSE;
++    }
++
++    void *hostfxr_module = dlopen(config.clr_runtime_hostfxr_path, RTLD_LAZY);
++    LOG("Loaded hostfxr.dll: %p", hostfxr_module);
++    if (!hostfxr_module) {
++        LOG("Failed to load hostfxr runtime!");
++        return FALSE;
++    }
++
++    hostfxr_funcs hostfxr;
++    memset(&hostfxr, 0, sizeof(hostfxr));
++    if (!load_hostfxr_funcs(hostfxr_module, &hostfxr)) {
++        LOG("Failed to import hostfxr hosting functions");
++        return FALSE;
++    }
++
++    char_t *app_path = program_path();
++    char_t *target_dir = get_folder_name(config.target_assembly);
++    char_t *target_name = get_file_name(config.target_assembly, FALSE);
++    char_t *entrypoint_type = build_doorstop_entrypoint_type_name(target_name);
++    char_t *app_paths_env = NULL;
++
++    if (config.clr_corlib_dir && folder_exists(config.clr_corlib_dir)) {
++        app_paths_env =
++            calloc(strlen(config.clr_corlib_dir) + 1 + strlen(target_dir) + 1,
++                   sizeof(char_t));
++        strcat(app_paths_env, config.clr_corlib_dir);
++        strcat(app_paths_env, PATH_SEP);
++        strcat(app_paths_env, target_dir);
++        setenv(TEXT("DOORSTOP_MANAGED_FOLDER_DIR"), config.clr_corlib_dir,
++               TRUE);
++    } else {
++        app_paths_env = calloc(strlen(target_dir) + 1, sizeof(char_t));
++        strcat(app_paths_env, target_dir);
++        setenv(TEXT("DOORSTOP_MANAGED_FOLDER_DIR"), target_dir, TRUE);
++    }
++
++    LOG("App path: %s", app_path);
++    LOG("Target dir: %s", target_dir);
++    LOG("Target name: %s", target_name);
++    LOG("Entrypoint type: %s", entrypoint_type);
++    LOG("APP_PATHS: %s", app_paths_env);
++
++    setenv(TEXT("DOORSTOP_INITIALIZED"), TEXT("TRUE"), TRUE);
++    setenv(TEXT("DOORSTOP_INVOKE_DLL_PATH"), config.target_assembly, TRUE);
++    setenv(TEXT("DOORSTOP_PROCESS_PATH"), app_path, TRUE);
++    setenv(TEXT("DOORSTOP_DLL_SEARCH_DIRS"), app_paths_env, TRUE);
++
++    hostfxr_handle host = NULL;
++    int result = hostfxr.initialize_for_runtime_config(
++        config.clr_runtime_config_path, NULL, &host);
++    if (result != 0 || !host) {
++        LOG("Failed to initialize CoreCLR through hostfxr: 0x%08x", result);
++        free(app_paths_env);
++        free(entrypoint_type);
++        free(target_name);
++        free(target_dir);
++        free(app_path);
++        return FALSE;
++    }
++
++    void *load_assembly = NULL;
++    result = hostfxr.get_runtime_delegate(
++        host, hdt_load_assembly_and_get_function_pointer, &load_assembly);
++    hostfxr.close(host);
++    if (result != 0 || !load_assembly) {
++        LOG("Failed to get hostfxr load_assembly delegate: 0x%08x", result);
++        free(app_paths_env);
++        free(entrypoint_type);
++        free(target_name);
++        free(target_dir);
++        free(app_path);
++        return FALSE;
++    }
++
++    managed_action_fn startup = NULL;
++    result = ((load_assembly_and_get_function_pointer_fn)load_assembly)(
++        config.target_assembly, entrypoint_type, TEXT("Start"),
++        TEXT("System.Action, System.Private.CoreLib"), NULL,
++        (void **)&startup);
++    if (result != 0 || !startup) {
++        LOG("Failed to get Doorstop.Entrypoint.Start delegate through "
++            "hostfxr: 0x%08x",
++            result);
++        free(app_paths_env);
++        free(entrypoint_type);
++        free(target_name);
++        free(target_dir);
++        free(app_path);
++        return FALSE;
++    }
++
++    LOG("Invoking Doorstop.Entrypoint.Start() through hostfxr");
++    startup();
++
++    free(app_paths_env);
++    free(entrypoint_type);
++    free(target_name);
++    free(target_dir);
++    free(app_path);
++    return TRUE;
++}
++
+ void il2cpp_doorstop_bootstrap() {
++    if (il2cpp_hostfxr_doorstop_bootstrap()) {
++        return;
++    }
++
+     if (!config.clr_corlib_dir || !config.clr_runtime_coreclr_path) {
+         LOG("No CoreCLR paths set, skipping loading");
+         return;
+@@ -396,7 +583,7 @@ void *hook_mono_image_open_from_data_with_name(void *data,
+         strcat(new_full_path, name_file);
+ 
+         if (file_exists(new_full_path)) {
+-            void *file = fopen(new_full_path, "r");
++            void *file = fopen(new_full_path, TEXT("r"));
+             size_t size = get_file_size(file);
+             void *buf = malloc(size);
+             fread(buf, 1, size, file);
+@@ -419,4 +606,4 @@ void *hook_mono_image_open_from_data_with_name(void *data,
+ void hook_mono_debug_init(MonoDebugFormat format) {
+     mono_debug_init_called = TRUE;
+     mono.debug_init(format);
+-}
+\ No newline at end of file
++}
+diff --git a/src/config/common.c b/src/config/common.c
+index 9632b8a..b5519ca 100644
+--- a/src/config/common.c
++++ b/src/config/common.c
+@@ -15,6 +15,8 @@ void cleanup_config() {
+     FREE_NON_NULL(config.mono_dll_search_path_override);
+     FREE_NON_NULL(config.clr_corlib_dir);
+     FREE_NON_NULL(config.clr_runtime_coreclr_path);
++    FREE_NON_NULL(config.clr_runtime_hostfxr_path);
++    FREE_NON_NULL(config.clr_runtime_config_path);
+     FREE_NON_NULL(config.mono_debug_address);
+ 
+ #undef FREE_NON_NULL
+@@ -32,4 +34,6 @@ void init_config_defaults() {
+     config.mono_dll_search_path_override = NULL;
+     config.clr_corlib_dir = NULL;
+     config.clr_runtime_coreclr_path = NULL;
+-}
+\ No newline at end of file
++    config.clr_runtime_hostfxr_path = NULL;
++    config.clr_runtime_config_path = NULL;
++}
+diff --git a/src/config/config.h b/src/config/config.h
+index 0a0814b..16ebf42 100644
+--- a/src/config/config.h
++++ b/src/config/config.h
+@@ -74,6 +74,16 @@ typedef struct {
+      * @brief Path to the CoreCLR core libraries folder.
+      */
+     char_t *clr_corlib_dir;
++
++    /**
++     * @brief Path to hostfxr.dll for modern CoreCLR hosting.
++     */
++    char_t *clr_runtime_hostfxr_path;
++
++    /**
++     * @brief Path to the runtimeconfig.json used to initialize CoreCLR.
++     */
++    char_t *clr_runtime_config_path;
+ } Config;
+ 
+ extern Config config;
+@@ -92,4 +102,4 @@ extern void init_config_defaults();
+  * @brief Clean up configuration.
+  */
+ extern void cleanup_config();
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/src/nix/config.c b/src/nix/config.c
+index 203ada1..e3153af 100644
+--- a/src/nix/config.c
++++ b/src/nix/config.c
+@@ -44,6 +44,10 @@ void load_config() {
+     get_env_path("DOORSTOP_CLR_RUNTIME_CORECLR_PATH",
+                  &config.clr_runtime_coreclr_path);
+     get_env_path("DOORSTOP_CLR_CORLIB_DIR", &config.clr_corlib_dir);
++    get_env_path("DOORSTOP_CLR_RUNTIME_HOSTFXR_PATH",
++                 &config.clr_runtime_hostfxr_path);
++    get_env_path("DOORSTOP_CLR_RUNTIME_CONFIG_PATH",
++                 &config.clr_runtime_config_path);
+ 
+     //Print out all the relevant configuration settings using LOG()
+     LOG("DOORSTOP_ENABLED: %d", config.enabled);
+@@ -58,4 +62,8 @@ void load_config() {
+         config.mono_dll_search_path_override);
+     LOG("DOORSTOP_CLR_RUNTIME_CORECLR_PATH: %s", config.clr_runtime_coreclr_path);
+     LOG("DOORSTOP_CLR_CORLIB_DIR: %s", config.clr_corlib_dir);
+-}
+\ No newline at end of file
++    LOG("DOORSTOP_CLR_RUNTIME_HOSTFXR_PATH: %s",
++        config.clr_runtime_hostfxr_path);
++    LOG("DOORSTOP_CLR_RUNTIME_CONFIG_PATH: %s",
++        config.clr_runtime_config_path);
++}
+diff --git a/src/windows/config.c b/src/windows/config.c
+index 6e90a44..5a158fb 100644
+--- a/src/windows/config.c
++++ b/src/windows/config.c
+@@ -88,6 +88,10 @@ static inline void init_config_file() {
+                    &config.clr_runtime_coreclr_path);
+     load_path_file(config_path, TEXT("Il2Cpp"), TEXT("corlib_dir"), NULL,
+                    &config.clr_corlib_dir);
++    load_path_file(config_path, TEXT("Il2Cpp"), TEXT("hostfxr_path"), NULL,
++                   &config.clr_runtime_hostfxr_path);
++    load_path_file(config_path, TEXT("Il2Cpp"), TEXT("runtime_config_path"),
++                   NULL, &config.clr_runtime_config_path);
+ 
+     free(config_path);
+ }
+@@ -162,6 +166,10 @@ static inline void init_cmd_args() {
+                   load_path_argv);
+         PARSE_ARG(TEXT("--doorstop-clr-runtime-coreclr-path"),
+                   config.clr_runtime_coreclr_path, load_path_argv);
++        PARSE_ARG(TEXT("--doorstop-clr-runtime-hostfxr-path"),
++                  config.clr_runtime_hostfxr_path, load_path_argv);
++        PARSE_ARG(TEXT("--doorstop-clr-runtime-config-path"),
++                  config.clr_runtime_config_path, load_path_argv);
+     }
+ 
+     LocalFree(argv);
+-- 
+2.54.0.windows.1
+

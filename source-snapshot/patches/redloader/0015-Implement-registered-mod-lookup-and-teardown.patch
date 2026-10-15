@@ -1,0 +1,369 @@
+diff --git a/RedLoader/ModBase.cs b/RedLoader/ModBase.cs
+index ecfa8b5..2498ee8 100644
+--- a/RedLoader/ModBase.cs
++++ b/RedLoader/ModBase.cs
+@@ -32,6 +32,7 @@ namespace RedLoader
+ 
+         public static ReadOnlyCollection<ModBase> RegisteredMelons => _registeredMelons.AsReadOnly();
+         internal static List<ModBase> _registeredMelons = new();
++        private static readonly HashSet<Assembly> UnregisteringAssemblies = new(ReferenceEqualityComparer.Instance);
+ 
+         /// <summary>
+         /// Creates a new Melon instance for a Wrapper.
+@@ -131,6 +132,8 @@ namespace RedLoader
+         public bool Registered { get; private set; }
+ 
+         private List<Action> _registrationRollback;
++        private List<Action> _registeredCallbacks;
++        private bool _unregistering;
+ 
+         /// <summary>
+         /// Method that gets called on update (every frame). See <see href="https://docs.unity3d.com/ScriptReference/MonoBehaviour.Update.html">Update</see>
+@@ -259,7 +262,7 @@ namespace RedLoader
+         /// </summary>
+         public bool Register()
+         {
+-            if (Registered || _registrationRollback != null)
++            if (Registered || _registrationRollback != null || _unregistering || UnregisteringAssemblies.Contains(ModAssembly))
+                 return false;
+ 
+             // if (FindMelon(Info.Name, Info.Author) != null)
+@@ -276,38 +279,53 @@ namespace RedLoader
+             //     return false;
+             // }
+ 
+-            OnMelonInitializing.Invoke(this);
+-
+-            LoggerInstance ??= new RLog.Instance(string.IsNullOrEmpty(Info.Name) ? ID : Info.Name, ConsoleColor);
+-            HarmonyInstance ??= new HarmonyLib.Harmony($"{ModAssembly.FullName}:{Info.Name}");
+-
+-            Registered = true; // this has to be true before the melon can subscribe to any events
+             var registered = false;
+             _registrationRollback = new List<Action>();
+             try
+             {
++                OnMelonInitializing.Invoke(this);
++
++                LoggerInstance ??= new RLog.Instance(string.IsNullOrEmpty(Info.Name) ? ID : Info.Name, ConsoleColor);
++                HarmonyInstance ??= new HarmonyLib.Harmony($"{ModAssembly.FullName}:{Info.Name}");
++
++                Registered = true; // this has to be true before the melon can subscribe to any events
++                _registeredCallbacks = _registrationRollback;
+                 RegisterCallbacks();
++                if (!Registered)
++                    return false;
+                 OnEarlyInitializeMelon();
++                if (!Registered)
++                    return false;
+ 
+-                if (!RegisterInternal())
++                if (!RegisterInternal() || !Registered)
+                     return false;
+ 
+                 _registeredMelons.Add(this);
+ 
+                 PrintLoadInfo();
++                if (!Registered)
++                    return false;
+ 
+                 OnRegister.Invoke();
++                if (!Registered)
++                    return false;
+                 OnMelonRegistered.Invoke(this);
++                if (!Registered)
++                    return false;
+ 
+                 if (GlobalEvents.OnApplicationStart.Disposed)
+                     LoaderInitialized();
+                 else
+                     RegisterCallback(GlobalEvents.OnApplicationStart, LoaderInitialized, true);
++                if (!Registered)
++                    return false;
+ 
+                 if (GlobalEvents.OnApplicationLateStart.Disposed)
+                     OnLateInitializeMod();
+                 else
+                     RegisterCallback(GlobalEvents.OnApplicationLateStart, OnLateInitializeMod, true);
++                if (!Registered)
++                    return false;
+ 
+                 registered = true;
+                 return true;
+@@ -329,6 +347,7 @@ namespace RedLoader
+         private void RollbackRegistration()
+         {
+             Registered = false;
++            _registeredCallbacks = null;
+             for (var i = _registrationRollback.Count - 1; i >= 0; i--)
+                 TryRegistrationCleanup("event subscription", _registrationRollback[i]);
+ 
+@@ -356,11 +375,19 @@ namespace RedLoader
+         }
+ 
+         /// <summary>
+-        /// Registers a loader callback that is removed if this registration fails.
++        /// Registers a loader callback for the lifetime of this registration.
+         /// </summary>
+         private protected void RegisterCallback<T>(MelonEventBase<T> evt, T callback, bool once = false) where T : Delegate
+         {
+-            evt.Subscribe(callback, Priority, once, _registrationRollback);
++            var callbacks = _registeredCallbacks;
++            if (callbacks == null || !Registered)
++                return;
++
++            // A snapshot from an earlier registration must stay inactive even if
++            // this instance registers again before that snapshot finishes dispatching.
++            evt.Subscribe(callback, Priority, once, callbacks,
++                () => Registered && ReferenceEquals(_registeredCallbacks, callbacks) &&
++                      !UnregisteringAssemblies.Contains(ModAssembly));
+         }
+ 
+         private void HarmonyInit()
+@@ -425,48 +452,86 @@ namespace RedLoader
+         /// </summary>
+         public static ModBase FindMelon(string melonName, string melonAuthor)
+         {
+-            return null;
+-            //return _registeredMelons.Find(x => x.Info.Name == melonName && x.Info.Author == melonAuthor);
++            return _registeredMelons.Find(mod => mod.Registered && mod.Info != null &&
++                !UnregisteringAssemblies.Contains(mod.ModAssembly) &&
++                mod.Info.Name == melonName && mod.Info.Author == melonAuthor);
+         }
+ 
+         /// <summary>
+         /// Unregisters the Melon and all other Melons located in the same Assembly.
+-        /// <para>This only unsubscribes the Melons from all Callbacks/<see cref="MelonEvent"/>s and unpatches all Methods that were patched by Harmony, but doesn't actually unload the whole Assembly.</para>
++        /// <para>Removes loader-owned callbacks and attempts to remove each mod's Harmony patches, but does not unload the Assembly.</para>
++        /// <para>Mods must release their own subscriptions, commands and resources in <see cref="OnDeinitializeMod"/>. An executing callback is not interrupted.</para>
+         /// </summary>
+         public void Unregister(string reason = null, bool silent = false)
+         {
+-            if (!Registered)
++            if (!Registered || _unregistering || !UnregisteringAssemblies.Add(ModAssembly))
+                 return;
+ 
+-            //ModAssembly.UnregisterMelons(reason, silent);
++            try
++            {
++                var mods = _registeredMelons.FindAll(mod => ReferenceEquals(mod.ModAssembly, ModAssembly));
++                // An initialization callback can unregister before base publication.
++                if (!mods.Exists(mod => ReferenceEquals(mod, this)))
++                    mods.Add(this);
++
++                foreach (var mod in mods)
++                    mod.UnregisterInstance(reason, silent);
++            }
++            finally
++            {
++                UnregisteringAssemblies.Remove(ModAssembly);
++            }
+         }
+ 
+         internal void UnregisterInstance(string reason, bool silent)
+         {
+-            if (!Registered)
++            if (!Registered || _unregistering)
+                 return;
+ 
++            _unregistering = true;
++            Registered = false;
++            var callbacks = _registeredCallbacks;
++            _registeredCallbacks = null;
+             try
+             {
+-                OnDeinitializeMod();
+-            }
+-            catch (Exception ex)
+-            {
+-                RLog.Error($"Failed to properly unregister {MelonTypeName} '{ModAssembly.Location}': Melon failed to deinitialize!");
+-                RLog.Error(ex.ToString());
+-            }
++                if (callbacks != null)
++                    for (var i = callbacks.Count - 1; i >= 0; i--)
++                        TryUnregisterCleanup("event subscription", callbacks[i]);
+ 
+-            UnregisterInternal();
++                TryUnregisterCleanup("typed registration", UnregisterInternal);
++                _registeredMelons.RemoveAll(mod => ReferenceEquals(mod, this));
++                TryUnregisterCleanup("mod deinitialization", OnDeinitializeMod);
++                TryUnregisterCleanup("Harmony patches", () => HarmonyInstance?.UnpatchSelf());
+ 
+-            _registeredMelons.Remove(this);
+-            HarmonyInstance.UnpatchSelf();
+-            Registered = false;
++                if (!silent)
++                    TryUnregisterCleanup("unload message", () => PrintUnloadInfo(reason));
+ 
+-            if (!silent)
+-                PrintUnloadInfo(reason);
++                TryUnregisterCleanup("instance notification", OnUnregister.Invoke);
++                TryUnregisterCleanup("global notification", () => OnMelonUnregistered.Invoke(this));
++            }
++            finally
++            {
++                _unregistering = false;
++            }
++        }
+ 
+-            OnUnregister.Invoke();
+-            OnMelonUnregistered.Invoke(this);
++        private void TryUnregisterCleanup(string operation, Action cleanup)
++        {
++            try
++            {
++                cleanup();
++            }
++            catch (Exception ex)
++            {
++                try
++                {
++                    RLog.Error($"Unregistration for '{ID}' failed during {operation}: {ex}");
++                }
++                catch
++                {
++                    // A failing log listener must not prevent the remaining cleanup.
++                }
++            }
+         }
+ 
+         private void PrintLoadInfo()
+@@ -508,7 +573,7 @@ namespace RedLoader
+         {
+             var failedMelons = (unregisterOnFail ? new List<T>() : null);
+             
+-            foreach (var mod in melons)
++            foreach (var mod in melons.ToArray())
+             {
+                 if (!mod.Registered)
+                     continue;
+diff --git a/RedLoader/Utils/Events/MelonEvent.cs b/RedLoader/Utils/Events/MelonEvent.cs
+index 6ea7394..bf27c6a 100644
+--- a/RedLoader/Utils/Events/MelonEvent.cs
++++ b/RedLoader/Utils/Events/MelonEvent.cs
+@@ -37,14 +37,14 @@ namespace RedLoader
+             Subscribe(action, priority, unsubscribeOnFirstInvocation, null);
+         }
+ 
+-        internal void Subscribe(T action, int priority, bool unsubscribeOnFirstInvocation, List<Action> rollback)
++        internal void Subscribe(T action, int priority, bool unsubscribeOnFirstInvocation, List<Action> rollback, Func<bool> canInvoke = null)
+         {
+             lock (actions)
+             {
+                 if (Disposed)
+                     return;
+ 
+-                var acts = MelonAction<T>.Get(action, priority, unsubscribeOnFirstInvocation);
++                var acts = MelonAction<T>.Get(action, priority, unsubscribeOnFirstInvocation, canInvoke);
+                 foreach (var a in acts)
+                 {
+                     if (CheckIfSubscribed(a.del.Method, a.del.Target))
+@@ -166,6 +166,8 @@ namespace RedLoader
+         {
+             try
+             {
++                if (subscriber.canInvoke != null && !subscriber.canInvoke())
++                    return;
+                 delegateInvoker(subscriber.del);
+             }
+             catch (Exception ex)
+diff --git a/RedLoader/Utils/Events/MelonAction.cs b/RedLoader/Utils/Events/MelonAction.cs
+index dea7ff8..24b5ed0 100644
+--- a/RedLoader/Utils/Events/MelonAction.cs
++++ b/RedLoader/Utils/Events/MelonAction.cs
+@@ -8,18 +8,20 @@ namespace RedLoader
+         internal readonly T del;
+         internal readonly bool unsubscribeOnFirstInvocation;
+         internal readonly int priority;
++        internal readonly Func<bool> canInvoke;
+ 
+         //internal readonly MelonAssembly melonAssembly;
+ 
+-        private MelonAction(T singleDel, int priority, bool unsubscribeOnFirstInvocation)
++        private MelonAction(T singleDel, int priority, bool unsubscribeOnFirstInvocation, Func<bool> canInvoke)
+         {
+             del = singleDel;
+             //melonAssembly = MelonAssembly.GetMelonAssemblyOfMember(del.Method, del.Target);
+             this.priority = priority;
+             this.unsubscribeOnFirstInvocation = unsubscribeOnFirstInvocation;
++            this.canInvoke = canInvoke;
+         }
+ 
+-        internal static List<MelonAction<T>> Get(T del, int priority = 0, bool unsubscribeOnFirstInvocation = false)
++        internal static List<MelonAction<T>> Get(T del, int priority = 0, bool unsubscribeOnFirstInvocation = false, Func<bool> canInvoke = null)
+         {
+             var mets = del.GetInvocationList();
+             var result = new List<MelonAction<T>>();
+@@ -28,7 +30,7 @@ namespace RedLoader
+                 // if (met.Target != null && met.Target is ModBase melon && !melon.Registered)
+                 //     continue;
+ 
+-                result.Add(new MelonAction<T>((T)met, priority, unsubscribeOnFirstInvocation));
++                result.Add(new MelonAction<T>((T)met, priority, unsubscribeOnFirstInvocation, canInvoke));
+             }
+             return result;
+         }
+diff --git a/SonsSdk/SonsMod.cs b/SonsSdk/SonsMod.cs
+index 9aeea6f..2d9f181 100644
+--- a/SonsSdk/SonsMod.cs
++++ b/SonsSdk/SonsMod.cs
+@@ -40,7 +40,8 @@ public abstract class SonsMod : ModTypeBase<SonsMod>
+         if (HarmonyPatchAll)
+         {
+             RLog.DebugBig($"HarmonyPatchAll is true for [{ModAssembly.FullName}], patching assembly");
+-            HarmonyInstance.PatchAll(ModAssembly);
++            if (Registered)
++                HarmonyInstance.PatchAll(ModAssembly);
+         }
+     }
+ 
+@@ -60,7 +61,7 @@ public abstract class SonsMod : ModTypeBase<SonsMod>
+             return false;
+         }
+ 
+-        if (!base.RegisterInternal())
++        if (!Registered || !base.RegisterInternal())
+         {
+             return false;
+         }
+@@ -74,7 +75,7 @@ public abstract class SonsMod : ModTypeBase<SonsMod>
+             RegisterCallback(GlobalEvents.MelonHarmonyInit, HarmonyInit, true);
+         }
+ 
+-        return true;
++        return Registered;
+     }
+ 
+     private protected override void RegisterCallbacks()
+diff --git a/SonsSdk/Private/MainInitializer.cs b/SonsSdk/Private/MainInitializer.cs
+index bd7b4cf..ae243fa 100644
+--- a/SonsSdk/Private/MainInitializer.cs
++++ b/SonsSdk/Private/MainInitializer.cs
+@@ -184,6 +184,9 @@ internal class MainInitializer
+     {
+         foreach (var mod in SonsMod.RegisteredMods.ToArray())
+         {
++            if (!mod.Registered)
++                continue;
++
+             string[] catalogs;
+             try
+             {
+@@ -203,6 +206,8 @@ internal class MainInitializer
+ 
+             foreach (var catalog in catalogs)
+             {
++                if (!mod.Registered)
++                    break;
+                 yield return LoadCatalog(catalog);
+             }
+         }
+@@ -328,7 +333,8 @@ internal class MainInitializer
+             var bundle = bundles[i];
+             try
+             {
+-                bundle.LoadBundle();
++                if (bundle.Mod.Registered)
++                    bundle.LoadBundle();
+             }
+             catch (Exception exception)
+             {

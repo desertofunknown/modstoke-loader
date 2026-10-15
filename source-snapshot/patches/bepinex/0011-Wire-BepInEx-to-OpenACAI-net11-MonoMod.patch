@@ -1,0 +1,119 @@
+From 73c2a033dda8ddc5495316cd6a73371edea622b9 Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Fri, 5 Jun 2026 15:44:57 -0500
+Subject: [PATCH 11/13] Wire BepInEx to OpenACAI net11 MonoMod
+
+---
+ BepInEx.Core/BepInEx.Core.csproj                       |  4 +++-
+ BepInEx.Preloader.Core/BepInEx.Preloader.Core.csproj   |  4 ++--
+ Directory.Build.props                                  |  7 -------
+ Directory.Build.targets                                | 10 +---------
+ .../BepInEx.Unity.Common/BepInEx.Unity.Common.csproj   |  2 +-
+ .../BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj   |  2 +-
+ nuget.config                                           |  1 +
+ 7 files changed, 9 insertions(+), 21 deletions(-)
+
+diff --git a/BepInEx.Core/BepInEx.Core.csproj b/BepInEx.Core/BepInEx.Core.csproj
+index 2f5a305..1abcca8 100644
+--- a/BepInEx.Core/BepInEx.Core.csproj
++++ b/BepInEx.Core/BepInEx.Core.csproj
+@@ -8,8 +8,10 @@
+     </PropertyGroup>
+     <ItemGroup>
+         <PackageReference Include="HarmonyX" Version="2.16.1" />
++        <PackageReference Include="MonoMod.Core" Version="1.3.5-openacai-net11.3"/>
++        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.5-openacai-net11.3"/>
+         <PackageReference Include="SemanticVersioning" Version="2.0.2"/>
+-        <PackageReference Include="MonoMod.Utils" Version="25.0.12"/>
++        <PackageReference Include="MonoMod.Utils" Version="25.0.13-openacai-net11.3"/>
+     </ItemGroup>
+     <ItemGroup>
+         <Compile Remove="Contract\IPlugin.cs"/>
+diff --git a/BepInEx.Preloader.Core/BepInEx.Preloader.Core.csproj b/BepInEx.Preloader.Core/BepInEx.Preloader.Core.csproj
+index db1e3b9..149b3bd 100644
+--- a/BepInEx.Preloader.Core/BepInEx.Preloader.Core.csproj
++++ b/BepInEx.Preloader.Core/BepInEx.Preloader.Core.csproj
+@@ -8,7 +8,7 @@
+     </ItemGroup>
+     <ItemGroup>
+         <PackageReference Include="HarmonyX" Version="2.16.1" />
+-        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.4"/>
+-        <PackageReference Include="MonoMod.Utils" Version="25.0.12"/>
++        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.5-openacai-net11.3"/>
++        <PackageReference Include="MonoMod.Utils" Version="25.0.13-openacai-net11.3"/>
+     </ItemGroup>
+ </Project>
+diff --git a/Directory.Build.props b/Directory.Build.props
+index d1d53d9..70bf814 100644
+--- a/Directory.Build.props
++++ b/Directory.Build.props
+@@ -17,13 +17,6 @@
+         <PackageOutputPath>$(BuildDir)/NuGet</PackageOutputPath>
+         <PackageIcon>logo.png</PackageIcon>
+     </PropertyGroup>
+-    <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0'">
+-        <!-- MonoMod 25.x supports net10.0 today. OpenACAI's net11 branch is an
+-             intentional preview experiment, so this disables MonoMod's runtime
+-             support guard only for that preview target. -->
+-        <MonoMod_CheckTargetRuntime>false</MonoMod_CheckTargetRuntime>
+-        <MonoMod_ReallySkipCheckTargetRuntime>true</MonoMod_ReallySkipCheckTargetRuntime>
+-    </PropertyGroup>
+     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+     </PropertyGroup>
+diff --git a/Directory.Build.targets b/Directory.Build.targets
+index 31ea814..058246e 100644
+--- a/Directory.Build.targets
++++ b/Directory.Build.targets
+@@ -1,9 +1 @@
+-<Project>
+-    <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0'">
+-        <!-- MonoMod 25.x supports net10.0 today. OpenACAI's net11 branch is an
+-             intentional preview experiment, so this disables MonoMod's runtime
+-             support guard only for that preview target. -->
+-        <MonoMod_CheckTargetRuntime>false</MonoMod_CheckTargetRuntime>
+-        <MonoMod_ReallySkipCheckTargetRuntime>true</MonoMod_ReallySkipCheckTargetRuntime>
+-    </PropertyGroup>
+-</Project>
++<Project />
+diff --git a/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj b/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj
+index 8585166..101a2d3 100644
+--- a/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj
++++ b/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj
+@@ -9,7 +9,7 @@
+         <PackageReference Include="AssetRipper.Primitives" Version="3.1.3" />
+     </ItemGroup>
+     <ItemGroup>
+-        <PackageReference Include="MonoMod.Utils" Version="25.0.12"/>
++        <PackageReference Include="MonoMod.Utils" Version="25.0.13-openacai-net11.3"/>
+     </ItemGroup>
+ 
+ </Project>
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+index 996ca71..e6731cc 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+@@ -20,7 +20,7 @@
+         <PackageReference Include="Il2CppInterop.ReferenceLibs" Version="1.0.0" IncludeAssets="compile" PrivateAssets="all"/>
+         <PackageReference Include="Il2CppInterop.Runtime" Version="1.5.2-ci.1063"/>
+         <PackageReference Include="Microsoft.Extensions.Logging" Version="11.0.0-preview.4.26230.115" PrivateAssets="all"/>
+-        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.4"/>
++        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.5-openacai-net11.3"/>
+         <PackageReference Include="Samboy063.Cpp2IL.Core" Version="2022.1.0-development.1452"/>
+     </ItemGroup>
+ 
+diff --git a/nuget.config b/nuget.config
+index 5e67f2a..4b5884c 100644
+--- a/nuget.config
++++ b/nuget.config
+@@ -1,6 +1,7 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <configuration>
+   <packageSources>
++    <add key="OpenACAI-MonoMod" value="..\MonoMod\artifacts\openacai-nuget" />
+     <add key="BepInEx" value="https://nuget.bepinex.dev/v3/index.json" />
+     <add key="Samboy" value="https://nuget.samboy.dev/v3/index.json" />
+   </packageSources>
+-- 
+2.54.0.windows.1
+

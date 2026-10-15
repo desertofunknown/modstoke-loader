@@ -1,0 +1,12 @@
+{
+  "id": "openacai.example.worldConditions",
+  "name": "World Conditions Example",
+  "version": "0.1.0",
+  "author": "Alex Cooper",
+  "type": "OpenACAIMod",
+  "assembly": "OpenACAI.Examples.WorldConditions.dll",
+  "entryType": "OpenACAI.Examples.WorldConditions.Mod",
+  "entryMethod": "Initialize",
+  "lifecycle": ["shutdown"],
+  "onShutdown": "Shutdown"
+}

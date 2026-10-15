@@ -1,0 +1,137 @@
+diff --git a/SonsSdk/ModInputCache.cs b/SonsSdk/ModInputCache.cs
+index ee14f97..4b2e8d7 100644
+--- a/SonsSdk/ModInputCache.cs
++++ b/SonsSdk/ModInputCache.cs
+@@ -7,6 +7,7 @@ namespace SonsSdk;
+ public static class ModInputCache
+ {
+     internal static readonly Dictionary<KeybindConfigEntry, ModKeybind> Keybinds = new();
++    private static ModKeybind[] _keybindSnapshot;
+ 
+     public static ModKeybind GetKeybind(this KeybindConfigEntry config)
+     {
+@@ -16,6 +17,7 @@ public static class ModInputCache
+         }
+ 
+         Keybinds[config] = action = new ModKeybind(config);
++        _keybindSnapshot = null;
+         RLog.Msg("Registered keybind: " + config.Identifier + "::" + config.FullPath);
+         action.Enable();
+         return action;
+@@ -44,7 +46,7 @@ public static class ModInputCache
+     }
+     
+     /// <summary>
+-    /// Registers a callback for the "Performed" event of the input action.
++    /// Registers callbacks for the performed and released events of the input action.
+     /// </summary>
+     public static void Notify(this KeybindConfigEntry config, Action performAction = null, Action releasedAction = null)
+     {
+@@ -58,7 +60,7 @@ public static class ModInputCache
+     }
+ 
+     /// <summary>
+-    /// Removes a previously registered callback for the "Performed" event of the input action.
++    /// Removes previously registered callbacks for the performed and released events of the input action.
+     /// </summary>
+     public static void RemoveNotify(this KeybindConfigEntry config, Action performAction = null, Action releasedAction = null)
+     {
+@@ -73,9 +75,18 @@ public static class ModInputCache
+ 
+     internal static void CheckAll()
+     {
+-        foreach (var keybind in Keybinds.Values)
++        // Registrations made by callbacks join the next update, not this dispatch.
++        var keybinds = _keybindSnapshot ??= Keybinds.Values.ToArray();
++        foreach (var keybind in keybinds)
+         {
+-            keybind.Check();
++            try
++            {
++                keybind.Check();
++            }
++            catch (Exception exception)
++            {
++                keybind.ReportFailure("poll", exception);
++            }
+         }
+     }
+ }
+@@ -106,7 +117,7 @@ public class ModKeybind
+     }
+ 
+     /// <summary>
+-    /// Registers a callback for the "Performed" event of the input action.
++    /// Registers callbacks for the performed and released events of the input action.
+     /// </summary>
+     /// <param name="performedAction"></param>
+     /// <param name="releasedAction"></param>
+@@ -124,9 +135,10 @@ public class ModKeybind
+     }
+ 
+     /// <summary>
+-    /// Removes a previously registered callback for the "Performed" event of the input action.
++    /// Removes previously registered callbacks for the performed and released events of the input action.
+     /// </summary>
+     /// <param name="performedAction"></param>
++    /// <param name="releasedAction"></param>
+     public void RemoveNotify(Action performedAction = null, Action releasedAction = null)
+     {
+         if (performedAction != null)
+@@ -143,6 +155,7 @@ public class ModKeybind
+     public void RemoveAllCallbacks()
+     {
+         OnPerformed = null;
++        OnReleased = null;
+     }
+ 
+     public void Enable()
+@@ -200,12 +213,44 @@ public class ModKeybind
+         
+         if (Action.triggered)
+         {
+-            OnPerformed?.Invoke();
++            InvokeCallbacks(OnPerformed, "performed");
+         }
+ 
+         if (Action.WasReleasedThisFrame())
+         {
+-            OnReleased?.Invoke();
++            InvokeCallbacks(OnReleased, "released");
++        }
++    }
++
++    private void InvokeCallbacks(Action callbacks, string phase)
++    {
++        if (callbacks == null)
++        {
++            return;
++        }
++
++        foreach (Action callback in callbacks.GetInvocationList())
++        {
++            try
++            {
++                callback();
++            }
++            catch (Exception exception)
++            {
++                ReportFailure(phase, exception);
++            }
+         }
+     }
+-}
+\ No newline at end of file
++
++    internal void ReportFailure(string phase, Exception exception)
++    {
++        try
++        {
++            RLog.Error($"Keybind '{ConfigEntry?.Identifier}' ({ConfigEntry?.FullPath}) {phase} failed: {exception}");
++        }
++        catch
++        {
++            // A diagnostic listener must not interrupt the remaining input callbacks.
++        }
++    }
++}

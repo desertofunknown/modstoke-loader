@@ -1,0 +1,30 @@
+From b4c6622d4d24c9e73b3ce724f6a800535367042a Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Fri, 5 Jun 2026 05:05:17 -0500
+Subject: [PATCH 03/13] Update Il2CppInterop packages for net10 IL2CPP
+
+---
+ .../Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj  | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+index f41bf7b..dbd05d0 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+@@ -15,10 +15,10 @@
+     <ItemGroup>
+         <PackageReference Include="HarmonyX" Version="2.10.2" />
+         <PackageReference Include="Iced" Version="1.21.0" />
+-        <PackageReference Include="Il2CppInterop.Generator" Version="1.5.1-ci.829"/>
+-        <PackageReference Include="Il2CppInterop.HarmonySupport" Version="1.5.1-ci.829"/>
++        <PackageReference Include="Il2CppInterop.Generator" Version="1.5.2-ci.1063"/>
++        <PackageReference Include="Il2CppInterop.HarmonySupport" Version="1.5.2-ci.1063"/>
+         <PackageReference Include="Il2CppInterop.ReferenceLibs" Version="1.0.0" IncludeAssets="compile" PrivateAssets="all"/>
+-        <PackageReference Include="Il2CppInterop.Runtime" Version="1.5.1-ci.829"/>
++        <PackageReference Include="Il2CppInterop.Runtime" Version="1.5.2-ci.1063"/>
+         <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" PrivateAssets="all"/>
+         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" PrivateAssets="all"/>
+         <PackageReference Include="MonoMod.RuntimeDetour" Version="22.7.31.1"/>
+-- 
+2.54.0.windows.1
+

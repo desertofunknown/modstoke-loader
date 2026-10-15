@@ -1,0 +1,141 @@
+From e85d34bfc3980bc5723faa81e6624baded428207 Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Thu, 4 Jun 2026 08:54:08 -0500
+Subject: [PATCH 2/4] Improve hostfxr bootstrap for OpenACAI loader
+
+Pass hostfxr initialization parameters with an explicit dotnet root, improve diagnostics around runtimeconfig and hostfxr discovery, and avoid falling through to the legacy CoreCLR path when hostfxr has been configured for the OpenACAI loader package.
+---
+ src/bootstrap.c | 49 ++++++++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 40 insertions(+), 9 deletions(-)
+
+diff --git a/src/bootstrap.c b/src/bootstrap.c
+index 37ffa6d..8588431 100644
+--- a/src/bootstrap.c
++++ b/src/bootstrap.c
+@@ -21,6 +21,12 @@ bool_t mono_is_net35 = FALSE;
+ 
+ typedef void *hostfxr_handle;
+ 
++typedef struct {
++    size_t size;
++    const char_t *host_path;
++    const char_t *dotnet_root;
++} hostfxr_initialize_parameters;
++
+ enum hostfxr_delegate_type {
+     hdt_com_activation,
+     hdt_load_in_memory_assembly,
+@@ -77,6 +83,18 @@ static char_t *build_doorstop_entrypoint_type_name(char_t *target_name) {
+     return result;
+ }
+ 
++static char_t *get_dotnet_root_from_hostfxr_path(char_t *hostfxr_path) {
++    char_t *version_dir = get_folder_name(hostfxr_path);
++    char_t *fxr_dir = get_folder_name(version_dir);
++    char_t *host_dir = get_folder_name(fxr_dir);
++    char_t *dotnet_root = get_folder_name(host_dir);
++
++    free(version_dir);
++    free(fxr_dir);
++    free(host_dir);
++    return dotnet_root;
++}
++
+ void mono_doorstop_bootstrap(void *mono_domain) {
+     if (getenv(TEXT("DOORSTOP_INITIALIZED"))) {
+         LOG("DOORSTOP_INITIALIZED is set! Skipping!");
+@@ -310,13 +328,9 @@ static bool_t il2cpp_hostfxr_doorstop_bootstrap() {
+ 
+     LOG("hostfxr path: %s", config.clr_runtime_hostfxr_path);
+     LOG("runtimeconfig path: %s", config.clr_runtime_config_path);
+-
+-    if (!file_exists(config.clr_runtime_hostfxr_path) ||
+-        !file_exists(config.clr_runtime_config_path)) {
+-        LOG("hostfxr startup files are not set up, skipping modern CoreCLR "
+-            "hosting");
+-        return FALSE;
+-    }
++    LOG("hostfxr exists: %d", file_exists(config.clr_runtime_hostfxr_path));
++    LOG("runtimeconfig exists: %d",
++        file_exists(config.clr_runtime_config_path));
+ 
+     void *hostfxr_module = dlopen(config.clr_runtime_hostfxr_path, RTLD_LAZY);
+     LOG("Loaded hostfxr.dll: %p", hostfxr_module);
+@@ -333,6 +347,8 @@ static bool_t il2cpp_hostfxr_doorstop_bootstrap() {
+     }
+ 
+     char_t *app_path = program_path();
++    char_t *dotnet_root =
++        get_dotnet_root_from_hostfxr_path(config.clr_runtime_hostfxr_path);
+     char_t *target_dir = get_folder_name(config.target_assembly);
+     char_t *target_name = get_file_name(config.target_assembly, FALSE);
+     char_t *entrypoint_type = build_doorstop_entrypoint_type_name(target_name);
+@@ -354,6 +370,7 @@ static bool_t il2cpp_hostfxr_doorstop_bootstrap() {
+     }
+ 
+     LOG("App path: %s", app_path);
++    LOG("dotnet root: %s", dotnet_root);
+     LOG("Target dir: %s", target_dir);
+     LOG("Target name: %s", target_name);
+     LOG("Entrypoint type: %s", entrypoint_type);
+@@ -365,14 +382,19 @@ static bool_t il2cpp_hostfxr_doorstop_bootstrap() {
+     setenv(TEXT("DOORSTOP_DLL_SEARCH_DIRS"), app_paths_env, TRUE);
+ 
+     hostfxr_handle host = NULL;
++    hostfxr_initialize_parameters init_params = {
++        .size = sizeof(hostfxr_initialize_parameters),
++        .host_path = app_path,
++        .dotnet_root = dotnet_root};
+     int result = hostfxr.initialize_for_runtime_config(
+-        config.clr_runtime_config_path, NULL, &host);
++        config.clr_runtime_config_path, &init_params, &host);
+     if (result != 0 || !host) {
+         LOG("Failed to initialize CoreCLR through hostfxr: 0x%08x", result);
+         free(app_paths_env);
+         free(entrypoint_type);
+         free(target_name);
+         free(target_dir);
++        free(dotnet_root);
+         free(app_path);
+         return FALSE;
+     }
+@@ -387,6 +409,7 @@ static bool_t il2cpp_hostfxr_doorstop_bootstrap() {
+         free(entrypoint_type);
+         free(target_name);
+         free(target_dir);
++        free(dotnet_root);
+         free(app_path);
+         return FALSE;
+     }
+@@ -404,6 +427,7 @@ static bool_t il2cpp_hostfxr_doorstop_bootstrap() {
+         free(entrypoint_type);
+         free(target_name);
+         free(target_dir);
++        free(dotnet_root);
+         free(app_path);
+         return FALSE;
+     }
+@@ -415,12 +439,19 @@ static bool_t il2cpp_hostfxr_doorstop_bootstrap() {
+     free(entrypoint_type);
+     free(target_name);
+     free(target_dir);
++    free(dotnet_root);
+     free(app_path);
+     return TRUE;
+ }
+ 
+ void il2cpp_doorstop_bootstrap() {
+-    if (il2cpp_hostfxr_doorstop_bootstrap()) {
++    if (config.clr_runtime_hostfxr_path && config.clr_runtime_config_path) {
++        if (il2cpp_hostfxr_doorstop_bootstrap()) {
++            return;
++        }
++
++        LOG("Modern CoreCLR hosting failed; legacy CoreCLR fallback disabled "
++            "because hostfxr is configured");
+         return;
+     }
+ 
+-- 
+2.54.0.windows.1
+

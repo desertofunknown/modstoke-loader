@@ -1,0 +1,94 @@
+From 6b7869970a8043de2b6799d38f3297bbae5526c6 Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Fri, 5 Jun 2026 19:29:29 -0500
+Subject: [PATCH 12/13] Clarify OpenACAI loader version branding
+
+---
+ BepInEx.Core/OpenACAIBranding.cs                 | 12 ++++++++++--
+ .../Logging/ChainloaderLogHelper.cs              |  3 ++-
+ OPENACAI_FORK_NOTES.md                           | 16 ++++++++++++++--
+ 3 files changed, 26 insertions(+), 5 deletions(-)
+
+diff --git a/BepInEx.Core/OpenACAIBranding.cs b/BepInEx.Core/OpenACAIBranding.cs
+index 675c655..641e44e 100644
+--- a/BepInEx.Core/OpenACAIBranding.cs
++++ b/BepInEx.Core/OpenACAIBranding.cs
+@@ -7,6 +7,7 @@ namespace BepInEx;
+ public static class OpenACAIBranding
+ {
+     public const string LoaderName = "OpenACAI Loader";
++    public const string DevelopmentLoaderVersion = "development";
+ 
+     private static readonly Regex ManifestVersionPattern =
+         new Regex("\"version\"\\s*:\\s*\"(?<version>[^\"]+)\"", RegexOptions.Compiled);
+@@ -20,11 +21,18 @@ public static class OpenACAIBranding
+                 return version;
+ 
+             version = TryReadInstalledManifestVersion();
+-            return string.IsNullOrEmpty(version) ? BepInExRuntimeVersion : version;
++            return string.IsNullOrEmpty(version) ? DevelopmentLoaderVersion : version;
+         }
+     }
+ 
+-    public static string LoaderDisplayName => LoaderName + " v" + LoaderVersion;
++    public static string LoaderDisplayName
++    {
++        get
++        {
++            var version = LoaderVersion;
++            return version == DevelopmentLoaderVersion ? LoaderName + " (" + version + ")" : LoaderName + " v" + version;
++        }
++    }
+ 
+     public static string ConsoleTitle => LoaderDisplayName + " - " + Paths.ProcessName;
+ 
+diff --git a/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs b/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs
+index 84c5dc8..178bd35 100644
+--- a/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs
++++ b/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs
+@@ -38,7 +38,8 @@ public static class ChainloaderLogHelper
+         var bepinVersion = Paths.BepInExVersion;
+         var consoleTitle = OpenACAIBranding.ConsoleTitle;
+         log.Log(LogLevel.Message, $"{consoleTitle} ({File.GetLastWriteTime(Paths.ExecutablePath)})");
+-        log.Log(LogLevel.Message, $"BepInEx IL2CPP runtime {OpenACAIBranding.BepInExRuntimeVersion} with OpenACAI RedLoader compatibility");
++        log.Log(LogLevel.Message,
++                $"BepInEx compatibility runtime {OpenACAIBranding.BepInExRuntimeVersion}; RedLoader/SonsSDK compatibility is handled by OpenACAI Loader");
+ 
+         if (ConsoleManager.ConsoleActive)
+             ConsoleManager.SetConsoleTitle(consoleTitle);
+diff --git a/OPENACAI_FORK_NOTES.md b/OPENACAI_FORK_NOTES.md
+index 07c2ebb..a6d0076 100644
+--- a/OPENACAI_FORK_NOTES.md
++++ b/OPENACAI_FORK_NOTES.md
+@@ -22,14 +22,26 @@ OpenACAI-owned modules.
+ The current tested dependency set is:
+ 
+ - HarmonyX `2.16.1`
+-- MonoMod.RuntimeDetour `25.3.4`
+-- MonoMod.Utils `25.0.12`
++- MonoMod.Core `1.3.5-openacai-net11.3`
++- MonoMod.RuntimeDetour `25.3.5-openacai-net11.3`
++- MonoMod.Utils `25.0.13-openacai-net11.3`
+ 
+ MonoMod 25 currently gates official runtime support at `.NET 10`. The
+ OpenACAI `.NET 11` branch intentionally sets
+ `MonoMod_ReallySkipCheckTargetRuntime=true` for `net11.0` only, so runtime
+ detour behavior must be treated as experimental until validated in game.
+ 
++## Version Branding Policy
++
++Keep the BepInEx assembly/runtime version at `6.0.0` while the compatibility
++surface remains active. BepInEx plugins compare against the core assembly
++version, so changing that assembly version to the public OpenACAI release line
++would make otherwise-compatible plugins look mismatched. The public loader
++version is exposed through `OpenACAIBranding` from `OPENACAI_LOADER_VERSION` or
++`BepInEx\plugins\OpenACAILoader\openacai-loader.manifest.json`; missing manifest
++data now displays as `OpenACAI Loader (development)` rather than reusing the
++BepInEx runtime version.
++
+ ## API Replacements Used
+ 
+ - Old `MonoMod.Utils.PlatformHelper` usage is bridged through an OpenACAI
+-- 
+2.54.0.windows.1
+

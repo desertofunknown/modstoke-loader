@@ -1,0 +1,36 @@
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index a414dbb..e315a9e 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -31,6 +31,7 @@ namespace SonsSdk;
+ 
+ internal interface ISdkLifecycleDriver
+ {
++    void RegisterGameEvents();
+     void OnSceneInitialized(int sceneIndex, string sceneName);
+     void OnUpdate();
+     void OnGameStart();
+@@ -167,11 +168,18 @@ public static class SdkEvents
+         GlobalEvents.OnSceneWasInitialized.Subscribe(OnSceneWasInitialized, Priority.First);
+         GlobalEvents.OnUpdate.Subscribe(OnUpdateInternal, Priority.First);
+         
+-        EventRegistry.Register(GameEvent.ItemPickedUp, (EventRegistry.SubscriberCallback)SonsEventsOnItemPickedUp);
+-        EventRegistry.Register(GameEvent.LoadedMainScene, (EventRegistry.SubscriberCallback)SonsEventsOnGameStart);
+-        EventRegistry.Register(GameEvent.ItemCrafted, (EventRegistry.SubscriberCallback)SonsEventOnItemCrafted);
+-        EventRegistry.Register(GameEvent.ItemConsumed, (EventRegistry.SubscriberCallback)SonsEventOnItemConsumed);
+-        EventRegistry.Register(GameEvent.ArmorEquipped, (EventRegistry.SubscriberCallback)SonsEventOnArmorEquipped);
++        if (_lifecycleDriver != null)
++        {
++            _lifecycleDriver.RegisterGameEvents();
++        }
++        else
++        {
++            EventRegistry.Register(GameEvent.ItemPickedUp, (EventRegistry.SubscriberCallback)SonsEventsOnItemPickedUp);
++            EventRegistry.Register(GameEvent.LoadedMainScene, (EventRegistry.SubscriberCallback)SonsEventsOnGameStart);
++            EventRegistry.Register(GameEvent.ItemCrafted, (EventRegistry.SubscriberCallback)SonsEventOnItemCrafted);
++            EventRegistry.Register(GameEvent.ItemConsumed, (EventRegistry.SubscriberCallback)SonsEventOnItemConsumed);
++            EventRegistry.Register(GameEvent.ArmorEquipped, (EventRegistry.SubscriberCallback)SonsEventOnArmorEquipped);
++        }
+ 
+         Patches.Patch();
+         SavingCallbackPatches.Patch();

@@ -1,0 +1,18 @@
+[package]
+name = "openacai-endnight-loader-native-host"
+version = "0.4.0"
+edition = "2024"
+publish = false
+description = "Rust native host for Modstoke Loader by OpenACAI."
+
+[lib]
+name = "openacai_endnight_loader_native_host"
+crate-type = ["cdylib"]
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+opt-level = "z"
+panic = "abort"
+strip = "symbols"
+

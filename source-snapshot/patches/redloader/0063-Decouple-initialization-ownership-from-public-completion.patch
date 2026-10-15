@@ -1,0 +1,12 @@
+diff --git a/SonsSdk/Private/MainInitializer.cs b/SonsSdk/Private/MainInitializer.cs
+--- a/SonsSdk/Private/MainInitializer.cs
++++ b/SonsSdk/Private/MainInitializer.cs
+@@ -44,7 +44,7 @@ internal class MainInitializer
+         if (ReferenceEquals(_initializationDriver, driver))
+             return;
+         if (_initializationDriver != null || _initializationStarted || _eventSetupCompleted ||
+-            _initializationFinished || _initializationFailed || SdkEvents.OnSdkInitializationCompleted.Disposed)
++            _initializationFinished || _initializationFailed)
+             throw new InvalidOperationException("SDK initialization ownership must be selected before startup.");
+ 
+         _initializationDriver = driver;

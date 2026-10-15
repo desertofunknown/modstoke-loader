@@ -1,0 +1,57 @@
+diff --git a/RedLoader/Utils/Coroutines.cs b/RedLoader/Utils/Coroutines.cs
+index c45fb19..e823dc9 100644
+--- a/RedLoader/Utils/Coroutines.cs
++++ b/RedLoader/Utils/Coroutines.cs
+@@ -6,8 +6,29 @@ using UnityEngine;
+ 
+ namespace RedLoader
+ {
++    internal interface ICoroutineDriver
++    {
++        Coroutine Start(IEnumerator routine);
++        void Stop(Coroutine coroutineToken);
++    }
++
+     public class Coroutines
+     {
++        private static ICoroutineDriver driver;
++
++        internal static bool HasDriver => driver != null;
++
++        internal static void SetDriver(ICoroutineDriver value)
++        {
++            ArgumentNullException.ThrowIfNull(value);
++            if (ReferenceEquals(driver, value))
++                return;
++            if (driver != null)
++                throw new InvalidOperationException("Coroutine dispatch ownership has already been selected.");
++
++            driver = value;
++        }
++
+         /// <summary>
+         /// Start a new coroutine.<br />
+         /// Coroutines are called at the end of the game Update loops.
+@@ -16,6 +37,9 @@ namespace RedLoader
+         /// <returns>An object that can be passed to Stop to stop this coroutine</returns>
+         public static Coroutine Start(IEnumerator routine)
+         {
++            if (driver != null)
++                return driver.Start(routine);
++
+             if (GlobalBehaviour.Instance == null)
+                 throw new NotSupportedException("Support module must be initialized before starting coroutines");
+             return GlobalBehaviour.Instance.StartCoroutine(routine.WrapToIl2Cpp());
+@@ -27,6 +51,12 @@ namespace RedLoader
+         /// <param name="coroutineToken">The coroutine to stop</param>
+         public static void Stop(Coroutine coroutineToken)
+         {
++            if (driver != null)
++            {
++                driver.Stop(coroutineToken);
++                return;
++            }
++
+             if (GlobalBehaviour.Instance == null)
+                 throw new NotSupportedException("Support module must be initialized before starting coroutines");
+             GlobalBehaviour.Instance.StopCoroutine(coroutineToken);

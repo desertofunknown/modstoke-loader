@@ -1,0 +1,200 @@
+diff --git a/RedLoader/Utils/Events/MelonEvent.cs b/RedLoader/Utils/Events/MelonEvent.cs
+index 65f11c3..6ea7394 100644
+--- a/RedLoader/Utils/Events/MelonEvent.cs
++++ b/RedLoader/Utils/Events/MelonEvent.cs
+@@ -8,9 +8,10 @@ namespace RedLoader
+     {
+         private readonly List<MelonAction<T>> actions = new();
+         private MelonAction<T>[] cachedActionsArray = new MelonAction<T>[0];
++        private volatile bool disposed;
+         public readonly bool oneTimeUse;
+ 
+-        public bool Disposed { get; private set; }
++        public bool Disposed => disposed;
+ 
+         public MelonEventBase(bool oneTimeUse = false)
+         {
+@@ -73,44 +74,35 @@ namespace RedLoader
+ 
+         public void Unsubscribe(T action)
+         {
+-            foreach (var inv in action.GetInvocationList())
++            var delegates = action.GetInvocationList();
++            lock (actions)
+             {
+-                Unsubscribe(inv.Method, inv.Target);
++                if (actions.RemoveAll(entry => Array.Exists(delegates,
++                        del => entry.del.Method == del.Method && ReferenceEquals(entry.del.Target, del.Target))) > 0)
++                    UpdateEnumerator();
+             }
+         }
+ 
+         public void UnsubscribeAll()
+         {
+             lock (actions)
++            {
+                 actions.Clear();
+-
+-            UpdateEnumerator();
++                UpdateEnumerator();
++            }
+         }
+ 
+         public void Unsubscribe(MethodInfo method, object obj = null)
+         {
+-            if (Disposed)
+-                return;
+-
+             lock (actions)
+             {
++                if (Disposed)
++                    return;
++
+                 if (method.IsStatic)
+                     obj = null;
+ 
+-                var any = false;
+-                for (var a = 0; a < actions.Count; a++)
+-                {
+-                    var act = actions[a];
+-                    if (act.del.Method != method || (obj != null && act.del.Target != obj))
+-                        continue;
+-
+-                    any = true;
+-                    actions.RemoveAt(a);
+-                    // if (act.melonAssembly != null)
+-                    //     MelonDebug.Msg($"MelonAssembly '{act.melonAssembly.Assembly.GetName().Name}' unsubscribed with {act.del.Method.Name}");
+-                }
+-
+-                if (any)
++                if (actions.RemoveAll(entry => entry.del.Method == method && (obj == null || entry.del.Target == obj)) > 0)
+                     UpdateEnumerator();
+             }
+         }
+@@ -129,49 +121,74 @@ namespace RedLoader
+         }
+         public MelonEventSubscriber[] GetSubscribers()
+         {
+-            List<MelonEventSubscriber> allSubs = new List<MelonEventSubscriber>();
+-            foreach (var act in actions)
+-                allSubs.Add(new MelonEventSubscriber
+-                {
+-                    del = act.del,
+-                    unsubscribeOnFirstInvocation = act.unsubscribeOnFirstInvocation,
+-                    priority = act.priority,
+-                    //melonAssembly = act.melonAssembly
+-                });
+-            return allSubs.ToArray();
++            MelonAction<T>[] snapshot;
++            lock (actions)
++                snapshot = cachedActionsArray;
++
++            return Array.ConvertAll(snapshot, entry => new MelonEventSubscriber
++            {
++                del = entry.del,
++                unsubscribeOnFirstInvocation = entry.unsubscribeOnFirstInvocation,
++                priority = entry.priority
++            });
+         }
+ 
+         protected void Invoke(Action<T> delegateInvoker)
+         {
+-            if (Disposed)
+-                return;
++            foreach (var subscriber in BeginInvocation())
++                InvokeSubscriber(subscriber, delegateInvoker);
++        }
+ 
+-            var actionsArray = cachedActionsArray;
+-            for (var a = 0; a < actionsArray.Length; a++)
++        internal MelonAction<T>[] BeginInvocation()
++        {
++            lock (actions)
+             {
+-                var del = actionsArray[a];
+-                try { delegateInvoker(del.del); }
+-                catch (Exception ex)
++                if (Disposed)
++                    return Array.Empty<MelonAction<T>>();
++
++                var snapshot = cachedActionsArray;
++                // Claim one-shot delivery before calling mod code, which may invoke
++                // this event again or replace a subscription with the same delegate.
++                if (oneTimeUse)
+                 {
+-                    // if (del.melonAssembly == null || del.melonAssembly.LoadedMelons.Count == 0)
+-                    //     RLog.Error(ex.ToString());
+-                    // else
+-                    //     del.melonAssembly.LoadedMelons[0].LoggerInstance.Error(ex.ToString());
+-                    RLog.Error(ex);
++                    disposed = true;
++                    actions.Clear();
++                    UpdateEnumerator();
+                 }
++                else if (actions.RemoveAll(entry => entry.unsubscribeOnFirstInvocation) > 0)
++                    UpdateEnumerator();
+ 
+-                if (del.unsubscribeOnFirstInvocation)
+-                    Unsubscribe(del.del);
++                return snapshot;
+             }
++        }
+ 
+-            if (oneTimeUse)
+-                Dispose();
++        internal void InvokeSubscriber(MelonAction<T> subscriber, Action<T> delegateInvoker)
++        {
++            try
++            {
++                delegateInvoker(subscriber.del);
++            }
++            catch (Exception ex)
++            {
++                try
++                {
++                    RLog.Error(ex);
++                }
++                catch
++                {
++                    // Diagnostic listeners must not stop delivery to the other mods.
++                }
++            }
+         }
+ 
+         public void Dispose()
+         {
+-            UnsubscribeAll();
+-            Disposed = true;
++            lock (actions)
++            {
++                disposed = true;
++                actions.Clear();
++                UpdateEnumerator();
++            }
+         }
+     }
+ 
+diff --git a/SonsSdk/Private/MainInitializer.cs b/SonsSdk/Private/MainInitializer.cs
+index 326d8af..d8413b5 100644
+--- a/SonsSdk/Private/MainInitializer.cs
++++ b/SonsSdk/Private/MainInitializer.cs
+@@ -78,17 +78,10 @@ internal class MainInitializer
+         
+         yield return AddProgress(0.15f);
+ 
+-        var subs = SdkEvents.OnSdkInitialized.GetSubscribers();
++        var subs = SdkEvents.OnSdkInitialized.BeginInvocation();
+         for (var i = 0; i < subs.Length; i++)
+         {
+-            try
+-            {
+-                subs[i].del?.Invoke();
+-            }
+-            catch (Exception ex)
+-            {
+-                RLog.Error(ex);
+-            }
++            SdkEvents.OnSdkInitialized.InvokeSubscriber(subs[i], callback => callback());
+             
+             yield return AddProgress(i, subs.Length, 0.4f);
+         }

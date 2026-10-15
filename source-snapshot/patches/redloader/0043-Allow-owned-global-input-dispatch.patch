@@ -1,0 +1,141 @@
+diff --git a/SonsSdk/GlobalInput.cs b/SonsSdk/GlobalInput.cs
+index ccaa68f..f4f1e51 100644
+--- a/SonsSdk/GlobalInput.cs
++++ b/SonsSdk/GlobalInput.cs
+@@ -5,15 +5,25 @@ using UnityEngine.InputSystem;
+ 
+ namespace SonsSdk;
+ 
++internal interface ISdkGlobalInputDriver
++{
++    bool RegisterKey(KeyCode key, Action action);
++    void UnregisterKey(KeyCode key);
++    void UnregisterKey(KeyCode key, Action action);
++    void Initialize();
++    void OnGameActivated();
++    void OnUpdate();
++}
++
+ public class GlobalInput
+ {
+     public static MelonEvent OnUsePerformed = new();
+ 
+     
+-    private static readonly List<KeyRegistration> _keyRegistrations = new();
+-    private static KeyRegistration[] _keySnapshot;
++    internal static readonly List<KeyRegistration> _keyRegistrations = new();
++    internal static KeyRegistration[] _keySnapshot;
+ 
+-    private static InputAction _useAction;
++    internal static InputAction _useAction;
+ 
+     /// <summary>
+     /// Register a key that will be polled every frame. The action will be invoke if the key is pressed during that frame.
+@@ -23,6 +33,10 @@ public class GlobalInput
+     /// <returns>False if the key is already registered</returns>
+     public static bool RegisterKey(KeyCode key, Action action)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.GlobalInput.RegisterKey(key, action);
++
+         if(_keyRegistrations.Any(k => k.Key == key))
+             return false;
+         
+@@ -38,29 +52,64 @@ public class GlobalInput
+     
+     public static void UnregisterKey(KeyCode key)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.GlobalInput.UnregisterKey(key);
++            return;
++        }
++
+         if (_keyRegistrations.RemoveAll(k => k.Key == key) > 0)
+             _keySnapshot = null;
+     }
+ 
+     internal static void UnregisterKey(KeyCode key, Action action)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.GlobalInput.UnregisterKey(key, action);
++            return;
++        }
++
+         if (_keyRegistrations.RemoveAll(k => k.Key == key && ReferenceEquals(k.Action, action)) > 0)
+             _keySnapshot = null;
+     }
+ 
+     internal static void Init()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.GlobalInput.Initialize();
++            return;
++        }
++
+         GlobalEvents.OnUpdate.Subscribe(OnUpdate);
+         SdkEvents.OnGameActivated.Subscribe(OnGameActivated);
+     }
+ 
+-    private static void OnGameActivated()
++    internal static void OnGameActivated()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.GlobalInput.OnGameActivated();
++            return;
++        }
++
+         _useAction = Sons.Input.InputSystem.InputMapping.@default.Use;
+     }
+ 
+-    private static void OnUpdate()
++    internal static void OnUpdate()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.GlobalInput.OnUpdate();
++            return;
++        }
++
+         // Callback mutations affect the next dispatch, not this snapshot.
+         var registrations = _keySnapshot ??= _keyRegistrations.ToArray();
+         foreach (var keyRegistration in registrations)
+@@ -87,7 +136,7 @@ public class GlobalInput
+         }
+     }
+ 
+-    private static void ReportFailure(string operation, Exception exception)
++    internal static void ReportFailure(string operation, Exception exception)
+     {
+         try
+         {
+@@ -99,7 +148,7 @@ public class GlobalInput
+         }
+     }
+ 
+-    private struct KeyRegistration
++    internal struct KeyRegistration
+     {
+         public KeyCode Key;
+         public Action Action;
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 302fe2f..31b5f5f 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -47,6 +47,7 @@ internal interface ISdkLifecycleDriver
+     SUI.ISdkMenuButtonDriver MenuButtons { get; }
+     ISdkInputIconDriver InputIcons { get; }
+     ISdkKeybindDriver Keybinds { get; }
++    ISdkGlobalInputDriver GlobalInput { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);

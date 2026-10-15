@@ -1,0 +1,171 @@
+From 7884f339bff898c1af2cd2e592b26d3ca0673f1b Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Fri, 5 Jun 2026 07:29:59 -0500
+Subject: [PATCH 06/13] Make IL2CPP interop generation atomic
+
+---
+ .../Il2CppInteropManager.cs                   | 121 +++++++++++++++++-
+ 1 file changed, 115 insertions(+), 6 deletions(-)
+
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs
+index 69fa85c..5b552d9 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs
+@@ -256,10 +256,13 @@ internal static partial class Il2CppInteropManager
+         if (!CheckIfGenerationRequired())
+             return;
+ 
++        string stagingPath = null;
++        var stagingPromoted = false;
++
+         try
+         {
+-            Directory.CreateDirectory(IL2CPPInteropAssemblyPath);
+-            Directory.EnumerateFiles(IL2CPPInteropAssemblyPath, "*.dll").Do(File.Delete);
++            CleanupStaleInteropDirectories();
++            stagingPath = CreateInteropStagingDirectory();
+ 
+             AppDomain.CurrentDomain.AddCecilPlatformAssemblies(UnityBaseLibsDirectory);
+             DownloadUnityAssemblies();
+@@ -273,14 +276,120 @@ internal static partial class Il2CppInteropManager
+                     assemblyDefinition.Write(Path.Combine(dummyPath, $"{assemblyDefinition.Name}.dll"));
+             }
+ 
+-            RunIl2CppInteropGenerator(asmResolverAssemblies);
++            RunIl2CppInteropGenerator(asmResolverAssemblies, stagingPath);
++            ValidateInteropOutput(stagingPath);
+ 
+-            File.WriteAllText(HashPath, ComputeHash());
++            File.WriteAllText(Path.Combine(stagingPath, "assembly-hash.txt"), ComputeHash());
++            PromoteInteropStagingDirectory(stagingPath);
++            stagingPromoted = true;
+         }
+         catch (Exception e)
+         {
+             Logger.LogError($"Failed to generate Il2Cpp interop assemblies: {e}");
+         }
++        finally
++        {
++            if (!stagingPromoted && stagingPath != null)
++                TryDeleteDirectory(stagingPath);
++        }
++    }
++
++    private static string CreateInteropStagingDirectory()
++    {
++        Directory.CreateDirectory(IL2CPPBasePath);
++
++        for (var attempt = 0; attempt < 10; attempt++)
++        {
++            var path = Path.Combine(IL2CPPBasePath,
++                                    $"interop.openacai-staging-{Process.GetCurrentProcess().Id}-{DateTime.UtcNow.Ticks}-{attempt}");
++            if (Directory.Exists(path))
++                continue;
++
++            Directory.CreateDirectory(path);
++            return path;
++        }
++
++        throw new IOException("Could not create a unique IL2CPP interop staging directory.");
++    }
++
++    private static void ValidateInteropOutput(string outputDirectory)
++    {
++        var dlls = Directory.EnumerateFiles(outputDirectory, "*.dll", SearchOption.TopDirectoryOnly).ToList();
++        if (dlls.Count == 0)
++            throw new InvalidOperationException("Il2CppInterop generated no assemblies.");
++
++        foreach (var dll in dlls)
++        {
++            try
++            {
++                AssemblyName.GetAssemblyName(dll);
++            }
++            catch (Exception e) when (e is BadImageFormatException or FileLoadException or FileNotFoundException)
++            {
++                throw new InvalidOperationException($"Generated interop assembly is not loadable: {dll}", e);
++            }
++        }
++    }
++
++    private static void PromoteInteropStagingDirectory(string stagingPath)
++    {
++        var finalPath = IL2CPPInteropAssemblyPath;
++        var backupPath = Path.Combine(IL2CPPBasePath,
++                                      $"interop.openacai-backup-{Process.GetCurrentProcess().Id}-{DateTime.UtcNow.Ticks}");
++
++        var hadExistingInterop = Directory.Exists(finalPath);
++        if (hadExistingInterop)
++            Directory.Move(finalPath, backupPath);
++
++        try
++        {
++            Directory.Move(stagingPath, finalPath);
++        }
++        catch
++        {
++            if (!Directory.Exists(finalPath) && hadExistingInterop && Directory.Exists(backupPath))
++                Directory.Move(backupPath, finalPath);
++
++            throw;
++        }
++
++        if (hadExistingInterop)
++            TryDeleteDirectory(backupPath);
++
++        Logger.LogInfo($"Generated Il2Cpp interop assemblies in {finalPath}");
++    }
++
++    private static void CleanupStaleInteropDirectories()
++    {
++        if (!Directory.Exists(IL2CPPBasePath))
++            return;
++
++        var cutoff = DateTime.UtcNow.AddDays(-7);
++        foreach (var directory in Directory.EnumerateDirectories(IL2CPPBasePath, "interop.openacai-*", SearchOption.TopDirectoryOnly))
++        {
++            try
++            {
++                if (Directory.GetLastWriteTimeUtc(directory) < cutoff)
++                    Directory.Delete(directory, true);
++            }
++            catch (Exception e)
++            {
++                Logger.LogWarning($"Failed to remove stale interop work directory {directory}: {e.Message}");
++            }
++        }
++    }
++
++    private static void TryDeleteDirectory(string path)
++    {
++        try
++        {
++            if (Directory.Exists(path))
++                Directory.Delete(path, true);
++        }
++        catch (Exception e)
++        {
++            Logger.LogWarning($"Failed to remove temporary interop directory {path}: {e.Message}");
++        }
+     }
+ 
+     private static void DownloadUnityAssemblies() {
+@@ -373,13 +482,13 @@ internal static partial class Il2CppInteropManager
+         return assemblies;
+     }
+ 
+-    private static void RunIl2CppInteropGenerator(List<AsmResolver.DotNet.AssemblyDefinition> sourceAssemblies)
++    private static void RunIl2CppInteropGenerator(List<AsmResolver.DotNet.AssemblyDefinition> sourceAssemblies, string outputDirectory)
+     {
+         var opts = new GeneratorOptions
+         {
+             GameAssemblyPath = ScanMethodRefs.Value ? GameAssemblyPath : null,
+             Source = sourceAssemblies,
+-            OutputDir = IL2CPPInteropAssemblyPath,
++            OutputDir = outputDirectory,
+             UnityBaseLibsDir = Directory.Exists(UnityBaseLibsDirectory) ? UnityBaseLibsDirectory : null,
+             ObfuscatedNamesRegex = !string.IsNullOrEmpty(ConfigUnhollowerDeobfuscationRegex.Value)
+                                        ? new Regex(ConfigUnhollowerDeobfuscationRegex.Value)
+-- 
+2.54.0.windows.1
+

@@ -1,0 +1,266 @@
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs
+index fa8944a..a5e8e93 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs
+@@ -1,13 +1,10 @@
+-﻿using System;
+-using System.Collections.Generic;
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (c) BepInEx contributors. Copyright (C) 2026 Alex Cooper.
++
++using System;
+ using System.Reflection;
+-using BepInEx.Configuration;
+ using BepInEx.Logging;
+-using BepInEx.Unity.IL2CPP;
+-using BepInEx.Unity.IL2CPP.Hook.Dobby;
+-using BepInEx.Unity.IL2CPP.Hook.Funchook;
+ using MonoMod.RuntimeDetour;
+-using MonoMod.Utils;
+ 
+ namespace BepInEx.Unity.IL2CPP.Hook;
+ 
+@@ -15,11 +12,15 @@ public interface INativeDetour : IDetour
+ {
+     private static readonly ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("NativeDetour");
+ 
+-    private static readonly ConfigEntry<DetourProvider> DetourProviderType = ConfigFile.CoreConfig.Bind(
+-         "Detours", "DetourProviderType",
+-         DetourProvider.Default,
+-         "The native provider to use for managed detours"
+-        );
++    private static readonly Lazy<Func<nint, Delegate, INativeDetour>> Factory = new(() =>
++    {
++        var adapter = Assembly.Load("OpenACAI.Endnight.Loader.Preloader")
++                              .GetType("OpenACAI.Endnight.Loader.Preloader.OpenACAINativeDetourCompatibility", true);
++        var create = adapter.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static,
++                                       null, new[] { typeof(IntPtr), typeof(Delegate) }, null)
++                     ?? throw new MissingMethodException(adapter.FullName, "Create");
++        return (Func<nint, Delegate, INativeDetour>)create.CreateDelegate(typeof(Func<nint, Delegate, INativeDetour>));
++    });
+ 
+     public nint OriginalMethodPtr { get; }
+     public nint DetourMethodPtr { get; }
+@@ -28,72 +29,13 @@ public interface INativeDetour : IDetour
+     public MethodBase GenerateTrampoline(MethodBase signature = null);
+     public TDelegate GenerateTrampoline<TDelegate>() where TDelegate : Delegate;
+ 
+-    private static INativeDetour CreateDefault<T>(nint original, T target) where T : Delegate
+-    {
+-        var dobbyAvailable = DobbyLib.IsAvailable();
+-        OpenACAIIL2CPPHookStatus.RecordProviderProbe("Dobby", dobbyAvailable);
+-        if (dobbyAvailable)
+-        {
+-            Logger.LogDebug("Using Dobby native detour provider");
+-            OpenACAIIL2CPPHookStatus.RecordProviderSelected("Dobby", "default");
+-            return new DobbyDetour(original, target);
+-        }
+-
+-        var funchookAvailable = FunchookLib.IsAvailable();
+-        OpenACAIIL2CPPHookStatus.RecordProviderProbe("Funchook", funchookAvailable);
+-        if (funchookAvailable)
+-        {
+-            Logger.LogDebug("Using Funchook native detour provider");
+-            OpenACAIIL2CPPHookStatus.RecordProviderSelected("Funchook", "default");
+-            return new FunchookDetour(original, target);
+-        }
+-
+-        throw new InvalidOperationException("No native detour provider is available. Tried Dobby and Funchook.");
+-    }
+-
+-    public static INativeDetour Create<T>(nint original, T target) where T : Delegate
+-    {
+-        var detour = DetourProviderType.Value switch
+-        {
+-            DetourProvider.Dobby    => CreateDobby(original, target),
+-            DetourProvider.Funchook => CreateFunchook(original, target),
+-            _                       => CreateDefault(original, target)
+-        };
+-        if (PlatformDetection.Runtime != RuntimeKind.Mono)
+-        {
+-            return new CacheDetourWrapper(detour, target);
+-        }
+-
+-        return detour;
+-    }
+-
+-    private static INativeDetour CreateDobby<T>(nint original, T target) where T : Delegate
+-    {
+-        var available = DobbyLib.IsAvailable();
+-        OpenACAIIL2CPPHookStatus.RecordProviderProbe("Dobby", available);
+-        if (!available)
+-            throw new InvalidOperationException("Dobby native detour provider was selected, but dobby could not be loaded.");
+-
+-        Logger.LogDebug("Using configured Dobby native detour provider");
+-        OpenACAIIL2CPPHookStatus.RecordProviderSelected("Dobby", "configured");
+-        return new DobbyDetour(original, target);
+-    }
+-
+-    private static INativeDetour CreateFunchook<T>(nint original, T target) where T : Delegate
+-    {
+-        var available = FunchookLib.IsAvailable();
+-        OpenACAIIL2CPPHookStatus.RecordProviderProbe("Funchook", available);
+-        if (!available)
+-            throw new InvalidOperationException("Funchook native detour provider was selected, but funchook could not be loaded.");
+-
+-        Logger.LogDebug("Using configured Funchook native detour provider");
+-        OpenACAIIL2CPPHookStatus.RecordProviderSelected("Funchook", "configured");
+-        return new FunchookDetour(original, target);
+-    }
++    public static INativeDetour Create<T>(nint original, T target) where T : Delegate =>
++        Factory.Value(original, target);
+ 
+     public static INativeDetour CreateAndApply<T>(nint from, T to, out T original)
+         where T : Delegate
+     {
++        original = null;
+         var detour = Create(from, to);
+         try
+         {
+@@ -108,7 +50,11 @@ public interface INativeDetour : IDetour
+             }
+             catch (Exception cleanupEx)
+             {
+-                Logger.LogWarning($"Failed to clean up native detour after setup failure: {cleanupEx}");
++                try
++                {
++                    Logger.LogWarning($"Failed to clean up native detour after setup failure: {cleanupEx}");
++                }
++                catch { }
+             }
+ 
+             original = null;
+@@ -118,53 +64,6 @@ public interface INativeDetour : IDetour
+         return detour;
+     }
+ 
+-    // Workaround for CoreCLR collecting all delegates
+-    private class CacheDetourWrapper : INativeDetour
+-    {
+-        private readonly INativeDetour _wrapped;
+-
+-        private List<object> _cache = new();
+-
+-        public CacheDetourWrapper(INativeDetour wrapped, Delegate target)
+-        {
+-            _wrapped = wrapped;
+-            _cache.Add(target);
+-        }
+-
+-        public void Dispose()
+-        {
+-            _wrapped.Dispose();
+-            _cache.Clear();
+-        }
+-
+-        public void Apply() => _wrapped.Apply();
+-
+-        public void Undo() => _wrapped.Undo();
+-
+-        public void Free() => _wrapped.Free();
+-
+-        public MethodBase GenerateTrampoline(MethodBase signature = null) => _wrapped.GenerateTrampoline(signature);
+-
+-        public T GenerateTrampoline<T>() where T : Delegate
+-        {
+-            var trampoline = _wrapped.GenerateTrampoline<T>();
+-            _cache.Add(trampoline);
+-            return trampoline;
+-        }
+-
+-        public bool IsValid => _wrapped.IsValid;
+-
+-        public bool IsApplied => _wrapped.IsApplied;
+-
+-        public DetourConfig Config => _wrapped.Config;
+-
+-        public nint OriginalMethodPtr => _wrapped.OriginalMethodPtr;
+-
+-        public nint DetourMethodPtr => _wrapped.DetourMethodPtr;
+-
+-        public nint TrampolinePtr => _wrapped.TrampolinePtr;
+-    }
+-
+     internal enum DetourProvider
+     {
+         Default,
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+index f91854e..35a1b69 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+@@ -1,38 +1,43 @@
+-<Project Sdk="Microsoft.NET.Sdk">
+-    <PropertyGroup>
+-        <Description>BepInEx support library for Il2Cpp games</Description>
++<Project Sdk="Microsoft.NET.Sdk">
++    <PropertyGroup>
++        <Description>BepInEx support library for Il2Cpp games</Description>
+         <TargetFramework>net11.0</TargetFramework>
+-        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+-        <OutputPath>$(BuildDir)/Unity.IL2CPP</OutputPath>
+-        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+-    </PropertyGroup>
+-    <ItemGroup>
+-        <ProjectReference Include="..\..\..\BepInEx.Core\BepInEx.Core.csproj"/>
+-        <ProjectReference Include="..\..\..\BepInEx.Preloader.Core\BepInEx.Preloader.Core.csproj" PrivateAssets="All"/>
+-        <ProjectReference Include="..\BepInEx.Unity.Common\BepInEx.Unity.Common.csproj"/>
+-    </ItemGroup>
+-    <ItemGroup>
++        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
++        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
++        <OutputPath>$(BuildDir)/Unity.IL2CPP</OutputPath>
++        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
++    </PropertyGroup>
++    <ItemGroup>
++        <Compile Remove="Hook/BaseNativeDetour.cs" />
++        <Compile Remove="Hook/Dobby/**/*.cs" />
++        <Compile Remove="Hook/Funchook/**/*.cs" />
++    </ItemGroup>
++    <ItemGroup>
++        <ProjectReference Include="..\..\..\BepInEx.Core\BepInEx.Core.csproj"/>
++        <ProjectReference Include="..\..\..\BepInEx.Preloader.Core\BepInEx.Preloader.Core.csproj" PrivateAssets="All"/>
++        <ProjectReference Include="..\BepInEx.Unity.Common\BepInEx.Unity.Common.csproj"/>
++    </ItemGroup>
++    <ItemGroup>
+         <PackageReference Include="HarmonyX" Version="2.16.1" />
+-        <PackageReference Include="Iced" Version="1.21.0" />
++        <PackageReference Include="Iced" Version="1.21.0" />
+         <PackageReference Include="Il2CppInterop.Generator" Version="1.5.2-ci.1063"/>
+         <PackageReference Include="Il2CppInterop.HarmonySupport" Version="1.5.2-ci.1063"/>
+         <PackageReference Include="Il2CppInterop.ReferenceLibs" Version="1.0.0" IncludeAssets="compile" PrivateAssets="all"/>
+         <PackageReference Include="Il2CppInterop.Runtime" Version="1.5.2-ci.1063"/>
+-        <PackageReference Include="Microsoft.Extensions.Logging" Version="11.0.0-rc.2.26504.105" PrivateAssets="all"/>
+-        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.5-openacai-net11.5"/>
+-        <PackageReference Include="Samboy063.Cpp2IL.Core" Version="2022.1.0-development.1452"/>
+-    </ItemGroup>
+-
+-    <!-- CopyLocalLockFileAssemblies causes to also output shared assemblies: https://github.com/NuGet/Home/issues/4837#issuecomment-354536302 -->
+-    <!-- Since all core assemblies usually follow naming of System.*, we just delete them for now -->
+-    <!-- Also delete deps.json as they are not used by embedded CLR -->
+-    <Target Name="DeleteSys" AfterTargets="Build">
+-        <ItemGroup>
+-            <FilesToDelete Include="$(OutputPath)System.*.dll"/>
+-            <FilesToDelete Include="$(OutputPath)*.deps.json"/>
+-        </ItemGroup>
+-        <Delete Files="@(FilesToDelete)"/>
+-    </Target>
+-
+-</Project>
++        <PackageReference Include="Microsoft.Extensions.Logging" Version="11.0.0-rc.2.26504.105" PrivateAssets="all"/>
++        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.5-openacai-net11.5"/>
++        <PackageReference Include="Samboy063.Cpp2IL.Core" Version="2022.1.0-development.1452"/>
++    </ItemGroup>
++
++    <!-- CopyLocalLockFileAssemblies causes to also output shared assemblies: https://github.com/NuGet/Home/issues/4837#issuecomment-354536302 -->
++    <!-- Since all core assemblies usually follow naming of System.*, we just delete them for now -->
++    <!-- Also delete deps.json as they are not used by embedded CLR -->
++    <Target Name="DeleteSys" AfterTargets="Build">
++        <ItemGroup>
++            <FilesToDelete Include="$(OutputPath)System.*.dll"/>
++            <FilesToDelete Include="$(OutputPath)*.deps.json"/>
++        </ItemGroup>
++        <Delete Files="@(FilesToDelete)"/>
++    </Target>
++
++</Project>

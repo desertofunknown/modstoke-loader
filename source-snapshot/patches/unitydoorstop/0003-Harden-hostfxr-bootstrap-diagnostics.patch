@@ -1,0 +1,242 @@
+From 4e690fdc7b496de6641e8d5fa1b845c6098bc3b1 Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Fri, 5 Jun 2026 06:23:24 -0500
+Subject: [PATCH 3/4] Harden hostfxr bootstrap diagnostics
+
+---
+ src/bootstrap.c      | 95 ++++++++++++++++++++++++++++++++++++++++----
+ src/windows/wincrt.c |  8 +++-
+ src/windows/wincrt.h |  3 +-
+ 3 files changed, 97 insertions(+), 9 deletions(-)
+
+diff --git a/src/bootstrap.c b/src/bootstrap.c
+index 8588431..4fdda50 100644
+--- a/src/bootstrap.c
++++ b/src/bootstrap.c
+@@ -47,6 +47,11 @@ typedef int(HOSTFXR_CALLTYPE *hostfxr_get_runtime_delegate_fn)(
+     void **delegate);
+ typedef int(HOSTFXR_CALLTYPE *hostfxr_close_fn)(
+     const hostfxr_handle host_context_handle);
++typedef void(HOSTFXR_CALLTYPE *hostfxr_error_writer_fn)(
++    const char_t *message);
++typedef hostfxr_error_writer_fn(HOSTFXR_CALLTYPE
++                                    *hostfxr_set_error_writer_fn)(
++    hostfxr_error_writer_fn error_writer);
+ typedef int(CORECLR_DELEGATE_CALLTYPE
+                 *load_assembly_and_get_function_pointer_fn)(
+     const char_t *assembly_path, const char_t *type_name,
+@@ -58,8 +63,13 @@ typedef struct {
+     hostfxr_initialize_for_runtime_config_fn initialize_for_runtime_config;
+     hostfxr_get_runtime_delegate_fn get_runtime_delegate;
+     hostfxr_close_fn close;
++    hostfxr_set_error_writer_fn set_error_writer;
+ } hostfxr_funcs;
+ 
++static void HOSTFXR_CALLTYPE hostfxr_error_writer(const char_t *message) {
++    LOG("hostfxr: %s", message);
++}
++
+ static bool_t load_hostfxr_funcs(void *hostfxr_module, hostfxr_funcs *funcs) {
+     funcs->initialize_for_runtime_config =
+         (hostfxr_initialize_for_runtime_config_fn)dlsym(
+@@ -68,11 +78,18 @@ static bool_t load_hostfxr_funcs(void *hostfxr_module, hostfxr_funcs *funcs) {
+         (hostfxr_get_runtime_delegate_fn)dlsym(hostfxr_module,
+                                                "hostfxr_get_runtime_delegate");
+     funcs->close = (hostfxr_close_fn)dlsym(hostfxr_module, "hostfxr_close");
++    funcs->set_error_writer =
++        (hostfxr_set_error_writer_fn)dlsym(hostfxr_module,
++                                           "hostfxr_set_error_writer");
+ 
+     return funcs->initialize_for_runtime_config &&
+            funcs->get_runtime_delegate && funcs->close;
+ }
+ 
++static bool_t has_config_value(char_t *value) {
++    return value && strlen(value) > 0;
++}
++
+ static char_t *build_doorstop_entrypoint_type_name(char_t *target_name) {
+     const char_t *prefix = TEXT("Doorstop.Entrypoint, ");
+     char_t *result =
+@@ -95,6 +112,48 @@ static char_t *get_dotnet_root_from_hostfxr_path(char_t *hostfxr_path) {
+     return dotnet_root;
+ }
+ 
++static bool_t validate_hostfxr_bootstrap_config() {
++    if (!has_config_value(config.target_assembly)) {
++        LOG("No target assembly set, skipping hostfxr startup");
++        return FALSE;
++    }
++
++    if (!file_exists(config.target_assembly)) {
++        LOG("Target assembly does not exist: %s", config.target_assembly);
++        return FALSE;
++    }
++
++    if (!has_config_value(config.clr_runtime_hostfxr_path)) {
++        LOG("No hostfxr path set, skipping modern CoreCLR hosting");
++        return FALSE;
++    }
++
++    if (!file_exists(config.clr_runtime_hostfxr_path)) {
++        LOG("hostfxr path does not exist: %s",
++            config.clr_runtime_hostfxr_path);
++        return FALSE;
++    }
++
++    if (!has_config_value(config.clr_runtime_config_path)) {
++        LOG("No runtimeconfig path set, skipping modern CoreCLR hosting");
++        return FALSE;
++    }
++
++    if (!file_exists(config.clr_runtime_config_path)) {
++        LOG("runtimeconfig path does not exist: %s",
++            config.clr_runtime_config_path);
++        return FALSE;
++    }
++
++    if (has_config_value(config.clr_corlib_dir) &&
++        !folder_exists(config.clr_corlib_dir)) {
++        LOG("Configured corlib dir does not exist; continuing without it: %s",
++            config.clr_corlib_dir);
++    }
++
++    return TRUE;
++}
++
+ void mono_doorstop_bootstrap(void *mono_domain) {
+     if (getenv(TEXT("DOORSTOP_INITIALIZED"))) {
+         LOG("DOORSTOP_INITIALIZED is set! Skipping!");
+@@ -321,21 +380,18 @@ void *init_mono(const char *root_domain_name, const char *runtime_version) {
+ }
+ 
+ static bool_t il2cpp_hostfxr_doorstop_bootstrap() {
+-    if (!config.clr_runtime_hostfxr_path || !config.clr_runtime_config_path) {
+-        LOG("No hostfxr runtime config set, skipping modern CoreCLR hosting");
++    if (!validate_hostfxr_bootstrap_config()) {
+         return FALSE;
+     }
+ 
+     LOG("hostfxr path: %s", config.clr_runtime_hostfxr_path);
+     LOG("runtimeconfig path: %s", config.clr_runtime_config_path);
+-    LOG("hostfxr exists: %d", file_exists(config.clr_runtime_hostfxr_path));
+-    LOG("runtimeconfig exists: %d",
+-        file_exists(config.clr_runtime_config_path));
+ 
+     void *hostfxr_module = dlopen(config.clr_runtime_hostfxr_path, RTLD_LAZY);
+     LOG("Loaded hostfxr.dll: %p", hostfxr_module);
+     if (!hostfxr_module) {
+-        LOG("Failed to load hostfxr runtime!");
++        LOG("Failed to load hostfxr runtime: %s",
++            config.clr_runtime_hostfxr_path);
+         return FALSE;
+     }
+ 
+@@ -343,13 +399,31 @@ static bool_t il2cpp_hostfxr_doorstop_bootstrap() {
+     memset(&hostfxr, 0, sizeof(hostfxr));
+     if (!load_hostfxr_funcs(hostfxr_module, &hostfxr)) {
+         LOG("Failed to import hostfxr hosting functions");
++        dlclose(hostfxr_module);
+         return FALSE;
+     }
+ 
+     char_t *app_path = program_path();
+     char_t *dotnet_root =
+         get_dotnet_root_from_hostfxr_path(config.clr_runtime_hostfxr_path);
++    if (!dotnet_root || !strlen(dotnet_root) || !folder_exists(dotnet_root)) {
++        LOG("Derived dotnet root is invalid: %s", dotnet_root);
++        dlclose(hostfxr_module);
++        free(dotnet_root);
++        free(app_path);
++        return FALSE;
++    }
++
+     char_t *target_dir = get_folder_name(config.target_assembly);
++    if (!target_dir || !strlen(target_dir) || !folder_exists(target_dir)) {
++        LOG("Target assembly directory is invalid: %s", target_dir);
++        dlclose(hostfxr_module);
++        free(target_dir);
++        free(dotnet_root);
++        free(app_path);
++        return FALSE;
++    }
++
+     char_t *target_name = get_file_name(config.target_assembly, FALSE);
+     char_t *entrypoint_type = build_doorstop_entrypoint_type_name(target_name);
+     char_t *app_paths_env = NULL;
+@@ -376,6 +450,12 @@ static bool_t il2cpp_hostfxr_doorstop_bootstrap() {
+     LOG("Entrypoint type: %s", entrypoint_type);
+     LOG("APP_PATHS: %s", app_paths_env);
+ 
++    if (hostfxr.set_error_writer) {
++        hostfxr.set_error_writer(hostfxr_error_writer);
++    } else {
++        LOG("hostfxr_set_error_writer unavailable; HRESULT logging only");
++    }
++
+     setenv(TEXT("DOORSTOP_INITIALIZED"), TEXT("TRUE"), TRUE);
+     setenv(TEXT("DOORSTOP_INVOKE_DLL_PATH"), config.target_assembly, TRUE);
+     setenv(TEXT("DOORSTOP_PROCESS_PATH"), app_path, TRUE);
+@@ -390,6 +470,7 @@ static bool_t il2cpp_hostfxr_doorstop_bootstrap() {
+         config.clr_runtime_config_path, &init_params, &host);
+     if (result != 0 || !host) {
+         LOG("Failed to initialize CoreCLR through hostfxr: 0x%08x", result);
++        dlclose(hostfxr_module);
+         free(app_paths_env);
+         free(entrypoint_type);
+         free(target_name);
+@@ -445,7 +526,7 @@ static bool_t il2cpp_hostfxr_doorstop_bootstrap() {
+ }
+ 
+ void il2cpp_doorstop_bootstrap() {
+-    if (config.clr_runtime_hostfxr_path && config.clr_runtime_config_path) {
++    if (config.clr_runtime_hostfxr_path || config.clr_runtime_config_path) {
+         if (il2cpp_hostfxr_doorstop_bootstrap()) {
+             return;
+         }
+diff --git a/src/windows/wincrt.c b/src/windows/wincrt.c
+index a78ba75..0b06d82 100644
+--- a/src/windows/wincrt.c
++++ b/src/windows/wincrt.c
+@@ -27,6 +27,12 @@ void *dlsym(void *handle, const char *name) {
+ 
+ void *dlopen(const char_t *filename, int flag) { return LoadLibrary(filename); }
+ 
++int dlclose(void *handle) {
++    if (!handle)
++        return 0;
++    return FreeLibrary((HMODULE)handle) ? 0 : -1;
++}
++
+ void free(void *mem) { HeapFree(h_heap, 0, mem); }
+ 
+ int setenv(const char_t *name, const char_t *value, int overwrite) {
+@@ -168,4 +174,4 @@ LPSTR *CommandLineToArgvA(LPCSTR cmd_line, int *argc) {
+     (*argc) = _argc;
+     return argv;
+ }
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/src/windows/wincrt.h b/src/windows/wincrt.h
+index c1d056d..5c3a1cc 100644
+--- a/src/windows/wincrt.h
++++ b/src/windows/wincrt.h
+@@ -47,6 +47,7 @@ extern void *dlsym(void *handle, const char *name);
+ #define RTLD_LAZY 0x00001
+ 
+ extern void *dlopen(const char_t *filename, int flag);
++extern int dlclose(void *handle);
+ 
+ extern void free(void *mem);
+ 
+@@ -70,4 +71,4 @@ extern LPSTR *CommandLineToArgvA(LPCSTR cmd_line, int *argc);
+ #define strcmpi lstrcmpiW
+ #endif
+ 
+-#endif
+\ No newline at end of file
++#endif
+-- 
+2.54.0.windows.1
+

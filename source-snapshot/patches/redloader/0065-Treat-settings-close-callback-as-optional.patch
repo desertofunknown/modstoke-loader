@@ -1,0 +1,16 @@
+diff --git a/SonsSdk/SUI/SettingsRegistry.cs b/SonsSdk/SUI/SettingsRegistry.cs
+--- a/SonsSdk/SUI/SettingsRegistry.cs
++++ b/SonsSdk/SUI/SettingsRegistry.cs
+@@ -91,7 +91,11 @@ public class SettingsRegistry
+         }
+ 
+         Action onClosed = null;
+-        var classCallback = AccessTools.Method(settingsType, "OnSettingsUiClosed");
++        const string callbackName = "OnSettingsUiClosed";
++        // The hook is optional; keep Harmony's overload selection only when a declaration exists.
++        var hasClassCallback = settingsType != null && AccessTools.FindIncludingBaseTypes(settingsType,
++            type => type.GetMember(callbackName, MemberTypes.Method, AccessTools.all).FirstOrDefault()) != null;
++        var classCallback = hasClassCallback ? AccessTools.Method(settingsType, callbackName) : null;
+         if (classCallback != null)
+         {
+             if (!classCallback.IsStatic && settingsObject == null)

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <AssemblyName>OpenACAI.Examples.WorldConditions</AssemblyName>
+    <Title>Modstoke SDK World Conditions Example</Title>
+    <Product>Modstoke SDK by OpenACAI</Product>
+    <Company>OpenACAI</Company>
+    <Description>World conditions example for Modstoke SDK by OpenACAI.</Description>
+    <Version>0.1.0</Version>
+    <RootNamespace>OpenACAI.Examples.WorldConditions</RootNamespace>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OpenACAICorePath Condition="'$(OpenACAICorePath)' == ''">$(MSBuildProjectDirectory)\..\..\src\OpenACAI.Endnight.Loader.Core\bin\Release\OpenACAI.Endnight.Loader.Core.dll</OpenACAICorePath>
+  </PropertyGroup>
+
+  <Target Name="RequireOpenACAICore" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(OpenACAICorePath)')"
+           Text="Build the loader first, or set OpenACAICorePath to the current installed OpenACAI.Endnight.Loader.Core.dll." />
+  </Target>
+
+  <ItemGroup>
+    <Reference Include="OpenACAI.Endnight.Loader.Core" HintPath="$(OpenACAICorePath)" Private="false" />
+    <None Update="openacai.mod.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

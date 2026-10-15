@@ -1,0 +1,56 @@
+diff --git a/SonsSdk/SUI/SUI.cs b/SonsSdk/SUI/SUI.cs
+index be7e097..925e158 100644
+--- a/SonsSdk/SUI/SUI.cs
++++ b/SonsSdk/SUI/SUI.cs
+@@ -477,6 +477,9 @@ public partial class SUI
+ 
+     public static void AddButtonToPauseMenu(Func<SUiElement> generator, string id, int index = -1)
+     {
++        if (!MenuButtonRegistrationPolicy.Allows(id))
++            return;
++
+         var button = new MenuButtonRegistration(generator, id, ESonsScene.Game, index);
+         
+         _registeredMenuButtons.Add(button);
+@@ -484,6 +487,9 @@ public partial class SUI
+     
+     public static void AddButtonToTitleMenu(Func<SUiElement> generator, string id, int index = -1)
+     {
++        if (!MenuButtonRegistrationPolicy.Allows(id))
++            return;
++
+         var button = new MenuButtonRegistration(generator, id, ESonsScene.Title, index);
+         
+         if (SceneManager.GetActiveScene().name == SonsSceneManager.TitleSceneName)
+diff --git a/SonsSdk/SUI/MenuButtonRegistrationPolicy.cs b/SonsSdk/SUI/MenuButtonRegistrationPolicy.cs
+new file mode 100644
+index 0000000..fb8159f
+--- /dev/null
++++ b/SonsSdk/SUI/MenuButtonRegistrationPolicy.cs
+@@ -0,0 +1,26 @@
++using System;
++
++namespace SUI;
++
++internal static class MenuButtonRegistrationPolicy
++{
++    private static Func<string, bool> filter;
++
++    internal static bool HasFilter => filter != null;
++
++    internal static void SetFilter(Func<string, bool> value)
++    {
++        ArgumentNullException.ThrowIfNull(value);
++        if (ReferenceEquals(filter, value))
++            return;
++        if (filter != null)
++            throw new InvalidOperationException("Menu button registration ownership has already been selected.");
++
++        filter = value;
++    }
++
++    internal static bool Allows(string id)
++    {
++        return filter == null || filter(id);
++    }
++}

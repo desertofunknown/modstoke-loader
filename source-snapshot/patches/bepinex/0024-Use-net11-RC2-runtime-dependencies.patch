@@ -1,0 +1,72 @@
+diff --git a/BepInEx.Core/BepInEx.Core.csproj b/BepInEx.Core/BepInEx.Core.csproj
+index 1abcca8..5698b63 100644
+--- a/BepInEx.Core/BepInEx.Core.csproj
++++ b/BepInEx.Core/BepInEx.Core.csproj
+@@ -8,10 +8,10 @@
+     </PropertyGroup>
+     <ItemGroup>
+         <PackageReference Include="HarmonyX" Version="2.16.1" />
+-        <PackageReference Include="MonoMod.Core" Version="1.3.5-openacai-net11.3"/>
+-        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.5-openacai-net11.3"/>
++        <PackageReference Include="MonoMod.Core" Version="1.3.5-openacai-net11.5"/>
++        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.5-openacai-net11.5"/>
+         <PackageReference Include="SemanticVersioning" Version="2.0.2"/>
+-        <PackageReference Include="MonoMod.Utils" Version="25.0.13-openacai-net11.3"/>
++        <PackageReference Include="MonoMod.Utils" Version="25.0.13-openacai-net11.5"/>
+     </ItemGroup>
+     <ItemGroup>
+         <Compile Remove="Contract\IPlugin.cs"/>
+diff --git a/BepInEx.Preloader.Core/BepInEx.Preloader.Core.csproj b/BepInEx.Preloader.Core/BepInEx.Preloader.Core.csproj
+index 149b3bd..917b104 100644
+--- a/BepInEx.Preloader.Core/BepInEx.Preloader.Core.csproj
++++ b/BepInEx.Preloader.Core/BepInEx.Preloader.Core.csproj
+@@ -8,7 +8,7 @@
+     </ItemGroup>
+     <ItemGroup>
+         <PackageReference Include="HarmonyX" Version="2.16.1" />
+-        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.5-openacai-net11.3"/>
+-        <PackageReference Include="MonoMod.Utils" Version="25.0.13-openacai-net11.3"/>
++        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.5-openacai-net11.5"/>
++        <PackageReference Include="MonoMod.Utils" Version="25.0.13-openacai-net11.5"/>
+     </ItemGroup>
+ </Project>
+diff --git a/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj b/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj
+index 101a2d3..faa40a2 100644
+--- a/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj
++++ b/Runtimes/Unity/BepInEx.Unity.Common/BepInEx.Unity.Common.csproj
+@@ -9,7 +9,7 @@
+         <PackageReference Include="AssetRipper.Primitives" Version="3.1.3" />
+     </ItemGroup>
+     <ItemGroup>
+-        <PackageReference Include="MonoMod.Utils" Version="25.0.13-openacai-net11.3"/>
++        <PackageReference Include="MonoMod.Utils" Version="25.0.13-openacai-net11.5"/>
+     </ItemGroup>
+ 
+ </Project>
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+index e6731cc..d4cc7fd 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+@@ -19,8 +19,8 @@
+         <PackageReference Include="Il2CppInterop.HarmonySupport" Version="1.5.2-ci.1063"/>
+         <PackageReference Include="Il2CppInterop.ReferenceLibs" Version="1.0.0" IncludeAssets="compile" PrivateAssets="all"/>
+         <PackageReference Include="Il2CppInterop.Runtime" Version="1.5.2-ci.1063"/>
+-        <PackageReference Include="Microsoft.Extensions.Logging" Version="11.0.0-preview.4.26230.115" PrivateAssets="all"/>
+-        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.5-openacai-net11.3"/>
++        <PackageReference Include="Microsoft.Extensions.Logging" Version="11.0.0-rc.2.26504.105" PrivateAssets="all"/>
++        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.5-openacai-net11.5"/>
+         <PackageReference Include="Samboy063.Cpp2IL.Core" Version="2022.1.0-development.1452"/>
+     </ItemGroup>
+ 
+diff --git a/global.json b/global.json
+index d45b452..9eb43a9 100644
+--- a/global.json
++++ b/global.json
+@@ -1,6 +1,6 @@
+ {
+   "sdk": {
+-    "version": "11.0.100-preview.4.26230.115",
++    "version": "11.0.100-rc.2.26504.105",
+     "rollForward": "latestFeature"
+   }
+ }

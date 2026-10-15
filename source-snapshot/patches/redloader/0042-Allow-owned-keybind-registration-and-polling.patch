@@ -1,0 +1,90 @@
+diff --git a/SonsSdk/ModInputCache.cs b/SonsSdk/ModInputCache.cs
+index d145519..6f21e44 100644
+--- a/SonsSdk/ModInputCache.cs
++++ b/SonsSdk/ModInputCache.cs
+@@ -4,13 +4,24 @@ using UnityEngine.InputSystem;
+ 
+ namespace SonsSdk;
+ 
++internal interface ISdkKeybindDriver
++{
++    ModKeybind GetKeybind(KeybindConfigEntry config);
++    void CheckAll();
++    void Check(ModKeybind keybind);
++}
++
+ public static class ModInputCache
+ {
+     internal static readonly Dictionary<KeybindConfigEntry, ModKeybind> Keybinds = new();
+-    private static ModKeybind[] _keybindSnapshot;
++    internal static ModKeybind[] _keybindSnapshot;
+ 
+     public static ModKeybind GetKeybind(this KeybindConfigEntry config)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.Keybinds.GetKeybind(config);
++
+         if (Keybinds.TryGetValue(config, out var action))
+         {
+             return action;
+@@ -20,7 +31,8 @@ public static class ModInputCache
+         // Refresh the action before ordinary config listeners read its binding.
+         config.OnValueChanged.Subscribe(action.OnConfigValueChanged, priority: int.MinValue);
+         _keybindSnapshot = null;
+-        RLog.Msg("Registered keybind: " + config.Identifier + "::" + config.FullPath);
++        try { RLog.Msg("Registered keybind: " + config.Identifier + "::" + config.FullPath); }
++        catch { /* Logging must not prevent the registered action from being enabled. */ }
+         action.Enable();
+         return action;
+     }
+@@ -77,6 +89,13 @@ public static class ModInputCache
+ 
+     internal static void CheckAll()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Keybinds.CheckAll();
++            return;
++        }
++
+         // Registrations made by callbacks join the next update, not this dispatch.
+         var keybinds = _keybindSnapshot ??= Keybinds.Values.ToArray();
+         foreach (var keybind in keybinds)
+@@ -105,6 +124,9 @@ public class ModKeybind
+     private event Action OnPerformed;
+     private event Action OnReleased;
+ 
++    internal Action PerformedCallbacks => OnPerformed;
++    internal Action ReleasedCallbacks => OnReleased;
++
+     public ModKeybind(InputAction action, KeybindConfigEntry configEntry)
+     {
+         Action = action;
+@@ -248,6 +270,13 @@ public class ModKeybind
+ 
+     internal void Check()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Keybinds.Check(this);
++            return;
++        }
++
+         if (CustomCheck != null && !CustomCheck())
+         {
+             return;
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 2f87e64..302fe2f 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -46,6 +46,7 @@ internal interface ISdkLifecycleDriver
+     SUI.ISdkUiPanelDriver UiPanels { get; }
+     SUI.ISdkMenuButtonDriver MenuButtons { get; }
+     ISdkInputIconDriver InputIcons { get; }
++    ISdkKeybindDriver Keybinds { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);

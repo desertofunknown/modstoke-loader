@@ -1,0 +1,212 @@
+diff --git a/SonsSdk/InputIconManager.cs b/SonsSdk/InputIconManager.cs
+index fe09aaa..3b00f42 100644
+--- a/SonsSdk/InputIconManager.cs
++++ b/SonsSdk/InputIconManager.cs
+@@ -6,14 +6,26 @@ using UnityEngine.InputSystem;
+ 
+ namespace SonsSdk;
+ 
++internal interface ISdkInputIconDriver
++{
++    IconAssetDatabase IconDatabase { get; }
++    GameObject Get(string path, out string displayName, out bool isDefaultPrefab);
++    GameObject Add(string path, Transform parent);
++    GameObject CreateKeybindIcon(InputAction action, DynamicInputIcon icon, GameObject previous);
++}
++
+ public class InputIconManager
+ {
+-    private static IconAssetDatabase _iconDatabase;
++    internal static IconAssetDatabase _iconDatabase;
+ 
+     public static IconAssetDatabase IconDatabase
+     {
+         get
+         {
++            var driver = SdkEvents.BeginLifecycleSetup();
++            if (driver != null)
++                return driver.InputIcons.IconDatabase;
++
+             if(!_iconDatabase)
+                 Initialize();
+             
+@@ -41,6 +53,10 @@ public class InputIconManager
+     
+     public static GameObject Get(string path, out string displayName, out bool isDefaultPrefab)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.InputIcons.Get(path, out displayName, out isDefaultPrefab);
++
+         if (string.IsNullOrEmpty(path))
+         {
+             displayName = null;
+@@ -54,17 +70,22 @@ public class InputIconManager
+             var inputControl = InputSystem.FindControl(path);
+             displayName = inputControl != null ? inputControl.displayName : "NA";
+             var newIcon = UnityEngine.Object.Instantiate(icon);
+-            
+-            if (isDefaultPrefab)
++            try
+             {
+-                var tmpText = newIcon.GetComponentInChildren<TMP_Text>(true);
+-                if (tmpText != null)
++                if (isDefaultPrefab)
+                 {
+-                    tmpText.text = displayName;
++                    var tmpText = newIcon.GetComponentInChildren<TMP_Text>(true);
++                    if (tmpText != null)
++                        tmpText.text = displayName;
+                 }
++
++                return newIcon;
++            }
++            catch
++            {
++                RetireIcon(newIcon);
++                throw;
+             }
+-            
+-            return newIcon;
+         }
+         
+         displayName = null;
+@@ -79,17 +100,42 @@ public class InputIconManager
+     
+     public static GameObject AddInputIcon(string path, Transform transform)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.InputIcons.Add(path, transform);
++
+         var inputIcon = Get(path, out _, out _);
+         if (!inputIcon)
+         {
+             return null;
+         }
+         
+-        inputIcon.SetActive(true);
+-        inputIcon.transform.SetParent(transform, false);
++        try
++        {
++            inputIcon.SetActive(true);
++            inputIcon.transform.SetParent(transform, false);
++            inputIcon.GetComponent<RectTransform>().anchoredPosition = new(-40, 0);
++            return inputIcon;
++        }
++        catch
++        {
++            RetireIcon(inputIcon);
++            throw;
++        }
++    }
+ 
+-        inputIcon.GetComponent<RectTransform>().anchoredPosition = new(-40, 0);
++    internal static void RetireIcon(GameObject icon, GameObject template = null)
++    {
++        try { if (icon) icon.SetActive(false); }
++        catch (Exception exception) { ReportCleanupFailure(exception); }
++
++        try { if (icon && icon != template) UnityEngine.Object.Destroy(icon); }
++        catch (Exception exception) { ReportCleanupFailure(exception); }
++    }
+ 
+-        return inputIcon;
++    private static void ReportCleanupFailure(Exception exception)
++    {
++        try { RedLoader.RLog.Warning("Failed to clean up an input icon: " + exception); }
++        catch { /* Preserve the original operation failure. */ }
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/SonsSdk/SUI/SKeybindOptions.cs b/SonsSdk/SUI/SKeybindOptions.cs
+index 6455cf1..3c0394a 100644
+--- a/SonsSdk/SUI/SKeybindOptions.cs
++++ b/SonsSdk/SUI/SKeybindOptions.cs
+@@ -206,37 +206,48 @@ public class SKeybindOptions : SUiElement<SKeybindOptions>
+ 
+     private GameObject CreateNewInstance()
+     {
+-        var defaultInstance = DynamicInputIcon._defaultInstance;
+-        
+-        GameObject keyPrefab = InputIconManager.Get(_keybindConfig.GetAction(), out var displayName, out var isDefaultPrefab);
+-        if (keyPrefab == null)
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
+         {
+-            return null;
++            var replacement = driver.InputIcons.CreateKeybindIcon(_keybindConfig.GetAction(), DynamicInputIcon, _instance);
++            if (replacement)
++                _instance = replacement;
++            return replacement;
+         }
+-        
+-        DynamicInputIcon._activeInstance.TryDestroy();
+-        _instance.TryDestroy();
+-        
+-        _instance = Object.Instantiate(keyPrefab, defaultInstance.transform.parent);
+-        if (defaultInstance != null)
++
++        var defaultInstance = DynamicInputIcon._defaultInstance;
++        var replacementIcon = InputIconManager.Get(_keybindConfig.GetAction(), out _, out _);
++        if (!replacementIcon)
++            return null;
++
++        GameObject activeIcon;
++        try
+         {
+-            RectTransform rect = _instance.GetComponent<RectTransform>();
+-            CopyRectTransform(defaultInstance.GetComponent<RectTransform>(), rect);
++            if (!defaultInstance)
++                throw new InvalidOperationException("The keybind icon template is missing.");
++
++            var sourceRect = defaultInstance.GetComponent<RectTransform>();
++            var targetRect = replacementIcon.GetComponent<RectTransform>();
++            if (!sourceRect || !targetRect)
++                throw new InvalidOperationException("Keybind icons require RectTransform components.");
++
++            replacementIcon.transform.SetParent(defaultInstance.transform.parent, false);
++            CopyRectTransform(sourceRect, targetRect);
++            replacementIcon.transform.SetSiblingIndex(defaultInstance.transform.GetSiblingIndex());
++            activeIcon = DynamicInputIcon._activeInstance;
+         }
+-        
+-        _instance.name = keyPrefab.name;
+-        int siblingIndex = (defaultInstance ? defaultInstance.transform.GetSiblingIndex() : 0);
+-        _instance.transform.SetSiblingIndex(siblingIndex);
+-        
+-        if (isDefaultPrefab)
++        catch
+         {
+-            TMP_Text tmpText = _instance.GetComponentInChildren<TMP_Text>(true);
+-            if (tmpText != null)
+-            {
+-                tmpText.text = displayName;
+-            }
++            InputIconManager.RetireIcon(replacementIcon);
++            throw;
+         }
+-        return _instance;
++
++        var previous = _instance;
++        _instance = replacementIcon;
++        InputIconManager.RetireIcon(activeIcon, defaultInstance);
++        if (previous != activeIcon)
++            InputIconManager.RetireIcon(previous, defaultInstance);
++        return replacementIcon;
+     }
+     
+     private static void CopyRectTransform(RectTransform fromTransform, RectTransform toTransform)
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 22e0625..2f87e64 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -45,6 +45,7 @@ internal interface ISdkLifecycleDriver
+     SUI.ISdkUiViewportDriver UiViewport { get; }
+     SUI.ISdkUiPanelDriver UiPanels { get; }
+     SUI.ISdkMenuButtonDriver MenuButtons { get; }
++    ISdkInputIconDriver InputIcons { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);

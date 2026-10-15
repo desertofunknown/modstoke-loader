@@ -1,0 +1,263 @@
+diff --git a/SonsSdk/Attributes/AssetBundleAttribute.cs b/SonsSdk/Attributes/AssetBundleAttribute.cs
+index d27497b..0663feb 100644
+--- a/SonsSdk/Attributes/AssetBundleAttribute.cs
++++ b/SonsSdk/Attributes/AssetBundleAttribute.cs
+@@ -1,10 +1,8 @@
+ using System.Reflection;
+-using Il2CppInterop.Runtime;
+ using RedLoader;
+ using RedLoader.Utils;
+ using UnityEngine;
+ using Color = System.Drawing.Color;
+-using Object = UnityEngine.Object;
+ 
+ namespace SonsSdk.Attributes;
+ 
+@@ -46,12 +44,16 @@ public class AssetBundleAttribute : Attribute
+             return false;
+         }
+ 
++        var mappedAssets = 0;
+         foreach (var assetReference in AssetReferences)
+         {
+-            assetReference.LoadAsset();
++            if (assetReference.LoadAsset())
++            {
++                mappedAssets++;
++            }
+         }
+         
+-        RLog.Msg(Color.Orange, $"Loaded bundle {AssetBundleName} with {AssetReferences.Count} assets");
++        RLog.Msg(Color.Orange, $"Loaded bundle {AssetBundleName}; mapped {mappedAssets}/{AssetReferences.Count} assets");
+ 
+         return true;
+     }
+@@ -69,7 +71,6 @@ public class AssetReferenceAttribute : Attribute
+     public string AssetName { get; private set; }
+ 
+     internal PropertyInfo Property { get; set; }
+-    internal object ClassInstance { get; set; }
+ 
+     internal AssetBundleAttribute AssetBundle { get; set; }
+ 
+@@ -78,18 +79,12 @@ public class AssetReferenceAttribute : Attribute
+         AssetName = assetName;
+     }
+ 
+-    internal void LoadAsset()
++    internal bool LoadAsset()
+     {
+         if (!AssetBundle.IsLoaded())
+         {
+-            RLog.Error($"Asset bundle {AssetBundle.AssetBundleName} is not loaded!");
+-            return;
+-        }
+-
+-        if (!Property.CanWrite)
+-        {
+-            RLog.Error($"Property {Property.Name} is not writable!");
+-            return;
++            AssetLoaders.ReportAssetError($"Asset bundle {AssetBundle.AssetBundleName} is not loaded.");
++            return false;
+         }
+ 
+         if (string.IsNullOrEmpty(AssetName))
+@@ -97,20 +92,7 @@ public class AssetReferenceAttribute : Attribute
+             AssetName = Property.Name;
+         }
+ 
+-        var asset = AssetBundle.LoadedBundle.LoadAsset(AssetName, Il2CppType.From(Property.PropertyType));
+-        asset.hideFlags = HideFlags.HideAndDontSave;
+-        
+-        if (!asset)
+-        {
+-            RLog.Error($"Couldn't find asset {AssetName} in bundle {AssetBundle.AssetBundleName}");
+-            return;
+-        }
+-
+-        var actualType = Property.PropertyType == typeof(Object)
+-            ? asset
+-            : DynamicInitializerStore.GetInitializer(Property.PropertyType)(asset.Pointer);
+-        
+-        Property.SetValue(ClassInstance, actualType);
++        return AssetLoaders.TryMapAsset(AssetBundle.LoadedBundle, Property, AssetName, AssetBundle.AssetBundleName);
+     }
+ }
+ 
+@@ -140,7 +122,6 @@ internal static class AssetBundleAttributeLoader
+ 
+                 assetReferenceAttribute.AssetBundle = assetBundleAttribute;
+                 assetReferenceAttribute.Property = prop;
+-                assetReferenceAttribute.ClassInstance = null;
+ 
+                 assetBundleAttribute.AssetReferences.Add(assetReferenceAttribute);
+             }
+diff --git a/SonsSdk/AssetLoaders.cs b/SonsSdk/AssetLoaders.cs
+index 0b5aafa..657cbc2 100644
+--- a/SonsSdk/AssetLoaders.cs
++++ b/SonsSdk/AssetLoaders.cs
+@@ -118,27 +118,73 @@ public static class AssetLoaders
+ 
+     /// <summary>
+     /// Maps the contents of an asset bundle to a static class. The name of the property must match the name of the asset in the bundle.
++    /// Individual mapping failures are logged; remaining properties are still processed.
+     /// </summary>
+     /// <param name="bundleData">The loaded bundle</param>
+     /// <param name="mapFileType">The class to map the asset bundle contents to</param>
++    /// <exception cref="InvalidOperationException">The asset bundle could not be loaded.</exception>
+     public static void MapBundleToFile(byte[] bundleData, Type mapFileType)
+     {
+         var bundle = AssetBundle.LoadFromMemory(bundleData);
++        if (!bundle)
++        {
++            throw new InvalidOperationException($"Couldn't load the asset bundle for {mapFileType.FullName}.");
++        }
++
+         foreach (var prop in mapFileType.GetProperties(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+         {
+-            var asset = bundle.LoadAsset(prop.Name, Il2CppType.From(prop.PropertyType));
+-            asset.hideFlags = HideFlags.HideAndDontSave;
+-        
++            TryMapAsset(bundle, prop, prop.Name, mapFileType.FullName);
++        }
++    }
++
++    internal static bool TryMapAsset(AssetBundle bundle, PropertyInfo property, string assetName, string bundleName)
++    {
++        var context = $"asset {assetName} from {bundleName} into {property.DeclaringType?.FullName}.{property.Name}";
++        try
++        {
++            if (property.SetMethod == null || !property.SetMethod.IsStatic || property.GetIndexParameters().Length != 0)
++            {
++                ReportAssetError($"Couldn't map {context}: the property must have a static setter and no index parameters.");
++                return false;
++            }
++
++            if (!typeof(Object).IsAssignableFrom(property.PropertyType))
++            {
++                ReportAssetError($"Couldn't map {context}: the property type must derive from UnityEngine.Object.");
++                return false;
++            }
++
++            var asset = bundle.LoadAsset(assetName, Il2CppType.From(property.PropertyType));
+             if (!asset)
+             {
+-                return;
++                ReportAssetError($"Couldn't map {context}: the bundle did not return a usable asset.");
++                return false;
+             }
+ 
+-            var actualType = prop.PropertyType == typeof(Object)
++            asset.hideFlags = HideFlags.HideAndDontSave;
++            var actualType = property.PropertyType == typeof(Object)
+                 ? asset
+-                : DynamicInitializerStore.GetInitializer(prop.PropertyType)(asset.Pointer);
+-        
+-            prop.SetValue(null, actualType);
++                : DynamicInitializerStore.GetInitializer(property.PropertyType)(asset.Pointer);
++
++            property.SetValue(null, actualType);
++            return true;
++        }
++        catch (Exception exception)
++        {
++            ReportAssetError($"Couldn't map {context}.", exception);
++            return false;
++        }
++    }
++
++    internal static void ReportAssetError(string message, Exception exception = null)
++    {
++        try
++        {
++            RLog.Error(exception == null ? message : $"{message}\n{exception}");
++        }
++        catch
++        {
++            // A mod's logging callback must not stop other mods from loading their assets.
+         }
+     }
+     
+@@ -174,4 +220,4 @@ public static class AssetLoaders
+ 
+         RLog.Msg(Color.Chartreuse, "============== FINISHED WRITING ADDRESSABLES ==============");
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/SonsSdk/Private/MainInitializer.cs b/SonsSdk/Private/MainInitializer.cs
+index d8413b5..a7219d0 100644
+--- a/SonsSdk/Private/MainInitializer.cs
++++ b/SonsSdk/Private/MainInitializer.cs
+@@ -47,13 +47,40 @@ internal class MainInitializer
+ 
+     private static IEnumerator LoadAllCatalogs()
+     {
+-        foreach (var mod in SonsMod.RegisteredMods)
++        foreach (var mod in SonsMod.RegisteredMods.ToArray())
+         {
+-            var modDataFolder = LoaderEnvironment.GetModDataPath(mod);
+-            foreach (var catalog in modDataFolder.GetFiles("catalog*.json"))
++            string[] catalogs;
++            try
+             {
+-                RLog.Msg(Color.Orange, "Loading addressables catalog " + catalog);
+-                yield return Addressables.LoadContentCatalogAsync(catalog);
++                var modDataFolder = LoaderEnvironment.GetModDataPath(mod);
++                if (!modDataFolder.DirectoryExists())
++                {
++                    continue;
++                }
++
++                catalogs = modDataFolder.GetFiles("catalog*.json").ToArray();
++            }
++            catch (Exception exception)
++            {
++                AssetLoaders.ReportAssetError($"Couldn't enumerate addressables catalogs for {mod.ModAssembly.FullName}.", exception);
++                continue;
++            }
++
++            foreach (var catalog in catalogs)
++            {
++                object operation;
++                try
++                {
++                    RLog.Msg(Color.Orange, "Loading addressables catalog " + catalog);
++                    operation = Addressables.LoadContentCatalogAsync(catalog);
++                }
++                catch (Exception exception)
++                {
++                    AssetLoaders.ReportAssetError($"Couldn't start loading addressables catalog {catalog}.", exception);
++                    continue;
++                }
++
++                yield return operation;
+             }
+         }
+     }
+@@ -111,12 +138,21 @@ internal class MainInitializer
+ 
+     private static IEnumerator LoadAllModBundles()
+     {
+-        var assemblies = SonsMod.RegisteredMods.SelectMany(x => x.AssetBundleAttrs).ToArray();
++        var bundles = SonsMod.RegisteredMods.SelectMany(x => x.AssetBundleAttrs).ToArray();
+ 
+-        for (var i = 0; i < assemblies.Length; i++)
++        for (var i = 0; i < bundles.Length; i++)
+         {
+-            assemblies[i].LoadBundle();
+-            yield return AddProgress(i, assemblies.Length, 0.3f);
++            var bundle = bundles[i];
++            try
++            {
++                bundle.LoadBundle();
++            }
++            catch (Exception exception)
++            {
++                AssetLoaders.ReportAssetError($"Couldn't initialize asset bundle {bundle.AssetBundleName} for {bundle.Mod.ModAssembly.FullName}.", exception);
++            }
++
++            yield return AddProgress(i, bundles.Length, 0.3f);
+         }
+     }
+ 

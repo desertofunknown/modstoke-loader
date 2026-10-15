@@ -1,0 +1,458 @@
+From 2142da41f0e2464b1f6d0467e8c5728f57b6a298 Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Fri, 5 Jun 2026 06:33:44 -0500
+Subject: [PATCH 04/13] Harden IL2CPP native detour setup
+
+---
+ .../Hook/BaseNativeDetour.cs                  | 82 +++++++++++++++++--
+ .../Hook/Dobby/DobbyDetour.cs                 | 13 ++-
+ .../Hook/Dobby/DobbyLib.cs                    | 18 ++++
+ .../Hook/Funchook/FunchookDetour.cs           |  8 +-
+ .../Hook/Funchook/FunchookLib.cs              | 19 +++++
+ .../Hook/INativeDetour.cs                     | 65 +++++++++++++--
+ .../BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs | 51 ++++++++++--
+ 7 files changed, 231 insertions(+), 25 deletions(-)
+
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/BaseNativeDetour.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/BaseNativeDetour.cs
+index 9699ed0..59c907b 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/BaseNativeDetour.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/BaseNativeDetour.cs
+@@ -12,9 +12,17 @@ internal abstract class BaseNativeDetour<T> : INativeDetour where T : BaseNative
+ 
+     protected BaseNativeDetour(nint originalMethodPtr, Delegate detourMethod)
+     {
++        if (originalMethodPtr == 0)
++            throw new ArgumentOutOfRangeException(nameof(originalMethodPtr), "Original method pointer cannot be zero.");
++        if (detourMethod == null)
++            throw new ArgumentNullException(nameof(detourMethod));
++
+         OriginalMethodPtr = originalMethodPtr;
+         DetourMethod = detourMethod;
+         DetourMethodPtr = Marshal.GetFunctionPointerForDelegate(detourMethod);
++
++        if (DetourMethodPtr == 0)
++            throw new InvalidOperationException("Could not get a native function pointer for the detour delegate.");
+     }
+ 
+     public bool IsPrepared { get; protected set; }
+@@ -30,16 +38,43 @@ internal abstract class BaseNativeDetour<T> : INativeDetour where T : BaseNative
+     public void Dispose()
+     {
+         if (!IsValid) return;
+-        Undo();
+-        Free();
++
++        try
++        {
++            Undo();
++        }
++        finally
++        {
++            Free();
++        }
+     }
+ 
+     public void Apply()
+     {
+         if (IsApplied) return;
++        if (!IsValid) throw new ObjectDisposedException(GetType().Name);
+ 
+         Prepare();
+-        ApplyImpl();
++        try
++        {
++            ApplyImpl();
++        }
++        catch (Exception ex)
++        {
++            Logger.LogError($"Failed to apply native detour from 0x{OriginalMethodPtr:X2} to 0x{DetourMethodPtr:X2}");
++            Logger.LogError(ex);
++
++            try
++            {
++                Free();
++            }
++            catch (Exception cleanupEx)
++            {
++                Logger.LogWarning($"Failed to clean up native detour after apply failure: {cleanupEx}");
++            }
++
++            throw;
++        }
+ 
+         Logger.Log(LogLevel.Debug,
+                    $"Original: {OriginalMethodPtr:X}, Trampoline: {TrampolinePtr:X}, diff: {Math.Abs(OriginalMethodPtr - TrampolinePtr):X}");
+@@ -49,13 +84,43 @@ internal abstract class BaseNativeDetour<T> : INativeDetour where T : BaseNative
+ 
+     public void Undo()
+     {
+-        if (IsApplied && IsPrepared) UndoImpl();
++        if (!IsValid || !IsApplied || !IsPrepared) return;
++
++        try
++        {
++            UndoImpl();
++        }
++        finally
++        {
++            IsApplied = false;
++        }
+     }
+ 
+     public void Free()
+     {
+-        FreeImpl();
+-        IsValid = false;
++        if (!IsValid) return;
++
++        try
++        {
++            if (IsApplied)
++            {
++                try
++                {
++                    Undo();
++                }
++                catch (Exception ex)
++                {
++                    Logger.LogWarning($"Failed to undo native detour before freeing it: {ex}");
++                }
++            }
++
++            FreeImpl();
++        }
++        finally
++        {
++            IsPrepared = false;
++            IsValid = false;
++        }
+     }
+ 
+     public MethodBase GenerateTrampoline(MethodBase signature = null)
+@@ -84,8 +149,13 @@ internal abstract class BaseNativeDetour<T> : INativeDetour where T : BaseNative
+     private void Prepare()
+     {
+         if (IsPrepared) return;
++        if (!IsValid) throw new ObjectDisposedException(GetType().Name);
++
+         Logger.LogDebug($"Preparing detour from 0x{OriginalMethodPtr:X2} to 0x{DetourMethodPtr:X2}");
+         PrepareImpl();
++        if (TrampolinePtr == 0)
++            throw new InvalidOperationException("Native detour provider returned a zero trampoline pointer.");
++
+         Logger.LogDebug($"Prepared detour; Trampoline: 0x{TrampolinePtr:X2}");
+         IsPrepared = true;
+     }
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Dobby/DobbyDetour.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Dobby/DobbyDetour.cs
+index 022de28..dc40017 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Dobby/DobbyDetour.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Dobby/DobbyDetour.cs
+@@ -1,4 +1,5 @@
+ using System;
++using System.Runtime.CompilerServices;
+ 
+ namespace BepInEx.Unity.IL2CPP.Hook.Dobby;
+ 
+@@ -6,16 +7,22 @@ internal class DobbyDetour : BaseNativeDetour<DobbyDetour>
+ {
+     public DobbyDetour(nint originalMethodPtr, Delegate detourMethod) : base(originalMethodPtr, detourMethod) { }
+ 
+-    protected override void ApplyImpl() => DobbyLib.Commit(OriginalMethodPtr);
++    protected override void ApplyImpl() => EnsureSuccess(DobbyLib.Commit(OriginalMethodPtr));
+ 
+     protected override unsafe void PrepareImpl()
+     {
+         nint trampolinePtr = 0;
+-        DobbyLib.Prepare(OriginalMethodPtr, DetourMethodPtr, &trampolinePtr);
++        EnsureSuccess(DobbyLib.Prepare(OriginalMethodPtr, DetourMethodPtr, &trampolinePtr));
+         TrampolinePtr = trampolinePtr;
+     }
+ 
+-    protected override void UndoImpl() => DobbyLib.Destroy(OriginalMethodPtr);
++    protected override void UndoImpl() => EnsureSuccess(DobbyLib.Destroy(OriginalMethodPtr));
+ 
+     protected override void FreeImpl() { }
++
++    private static void EnsureSuccess(int result, [CallerArgumentExpression("result")] string methodName = null)
++    {
++        if (result == 0) return;
++        throw new InvalidOperationException($"{methodName} failed with result {result}");
++    }
+ }
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Dobby/DobbyLib.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Dobby/DobbyLib.cs
+index 7da5461..24aae7b 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Dobby/DobbyLib.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Dobby/DobbyLib.cs
+@@ -1,9 +1,27 @@
+ using System.Runtime.InteropServices;
++using System.Reflection;
+ 
+ namespace BepInEx.Unity.IL2CPP.Hook.Dobby;
+ 
+ internal static unsafe class DobbyLib
+ {
++    public static bool IsAvailable()
++    {
++        if (!NativeLibrary.TryLoad("dobby", typeof(DobbyLib).Assembly, null, out var handle))
++            return false;
++
++        try
++        {
++            return NativeLibrary.TryGetExport(handle, "DobbyPrepare", out _)
++                   && NativeLibrary.TryGetExport(handle, "DobbyCommit", out _)
++                   && NativeLibrary.TryGetExport(handle, "DobbyDestroy", out _);
++        }
++        finally
++        {
++            NativeLibrary.Free(handle);
++        }
++    }
++
+     [DllImport("dobby", EntryPoint = "DobbyHook", CallingConvention = CallingConvention.Cdecl)]
+     public static extern int Hook(nint target, nint replacement, nint* originalCall);
+ 
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookDetour.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookDetour.cs
+index 019b841..0c4c670 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookDetour.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookDetour.cs
+@@ -10,6 +10,8 @@ internal class FunchookDetour : BaseNativeDetour<FunchookDetour>
+     public FunchookDetour(nint originalMethodPtr, Delegate detourMethod) : base(originalMethodPtr, detourMethod)
+     {
+         funchookInstance = FunchookLib.Create();
++        if (funchookInstance == 0)
++            throw new InvalidOperationException("funchook_create returned a null handle.");
+     }
+ 
+     protected override void ApplyImpl() => EnsureSuccess(FunchookLib.Install(funchookInstance, 0));
+@@ -23,7 +25,11 @@ internal class FunchookDetour : BaseNativeDetour<FunchookDetour>
+ 
+     protected override void UndoImpl() => EnsureSuccess(FunchookLib.Uninstall(funchookInstance, 0));
+ 
+-    protected override void FreeImpl() => EnsureSuccess(FunchookLib.Destroy(funchookInstance));
++    protected override void FreeImpl()
++    {
++        if (funchookInstance != 0)
++            EnsureSuccess(FunchookLib.Destroy(funchookInstance));
++    }
+ 
+     private string GetErrorMessage()
+         => FunchookLib.ErrorMessage(funchookInstance);
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookLib.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookLib.cs
+index 498aa0f..5d6242e 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookLib.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookLib.cs
+@@ -21,6 +21,25 @@ internal enum FunchookResult
+ 
+ internal static unsafe class FunchookLib
+ {
++    public static bool IsAvailable()
++    {
++        if (!NativeLibrary.TryLoad("funchook", typeof(FunchookLib).Assembly, null, out var handle))
++            return false;
++
++        try
++        {
++            return NativeLibrary.TryGetExport(handle, "funchook_create", out _)
++                   && NativeLibrary.TryGetExport(handle, "funchook_destroy", out _)
++                   && NativeLibrary.TryGetExport(handle, "funchook_prepare", out _)
++                   && NativeLibrary.TryGetExport(handle, "funchook_install", out _)
++                   && NativeLibrary.TryGetExport(handle, "funchook_uninstall", out _);
++        }
++        finally
++        {
++            NativeLibrary.Free(handle);
++        }
++    }
++
+     [DllImport("funchook", EntryPoint = "funchook_create", CallingConvention = CallingConvention.Cdecl)]
+     public static extern nint Create();
+ 
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs
+index 7f27660..72e6e53 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs
+@@ -2,6 +2,7 @@
+ using System.Collections.Generic;
+ using System.Reflection;
+ using BepInEx.Configuration;
++using BepInEx.Logging;
+ using BepInEx.Unity.IL2CPP.Hook.Dobby;
+ using BepInEx.Unity.IL2CPP.Hook.Funchook;
+ using MonoMod.RuntimeDetour;
+@@ -11,6 +12,8 @@ namespace BepInEx.Unity.IL2CPP.Hook;
+ 
+ public interface INativeDetour : IDetour
+ {
++    private static readonly ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("NativeDetour");
++
+     private static readonly ConfigEntry<DetourProvider> DetourProviderType = ConfigFile.CoreConfig.Bind(
+          "Detours", "DetourProviderType",
+          DetourProvider.Default,
+@@ -21,16 +24,29 @@ public interface INativeDetour : IDetour
+     public nint DetourMethodPtr { get; }
+     public nint TrampolinePtr { get; }
+ 
+-    private static INativeDetour CreateDefault<T>(nint original, T target) where T : Delegate =>
+-        // TODO: check and provide an OS accurate provider
+-        new DobbyDetour(original, target);
++    private static INativeDetour CreateDefault<T>(nint original, T target) where T : Delegate
++    {
++        if (DobbyLib.IsAvailable())
++        {
++            Logger.LogDebug("Using Dobby native detour provider");
++            return new DobbyDetour(original, target);
++        }
++
++        if (FunchookLib.IsAvailable())
++        {
++            Logger.LogDebug("Using Funchook native detour provider");
++            return new FunchookDetour(original, target);
++        }
++
++        throw new InvalidOperationException("No native detour provider is available. Tried Dobby and Funchook.");
++    }
+ 
+     public static INativeDetour Create<T>(nint original, T target) where T : Delegate
+     {
+         var detour = DetourProviderType.Value switch
+         {
+-            DetourProvider.Dobby    => new DobbyDetour(original, target),
+-            DetourProvider.Funchook => new FunchookDetour(original, target),
++            DetourProvider.Dobby    => CreateDobby(original, target),
++            DetourProvider.Funchook => CreateFunchook(original, target),
+             _                       => CreateDefault(original, target)
+         };
+         if (!ReflectionHelper.IsMono)
+@@ -41,12 +57,47 @@ public interface INativeDetour : IDetour
+         return detour;
+     }
+ 
++    private static INativeDetour CreateDobby<T>(nint original, T target) where T : Delegate
++    {
++        if (!DobbyLib.IsAvailable())
++            throw new InvalidOperationException("Dobby native detour provider was selected, but dobby could not be loaded.");
++
++        Logger.LogDebug("Using configured Dobby native detour provider");
++        return new DobbyDetour(original, target);
++    }
++
++    private static INativeDetour CreateFunchook<T>(nint original, T target) where T : Delegate
++    {
++        if (!FunchookLib.IsAvailable())
++            throw new InvalidOperationException("Funchook native detour provider was selected, but funchook could not be loaded.");
++
++        Logger.LogDebug("Using configured Funchook native detour provider");
++        return new FunchookDetour(original, target);
++    }
++
+     public static INativeDetour CreateAndApply<T>(nint from, T to, out T original)
+         where T : Delegate
+     {
+         var detour = Create(from, to);
+-        original = detour.GenerateTrampoline<T>();
+-        detour.Apply();
++        try
++        {
++            original = detour.GenerateTrampoline<T>();
++            detour.Apply();
++        }
++        catch
++        {
++            try
++            {
++                detour.Dispose();
++            }
++            catch (Exception cleanupEx)
++            {
++                Logger.LogWarning($"Failed to clean up native detour after setup failure: {cleanupEx}");
++            }
++
++            original = null;
++            throw;
++        }
+ 
+         return detour;
+     }
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs
+index 1ccfb9e..ad28239 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs
+@@ -65,13 +65,30 @@ public class IL2CPPChainloader : BaseChainloader<BasePlugin>
+             return;
+         }
+ 
+-        var runtimeInvokePtr = NativeLibrary.GetExport(il2CppHandle, "il2cpp_runtime_invoke");
++        if (!NativeLibrary.TryGetExport(il2CppHandle, "il2cpp_runtime_invoke", out var runtimeInvokePtr))
++        {
++            Logger.Log(LogLevel.Fatal,
++                       "Could not locate il2cpp_runtime_invoke in the Il2Cpp game assembly. IL2CPP plugin loading is disabled for this run.");
++            return;
++        }
++
+         PreloaderLogger.Log.Log(LogLevel.Debug, $"Runtime invoke pointer: 0x{runtimeInvokePtr.ToInt64():X}");
+         RuntimeInvokeDetourDelegate invokeMethodDetour = OnInvokeMethod;
+ 
+-        RuntimeInvokeDetour =
+-            INativeDetour.CreateAndApply(runtimeInvokePtr, invokeMethodDetour, out originalInvoke);
+-        PreloaderLogger.Log.Log(LogLevel.Debug, "Runtime invoke patched");
++        try
++        {
++            RuntimeInvokeDetour =
++                INativeDetour.CreateAndApply(runtimeInvokePtr, invokeMethodDetour, out originalInvoke);
++            PreloaderLogger.Log.Log(LogLevel.Debug, "Runtime invoke patched");
++        }
++        catch (Exception ex)
++        {
++            originalInvoke = null;
++            RuntimeInvokeDetour = null;
++            Logger.Log(LogLevel.Fatal,
++                       "Unable to patch il2cpp_runtime_invoke. IL2CPP plugin loading is disabled for this run.");
++            Logger.Log(LogLevel.Error, ex);
++        }
+     }
+ 
+     private static IntPtr OnInvokeMethod(IntPtr method, IntPtr obj, IntPtr parameters, IntPtr exc)
+@@ -103,18 +120,36 @@ public class IL2CPPChainloader : BaseChainloader<BasePlugin>
+                 Logger.Log(LogLevel.Error, ex);
+             }
+ 
+-        var result = originalInvoke(method, obj, parameters, exc);
++        var result = originalInvoke?.Invoke(method, obj, parameters, exc) ?? IntPtr.Zero;
+ 
+         if (unhook)
+         {
+-            RuntimeInvokeDetour.Dispose();
+-
+-            PreloaderLogger.Log.Log(LogLevel.Debug, "Runtime invoke unpatched");
++            TryDisposeRuntimeInvokeDetour();
+         }
+ 
+         return result;
+     }
+ 
++    private static void TryDisposeRuntimeInvokeDetour()
++    {
++        var detour = RuntimeInvokeDetour;
++        RuntimeInvokeDetour = null;
++        originalInvoke = null;
++
++        if (detour == null) return;
++
++        try
++        {
++            detour.Dispose();
++            PreloaderLogger.Log.Log(LogLevel.Debug, "Runtime invoke unpatched");
++        }
++        catch (Exception ex)
++        {
++            Logger.Log(LogLevel.Warning, "Runtime invoke detour cleanup failed");
++            Logger.Log(LogLevel.Warning, ex);
++        }
++    }
++
+     protected override void InitializeLoggers()
+     {
+         base.InitializeLoggers();
+-- 
+2.54.0.windows.1
+

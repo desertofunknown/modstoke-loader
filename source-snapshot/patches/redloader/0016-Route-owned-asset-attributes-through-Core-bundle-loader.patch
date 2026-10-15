@@ -1,0 +1,31 @@
+diff --git a/SonsSdk/Attributes/AssetBundleAttribute.cs b/SonsSdk/Attributes/AssetBundleAttribute.cs
+index 0663feb..9ac3906 100644
+--- a/SonsSdk/Attributes/AssetBundleAttribute.cs
++++ b/SonsSdk/Attributes/AssetBundleAttribute.cs
+@@ -25,6 +25,9 @@ public class AssetBundleAttribute : Attribute
+ 
+     internal bool LoadBundle(Assembly assembly)
+     {
++        if (BundleLoader != null)
++            return BundleLoader(this, assembly);
++
+         if (IsLoaded())
+         {
+             return true;
+@@ -62,13 +65,15 @@ public class AssetBundleAttribute : Attribute
+ 
+     internal AssetBundle LoadedBundle;
+ 
++    internal Func<AssetBundleAttribute, Assembly, bool> BundleLoader;
++
+     internal List<AssetReferenceAttribute> AssetReferences = new();
+ }
+ 
+ [AttributeUsage(AttributeTargets.Property)]
+ public class AssetReferenceAttribute : Attribute
+ {
+-    public string AssetName { get; private set; }
++    public string AssetName { get; internal set; }
+ 
+     internal PropertyInfo Property { get; set; }
+ 

@@ -1,0 +1,66 @@
+diff --git a/SonsSdk/GenericModalDialog.cs b/SonsSdk/GenericModalDialog.cs
+--- a/SonsSdk/GenericModalDialog.cs
++++ b/SonsSdk/GenericModalDialog.cs
+@@ -63,9 +63,13 @@ public class GenericModalDialog : MonoBehaviour
+     internal InputGamepadMenuHelper _gamepadMenuHelper;
+     internal Canvas _canvas;
+ 
++    [HideFromIl2Cpp]
+     internal event Action OnCancel;
++    [HideFromIl2Cpp]
+     internal event Action OnOption1;
++    [HideFromIl2Cpp]
+     internal event Action OnOption2;
++    [HideFromIl2Cpp]
+     internal event Action OnOption3;
+     
+     internal void Option1Clicked()
+@@ -108,6 +112,7 @@ public class GenericModalDialog : MonoBehaviour
+         _contentTextObject.text = message;
+     }
+     
++    [HideFromIl2Cpp]
+     public void SetOption1(string text, Action action)
+     {
+         var driver = SdkEvents.BeginLifecycleSetup();
+@@ -122,6 +127,7 @@ public class GenericModalDialog : MonoBehaviour
+         OnOption1 += action;
+     }
+     
++    [HideFromIl2Cpp]
+     public void SetOption2(string text, Action action)
+     {
+         var driver = SdkEvents.BeginLifecycleSetup();
+@@ -136,6 +142,7 @@ public class GenericModalDialog : MonoBehaviour
+         OnOption2 += action;
+     }
+     
++    [HideFromIl2Cpp]
+     public void SetOption3(string text, Action action)
+     {
+         var driver = SdkEvents.BeginLifecycleSetup();
+@@ -150,6 +157,7 @@ public class GenericModalDialog : MonoBehaviour
+         OnOption3 += action;
+     }
+     
++    [HideFromIl2Cpp]
+     public void SetCancel(Action action)
+     {
+         var driver = SdkEvents.BeginLifecycleSetup();
+diff --git a/SonsSdk/SUI/SUIColorWheel.cs b/SonsSdk/SUI/SUIColorWheel.cs
+--- a/SonsSdk/SUI/SUIColorWheel.cs
++++ b/SonsSdk/SUI/SUIColorWheel.cs
+@@ -2,4 +2,5 @@
+ using System;
++using Il2CppInterop.Runtime.Attributes;
+ using Il2CppInterop.Runtime.InteropTypes.Fields;
+ using RedLoader;
+ using UnityEngine;
+@@ -41,6 +42,7 @@ public class ColorPicker : MonoBehaviour
+         }
+     }
+ 
++    [HideFromIl2Cpp]
+     public event Action<Color> OnColorChanged;
+ 
+     public void Awake()

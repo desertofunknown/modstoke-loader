@@ -1,0 +1,186 @@
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 23ecb35..904f415 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -43,6 +43,7 @@ internal interface ISdkLifecycleDriver
+     SUI.ISdkPanelBlurDriver Blur { get; }
+     SUI.ISdkUiPrefabDriver UiPrefabs { get; }
+     SUI.ISdkUiPanelDriver UiPanels { get; }
++    SUI.ISdkMenuButtonDriver MenuButtons { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);
+diff --git a/SonsSdk/SUI/SUI.cs b/SonsSdk/SUI/SUI.cs
+index 8500386..e2adf91 100644
+--- a/SonsSdk/SUI/SUI.cs
++++ b/SonsSdk/SUI/SUI.cs
+@@ -37,6 +37,13 @@ internal interface ISdkUiPanelDriver
+     bool Remove(string id);
+ }
+ 
++internal interface ISdkMenuButtonDriver
++{
++    void Register(Func<SUiElement> generator, string id, ESonsScene scene, int index);
++    void OnSceneInitialized(ESonsScene scene);
++    void OnPauseMenuCreated(PauseMenu menu);
++}
++
+ public partial class SUI
+ {
+     public static readonly Color BG_CYAN = new(0, 0.5f, 0.5f, 0.2f);
+@@ -68,7 +75,8 @@ public partial class SUI
+ 
+     private static GameObject _eventSystemObject;
+     
+-    private static List<MenuButtonRegistration> _registeredMenuButtons = new();
++    internal static readonly List<MenuButtonRegistration> _registeredMenuButtons = new();
++    internal static PauseMenu _pauseMenu;
+ 
+     public static SSliderOptions SSlider => new(Object.Instantiate(_sliderPrefab));
+ 
+@@ -378,6 +386,14 @@ public partial class SUI
+ 
+     private static void OnSonsScene(ESonsScene scene)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.MenuButtons.OnSceneInitialized(scene);
++            return;
++        }
++
++        _pauseMenu = null;
+         switch (scene)
+         {
+             case ESonsScene.Title:
+@@ -385,7 +401,7 @@ public partial class SUI
+                 break;
+         }
+ 
+-        foreach (var button in _registeredMenuButtons)
++        foreach (var button in _registeredMenuButtons.ToArray())
+         {
+             if (scene == ESonsScene.Title && button.Scene == ESonsScene.Title)
+             {
+@@ -491,47 +507,93 @@ public partial class SUI
+ 
+     internal static void OnPauseMenuCreated(PauseMenu menu)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.MenuButtons.OnPauseMenuCreated(menu);
++            return;
++        }
++
+         var buttonHub = menu.transform.Find("Panel/BottomMenuPanel/LeftPanel");
+-        var buttons = buttonHub.GetChildren().Select(x => x.name).ToHashSet();
++        if (!buttonHub)
++            throw new InvalidOperationException("Pause menu button container was not found.");
++
++        _pauseMenu = menu;
+ 
+-        foreach (var button in _registeredMenuButtons.Where(x=>x.Scene == ESonsScene.Game))
++        foreach (var button in _registeredMenuButtons.ToArray())
+         {
+-            if(!buttons.Contains(button.Id))
+-            {
+-                var go = button.ElementFactory();
+-                go.Root.name = button.Id;
+-                go.SetParent(buttonHub);
+-                if(button.Index != -1)
+-                    go.RectTransform.SetSiblingIndex(button.Index);
+-                
+-                menu._activateForMenu.Add(go.Root);
+-            }
++            if (button.Scene == ESonsScene.Game)
++                AddButtonToPauseCanvas(menu, buttonHub, button);
+         }
+     }
+ 
+     public static void AddButtonToPauseMenu(Func<SUiElement> generator, string id, int index = -1)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
+         if (!MenuButtonRegistrationPolicy.Allows(id))
+             return;
+ 
+-        var button = new MenuButtonRegistration(generator, id, ESonsScene.Game, index);
+-        
+-        _registeredMenuButtons.Add(button);
++        if (driver != null)
++        {
++            driver.MenuButtons.Register(generator, id, ESonsScene.Game, index);
++            return;
++        }
++
++        RegisterMenuButton(generator, id, ESonsScene.Game, index);
+     }
+     
+     public static void AddButtonToTitleMenu(Func<SUiElement> generator, string id, int index = -1)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
+         if (!MenuButtonRegistrationPolicy.Allows(id))
+             return;
+ 
+-        var button = new MenuButtonRegistration(generator, id, ESonsScene.Title, index);
+-        
+-        if (SceneManager.GetActiveScene().name == SonsSceneManager.TitleSceneName)
++        if (driver != null)
+         {
+-            AddButtonToBottomCanvas(button);
++            driver.MenuButtons.Register(generator, id, ESonsScene.Title, index);
++            return;
+         }
+ 
++        RegisterMenuButton(generator, id, ESonsScene.Title, index);
++    }
++
++    private static void RegisterMenuButton(Func<SUiElement> generator, string id, ESonsScene scene, int index)
++    {
++        ArgumentNullException.ThrowIfNull(generator);
++        ArgumentNullException.ThrowIfNull(id);
++        if (_registeredMenuButtons.Any(button => button.Scene == scene && button.Id == id))
++            return;
++
++        var button = new MenuButtonRegistration(generator, id, scene, index);
++        // Publish before invoking a factory so reentrant registration sees this ID.
+         _registeredMenuButtons.Add(button);
++
++        try
++        {
++            if (scene == ESonsScene.Title && SceneManager.GetActiveScene().name == SonsSceneManager.TitleSceneName)
++                AddButtonToBottomCanvas(button);
++            else if (scene == ESonsScene.Game && _pauseMenu)
++                AddButtonToPauseCanvas(_pauseMenu, _pauseMenu.transform.Find("Panel/BottomMenuPanel/LeftPanel"), button);
++        }
++        catch
++        {
++            _registeredMenuButtons.Remove(button);
++            throw;
++        }
++    }
++
++    private static void AddButtonToPauseCanvas(PauseMenu menu, Transform buttonHub, MenuButtonRegistration button)
++    {
++        if (buttonHub.GetChildren().Any(child => child.name == button.Id))
++            return;
++
++        var element = button.ElementFactory();
++        element.Root.name = button.Id;
++        element.SetParent(buttonHub);
++        if (button.Index != -1)
++            element.RectTransform.SetSiblingIndex(button.Index);
++
++        menu._activateForMenu.Add(element.Root);
+     }
+ 
+     private static void AddButtonToBottomCanvas(MenuButtonRegistration button)
+@@ -835,7 +897,7 @@ public partial class SUI
+         return $"<color={color}>{text}</color>";
+     }
+ 
+-    private struct MenuButtonRegistration
++    internal struct MenuButtonRegistration
+     {
+         public readonly Func<SUiElement> ElementFactory;
+         public readonly string Id;
