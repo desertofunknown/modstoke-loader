@@ -1,0 +1,99 @@
+diff --git a/RedLoader/Utils/Collections/Il2CppManagedEnumerator.cs b/RedLoader/Utils/Collections/Il2CppManagedEnumerator.cs
+index d2d44dc..4199ab8 100644
+--- a/RedLoader/Utils/Collections/Il2CppManagedEnumerator.cs
++++ b/RedLoader/Utils/Collections/Il2CppManagedEnumerator.cs
+@@ -18,6 +18,7 @@ public class Il2CppManagedEnumerator : Object
+     private static readonly Dictionary<Type, System.Func<object, Object>> boxers = new();
+ 
+     private readonly IEnumerator enumerator;
++    private readonly IManagedEnumeratorDriver driver;
+     private Object current;
+     private bool hasCurrent;
+ 
+@@ -35,6 +36,7 @@ public class Il2CppManagedEnumerator : Object
+         : base(ClassInjector.DerivedConstructorPointer<Il2CppManagedEnumerator>())
+     {
+         this.enumerator = enumerator ?? throw new ArgumentNullException(nameof(enumerator));
++        driver = ManagedEnumeratorDriverFactory.Create(enumerator);
+         ClassInjector.DerivedConstructorBody(this);
+     }
+ 
+@@ -42,6 +44,9 @@ public class Il2CppManagedEnumerator : Object
+     {
+         get
+         {
++            if (driver != null)
++                return driver.Current;
++
+             if (!hasCurrent)
+             {
+                 current = enumerator.Current switch
+@@ -61,6 +66,9 @@ public class Il2CppManagedEnumerator : Object
+ 
+     public bool MoveNext()
+     {
++        if (driver != null)
++            return driver.MoveNext();
++
+         current = null;
+         hasCurrent = false;
+         return enumerator.MoveNext();
+@@ -68,6 +76,12 @@ public class Il2CppManagedEnumerator : Object
+ 
+     public void Reset()
+     {
++        if (driver != null)
++        {
++            driver.Reset();
++            return;
++        }
++
+         current = null;
+         hasCurrent = false;
+         enumerator.Reset();
+diff --git a/RedLoader/Utils/Collections/ManagedEnumeratorDriver.cs b/RedLoader/Utils/Collections/ManagedEnumeratorDriver.cs
+new file mode 100644
+--- /dev/null
++++ b/RedLoader/Utils/Collections/ManagedEnumeratorDriver.cs
+@@ -0,0 +1,41 @@
++using System;
++using System.Collections;
++using Il2CppObject = Il2CppSystem.Object;
++
++namespace RedLoader.Unity.IL2CPP.Utils.Collections;
++
++internal interface IManagedEnumeratorDriver
++{
++    Il2CppObject Current { get; }
++    bool MoveNext();
++    void Reset();
++}
++
++// Keep driver selection separate from the native wrapper's lazy type registration.
++internal static class ManagedEnumeratorDriverFactory
++{
++    private static Func<IEnumerator, IManagedEnumeratorDriver> _factory;
++    private static bool _enumeratorCreated;
++
++    internal static void SetFactory(Func<IEnumerator, IManagedEnumeratorDriver> factory)
++    {
++        ArgumentNullException.ThrowIfNull(factory);
++        if (ReferenceEquals(_factory, factory))
++            return;
++        if (_factory != null || _enumeratorCreated)
++            throw new InvalidOperationException("Coroutine adapter ownership must be selected before creating an enumerator.");
++
++        _factory = factory;
++    }
++
++    internal static IManagedEnumeratorDriver Create(IEnumerator routine)
++    {
++        _enumeratorCreated = true;
++        var factory = _factory;
++        if (factory == null)
++            return null;
++
++        return factory(routine)
++            ?? throw new InvalidOperationException("The coroutine adapter factory returned no driver.");
++    }
++}

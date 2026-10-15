@@ -1,0 +1,239 @@
+diff --git a/SonsSdk/Private/SdkEntryPoint.cs b/SonsSdk/Private/SdkEntryPoint.cs
+index 4f6fe93..40ea1a4 100644
+--- a/SonsSdk/Private/SdkEntryPoint.cs
++++ b/SonsSdk/Private/SdkEntryPoint.cs
+@@ -32,6 +32,7 @@ public class SdkEntryPoint : IModProcessor
+     private static bool _shouldCheatsBeEnabled = false;
+     private static readonly HashSet<string> ModDependencySearchDirectories = new(StringComparer.OrdinalIgnoreCase);
+     private static bool _assemblyResolverRegistered;
++    private bool _createModManagerUi;
+     
+     public List<ModBase> LoadPlugins()
+     {
+@@ -469,9 +470,19 @@ public class SdkEntryPoint : IModProcessor
+     }
+ 
+     public void InitAfterUnity()
++    {
++        InitAfterUnity(createModManagerUi: true);
++    }
++
++    /// <summary>
++    /// Initializes the SDK with optional legacy mod-manager UI. Shared UI and settings remain available.
++    /// </summary>
++    /// <param name="createModManagerUi">Whether to create the legacy manager, mod indicator and menu buttons.</param>
++    public void InitAfterUnity(bool createModManagerUi)
+     {
+         try
+         {
++            _createModManagerUi = createModManagerUi;
+             GlobalEvents.OnApplicationLateStart.Subscribe(OnAppLateStart);
+             SdkEvents.OnSdkInitialized.Subscribe(OnSdkInitialized);
+             SdkEvents.OnGameStart.Subscribe(OnGameStart, priority:999);
+@@ -506,7 +517,12 @@ public class SdkEntryPoint : IModProcessor
+ 
+     private void OnSdkInitialized()
+     {
+-        ModManagerUi.Create();
++        if (_createModManagerUi)
++        {
++            ModManagerUi.Create();
++        }
++
++        ModSettingsUi.Create();
+ 
+         var save = Utility.GetCommandLineArgValue("--savegame");
+         if (!string.IsNullOrEmpty(save) && int.TryParse(save, out var id))
+diff --git a/SonsSdk/UIs/ModManagerUi.cs b/SonsSdk/UIs/ModManagerUi.cs
+index 6f38be5..eef7f1d 100644
+--- a/SonsSdk/UIs/ModManagerUi.cs
++++ b/SonsSdk/UIs/ModManagerUi.cs
+@@ -111,20 +111,18 @@ public class ModManagerUi
+         
+         SdkEvents.OnSonsSceneInitialized.Subscribe(scene =>
+         {
+-            Close();
++            TogglePanel(MOD_LIST_ID, false);
+             TogglePanel(MOD_INDICATOR_ID, scene == ESonsScene.Title);
+         });
+         
+         GlobalEvents.OnUpdate.Subscribe(OnUpdate);
+-        
+-        ModSettingsUi.Create();
+     }
+ 
+     private static void OnUpdate()
+     {
+         if (Input.GetKeyDown(KeyCode.Escape))
+         {
+-            Close();
++            TogglePanel(MOD_LIST_ID, false);
+         }
+     }
+ 
+diff --git a/SonsSdk/UIs/ModSettingsUi.cs b/SonsSdk/UIs/ModSettingsUi.cs
+index 1c2c748..edc4508 100644
+--- a/SonsSdk/UIs/ModSettingsUi.cs
++++ b/SonsSdk/UIs/ModSettingsUi.cs
+@@ -31,15 +31,13 @@ public class ModSettingsUi
+     private static SScrollContainerOptions _mainContainer;
+     
+     private static readonly Observable<string> Title = new("Mod Settings");
+-    private static string _currentModId;
++    private static Action<bool> _onClosed;
+ 
+     public static void Create()
+     {
+         if (_initialized)
+             return;
+ 
+-        _initialized = true;
+-
+         var panel = RegisterNewPanel(MOD_SETTINGS_NAME)
+             .OverrideSorting(200)
+             .Background(MainBg).Material(GameResources.GetMaterial(MaterialAssetMap.DarkGreyBackground))
+@@ -68,44 +66,112 @@ public class ModSettingsUi
+             .Background(ButtonBg).Background("#796C4E").Ppu(3)
+             .Pivot(0, 0).Anchor(AnchorType.BottomLeft).Position(390, 80).Size(200, 60)
+             .RichText("Revert \uf0e2").FontColor("#c3ba8b").UpperCase().FontSize(20).Notify(RevertSettings));
++
++        SdkEvents.OnSonsSceneInitialized.Subscribe(_ => Close(returnToOwner: false));
++        GlobalEvents.OnUpdate.Subscribe(OnUpdate);
++        _initialized = true;
++    }
++
++    private static void OnUpdate()
++    {
++        if (Input.GetKeyDown(KeyCode.Escape))
++        {
++            Close();
++        }
+     }
+ 
+     public static void Open(string id)
+     {
+-        if (SettingsRegistry.GetEntry(id) is { } entry)
++        TryOpen(id, null);
++    }
++
++    /// <summary>
++    /// Opens registered settings and notifies the caller when the panel closes.
++    /// </summary>
++    /// <param name="id">The registered mod ID.</param>
++    /// <param name="onClosed">Receives true when the caller can restore its UI, or false on scene changes, replacement or a restart prompt.</param>
++    /// <returns>Whether the requested settings panel was opened.</returns>
++    public static bool TryOpen(string id, Action<bool> onClosed)
++    {
++        if (!_initialized || SettingsRegistry.GetEntry(id) is not { } entry)
++        {
++            return false;
++        }
++
++        if (_currentEntry != null)
++        {
++            Close(returnToOwner: false);
++            if (_currentEntry != null)
++            {
++                return false;
++            }
++        }
++
++        RLog.Debug($"Found panel for {id}");
++        try
+         {
+-            RLog.Debug($"Found panel for {id}");
+-            _currentModId = id;
+-            _currentEntry = entry;
+             entry.ParentTo(_mainContainer.ContainerObject.RectTransform);
+             Title.Value = $"MOD SETTINGS <color=#ea2f4e>[{id}]</color>";
+             TogglePanel(MOD_SETTINGS_NAME, true);
+             TooltipProvider.RaycastFor(Raycaster);
++            _currentEntry = entry;
++            _onClosed = onClosed;
++            return true;
++        }
++        catch
++        {
++            try
++            {
++                entry.Unparent();
++                TogglePanel(MOD_SETTINGS_NAME, false);
++                TooltipProvider.StopRaycasting();
++            }
++            catch
++            {
++                // Preserve the original opening failure if UI cleanup also fails.
++            }
++
++            throw;
+         }
+     }
+ 
+     public static void Close()
+     {
+-        _currentEntry?.Unparent();
++        Close(returnToOwner: true);
++    }
++
++    private static void Close(bool returnToOwner)
++    {
++        var entry = _currentEntry;
++        var onClosed = _onClosed;
+         _currentEntry = null;
+-        
++        _onClosed = null;
++        var completed = false;
+         var showRestartPrompt = false;
+-        
+-        if (!string.IsNullOrEmpty(_currentModId) && SettingsRegistry.TryGetEntry(_currentModId, out var entry))
++
++        try
+         {
+-            entry.Save();
+-            entry.InvokeCallbacks();
+-            showRestartPrompt = entry.ChangesNeedRestart && entry.CheckForChanges();
+-        }
+-        
+-        _currentModId = null;
+-        
+-        TogglePanel(MOD_SETTINGS_NAME, false);
+-        TooltipProvider.StopRaycasting();
++            entry?.Unparent();
++            TogglePanel(MOD_SETTINGS_NAME, false);
++            TooltipProvider.StopRaycasting();
++
++            if (entry != null)
++            {
++                entry.Save();
++                entry.InvokeCallbacks();
++                showRestartPrompt = entry.ChangesNeedRestart && entry.CheckForChanges();
++            }
+ 
+-        if (showRestartPrompt)
++            if (showRestartPrompt)
++            {
++                GenericModalDialog.ShowDialog("Restart", "You need to restart the game for the changes to take effect.").SetOption1("Ok", ()=>{});
++            }
++
++            completed = true;
++        }
++        finally
+         {
+-            GenericModalDialog.ShowDialog("Restart", "You need to restart the game for the changes to take effect.").SetOption1("Ok", ()=>{});
++            onClosed?.Invoke(returnToOwner && completed && !showRestartPrompt && _currentEntry == null);
+         }
+     }
+ 
+diff --git a/SonsSdk/SUI/SettingsRegistry.cs b/SonsSdk/SUI/SettingsRegistry.cs
+index c042b95..737fb9b 100644
+--- a/SonsSdk/SUI/SettingsRegistry.cs
++++ b/SonsSdk/SUI/SettingsRegistry.cs
+@@ -19,7 +19,7 @@ public class SettingsRegistry
+ {
+     internal static readonly Dictionary<string, SettingsEntry> SettingsEntries = new();
+     
+-    private static readonly BackgroundDefinition ButtonBg = new(
++    private static BackgroundDefinition ButtonBg => new(
+         ColorFromString("#796C4E"), 
+         GetBackgroundSprite(EBackground.Round8), 
+         Image.Type.Sliced);

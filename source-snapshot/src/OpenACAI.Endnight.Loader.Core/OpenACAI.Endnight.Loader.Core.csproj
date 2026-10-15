@@ -1,0 +1,267 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>OpenACAI.Endnight.Loader.Core</AssemblyName>
+    <Title>Modstoke Loader Core</Title>
+    <Product>Modstoke Loader by OpenACAI</Product>
+    <Company>OpenACAI</Company>
+    <Description>Modstoke Loader core and Modstoke SDK by OpenACAI.</Description>
+    <RootNamespace>OpenACAI.Endnight.Loader</RootNamespace>
+    <ImplicitUsings>false</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <NoWarn>1701;1702</NoWarn>
+    <GameRoot Condition="'$(GameRoot)' == ''">$(MSBuildProjectDirectory)\..\..\..\..</GameRoot>
+    <BepInExCoreRoot Condition="'$(BepInExCoreRoot)' == ''">$(GameRoot)\BepInEx\core</BepInExCoreRoot>
+    <RedLoaderSourceRoot Condition="'$(RedLoaderSourceRoot)' == ''">$(MSBuildProjectDirectory)\..\..\..\RedLoader</RedLoaderSourceRoot>
+    <GameInteropRoot Condition="'$(GameInteropRoot)' == ''">$(GameRoot)\BepInEx\interop</GameInteropRoot>
+  </PropertyGroup>
+
+  <Target Name="ValidateGameInteropReferences" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(GameInteropRoot)\Il2Cppmscorlib.dll') Or !Exists('$(GameInteropRoot)\UnityEngine.UnityWebRequestAudioModule.dll')"
+           Text="GameInteropRoot must contain the complete generated IL2CPP wrapper set. Launch the loader to generate BepInEx\interop, or set GameInteropRoot to an existing generated set. Unity base libraries cannot substitute for wrappers." />
+  </Target>
+
+  <ItemGroup>
+    <Compile Include="OpenACAIConfig.cs" />
+    <Compile Include="OpenACAIAssemblyResolver.cs" />
+    <Compile Include="OpenACAIDiscoveryFiles.cs" />
+    <Compile Include="OpenACAIBepInExPluginActivationProbe.cs" />
+    <Compile Include="OpenACAIBepInExPluginCompatibility.cs" />
+    <Compile Include="OpenACAIBepInExPluginCompatibilitySnapshots.cs" />
+    <Compile Include="OpenACAIBepInExPluginHost.cs" />
+    <Compile Include="OpenACAIBepInExPluginMetadata.cs" />
+    <Compile Include="OpenACAIBepInExRegistry.cs" />
+    <Compile Include="OpenACAIChainloaderStatus.cs" />
+    <Compile Include="OpenACAICompatibilityDependencies.cs" />
+    <Compile Include="OpenACAIEntrypointlessModPorts.cs" />
+    <Compile Include="OpenACAIFileIntegrity.cs" />
+    <Compile Include="OpenACAIHarmonySupport.cs" />
+    <Compile Include="OpenACAIIL2CPPHookState.cs" />
+    <Compile Include="OpenACAIInput.cs" />
+    <Compile Include="OpenACAILegacyLifecycleBridge.cs" />
+    <Compile Include="OpenACAILegacyRedLoaderShim.cs" />
+    <Compile Include="OpenACAIRedLoaderModActivation.cs" />
+    <Compile Include="OpenACAIRedLoaderAssets.cs" />
+    <Compile Include="OpenACAIRedLoaderCatalogs.cs" />
+    <Compile Include="OpenACAIManagedEnumerator.cs" />
+    <Compile Include="OpenACAICoroutineHost.cs" />
+    <Compile Include="OpenACAICoroutines.cs" />
+    <Compile Include="OpenACAIMenuRegistrationPolicy.cs" />
+    <Compile Include="OpenACAISonsSdkInitialization.cs" />
+    <Compile Include="OpenACAISonsSdkOverlay.cs" />
+    <Compile Include="OpenACAISonsSdkPanelBlur.cs" />
+    <Compile Include="OpenACAISonsUiPrefabs.cs" />
+    <Compile Include="OpenACAISonsUiViewport.cs" />
+    <Compile Include="OpenACAISonsUiPanels.cs" />
+    <Compile Include="OpenACAISonsUiMenuButtons.cs" />
+    <Compile Include="OpenACAISonsInputIcons.cs" />
+    <Compile Include="OpenACAISonsKeybinds.cs" />
+    <Compile Include="OpenACAISonsGlobalInput.cs" />
+    <Compile Include="OpenACAISonsSettingsRegistration.cs" />
+    <Compile Include="OpenACAISonsSettingsRegistration.Widgets.cs" />
+    <Compile Include="OpenACAISonsSettingsRegistration.Panel.cs" />
+    <Compile Include="OpenACAISonsSettingsRegistration.Entries.cs" />
+    <Compile Include="OpenACAISonsModalDialogs.cs" />
+    <Compile Include="OpenACAISonsTooltips.cs" />
+    <Compile Include="OpenACAISonsBlueprintRegistration.cs" />
+    <Compile Include="OpenACAISonsBlueprintRegistration.Runtime.cs" />
+    <Compile Include="OpenACAISonsBlueprintRegistration.Helpers.cs" />
+    <Compile Include="OpenACAISonsNetworkPrefabs.cs" />
+    <Compile Include="OpenACAISonsPackets.cs" />
+    <Compile Include="OpenACAISonsServerCommands.cs" />
+    <Compile Include="OpenACAISonsCommands.cs" />
+    <Compile Include="OpenACAISonsServerChat.cs" />
+    <Compile Include="OpenACAISonsServerAdminRequests.cs" />
+    <Compile Include="OpenACAISonsServerSessions.cs" />
+    <Compile Include="OpenACAISonsServerAuthentication.cs" />
+    <Compile Include="OpenACAISonsServerAdmission.cs" />
+    <Compile Include="OpenACAISonsServerIdentity.cs" />
+    <Compile Include="OpenACAISonsServerConnectionReads.cs" />
+    <Compile Include="OpenACAISonsServerEndpointReads.cs" />
+    <Compile Include="OpenACAISonsServerRoles.cs" />
+    <Compile Include="OpenACAISonsStoredRoles.cs" />
+    <Compile Include="OpenACAISonsServerWorld.cs" />
+    <Compile Include="OpenACAISonsServerWorld.Validation.cs" />
+    <Compile Include="OpenACAISonsServerWorld.Placement.cs" />
+    <Compile Include="OpenACAISonsServerWorld.FreeFormGeometry.cs" />
+    <Compile Include="OpenACAISonsServerWorld.BlueprintProgress.cs" />
+    <Compile Include="OpenACAISonsServerWorld.Vehicles.cs" />
+    <Compile Include="OpenACAISonsServerPlayerReads.cs" />
+    <Compile Include="OpenACAISonsEnvironmentReads.cs" />
+    <Compile Include="OpenACAISonsWorldLocatorReads.cs" />
+    <Compile Include="OpenACAISonsServerSaves.cs" />
+    <Compile Include="OpenACAISonsServerTime.cs" />
+    <Compile Include="OpenACAISonsServerWeather.cs" />
+    <Compile Include="OpenACAISonsServerPlayerSpawns.cs" />
+    <Compile Include="OpenACAISonsServerPlayerRevives.cs" />
+    <Compile Include="OpenACAISonsServerSleep.cs" />
+    <Compile Include="OpenACAISonsServerInventory.cs" />
+    <Compile Include="OpenACAISonsServerInventory.Policy.cs" />
+    <Compile Include="OpenACAISonsServerItemDrops.cs" />
+    <Compile Include="OpenACAISonsServerItemDrops.Observations.cs" />
+    <Compile Include="OpenACAISonsServerItemDrops.Snapshots.cs" />
+    <Compile Include="OpenACAISonsServerStorage.cs" />
+    <Compile Include="OpenACAISonsServerWorldObjects.cs" />
+    <Compile Include="OpenACAISonsServerWorldLocators.cs" />
+    <Compile Include="OpenACAISonsServerWorldLocators.Requests.cs" />
+    <Compile Include="OpenACAISonsServerStructureHits.cs" />
+    <Compile Include="OpenACAISonsServerConstruction.cs" />
+    <Compile Include="OpenACAISonsServerConstruction.Ingredients.cs" />
+    <Compile Include="OpenACAISonsServerConstruction.Completion.cs" />
+    <Compile Include="OpenACAISonsServerConstruction.CompletionResults.cs" />
+    <Compile Include="OpenACAISonsServerConstruction.CompletionSnapshots.cs" />
+    <Compile Include="OpenACAISonsServerVehicles.cs" />
+    <Compile Include="OpenACAISonsServerVehicles.Requests.cs" />
+    <Compile Include="OpenACAISonsServerFreeForm.cs" />
+    <Compile Include="OpenACAISonsServerPlayerHits.cs" />
+    <Compile Include="OpenACAISonsServerVailHits.cs" />
+    <Compile Include="OpenACAISonsServerDismemberHits.cs" />
+    <Compile Include="OpenACAISonsServerNotices.cs" />
+    <Compile Include="OpenACAISonsNoticePeers.cs" />
+    <Compile Include="OpenACAISonsNoticeProtocol.cs" />
+    <Compile Include="OpenACAISonsNoticeTracking.cs" />
+    <Compile Include="OpenACAISonsClientCommands.cs" />
+    <Compile Include="OpenACAISonsNoticeDisplay.cs" />
+    <Compile Include="OpenACAISonsGameManagers.cs" />
+    <Compile Include="OpenACAISonsSdkLifecycle.cs" />
+    <Compile Include="OpenACAISonsSdkLifecycle.Bootstrap.cs" />
+    <Compile Include="OpenACAISonsPlayerLimitPatch.cs" />
+    <Compile Include="OpenACAISonsSdkLifecycle.Commands.cs" />
+    <Compile Include="OpenACAISonsSdkLifecycle.EntryPoint.cs" />
+    <Compile Include="OpenACAISonsSdkLifecycle.GameEvents.cs" />
+    <Compile Include="OpenACAISonsSdkLifecycle.Gameplay.cs" />
+    <Compile Include="OpenACAISonsSdkLifecycle.Saving.cs" />
+    <Compile Include="OpenACAILegacyRedLoaderCompatibilityPatches.cs" />
+    <Compile Include="OpenACAILoaderCapabilities.cs" />
+    <Compile Include="OpenACAILoaderState.cs" />
+    <Compile Include="OpenACAIMenu.cs" />
+    <Compile Include="OpenACAIMonoModRuntimeBootstrap.cs" />
+    <Compile Include="OpenACAIModMenuDispatcher.cs" />
+    <Compile Include="OpenACAIModActions.cs" />
+    <Compile Include="OpenACAIModMenuFallback.cs" />
+    <Compile Include="OpenACAIModMenuRenderer.cs" />
+    <Compile Include="OpenACAIModMenuState.cs" />
+    <Compile Include="OpenACAIModInventory.cs" />
+    <Compile Include="OpenACAIModding.cs" />
+    <Compile Include="OpenACAIModSources.cs" />
+    <Compile Include="OpenACAINativeLifecycleDispatcher.cs" />
+    <Compile Include="OpenACAINativeLifecycleInvocationAdapter.cs" />
+    <Compile Include="OpenACAINativeLifecycleInvocationBridge.cs" />
+    <Compile Include="OpenACAINativeLifecycleInvocationJournal.cs" />
+    <Compile Include="OpenACAINativeLifecycleInvocationExecutor.cs" />
+    <Compile Include="OpenACAINativeLifecycleInvocationExecutorSnapshots.cs" />
+    <Compile Include="OpenACAINativeLifecycleInvocationScheduler.cs" />
+    <Compile Include="OpenACAINativeLifecycleInvocationSchedulerSnapshots.cs" />
+    <Compile Include="OpenACAINativeLifecycleInvocationTokenResolver.cs" />
+    <Compile Include="OpenACAINativeLifecycleRegistry.cs" />
+    <Compile Include="OpenACAINativeModHost.cs" />
+    <Compile Include="OpenACAINativeModRuntime.cs" />
+    <Compile Include="OpenACAIPaths.cs" />
+    <Compile Include="OpenACAILibraryInventoryStatus.cs" />
+    <Compile Include="OpenACAIProtectedRuntimeStatus.cs" />
+    <Compile Include="OpenACAIRuntimeAttestation.cs" />
+    <Compile Include="OpenACAIServerPolicy.cs" />
+    <Compile Include="OpenACAIRuntime.cs" />
+    <Compile Include="OpenACAIRuntimeCommands.cs" />
+    <Compile Include="OpenACAIRuntimeDriver.cs" />
+    <Compile Include="OpenACAIRuntimePreferences.cs" />
+    <Compile Include="OpenACAISons.cs" />
+    <Compile Include="OpenACAISonsAssets.cs" />
+    <Compile Include="OpenACAISonsAudioBanks.cs" />
+    <Compile Include="OpenACAISonsAudioPlayback.cs" />
+    <Compile Include="OpenACAISonsBuilding.cs" />
+    <Compile Include="OpenACAISonsCrafting.cs" />
+    <Compile Include="OpenACAISonsCraftingRecipes.cs" />
+    <Compile Include="OpenACAISonsInventory.cs" />
+    <Compile Include="OpenACAISonsInventoryEvents.cs" />
+    <Compile Include="OpenACAISonsInventoryReads.cs" />
+    <Compile Include="OpenACAISonsItemRegistration.cs" />
+    <Compile Include="OpenACAISonsItems.cs" />
+    <Compile Include="OpenACAISonsNetworking.cs" />
+    <Compile Include="OpenACAISonsBlobTransport.cs" />
+    <Compile Include="OpenACAISonsConstructionSync.cs" />
+    <Compile Include="OpenACAISonsMenuBridge.cs" />
+    <Compile Include="OpenACAISonsMenuBridgeState.cs" />
+    <Compile Include="OpenACAISonsRuntimeStateStatus.cs" />
+    <Compile Include="OpenACAISonsSaveData.cs" />
+    <Compile Include="OpenACAISonsSaveLifecycle.cs" />
+    <Compile Include="OpenACAISonsSaveRegistry.cs" />
+    <Compile Include="OpenACAITimings.cs" />
+    <Compile Include="OpenACAIUi.cs" />
+    <Compile Include="OpenACAIUnityLifecycle.cs" />
+    <Compile Include="OpenACAIUnityComponentHost.cs" />
+    <Compile Include="OpenACAIUnityLogSource.cs" />
+    <Compile Include="Plugin.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx.Core" HintPath="$(BepInExCoreRoot)\BepInEx.Core.dll" Private="false" />
+    <ProjectReference Include="..\Modstoke.Compatibility.BepInEx.Unity.IL2CPP\Modstoke.Compatibility.BepInEx.Unity.IL2CPP.csproj" Private="false" />
+    <Reference Include="Mono.Cecil" HintPath="$(BepInExCoreRoot)\Mono.Cecil.dll" Private="false" />
+    <Reference Include="MonoMod.Utils" HintPath="$(BepInExCoreRoot)\MonoMod.Utils.dll" Private="false" />
+    <Reference Include="SemanticVersioning" HintPath="$(RedLoaderSourceRoot)\bin\Unity.IL2CPP\SemanticVersioning.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(BepInExCoreRoot)\0Harmony.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(BepInExCoreRoot)\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Common" HintPath="$(BepInExCoreRoot)\Il2CppInterop.Common.dll" Private="false" />
+    <Reference Include="Il2Cppmscorlib" HintPath="$(GameInteropRoot)\Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="Il2CppSystem.Core" HintPath="$(GameInteropRoot)\Il2CppSystem.Core.dll" Private="false" />
+    <Reference Include="RedLoader" HintPath="$(RedLoaderSourceRoot)\SonsSdk\bin\Debug\net6\RedLoader.dll" Private="false" />
+    <Reference Include="SonsSdk" HintPath="$(RedLoaderSourceRoot)\SonsSdk\bin\Debug\net6\SonsSdk.dll" Private="false" />
+    <Reference Include="GLTF" HintPath="$(RedLoaderSourceRoot)\SonsSdk\bin\Debug\net6\GLTF.dll" Private="false" />
+    <Reference Include="Alt.Json" HintPath="$(RedLoaderSourceRoot)\SonsSdk\bin\Debug\net6\Alt.Json.dll" Private="false" />
+    <Reference Include="bolt" HintPath="$(GameInteropRoot)\bolt.dll" Private="false" />
+    <Reference Include="bolt.user" HintPath="$(GameInteropRoot)\bolt.user.dll" Private="false" />
+    <Reference Include="Bolt.Unity" HintPath="$(GameInteropRoot)\Bolt.Unity.dll" Private="false" />
+    <Reference Include="udpkit" HintPath="$(GameInteropRoot)\udpkit.dll" Private="false" />
+    <Reference Include="udpkit.common" HintPath="$(GameInteropRoot)\udpkit.common.dll" Private="false" />
+    <Reference Include="com.rlabrecque.steamworks.net" HintPath="$(GameInteropRoot)\com.rlabrecque.steamworks.net.dll" Private="false" />
+    <Reference Include="Endnight" HintPath="$(GameInteropRoot)\Endnight.dll" Private="false" />
+    <Reference Include="Endnight.Localization" HintPath="$(GameInteropRoot)\Endnight.Localization.dll" Private="false" />
+    <Reference Include="Endnight.Utilities.Configurations" HintPath="$(GameInteropRoot)\Endnight.Utilities.Configurations.dll" Private="false" />
+    <Reference Include="FMOD.Unity" HintPath="$(GameInteropRoot)\FMOD.Unity.dll" Private="false" />
+    <Reference Include="Multiplayer.Dedicated" HintPath="$(GameInteropRoot)\Multiplayer.Dedicated.dll" Private="false" />
+    <Reference Include="Sons" HintPath="$(GameInteropRoot)\Sons.dll" Private="false" />
+    <Reference Include="Sons.Atmosphere" HintPath="$(GameInteropRoot)\Sons.Atmosphere.dll" Private="false" />
+    <Reference Include="Sons.Construction" HintPath="$(GameInteropRoot)\Sons.Construction.dll" Private="false" />
+    <Reference Include="Sons.Ai.Vail" HintPath="$(GameInteropRoot)\Sons.Ai.Vail.dll" Private="false" />
+    <Reference Include="Sons.Events" HintPath="$(GameInteropRoot)\Sons.Events.dll" Private="false" />
+    <Reference Include="Sons.GameApplication" HintPath="$(GameInteropRoot)\Sons.GameApplication.dll" Private="false" />
+    <Reference Include="Sons.Gameplay.GameSetup" HintPath="$(GameInteropRoot)\Sons.Gameplay.GameSetup.dll" Private="false" />
+    <Reference Include="Sons.Gui" HintPath="$(GameInteropRoot)\Sons.Gui.dll" Private="false" />
+    <Reference Include="Sons.Gui.Options" HintPath="$(GameInteropRoot)\Sons.Gui.Options.dll" Private="false" />
+    <Reference Include="Sons.Item" HintPath="$(GameInteropRoot)\Sons.Item.dll" Private="false" />
+    <Reference Include="Sons.Input" HintPath="$(GameInteropRoot)\Sons.Input.dll" Private="false" />
+    <Reference Include="Sons.Interfaces" HintPath="$(GameInteropRoot)\Sons.Interfaces.dll" Private="false" />
+    <Reference Include="Sons.Loading" HintPath="$(GameInteropRoot)\Sons.Loading.dll" Private="false" />
+    <Reference Include="Sons.Multiplayer" HintPath="$(GameInteropRoot)\Sons.Multiplayer.dll" Private="false" />
+    <Reference Include="BlobNetworking" HintPath="$(GameInteropRoot)\BlobNetworking.dll" Private="false" />
+    <Reference Include="Sons.Multiplayer.Configurations" HintPath="$(GameInteropRoot)\Sons.Multiplayer.Configurations.dll" Private="false" />
+    <Reference Include="Sons.Save" HintPath="$(GameInteropRoot)\Sons.Save.dll" Private="false" />
+    <Reference Include="Sons.Physics" HintPath="$(GameInteropRoot)\Sons.Physics.dll" Private="false" />
+    <Reference Include="Sons.Rendering" HintPath="$(GameInteropRoot)\Sons.Rendering.dll" Private="false" />
+    <Reference Include="Sons.UiElements" HintPath="$(GameInteropRoot)\Sons.UiElements.dll" Private="false" />
+    <Reference Include="TheForest.Utils" HintPath="$(GameInteropRoot)\TheForest.Utils.dll" Private="false" />
+    <Reference Include="Unity.Addressables" HintPath="$(GameInteropRoot)\Unity.Addressables.dll" Private="false" />
+    <Reference Include="Unity.ResourceManager" HintPath="$(GameInteropRoot)\Unity.ResourceManager.dll" Private="false" />
+    <Reference Include="Unity.Localization" HintPath="$(GameInteropRoot)\Unity.Localization.dll" Private="false" />
+    <Reference Include="Unity.RenderPipelines.HighDefinition.Runtime" HintPath="$(GameInteropRoot)\Unity.RenderPipelines.HighDefinition.Runtime.dll" Private="false" />
+    <Reference Include="UnityEngine.AudioModule" HintPath="$(GameInteropRoot)\UnityEngine.AudioModule.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(GameInteropRoot)\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.PhysicsModule" HintPath="$(GameInteropRoot)\UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="UnityEngine.AssetBundleModule" HintPath="$(GameInteropRoot)\UnityEngine.AssetBundleModule.dll" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(GameInteropRoot)\UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(GameInteropRoot)\UnityEngine.InputLegacyModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(GameInteropRoot)\UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UIModule" HintPath="$(GameInteropRoot)\UnityEngine.UIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UnityWebRequestModule" HintPath="$(GameInteropRoot)\UnityEngine.UnityWebRequestModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UnityWebRequestAudioModule" HintPath="$(GameInteropRoot)\UnityEngine.UnityWebRequestAudioModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UI" HintPath="$(GameInteropRoot)\UnityEngine.UI.dll" Private="false" />
+    <Reference Include="Unity.TextMeshPro" HintPath="$(GameInteropRoot)\Unity.TextMeshPro.dll" Private="false" />
+    <Reference Include="Unity.InputSystem" HintPath="$(GameInteropRoot)\Unity.InputSystem.dll" Private="false" />
+  </ItemGroup>
+</Project>

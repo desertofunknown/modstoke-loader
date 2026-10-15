@@ -1,0 +1,704 @@
+﻿using System.Text.RegularExpressions;
+using Bolt;
+using Construction;
+using Endnight.Localization;
+using HarmonyLib;
+using Il2CppInterop.Runtime.Injection;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using Il2CppInterop.Runtime.InteropTypes.Fields;
+using RedLoader;
+using RedLoader.Utils;
+using Sons.Crafting;
+using Sons.Crafting.Structures;
+using Sons.Weapon;
+using SonsSdk.Networking;
+using UnityEngine;
+using UnityGLTF;
+using Color = System.Drawing.Color;
+using Object = UnityEngine.Object;
+
+namespace SonsSdk.Building;
+
+internal interface ISdkBlueprintRegistrationDriver
+{
+    void Register(ScrewStructureRegistration registration);
+    Task LoadGltfObjectsFromDirectory(string directory);
+    int? GetRecipeIdFromName(string name);
+    void OnGameActivated();
+    void SetupRecipeIngredients(StructureRecipe recipe);
+    void PrepareBuiltStructure(GameObject built, StructureRecipe recipe);
+    bool AddRecipeToDatabase(StructureRecipe recipe);
+    StructureRecipe CreateNewRecipe(int id, string name, StructureCraftingNode node, GameObject built);
+    StructureCraftingNode CreateCraftingNode(Transform transformToWrap, int? ingredientItemId);
+    void SetupObjectAsCraftingNode(ScrewStructureRegistration registration);
+    void ProcessFreeformStructure(Transform freeformStructure);
+    List<StructureCraftingNodeIngredient> ProcessStructure(Transform structureRoot, int itemId);
+    Il2CppArrayBase<StructureCraftingNodeIngredient> GetIngredients(Transform structureRoot);
+    void InitObjectInteraction(StructureCraftingNode node);
+    void InitRecipeLocalization(StructureRecipe recipe);
+    void CreateBookPage(StructureRecipe topRecipe, StructureRecipe bottomRecipe, Texture2D background);
+    string ToDisplayName(string name);
+}
+
+public record ScrewStructureRegistration(
+    GameObject prefab,
+    int recipeId,
+    string recipeName);
+
+public class CustomBlueprintManager
+{
+    
+    // For GLTF blueprints they first will be loaded from the Blueprints folder during OnSdkInitialized
+    // and put into LoadedObjects. On game activation a StructureCraftingNode will be created and initialized from those.
+    // Additionally StructureRecipes Will be created and registered. The created Crafting Nodes and Structure Recipes persist
+    // between game sessions (as they are put into DontDestroyOnLoad) and thus only get created once.
+    
+    internal static bool ServerMode => LoaderEnvironment.IsDedicatedServer;
+
+    public static MelonEvent<ScrewStructureRegistration> OnPrefabLoaded = new();
+    public static MelonEvent<StructureCraftingNode> OnCraftingNodeCreated = new();
+    
+    public static string NextLocalizationString = "BLUEPRINT_PAGE_MISC";
+    public static StructureRecipe.CategoryType StructureCategory = StructureRecipe.CategoryType.Decoration;
+    
+    private static readonly Regex PascalToHumanRegex = new("[a-z][A-Z]", RegexOptions.Compiled);
+    internal static StructureCraftingNode _craftingNodePrefab;
+    internal static StructureRecipe _recipePrefab;
+    internal static readonly Dictionary<int, ScrewStructureRegistration> LoadedObjects = new();
+    internal static readonly Dictionary<int, StructureRecipe> ProcessedObjects = new();
+
+    /// <summary>
+    /// Make an empty crafting node setup from the lean to structure.
+    /// </summary>
+    private static void InitializePrefabs()
+    {
+        if (_craftingNodePrefab)
+            return;
+        
+        var structure = ConstructionTools.GetRecipe(25)._structureNodePrefab;
+        var go = structure.Instantiate();
+        StructureRecipe newRecipe = null;
+        try
+        {
+            go.name = "CustomStructurePrefab";
+            var structureCraftingNode = go.GetComponent<StructureCraftingNode>();
+            go.transform.Find("Ingredients").gameObject.TryDestroy();
+            go.DontDestroyOnLoad().SetActive(false);
+
+            var recipePrefab = structureCraftingNode._recipe;
+            newRecipe = Object.Instantiate(recipePrefab);
+            newRecipe._id = 777;
+            structureCraftingNode._recipe = newRecipe;
+
+            _recipePrefab = recipePrefab;
+            _craftingNodePrefab = structureCraftingNode;
+        }
+        catch
+        {
+            try { go.SetActive(false); }
+            catch (Exception exception) { ReportPrefabCleanupFailure(exception); }
+            DiscardPrefabCandidate(go);
+            DiscardPrefabCandidate(newRecipe);
+            throw;
+        }
+    }
+
+    private static void DiscardPrefabCandidate(Object candidate)
+    {
+        try { if (candidate) Object.Destroy(candidate); }
+        catch (Exception exception) { ReportPrefabCleanupFailure(exception); }
+    }
+
+    private static void ReportPrefabCleanupFailure(Exception exception)
+    {
+        try { RLog.Error($"Could not clean up blueprint template: {exception}"); }
+        catch { }
+    }
+
+    /// <summary>
+    /// Register a Gameobject as a prefab for a CraftingNode.
+    /// The prefab needs to have <see cref="StructureCraftingNodeIngredient"/>s on all meshed that should be buildable.
+    /// Those will dictate what ingredient you need to built that specific component.
+    /// The crafting node will be created at game activation. Subscribe to <see cref="OnCraftingNodeCreated"/> in order to process it further.
+    /// </summary>
+    /// <param name="reg">A structure that holds the prefab, recipe id and recipe name</param>
+    /// <exception cref="Exception"></exception>
+    public static void TryRegister(ScrewStructureRegistration reg)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+        {
+            driver.Blueprints.Register(reg);
+            return;
+        }
+
+        if (!LoadedObjects.TryAdd(reg.recipeId, reg))
+        {
+            throw new Exception($"Recipe Collision!!! Blueprint with id {reg.recipeId} already registered!");
+        }
+        
+        OnPrefabLoaded.Invoke(reg);
+    }
+
+    public static IEnumerable<ScrewStructureRegistration> GetRegistrations() => LoadedObjects.Values;
+    public static IEnumerable<StructureRecipe> GetProcessedRecipes() => ProcessedObjects.Values;
+    
+    internal static void OnGameActivated()
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+        {
+            driver.Blueprints.OnGameActivated();
+            return;
+        }
+
+        InitializePrefabs();
+
+        foreach (var loadedObject in LoadedObjects.Values)
+        {
+            SetupObjectAsCraftingNode(loadedObject);
+        }
+    }
+
+    internal static Task Init()
+    {
+        SdkEvents.OnSonsSceneInitialized.Subscribe(OnSceneInit);
+
+        return LoadGltfObjectsFromDirectory();
+    }
+
+    internal static void Uninit()
+    {
+        
+    }
+
+    private static void OnSceneInit(ESonsScene scene)
+    {
+        if (scene != ESonsScene.Game) return;
+        
+        OnGameActivated();
+    }
+
+    public static void SetupRecipeIngredients(StructureRecipe recipe)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+        {
+            driver.Blueprints.SetupRecipeIngredients(recipe);
+            return;
+        }
+
+        var node = recipe._structureNodePrefab.GetComponent<StructureCraftingNode>();
+        var ingredients = recipe._ingredients = new Il2CppSystem.Collections.Generic.List<StructureCraftingRecipeIngredient>();
+        foreach (var link in node._craftingIngredientLinks)
+        {
+            var ingredient = link.Ingredient;
+            ingredients.Add(new(){ItemId = ingredient.ItemId, Count = ingredient.Count});
+        }
+    }
+
+    /// <summary>
+    /// Prepare the built variant of a structure by removing all crafting node specific things like <see cref="StructureCraftingNodeIngredient"/>s.
+    /// Basically a conversion from blueprint to built (finished) structure.
+    /// </summary>
+    /// <param name="built"></param>
+    /// <param name="recipe"></param>
+    public static void PrepareBuiltStructure(GameObject built, StructureRecipe recipe)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+        {
+            driver.Blueprints.PrepareBuiltStructure(built, recipe);
+            return;
+        }
+
+        foreach (var ingredient in built.GetComponentsInChildren<StructureCraftingNodeIngredient>(true))
+        {
+            Object.Destroy(ingredient);
+        }
+        
+        if (!built.GetComponent<BoltEntity>())
+        {
+            var bolt = built.AddComponent<BoltEntity>().Init(recipe._id, BoltFactories.ScrewStructureState);
+            bolt._queryOptionIEntityBehaviour = QueryOptions.GetComponentsInChildren;
+        }
+        
+        EntityManager.RegisterPrefab(built);
+
+        var screwStructure = built.AddComponent<ScrewStructure>();
+        screwStructure._recipe = recipe;
+        screwStructure.enabled = false;
+        
+        built.AddComponent<FreeFormStructureBuiltLinker>();
+        built.AddComponent<ScrewStructureDestruction>();
+        built.AddComponent<BoxCollider>();
+        
+        built.DontDestroyOnLoad();
+
+        built.AsPrefab(screwStructure);
+    }
+
+    /// <summary>
+    /// Tries to register a recipe with the recipe database.
+    /// Checks if an instance of the <see cref="StructureCraftingSystem"/> exists and if the recipe isn't already registered.
+    /// </summary>
+    /// <param name="recipe"></param>
+    /// <returns>True if the recipe got registered successfully</returns>
+    public static bool AddRecipeToDatabase(StructureRecipe recipe)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+            return driver.Blueprints.AddRecipeToDatabase(recipe);
+
+        if (!StructureCraftingSystem.TryGetInstance(out var system))
+        {
+            return false;
+        }
+
+        if (system._recipeDatabase.TryGetRecipeById(recipe._id, out _))
+        {
+            return false;
+        }
+        
+        system._recipeDatabase._recipes.Add(recipe);
+        return true;
+    }
+
+    /// <summary>
+    /// Creates and registers a new recipe.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="name"></param>
+    /// <param name="node"></param>
+    /// <param name="built"></param>
+    /// <returns></returns>
+    public static StructureRecipe CreateNewRecipe(int id, string name, StructureCraftingNode node = null, GameObject built = null)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+            return driver.Blueprints.CreateNewRecipe(id, name, node, built);
+
+        var recipe = Object.Instantiate(_recipePrefab);
+        recipe._id = id;
+        recipe._boltPrefabId = id - 1;
+        recipe._category = StructureCategory;
+
+        if (node)
+        {
+            recipe._structureNodePrefab = node.gameObject;
+            node._recipe = recipe;
+        }
+
+        if (built)
+            recipe._builtPrefab = built;
+
+        recipe.name = name;
+        recipe._displayName = ToDisplayName(name);
+        recipe.hideFlags = HideFlags.HideAndDontSave;
+        
+        AddRecipeToDatabase(recipe);
+
+        RLog.Msg(Color.LawnGreen, $"Added recipe {recipe.name}");
+        
+        return recipe;
+    }
+
+    /// <summary>
+    /// Turn a transform containing <see cref="StructureElement"/>s into a ghost and add ingredient descriptors.
+    /// </summary>
+    /// <param name="freeformStructure"></param>
+    public static void ProcessFreeformStructure(Transform freeformStructure)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+        {
+            driver.Blueprints.ProcessFreeformStructure(freeformStructure);
+            return;
+        }
+
+        foreach (var structureElement in freeformStructure.GetComponentsInChildren<StructureElement>())
+        {
+            foreach (var rend in structureElement.gameObject.GetComponentsInChildren<Renderer>(true))
+            {
+                if (rend.name is "TerrainBumpProjector" or "Shadows" or "GrassPusher")
+                {
+                    rend.gameObject.TryDestroy();
+                    continue;
+                }
+
+                if (!rend.GetComponent<StructureGhostSwapper>())
+                    rend.gameObject.AddComponent<StructureGhostSwapper>();
+
+                //if (rend.TryGetComponent(out MeshOutliner outliner))
+                //     {
+                //         Object.Destroy(outliner);
+                //     }
+            }
+
+            var itemId = structureElement._profile?._item?._id ?? 0;
+
+            if (itemId < 1)
+                continue;
+
+            var ingredient = structureElement.gameObject.AddComponent<StructureCraftingNodeIngredient>();
+            ingredient.OnValidate();
+            ingredient._itemId = itemId;
+            ingredient._requiresAllPreviousIngredients = false;
+        }
+    }
+
+    /// <summary>
+    /// Turn a transform containing <see cref="MeshRenderer"/>s into a ghost and add ingredient descriptors.
+    /// Each renderer will be treated as a separate ingredient.
+    /// </summary>
+    /// <param name="structureRoot"></param>
+    /// <param name="itemId">The item id for the ingredients.</param>
+    public static List<StructureCraftingNodeIngredient> ProcessStructure(Transform structureRoot, int itemId)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+            return driver.Blueprints.ProcessStructure(structureRoot, itemId);
+
+        var ingredients = new List<StructureCraftingNodeIngredient>();
+        
+        foreach (var rend in structureRoot.GetComponentsInChildren<Renderer>(true))
+        {
+            if (rend.name is "TerrainBumpProjector" or "Shadows" or "GrassPusher")
+            {
+                rend.gameObject.TryDestroy();
+                continue;
+            }
+
+            if (!rend.GetComponent<StructureGhostSwapper>())
+                rend.gameObject.AddComponent<StructureGhostSwapper>();
+            
+            var ingredient = rend.gameObject.AddComponent<StructureCraftingNodeIngredient>();
+            ingredient.OnValidate();
+            ingredient._itemId = itemId;
+            ingredient._requiresAllPreviousIngredients = false;
+            ingredients.Add(ingredient);
+        }
+
+        return ingredients;
+    }
+
+    /// <summary>
+    /// Get all <see cref="StructureCraftingNodeIngredient"/>s in a transform and its children.
+    /// </summary>
+    /// <param name="structureRoot"></param>
+    public static Il2CppArrayBase<StructureCraftingNodeIngredient> GetIngredients(Transform structureRoot)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        return driver != null
+            ? driver.Blueprints.GetIngredients(structureRoot)
+            : structureRoot.GetComponentsInChildren<StructureCraftingNodeIngredient>(true);
+    }
+
+    /// <summary>
+    /// Wraps <see cref="transformToWrap"/> with a crafting node setting up all ingredients and ghosts for the structure.
+    /// <see cref="transformToWrap"/> needs to have <see cref="StructureElement"/>s as children.
+    /// </summary>
+    /// <param name="transformToWrap"></param>
+    /// <param name="isFreeform">true for structures composed out of <see cref="StructureElement"/>s</param>
+    /// <param name="ingredientItemId"></param>
+    /// <returns></returns>
+    public static StructureCraftingNode CreateCraftingNode(
+        Transform transformToWrap,
+        int? ingredientItemId = null)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+            return driver.Blueprints.CreateCraftingNode(transformToWrap, ingredientItemId);
+
+        var ingredients = 
+            ingredientItemId == null 
+            ? GetIngredients(transformToWrap).ToList() 
+            : ProcessStructure(transformToWrap, ingredientItemId.Value);
+
+        var structureCraftingNode = Object.Instantiate(_craftingNodePrefab);
+        structureCraftingNode.name = transformToWrap.name.Replace("(Clone)", "") + "CraftingNode";
+
+        foreach (var node in structureCraftingNode.GetComponentsInChildren<StructureCraftingNodeIngredient>(true))
+        {
+            node.gameObject.TryDestroy();
+        }
+        foreach (var structureElement in structureCraftingNode.GetComponentsInChildren<StructureElement>(true))
+        {
+            structureElement.gameObject.TryDestroy();
+        }
+        foreach (var collider in transformToWrap.GetComponentsInChildren<Collider>())
+        {
+            Object.Destroy(collider);
+        }
+        
+        var go = structureCraftingNode.gameObject.DontDestroyOnLoad();
+        structureCraftingNode.enabled = false;
+        structureCraftingNode._isActive = false;
+        go.AsPrefab(structureCraftingNode);
+        var tr = go.transform;
+        
+        go.transform.Find("Ingredients")?.gameObject.TryDestroy();
+        // go.transform.Find("AutoFoundationRope").gameObject.TryDestroy();
+        // go.Destroy<AutoFoundations>();
+        // go.Destroy<BoltEntity>();
+        // go.Destroy<StructureDestruction>();
+        // go.Destroy<FreeFormStructureLinker>();
+
+        tr.SetPositionAndRotation(transformToWrap.position, transformToWrap.rotation);
+
+        transformToWrap.SetParent(tr, false);
+        transformToWrap.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+
+        var groupings = new Dictionary<int, Il2CppSystem.Collections.Generic.List<StructureCraftingNodeIngredient>>();
+        foreach (var node in ingredients)
+        {
+            var itemId = node.ItemId;
+            
+            if (!groupings.ContainsKey(itemId))
+                groupings.Add(itemId, new());
+            
+            groupings[itemId].Add(node);
+        }
+        
+        structureCraftingNode._craftingIngredientLinks.Clear();
+        foreach (var (itemId, nodesIngredients) in groupings)
+        {
+            structureCraftingNode._craftingIngredientLinks.Add(new()
+            {
+                Ingredient = new()
+                {
+                    Count = nodesIngredients.Count,
+                    ItemId = itemId
+                },
+                _ingredients = nodesIngredients
+            });
+        }
+        
+        go.SetActive(true);
+        
+        
+        return structureCraftingNode;
+    }
+
+    public static void InitObjectInteraction(StructureCraftingNode node)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+        {
+            driver.Blueprints.InitObjectInteraction(node);
+            return;
+        }
+
+        if (node._ingredientUiTemplate)
+            return;
+        
+        var newInteraction = _craftingNodePrefab.transform.Find("StructureInteractionObjects").gameObject.Instantiate();
+        try
+        {
+            var t = newInteraction.transform;
+            t.SetParent(node.transform, false);
+            t.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+
+            var ingredientTemplate = t.Find("Canvas/UiRoot/Ingredients/IngredientUiTemplate").gameObject;
+            var cancelElement = t.Find("Canvas/UiRoot/CancelStructureInteractionElement").gameObject;
+            var ingredients = new Il2CppSystem.Collections.Generic.List<StructureCraftingNodeIngredientUi>();
+            ingredients.Add(t.Find("Canvas/UiRoot/Ingredients/IngredientUi").GetComponent<StructureCraftingNodeIngredientUi>());
+            t.Find("UiLocator").localPosition = node.GetComponent<BoxCollider>().center;
+
+            node._cancelStructureInteractionElement = cancelElement;
+            node._ingredientUi = ingredients;
+            node._ingredientUiTemplate = ingredientTemplate;
+        }
+        catch
+        {
+            try { newInteraction.SetActive(false); }
+            catch (Exception exception) { ReportPrefabCleanupFailure(exception); }
+            DiscardPrefabCandidate(newInteraction);
+            throw;
+        }
+    }
+    
+    public static void InitRecipeLocalization(StructureRecipe recipe)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+        {
+            driver.Blueprints.InitRecipeLocalization(recipe);
+            return;
+        }
+
+        var key = LocalizationUtils.GetLocalizationKey(recipe._displayName);
+        LocalizationTools.BlueprintBookTable.AddEntry(key, recipe._displayName);
+        recipe._localizationId = key;
+    }
+
+    /// <summary>
+    /// Adds a recipe to the database and creates a node prefab if it doesn't exist.
+    /// </summary>
+    /// <param name="recipe"></param>
+    private static void InitRecipe(StructureRecipe recipe)
+    {
+        AddRecipeToDatabase(recipe);
+
+        EntityManager.RegisterPrefab(recipe._builtPrefab);
+
+        if (recipe._structureNodePrefab)
+        {
+            EntityManager.RegisterPrefab(recipe._structureNodePrefab);
+            InitObjectInteraction(recipe._structureNodePrefab.GetComponent<StructureCraftingNode>());
+            return;
+        }
+
+        var builtCopy = recipe._builtPrefab.Instantiate();
+        var craftingNode = CreateCraftingNode(builtCopy.transform);
+        recipe._structureNodePrefab = craftingNode.gameObject;
+    }
+
+    /// <summary>
+    /// Setup a book page from one or two recipes and the background.
+    /// Will automatically setup localization for the recipes.
+    /// </summary>
+    /// <param name="topRecipe"></param>
+    /// <param name="bottomRecipe"></param>
+    /// <param name="background"></param>
+    public static void CreateBookPage(StructureRecipe topRecipe, StructureRecipe bottomRecipe, Texture2D background)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+        {
+            driver.Blueprints.CreateBookPage(topRecipe, bottomRecipe, background);
+            return;
+        }
+
+        if(topRecipe)
+        {
+            InitRecipeLocalization(topRecipe);
+        }
+
+        if(bottomRecipe)
+        {
+            InitRecipeLocalization(bottomRecipe);
+        }
+
+        var data = new BlueprintBookPageData
+        {
+            _topRecipe = topRecipe,
+            _bottomRecipe = bottomRecipe,
+            _pageTitleLocalizationId = NextLocalizationString
+        };
+
+        var controller = ItemTools.GetHeldPrefab(ItemTools.Identifiers.BlueprintBook).GetComponent<BlueprintBookController>();
+        data._pageImage = background;
+        controller._pages._pages.Add(data);
+    }
+    
+    /// <summary>
+    /// Creates a crafting node, prepares a built prefab, sets up recipe ingredients, creates a recipe and registers it with the database.
+    /// If the recipe already exists (the object has already been processes) this method ONLY registers the recipe without processing anything.
+    /// </summary>
+    /// <param name="reg"></param>
+    public static void SetupObjectAsCraftingNode(ScrewStructureRegistration reg)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+        {
+            driver.Blueprints.SetupObjectAsCraftingNode(reg);
+            return;
+        }
+
+        if (ProcessedObjects.TryGetValue(reg.recipeId, out var existingRecipe))
+        {
+            AddRecipeToDatabase(existingRecipe);
+            return;
+        }
+        
+        // create crafting node
+        var craftingNode = CreateCraftingNode(reg.prefab.Instantiate(Vector3.zero, Quaternion.identity).transform);
+        var be = craftingNode.GetComponent<BoltEntity>();
+        be._prefabId = reg.recipeId - 1;
+        EntityManager.RegisterPrefab(be);
+        
+        // create recipe
+        var built = reg.prefab.Instantiate(Vector3.zero, Quaternion.identity);
+        var recipe = CreateNewRecipe(reg.recipeId, reg.recipeName, craftingNode, built);
+        PrepareBuiltStructure(built, recipe);
+        SetupRecipeIngredients(recipe);
+        
+        OnCraftingNodeCreated.Invoke(craftingNode);
+
+        ProcessedObjects[recipe._id] = recipe;
+
+        RLog.Msg(Color.PaleGreen, $"Registered gltf crafting node with recipe id {recipe._id}");
+    }
+    
+    public static async Task LoadGltfObjectsFromDirectory(string directory = null)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+        {
+            await driver.Blueprints.LoadGltfObjectsFromDirectory(directory);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            directory = LoaderEnvironment.BlueprintDirectory;
+        }
+
+        foreach (var file in Directory.GetFiles(directory))
+        {
+            if(!file.EndsWith(".gltf") && !file.EndsWith(".glb"))
+                continue;
+            
+            var fileName = Path.GetFileNameWithoutExtension(file);
+            var recipeId = GetRecipeIdFromName(fileName);
+
+            if (fileName.Contains(" "))
+            {
+                RLog.Error($"Name of blueprint cannot contain spaces ({file})");
+                continue;
+            }
+
+            if (recipeId == null)
+            {
+                RLog.Error("Couldn't setup recipe id from name");
+                continue;
+            }
+            
+            var loader = new GLTFSceneImporter(file, new());
+            loader.ProcessMaterials = !ServerMode;
+            await loader.LoadSceneAsync();
+
+            TryRegister(new(loader.CreatedObject.HideAndDontSave(), recipeId.Value, fileName + "Recipe"));
+            
+            RLog.Msg(Color.PaleGreen, $"Loaded {file}");
+        }
+    }
+
+    public static int? GetRecipeIdFromName(string name)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+            return driver.Blueprints.GetRecipeIdFromName(name);
+
+        if (!name.Contains('.'))
+            return LoaderUtils.HashString(name);
+
+        var split = name.Split('.');
+        if (!int.TryParse(split[^1], out var id))
+            return LoaderUtils.HashString(name);
+
+        return id;
+    }
+    
+    public static string ToDisplayName(string str)
+    {
+        var driver = SdkEvents.BeginLifecycleSetup();
+        if (driver != null)
+            return driver.Blueprints.ToDisplayName(str);
+
+        str = str.Replace("Recipe", "");
+        str = str.Split('.')[0];
+        return PascalToHumanRegex.Replace(str, m => $"{m.Value[0]} {char.ToLower(m.Value[1])}");
+    }
+}

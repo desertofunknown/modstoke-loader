@@ -1,0 +1,80 @@
+diff --git a/SonsSdk/SUI/SettingsRegistry.cs b/SonsSdk/SUI/SettingsRegistry.cs
+index d6d7809..d5bd332 100644
+--- a/SonsSdk/SUI/SettingsRegistry.cs
++++ b/SonsSdk/SUI/SettingsRegistry.cs
+@@ -15,6 +15,12 @@ namespace SUI;
+ 
+ using static SUI;
+ 
++internal interface ISdkSettingsRegistrationDriver
++{
++    void Create(ModBase mod, object settingsObject, Type settingsType,
++        bool changesNeedRestart, Action callback, SContainerOptions userContent);
++}
++
+ public class SettingsRegistry
+ {
+     internal static readonly Dictionary<string, SettingsEntry> SettingsEntries = new();
+@@ -63,6 +69,25 @@ public class SettingsRegistry
+         Action callback,
+         SContainerOptions userContent)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Settings.Create(mod, settingsObject, settingsType, changesNeedRestart, callback, userContent);
++            return;
++        }
++
++        Action onClosed = null;
++        var classCallback = AccessTools.Method(settingsType, "OnSettingsUiClosed");
++        if (classCallback != null)
++        {
++            if (!classCallback.IsStatic && settingsObject == null)
++                throw new ArgumentNullException(nameof(settingsObject), "Instance settings callbacks require a settings object.");
++
++            onClosed = classCallback.IsStatic
++                ? classCallback.CreateDelegate<Action>()
++                : classCallback.CreateDelegate<Action>(settingsObject);
++        }
++
+         var container = SContainer;
+         var configList = new List<SettingsConfigEntry>();
+         
+@@ -71,12 +96,10 @@ public class SettingsRegistry
+         container.Root.DontDestroyOnLoad().HideAndDontSave().SetActive(false);
+         container.Name($"{mod.ID}SettingsPanel");
+         
+-        var entry = SettingsEntries[mod.ID] = new SettingsEntry(container, changesNeedRestart, callback, configList);
+-        var classCallback = AccessTools.Method(settingsType, "OnSettingsUiClosed");
+-        if (classCallback != null)
++        var entry = SettingsEntries[mod.ID] = new SettingsEntry(container, changesNeedRestart, callback, configList)
+         {
+-            entry.ConfigClassCallback = classCallback.CreateDelegate<Action>();
+-        }
++            ConfigClassCallback = onClosed
++        };
+ 
+         var settingsEntryField = AccessTools.GetDeclaredFields(settingsType).FirstOrDefault(x=>x.FieldType == typeof(SettingsEntry));
+         if (settingsEntryField != null)
+@@ -92,7 +115,7 @@ public class SettingsRegistry
+         }
+     }
+ 
+-    private static void GenerateUi(ModBase mod,
++    internal static void GenerateUi(ModBase mod,
+         object settingsObject,
+         Type settingsType,
+         SContainerOptions container,
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 31b5f5f..3842e2b 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -48,6 +48,7 @@ internal interface ISdkLifecycleDriver
+     ISdkInputIconDriver InputIcons { get; }
+     ISdkKeybindDriver Keybinds { get; }
+     ISdkGlobalInputDriver GlobalInput { get; }
++    SUI.ISdkSettingsRegistrationDriver Settings { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);

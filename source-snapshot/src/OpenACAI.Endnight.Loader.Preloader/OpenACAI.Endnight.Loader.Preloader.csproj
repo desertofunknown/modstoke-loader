@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <Title>Modstoke Loader Preloader</Title>
+    <Product>Modstoke Loader by OpenACAI</Product>
+    <Company>OpenACAI</Company>
+    <Description>Managed preloader for Modstoke Loader by OpenACAI.</Description>
+    <ImplicitUsings>false</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <GameRoot Condition="'$(GameRoot)' == ''">$(MSBuildProjectDirectory)\..\..\..\..</GameRoot>
+    <BepInExCoreRoot Condition="'$(BepInExCoreRoot)' == ''">$(GameRoot)\BepInEx\core</BepInExCoreRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="BepInEx.Core" HintPath="$(BepInExCoreRoot)\BepInEx.Core.dll" Private="false" />
+    <ProjectReference Include="..\Modstoke.Compatibility.BepInEx.Preloader.Core\Modstoke.Compatibility.BepInEx.Preloader.Core.csproj" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(BepInExCoreRoot)\0Harmony.dll" Private="false" />
+    <Reference Include="SemanticVersioning" HintPath="$(BepInExCoreRoot)\SemanticVersioning.dll" Private="false" />
+    <ProjectReference Include="..\Modstoke.Compatibility.BepInEx.Unity.Common\Modstoke.Compatibility.BepInEx.Unity.Common.csproj" Private="false" />
+    <ProjectReference Include="..\Modstoke.Compatibility.BepInEx.Unity.IL2CPP\Modstoke.Compatibility.BepInEx.Unity.IL2CPP.csproj" Private="false" />
+    <Reference Include="AssetRipper.Primitives" HintPath="$(BepInExCoreRoot)\AssetRipper.Primitives.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Common" HintPath="$(BepInExCoreRoot)\Il2CppInterop.Common.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(BepInExCoreRoot)\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="Il2CppInterop.HarmonySupport" HintPath="$(BepInExCoreRoot)\Il2CppInterop.HarmonySupport.dll" Private="false" />
+    <Reference Include="MonoMod.RuntimeDetour" HintPath="$(BepInExCoreRoot)\MonoMod.RuntimeDetour.dll" Private="false" />
+    <Reference Include="MonoMod.Utils" HintPath="$(BepInExCoreRoot)\MonoMod.Utils.dll" Private="false" />
+    <Reference Include="Mono.Cecil" HintPath="$(BepInExCoreRoot)\Mono.Cecil.dll" Private="false" />
+    <Reference Include="AsmResolver.DotNet" HintPath="$(BepInExCoreRoot)\AsmResolver.DotNet.dll" Private="false" />
+    <Reference Include="AsmResolver" HintPath="$(BepInExCoreRoot)\AsmResolver.dll" Private="false" />
+    <Reference Include="AsmResolver.PE" HintPath="$(BepInExCoreRoot)\AsmResolver.PE.dll" Private="false" />
+    <Reference Include="AsmResolver.PE.File" HintPath="$(BepInExCoreRoot)\AsmResolver.PE.File.dll" Private="false" />
+    <Reference Include="Cpp2IL.Core" HintPath="$(BepInExCoreRoot)\Cpp2IL.Core.dll" Private="false" />
+    <Reference Include="LibCpp2IL" HintPath="$(BepInExCoreRoot)\LibCpp2IL.dll" Private="false" />
+    <Reference Include="Iced" HintPath="$(BepInExCoreRoot)\Iced.dll" Private="false" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,39 @@
+diff --git a/RedLoader/Preferences/ConfigEntry.cs b/RedLoader/Preferences/ConfigEntry.cs
+index 7043a07..6e595cc 100644
+--- a/RedLoader/Preferences/ConfigEntry.cs
++++ b/RedLoader/Preferences/ConfigEntry.cs
+@@ -139,8 +139,12 @@ namespace RedLoader
+ 
+         public override void Load(TomlValue obj)
+         {
++            var wasSuppressed = DontRegisterChanges;
+             DontRegisterChanges = true;
+-            try { Value = TomletMain.To<T>(obj); }
++            try
++            {
++                Value = TomletMain.To<T>(obj);
++            }
+             catch (TomlTypeMismatchException)
+             {
+                 return;
+@@ -153,8 +157,12 @@ namespace RedLoader
+             {
+                 return;
+             }
+-            DontRegisterChanges = false;
++            finally
++            {
++                DontRegisterChanges = wasSuppressed;
++            }
+         }
++
+         public override TomlValue Save()
+         {
+             TomlValue returnval = TomletMain.ValueFrom(Value);
+@@ -212,4 +220,4 @@ namespace RedLoader
+         {
+         }
+     }
+-}
+\ No newline at end of file
++}

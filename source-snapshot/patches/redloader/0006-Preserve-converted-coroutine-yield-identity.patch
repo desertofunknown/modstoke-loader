@@ -1,0 +1,63 @@
+diff --git a/RedLoader/Utils/Collections/Il2CppManagedEnumerator.cs b/RedLoader/Utils/Collections/Il2CppManagedEnumerator.cs
+index 737962b..d2d44dc 100644
+--- a/RedLoader/Utils/Collections/Il2CppManagedEnumerator.cs
++++ b/RedLoader/Utils/Collections/Il2CppManagedEnumerator.cs
+@@ -18,6 +18,8 @@ public class Il2CppManagedEnumerator : Object
+     private static readonly Dictionary<Type, System.Func<object, Object>> boxers = new();
+ 
+     private readonly IEnumerator enumerator;
++    private Object current;
++    private bool hasCurrent;
+ 
+     static Il2CppManagedEnumerator()
+     {
+@@ -36,18 +38,40 @@ public class Il2CppManagedEnumerator : Object
+         ClassInjector.DerivedConstructorBody(this);
+     }
+ 
+-    public Object Current => enumerator.Current switch
++    public Object Current
+     {
+-        Il2CppIEnumerator i => i.Cast<Object>(),
+-        IEnumerator e       => new Il2CppManagedEnumerator(e),
+-        Object oo           => oo,
+-        { } obj             => ManagedToIl2CppObject(obj),
+-        null                => null
+-    };
++        get
++        {
++            if (!hasCurrent)
++            {
++                current = enumerator.Current switch
++                {
++                    Il2CppIEnumerator i => i.Cast<Object>(),
++                    IEnumerator e       => new Il2CppManagedEnumerator(e),
++                    Object oo           => oo,
++                    { } obj             => ManagedToIl2CppObject(obj),
++                    null                => null
++                };
++                hasCurrent = true;
++            }
+ 
+-    public bool MoveNext() => enumerator.MoveNext();
++            return current;
++        }
++    }
+ 
+-    public void Reset() => enumerator.Reset();
++    public bool MoveNext()
++    {
++        current = null;
++        hasCurrent = false;
++        return enumerator.MoveNext();
++    }
++
++    public void Reset()
++    {
++        current = null;
++        hasCurrent = false;
++        enumerator.Reset();
++    }
+ 
+     private static System.Func<object, Object> GetValueBoxer(Type t)
+     {

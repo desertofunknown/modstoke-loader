@@ -1,0 +1,166 @@
+diff --git a/SonsSdk/Networking/Packets.cs b/SonsSdk/Networking/Packets.cs
+index 544611e..9d54178 100644
+--- a/SonsSdk/Networking/Packets.cs
++++ b/SonsSdk/Networking/Packets.cs
+@@ -11,9 +11,20 @@ using Color = System.Drawing.Color;
+ 
+ namespace SonsSdk.Networking;
+ 
++internal interface ISdkPacketDriver
++{
++    void Initialize();
++    void Register(Packets.NetEvent netEvent);
++    bool Unregister(Packets.NetEvent netEvent);
++    void HandlePacket(UdpPacket packet, BoltConnection fromConnection);
++    void SendPacket(Packets.EventPacket packet, uint? skipConnection);
++    Packets.EventPacket GetPacket(int typeId, int size, GlobalTargets targets);
++    Packets.EventPacket GetPacket(int typeId, int size, uint targetConnectionId);
++}
++
+ public static class Packets
+ {
+-    private static readonly Dictionary<int, NetRegistration> RegisteredEvents = new();
++    internal static readonly Dictionary<int, NetRegistration> RegisteredEvents = new();
+ 
+     /// <summary>
+     /// Gets called when a chat message arrives. Returning true means you handled the message and none of the other handlers get called.
+@@ -21,8 +32,17 @@ public static class Packets
+     /// </summary>
+     public static event Func<ChatEvent, bool> OnChatReceived;
+ 
++    internal static Func<ChatEvent, bool> ChatHandlers => OnChatReceived;
++
+     internal static void Init()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Packets.Initialize();
++            return;
++        }
++
+         NetworkingPatches.Patch();
+     }
+ 
+@@ -32,6 +52,13 @@ public static class Packets
+     
+     public static void Register(NetEvent ev)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Packets.Register(ev);
++            return;
++        }
++
+         var hash = ev.GetIdHash();
+         if (!RegisteredEvents.TryAdd(hash, new(hash, ev.Read)))
+         {
+@@ -41,6 +68,10 @@ public static class Packets
+ 
+     public static bool Unregister(NetEvent ev)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.Packets.Unregister(ev);
++
+         var hash = ev.GetIdHash();
+         return RegisteredEvents.Remove(hash);
+     }
+@@ -60,6 +91,13 @@ public static class Packets
+     /// <param name="fromConnection"></param>
+     internal static void HandlePacket(UdpPacket packet, BoltConnection fromConnection)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Packets.HandlePacket(packet, fromConnection);
++            return;
++        }
++
+         //RLog.Msg(Color.Gray, LoaderUtils.ByteStr(packet.Data));
+         var targetByte = packet.ReadByte();
+         var target = (GlobalTargets)targetByte;
+@@ -100,6 +138,13 @@ public static class Packets
+ 
+     internal static void SendPacket(EventPacket packet, uint? skipConn = null)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Packets.SendPacket(packet, skipConn);
++            return;
++        }
++
+         if (!BoltNetwork.isRunning)
+             return;
+         
+@@ -139,6 +184,10 @@ public static class Packets
+ 
+     internal static EventPacket GetPacket(int typeId, int size, GlobalTargets targets)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.Packets.GetPacket(typeId, size, targets);
++
+         size += 7;
+         var packet = new UdpPacket(new byte[size]);
+         packet.WriteUShort(6969);
+@@ -149,6 +198,10 @@ public static class Packets
+     
+     internal static EventPacket GetPacket(int typeId, int size, uint targetConnectionId)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.Packets.GetPacket(typeId, size, targetConnectionId);
++
+         size += 11;
+         var packet = new UdpPacket(new byte[size]);
+         packet.WriteUShort(6969);
+@@ -209,7 +262,7 @@ public static class Packets
+ 
+     public record EventPacket(UdpPacket Packet, GlobalTargets Targets, uint TargetConnectionId);
+     
+-    private class NetRegistration
++    internal class NetRegistration
+     {
+         public int IdHash;
+         public readonly Action<UdpPacket, BoltConnection> ReadFunc;
+@@ -232,7 +285,7 @@ public static class Packets
+         [HarmonyPrefix]
+         private static bool PacketReceived(BoltConnection __instance, UdpPacket udpPacket)
+         {
+-            // 6 = 9696 short + target byte + net event id int
++            // Marker, target byte and event ID occupy seven bytes.
+             if (udpPacket.Size < 7 || udpPacket.ReadUShort() != 6969)
+             {
+                 udpPacket.Position = 0;
+@@ -271,9 +324,14 @@ public static class Packets
+         [HarmonyPrefix]
+         public static bool ChatEventPatch(CoopServerCallbacks __instance, ChatEvent evnt)
+         {
+-            if (OnChatReceived != null && OnChatReceived.Invoke(evnt))
++            var handlers = OnChatReceived;
++            if (handlers == null)
++                return true;
++
++            foreach (Func<ChatEvent, bool> handler in handlers.GetInvocationList())
+             {
+-                return false;
++                if (handler(evnt))
++                    return false;
+             }
+ 
+             return true;
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index c74439a..7a097fd 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -53,6 +53,7 @@ internal interface ISdkLifecycleDriver
+     ISdkTooltipDriver Tooltips { get; }
+     Building.ISdkBlueprintRegistrationDriver Blueprints { get; }
+     Networking.ISdkNetworkPrefabDriver NetworkPrefabs { get; }
++    Networking.ISdkPacketDriver Packets { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);

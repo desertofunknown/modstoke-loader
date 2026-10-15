@@ -1,0 +1,134 @@
+diff --git a/SonsSdk/Private/GlobalOverlays.cs b/SonsSdk/Private/GlobalOverlays.cs
+index 6f972c9..d91ea28 100644
+--- a/SonsSdk/Private/GlobalOverlays.cs
++++ b/SonsSdk/Private/GlobalOverlays.cs
+@@ -5,6 +5,15 @@ using UnityEngine.UI;
+ 
+ namespace SonsSdk.Private;
+ 
++internal interface ISdkOverlayDriver
++{
++    GameObject CreateBlackScreen();
++    void ToggleOverlay(bool enable);
++    void SetProgressbarOffset(float y);
++    void ToggleBackground(bool enable);
++    void SetProgress(RectTransform foreground, float progress);
++}
++
+ internal class GlobalOverlays
+ {
+     public static GameObject OverlayContainer;
+@@ -14,6 +23,10 @@ internal class GlobalOverlays
+     
+     public static GameObject CreateBlackScreen()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.Overlay.CreateBlackScreen();
++
+         var go = new GameObject("BlackScreenCanvas").DontDestroyOnLoad().HideAndDontSave();
+         go.layer = 5;
+         
+@@ -73,6 +86,13 @@ internal class GlobalOverlays
+ 
+     public static void ToggleOverlay(bool enable)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Overlay.ToggleOverlay(enable);
++            return;
++        }
++
+         if (!OverlayContainer)
+         {
+             return;
+@@ -83,6 +103,13 @@ internal class GlobalOverlays
+ 
+     public static void SetProgressbarOffset(float y)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Overlay.SetProgressbarOffset(y);
++            return;
++        }
++
+         if (ProgressBar == null)
+         {
+             return;
+@@ -93,6 +120,13 @@ internal class GlobalOverlays
+ 
+     public static void ToggleBackground(bool enable)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Overlay.ToggleBackground(enable);
++            return;
++        }
++
+         if (!BlackScreenImage)
+         {
+             return;
+@@ -112,6 +146,13 @@ internal class GlobalOverlays
+ 
+         public void SetProgress(float progress)
+         {
++            var driver = SdkEvents.BeginLifecycleSetup();
++            if (driver != null)
++            {
++                driver.Overlay.SetProgress(ProgressbarForeground, progress);
++                return;
++            }
++
+             ProgressbarForeground.anchorMax = new(progress, 1);
+         }
+ 
+diff --git a/SonsSdk/Private/MainInitializer.cs b/SonsSdk/Private/MainInitializer.cs
+index 9fe5038..fc84115 100644
+--- a/SonsSdk/Private/MainInitializer.cs
++++ b/SonsSdk/Private/MainInitializer.cs
+@@ -216,12 +216,6 @@ internal class MainInitializer
+         }
+     }
+ 
+-    private static IEnumerator AddProgress(int index, int total, float totalWorkload)
+-    {
+-        GlobalOverlays.ProgressBar.AddProgress(index/(float)total*totalWorkload);
+-        yield return null;
+-    }
+-
+     private static IEnumerator AddProgress(float amount)
+     {
+         GlobalOverlays.ProgressBar.AddProgress(amount);
+@@ -353,7 +347,7 @@ internal class MainInitializer
+         {
+             SdkEvents.OnSdkInitialized.InvokeSubscriber(subs[i], callback => callback());
+             
+-            yield return AddProgress(i, subs.Length, 0.4f);
++            yield return AddProgress(0.4f / subs.Length);
+         }
+ 
+         SdkEvents.OnSdkLateInitialized.Invoke();
+@@ -395,7 +389,7 @@ internal class MainInitializer
+                 AssetLoaders.ReportAssetError($"Couldn't initialize asset bundle {bundle.AssetBundleName} for {bundle.Mod.ModAssembly.FullName}.", exception);
+             }
+ 
+-            yield return AddProgress(i, bundles.Length, 0.3f);
++            yield return AddProgress(0.3f / bundles.Length);
+         }
+     }
+ 
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 7f94625..e7b083e 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -39,6 +39,7 @@ internal enum SaveHookPatchState
+ 
+ internal interface ISdkLifecycleDriver
+ {
++    ISdkOverlayDriver Overlay { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);

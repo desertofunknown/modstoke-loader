@@ -1,0 +1,88 @@
+diff --git a/BepInEx.Core/Logging/Logger.cs b/BepInEx.Core/Logging/Logger.cs
+index 32b89a1..3ab12fa 100644
+--- a/BepInEx.Core/Logging/Logger.cs
++++ b/BepInEx.Core/Logging/Logger.cs
+@@ -2,6 +2,7 @@ using System;
+ using System.Collections;
+ using System.Collections.Generic;
+ using System.Runtime.CompilerServices;
++using System.Threading;
+ using BepInEx.Core.Logging.Interpolation;
+ 
+ namespace BepInEx.Logging;
+@@ -14,6 +15,7 @@ public static class Logger
+     private static readonly ManualLogSource InternalLogSource;
+ 
+     private static readonly LogListenerCollection listeners;
++    private static ILogEventDispatcher eventDispatcher;
+ 
+     static Logger()
+     {
+@@ -38,6 +40,23 @@ public static class Logger
+     /// </summary>
+     public static ICollection<ILogSource> Sources { get; }
+ 
++    /// <summary>
++    ///     Selects the owner of future listener dispatch. Existing sources and listener collections are retained.
++    /// </summary>
++    /// <remarks>
++    ///     Selection is permanent. Repeating the same instance is harmless; a conflicting owner is rejected.
++    ///     Calls already in progress keep their selected route. Dispatcher failures do not replay through the default route.
++    /// </remarks>
++    /// <param name="dispatcher">The dispatcher to use for future log events.</param>
++    public static void SetLogEventDispatcher(ILogEventDispatcher dispatcher)
++    {
++        if (dispatcher == null)
++            throw new ArgumentNullException(nameof(dispatcher));
++        var previous = Interlocked.CompareExchange(ref eventDispatcher, dispatcher, null);
++        if (previous != null && !ReferenceEquals(previous, dispatcher))
++            throw new InvalidOperationException("A different log event dispatcher has already been selected.");
++    }
++
+     internal static void InternalLogEvent(object sender, LogEventArgs eventArgs)
+     {
+         listeners.SendLogEvent(sender, eventArgs);
+@@ -80,6 +99,12 @@ public static class Logger
+         {
+             // Do this instead of foreach to avoid boxing, also very slightly faster
+             var aListInTime = BaseList;
++            var dispatcher = Volatile.Read(ref eventDispatcher);
++            if (dispatcher != null)
++            {
++                dispatcher.Dispatch(sender, eventArgs, aListInTime);
++                return;
++            }
+             // ReSharper disable once ForCanBeConvertedToForeach
+             for (int i = 0; i < aListInTime.Count; i++)
+             {
+
+diff --git a/BepInEx.Core/Logging/ILogEventDispatcher.cs b/BepInEx.Core/Logging/ILogEventDispatcher.cs
+new file mode 100644
+index 0000000..746770b
+--- /dev/null
++++ b/BepInEx.Core/Logging/ILogEventDispatcher.cs
+@@ -0,0 +1,24 @@
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (C) 2026 Alex Cooper
++
++using System.Collections.Generic;
++
++namespace BepInEx.Logging;
++
++/// <summary>
++///     Dispatches log events using the compatibility logger's listener snapshot.
++/// </summary>
++public interface ILogEventDispatcher
++{
++    /// <summary>
++    ///     Applies listener filters and delivers an event on the source's calling thread.
++    /// </summary>
++    /// <remarks>
++    ///     The snapshot preserves registration order and duplicate entries. Do not modify or retain it.
++    ///     Collection changes during dispatch affect later events. This method can be called concurrently.
++    /// </remarks>
++    /// <param name="sender">The original event sender.</param>
++    /// <param name="eventArgs">The original log event.</param>
++    /// <param name="listeners">The borrowed listener snapshot for this event.</param>
++    void Dispatch(object sender, LogEventArgs eventArgs, IReadOnlyList<ILogListener> listeners);
++}

@@ -1,0 +1,81 @@
+diff --git a/GLTF/GLTFSceneImporter.cs b/GLTF/GLTFSceneImporter.cs
+index eb7543b..bfd3c7b 100644
+--- a/GLTF/GLTFSceneImporter.cs
++++ b/GLTF/GLTFSceneImporter.cs
+@@ -20,9 +20,6 @@ using Quaternion = UnityEngine.Quaternion;
+ using Vector2 = UnityEngine.Vector2;
+ using Vector3 = UnityEngine.Vector3;
+ using Vector4 = UnityEngine.Vector4;
+-#if !WINDOWS_UWP && !UNITY_WEBGL
+-using ThreadPriority = System.Threading.ThreadPriority;
+-#endif
+ using WrapMode = UnityEngine.WrapMode;
+ 
+ namespace UnityGLTF
+@@ -649,24 +646,13 @@ namespace UnityGLTF
+ 			return _assetCache.MeshCache[meshIndex].LoadedMesh;
+ 		}
+ 		
+-		private IEnumerator CustomWaitUntil(Func<bool> predicate)
+-		{
+-			while (!predicate())
+-			{
+-				yield return null;
+-			}
+-		}
+-
+ 		private async Task LoadJson(string jsonFilePath)
+ 		{
+ 			var dataLoader2 = _options.DataLoader as IDataLoader2;
+ 			
+ 			if (IsMultithreaded && dataLoader2 != null)
+ 			{
+-				Thread loadThread = new Thread(() => _gltfStream.Stream = dataLoader2.LoadStream(jsonFilePath));
+-				loadThread.Priority = ThreadPriority.Highest;
+-				loadThread.Start();
+-				RunCoroutineSync(CustomWaitUntil(() => !loadThread.IsAlive));
++				_gltfStream.Stream = await Task.Run(() => dataLoader2.LoadStream(jsonFilePath));
+ 			}
+ 			else
+ 			{
+@@ -677,10 +663,11 @@ namespace UnityGLTF
+ 
+ 			if (IsMultithreaded)
+ 			{
+-				Thread parseJsonThread = new Thread(() => GLTFParser.ParseJson(_gltfStream.Stream, out _gltfRoot, _gltfStream.StartPosition));
+-				parseJsonThread.Priority = ThreadPriority.Highest;
+-				parseJsonThread.Start();
+-				RunCoroutineSync(CustomWaitUntil(() => !parseJsonThread.IsAlive));
++				_gltfRoot = await Task.Run(() =>
++				{
++					GLTFParser.ParseJson(_gltfStream.Stream, out var root, _gltfStream.StartPosition);
++					return root;
++				});
+ 				if (_gltfRoot == null)
+ 				{
+ 					throw new GLTFLoadException($"Failed to parse glTF (File: {_gltfFileName})");
+@@ -1624,24 +1611,5 @@ namespace UnityGLTF
+ 			yield return waitUntil;
+ 		}
+ 
+-		private static void RunCoroutineSync(IEnumerator streamEnum)
+-		{
+-			var stack = new Stack<IEnumerator>();
+-			stack.Push(streamEnum);
+-			while (stack.Count > 0)
+-			{
+-				var enumerator = stack.Pop();
+-				if (enumerator.MoveNext())
+-				{
+-					stack.Push(enumerator);
+-					var subEnumerator = enumerator.Current as IEnumerator;
+-					if (subEnumerator != null)
+-					{
+-						stack.Push(subEnumerator);
+-					}
+-				}
+-			}
+-		}
+-
+ 	}
+ }

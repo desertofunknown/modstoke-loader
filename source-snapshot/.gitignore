@@ -1,0 +1,22 @@
+# Generated artifacts stay out of public source imports.
+/.tools/
+/.dotnet/
+/dist/
+/artifacts/
+/prebuilt/
+
+**/bin/
+**/obj/
+**/target/
+
+*.log
+*.jsonl
+*.csv
+*.dll
+*.exe
+*.pdb
+*.zip
+*.pfx
+*.p12
+*.pem
+*.key

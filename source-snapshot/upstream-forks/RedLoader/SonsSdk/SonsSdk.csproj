@@ -1,0 +1,251 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <DebugType>embedded</DebugType>
+      <CopyToOuput>true</CopyToOuput>
+      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+      <DeployToGame Condition="'$(DeployToGame)' == ''">false</DeployToGame>
+      <AssemblySearchPaths Condition="'$(ReferencePath)' != ''">$(AssemblySearchPaths);$(ReferencePath)</AssemblySearchPaths>
+    </PropertyGroup>
+    
+    <ItemGroup>
+      <ProjectReference Include="..\RedLoader\RedLoader.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\GLTF\GLTF.csproj" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="HarmonyX" Version="2.16.1" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <Reference Include="AdvancedTerrainGrass">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\AdvancedTerrainGrass.dll</HintPath>
+      </Reference>
+      <Reference Include="AstarPathfindingProject">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\AstarPathfindingProject.dll</HintPath>
+      </Reference>
+      <Reference Include="bolt">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\bolt.dll</HintPath>
+      </Reference>
+      <Reference Include="bolt.user">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\bolt.user.dll</HintPath>
+      </Reference>
+      <Reference Include="com.rlabrecque.steamworks.net">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\com.rlabrecque.steamworks.net.dll</HintPath>
+      </Reference>
+      <Reference Include="Endnight.Localization">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Endnight.Localization.dll</HintPath>
+      </Reference>
+      <Reference Include="Endnight.Utilities.Configurations">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Endnight.Utilities.Configurations.dll</HintPath>
+      </Reference>
+      <Reference Include="Multiplayer.Dedicated">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Multiplayer.Dedicated.dll</HintPath>
+      </Reference>
+      <Reference Include="PathologicalGames">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\PathologicalGames.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.GameApplication">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.GameApplication.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Lodding">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Lodding.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Multiplayer">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Multiplayer.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Multiplayer.Configurations">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Multiplayer.Configurations.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Settings">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Settings.dll</HintPath>
+      </Reference>
+      <Reference Include="udpkit">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\udpkit.dll</HintPath>
+      </Reference>
+      <Reference Include="udpkit.common">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\udpkit.common.dll</HintPath>
+      </Reference>
+      <Reference Include="Endnight">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Endnight.dll</HintPath>
+      </Reference>
+      <Reference Include="FMOD.Unity">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\FMOD.Unity.dll</HintPath>
+      </Reference>
+      <Reference Include="Il2Cppmscorlib">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Il2Cppmscorlib.dll</HintPath>
+      </Reference>
+      <Reference Include="Il2CppSystem">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Il2CppSystem.dll</HintPath>
+      </Reference>
+      <Reference Include="Il2CppSystem.Core">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Il2CppSystem.Core.dll</HintPath>
+      </Reference>
+      <Reference Include="Newtonsoft.Json">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Newtonsoft.Json.dll</HintPath>
+      </Reference>
+      <Reference Include="ShapesRuntime">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\ShapesRuntime.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Ai.Utilities">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Ai.Utilities.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Ai.Vail">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Ai.Vail.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Areas">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Areas.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Construction">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Construction.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Construction.Utils">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Construction.Utils.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Events">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Events.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.FMOD">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.FMOD.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Gameplay.GameSetup">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Gameplay.GameSetup.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Gameplay.LevelProps">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Gameplay.LevelProps.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Gui">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Gui.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Gui.Colors">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Gui.Colors.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Gui.Options">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Gui.Options.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Input">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Input.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Rendering">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Rendering.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Save">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Save.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.SettingsWrappers">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.SettingsWrappers.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Item">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Item.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.Loading">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.Loading.dll</HintPath>
+      </Reference>
+      <Reference Include="Sons.UiElements">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Sons.UiElements.dll</HintPath>
+      </Reference>
+      <Reference Include="TheForest.Utils">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\TheForest.Utils.dll</HintPath>
+      </Reference>
+      <Reference Include="Unity.Addressables">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Unity.Addressables.dll</HintPath>
+      </Reference>
+      <Reference Include="Unity.InputSystem">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Unity.InputSystem.dll</HintPath>
+      </Reference>
+      <Reference Include="Unity.Localization">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Unity.Localization.dll</HintPath>
+      </Reference>
+      <Reference Include="Unity.RenderPipelines.Core.Runtime">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Unity.RenderPipelines.Core.Runtime.dll</HintPath>
+      </Reference>
+      <Reference Include="Unity.RenderPipelines.HighDefinition.Runtime">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Unity.RenderPipelines.HighDefinition.Runtime.dll</HintPath>
+      </Reference>
+      <Reference Include="Unity.ResourceManager">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Unity.ResourceManager.dll</HintPath>
+      </Reference>
+      <Reference Include="Unity.TextMeshPro">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\Unity.TextMeshPro.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.AnimationModule">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.AnimationModule.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.CoreModule">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.CoreModule.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.ImageConversionModule">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.ImageConversionModule.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.IMGUIModule">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.IMGUIModule.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.TerrainModule">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.TerrainModule.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.InputLegacyModule">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.InputLegacyModule.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.InputModule">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.InputModule.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.LocalizationModule">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.LocalizationModule.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.Physics2DModule">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.Physics2DModule.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.PhysicsModule">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.PhysicsModule.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.TextRenderingModule">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.TextRenderingModule.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.UI">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.UI.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.UIModule">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.UIModule.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEngine.AssetBundleModule">
+        <HintPath>$(GamePath)\$(ProjectAlias)\Game\UnityEngine.AssetBundleModule.dll</HintPath>
+      </Reference>
+      <Reference Include="Alt.Json">
+        <HintPath>$(GamePath)\$(ProjectAlias)\net6\Alt.Json.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+    
+    <ItemGroup>
+      <None Remove="Resources\bundle" />
+      <EmbeddedResource Include="Resources\bundle" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <Folder Include="AssetMaps\" />
+    </ItemGroup>
+
+    <Target Name="CopyProjectDllOnly" AfterTargets="Build">
+        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(BuildDir)/Unity.IL2CPP" />
+        <Copy SourceFiles="$(OutputPath)$(AssemblyName).xml" DestinationFolder="$(BuildDir)/Unity.IL2CPP" />
+        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
+              DestinationFolder="$(GamePath)\$(ProjectAlias)\net6"
+              Condition="'$(DeployToGame)' == 'true' and '$(GamePath)' != '' and Exists('$(GamePath)\$(ProjectAlias)\net6')" />
+        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
+              DestinationFolder="$(DedicatedServerPath)\$(ProjectAlias)\net6"
+              Condition="'$(DeployToGame)' == 'true' and '$(DedicatedServerPath)' != '' and Exists('$(DedicatedServerPath)\$(ProjectAlias)\net6')" />
+    </Target>
+
+</Project>

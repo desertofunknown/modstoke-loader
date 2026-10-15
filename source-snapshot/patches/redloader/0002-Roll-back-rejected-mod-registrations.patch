@@ -1,0 +1,385 @@
+diff --git a/RedLoader/ModBase.cs b/RedLoader/ModBase.cs
+index f68b518..ecfa8b5 100644
+--- a/RedLoader/ModBase.cs
++++ b/RedLoader/ModBase.cs
+@@ -130,6 +130,8 @@ namespace RedLoader
+         /// </summary>
+         public bool Registered { get; private set; }
+ 
++        private List<Action> _registrationRollback;
++
+         /// <summary>
+         /// Method that gets called on update (every frame). See <see href="https://docs.unity3d.com/ScriptReference/MonoBehaviour.Update.html">Update</see>
+         /// </summary>
+@@ -257,7 +259,7 @@ namespace RedLoader
+         /// </summary>
+         public bool Register()
+         {
+-            if (Registered)
++            if (Registered || _registrationRollback != null)
+                 return false;
+ 
+             // if (FindMelon(Info.Name, Info.Author) != null)
+@@ -280,41 +282,85 @@ namespace RedLoader
+             HarmonyInstance ??= new HarmonyLib.Harmony($"{ModAssembly.FullName}:{Info.Name}");
+ 
+             Registered = true; // this has to be true before the melon can subscribe to any events
+-            RegisterCallbacks();
+-
++            var registered = false;
++            _registrationRollback = new List<Action>();
+             try
+             {
++                RegisterCallbacks();
+                 OnEarlyInitializeMelon();
++
++                if (!RegisterInternal())
++                    return false;
++
++                _registeredMelons.Add(this);
++
++                PrintLoadInfo();
++
++                OnRegister.Invoke();
++                OnMelonRegistered.Invoke(this);
++
++                if (GlobalEvents.OnApplicationStart.Disposed)
++                    LoaderInitialized();
++                else
++                    RegisterCallback(GlobalEvents.OnApplicationStart, LoaderInitialized, true);
++
++                if (GlobalEvents.OnApplicationLateStart.Disposed)
++                    OnLateInitializeMod();
++                else
++                    RegisterCallback(GlobalEvents.OnApplicationLateStart, OnLateInitializeMod, true);
++
++                registered = true;
++                return true;
+             }
+             catch (Exception ex)
+             {
+                 RLog.Error($"Failed to register {MelonTypeName} '{ModAssembly.Location}': Melon failed to initialize!");
+                 RLog.Error(ex.ToString());
+-                Registered = false;
+                 return false;
+             }
++            finally
++            {
++                if (!registered)
++                    RollbackRegistration();
++                _registrationRollback = null;
++            }
++        }
+ 
+-            if (!RegisterInternal())
+-                return false;
+-
+-            _registeredMelons.Add(this);
+-
+-            PrintLoadInfo();
+-
+-            OnRegister.Invoke();
+-            OnMelonRegistered.Invoke(this);
++        private void RollbackRegistration()
++        {
++            Registered = false;
++            for (var i = _registrationRollback.Count - 1; i >= 0; i--)
++                TryRegistrationCleanup("event subscription", _registrationRollback[i]);
+ 
+-            if (GlobalEvents.OnApplicationStart.Disposed)
+-                LoaderInitialized();
+-            else
+-                GlobalEvents.OnApplicationStart.Subscribe(LoaderInitialized, Priority, true);
++            TryRegistrationCleanup("typed registration", UnregisterInternal);
++            _registeredMelons.RemoveAll(mod => ReferenceEquals(mod, this));
++        }
+ 
+-            if (GlobalEvents.OnApplicationLateStart.Disposed)
+-                OnLateInitializeMod();
+-            else
+-                GlobalEvents.OnApplicationLateStart.Subscribe(OnLateInitializeMod, Priority, true);
++        private void TryRegistrationCleanup(string operation, Action cleanup)
++        {
++            try
++            {
++                cleanup();
++            }
++            catch (Exception ex)
++            {
++                try
++                {
++                    RLog.Error($"Registration rollback for '{ID}' could not remove {operation}: {ex}");
++                }
++                catch
++                {
++                    // A failing log listener must not prevent the remaining cleanup.
++                }
++            }
++        }
+ 
+-            return true;
++        /// <summary>
++        /// Registers a loader callback that is removed if this registration fails.
++        /// </summary>
++        private protected void RegisterCallback<T>(MelonEventBase<T> evt, T callback, bool once = false) where T : Delegate
++        {
++            evt.Subscribe(callback, Priority, once, _registrationRollback);
+         }
+ 
+         private void HarmonyInit()
+@@ -344,22 +390,22 @@ namespace RedLoader
+ 
+         protected private virtual void RegisterCallbacks()
+         {
+-            GlobalEvents.OnApplicationQuit.Subscribe(OnApplicationQuit, Priority);
++            RegisterCallback(GlobalEvents.OnApplicationQuit, OnApplicationQuit);
+             
+             if(OnUpdateCallback != null)
+-                GlobalEvents.OnUpdate.Subscribe(OnUpdateCallback, Priority);
++                RegisterCallback(GlobalEvents.OnUpdate, OnUpdateCallback);
+             
+             if(OnLateUpdateCallback != null)
+-                GlobalEvents.OnLateUpdate.Subscribe(OnLateUpdateCallback, Priority);
++                RegisterCallback(GlobalEvents.OnLateUpdate, OnLateUpdateCallback);
+             
+             if(OnFixedUpdateCallback != null)
+-                GlobalEvents.OnFixedUpdate.Subscribe(OnFixedUpdateCallback, Priority);
++                RegisterCallback(GlobalEvents.OnFixedUpdate, OnFixedUpdateCallback);
+             
+             if(OnGUICallback != null)
+-                GlobalEvents.OnGUI.Subscribe(OnGUICallback, Priority);
++                RegisterCallback(GlobalEvents.OnGUI, OnGUICallback);
+ 
+-            ConfigSystem.OnPreferencesLoaded.Subscribe(PrefsLoaded, Priority);
+-            ConfigSystem.OnPreferencesSaved.Subscribe(PrefsSaved, Priority);
++            RegisterCallback(ConfigSystem.OnPreferencesLoaded, PrefsLoaded);
++            RegisterCallback(ConfigSystem.OnPreferencesSaved, PrefsSaved);
+         }
+ 
+         private void PrefsSaved(string path)
+diff --git a/RedLoader/ModTypeBase.cs b/RedLoader/ModTypeBase.cs
+index 37894c6..7a82615 100644
+--- a/RedLoader/ModTypeBase.cs
++++ b/RedLoader/ModTypeBase.cs
+@@ -33,7 +33,7 @@ namespace RedLoader
+ 
+         protected private override void UnregisterInternal()
+         {
+-            _registeredMelons.Remove((T)this);
++            _registeredMelons.RemoveAll(mod => ReferenceEquals(mod, this));
+         }
+ 
+         public static void ExecuteAll(LemonAction<T> func, bool unregisterOnFail = false, string unregistrationReason = null)
+diff --git a/RedLoader/Utils/Events/MelonEvent.cs b/RedLoader/Utils/Events/MelonEvent.cs
+index fcc130a..65f11c3 100644
+--- a/RedLoader/Utils/Events/MelonEvent.cs
++++ b/RedLoader/Utils/Events/MelonEvent.cs
+@@ -33,40 +33,44 @@ namespace RedLoader
+         /// <param name="unsubscribeOnFirstInvocation">Automatically unsubscribe after being called once</param>
+         public void Subscribe(T action, int priority = 0, bool unsubscribeOnFirstInvocation = false)
+         {
+-            if (Disposed)
+-                return;
++            Subscribe(action, priority, unsubscribeOnFirstInvocation, null);
++        }
+ 
++        internal void Subscribe(T action, int priority, bool unsubscribeOnFirstInvocation, List<Action> rollback)
++        {
+             lock (actions)
+             {
++                if (Disposed)
++                    return;
++
+                 var acts = MelonAction<T>.Get(action, priority, unsubscribeOnFirstInvocation);
+                 foreach (var a in acts)
+                 {
+                     if (CheckIfSubscribed(a.del.Method, a.del.Target))
+                         continue;
+ 
+-                    // if (a.melonAssembly != null)
+-                    // {
+-                    //     MelonDebug.Msg($"MelonAssembly '{a.melonAssembly.Assembly.GetName().Name}' subscribed with {a.del.Method.Name}");
+-                    //     a.melonAssembly.OnUnregister.Subscribe(() => Unsubscribe(a.del), unsubscribeOnFirstInvocation: true);
+-                    // }
+-
+-                    for (var b = 0; b < actions.Count; b++)
+-                    {
+-                        var act = actions[b];
+-                        if (a.priority < act.priority)
+-                        {
+-                            actions.Insert(b, a);
+-                            UpdateEnumerator();
+-                            return;
+-                        }
+-                    }
+-
+-                    actions.Add(a);
++                    var index = 0;
++                    while (index < actions.Count && actions[index].priority <= a.priority)
++                        index++;
++
++                    actions.Insert(index, a);
++                    // Capture this entry, not its delegate: a later replacement or a
++                    // pre-existing subscription must survive registration rollback.
++                    rollback?.Add(() => Unsubscribe(a));
+                     UpdateEnumerator();
+                 }
+             }
+         }
+ 
++        private void Unsubscribe(MelonAction<T> action)
++        {
++            lock (actions)
++            {
++                if (actions.Remove(action))
++                    UpdateEnumerator();
++            }
++        }
++
+         public void Unsubscribe(T action)
+         {
+             foreach (var inv in action.GetInvocationList())
+diff --git a/SonsSdk/Private/SdkEntryPoint.cs b/SonsSdk/Private/SdkEntryPoint.cs
+index c087143..2448605 100644
+--- a/SonsSdk/Private/SdkEntryPoint.cs
++++ b/SonsSdk/Private/SdkEntryPoint.cs
+@@ -109,12 +109,6 @@ public class SdkEntryPoint : IModProcessor
+                 RLog.Msg(System.ConsoleColor.Magenta, $"Loaded mod {mod.Manifest.Name} for game {manifest.GameVersion}");
+                 
+                 mods.Add(mod);
+-
+-                mod.AssetBundleAttrs = AssetBundleAttributeLoader.GetAllTypes(mod);
+-                foreach (var attr in mod.AssetBundleAttrs)
+-                {
+-                    attr.Mod = mod;
+-                }
+             }
+         }
+         else
+@@ -382,9 +376,9 @@ public class SdkEntryPoint : IModProcessor
+                 return false;
+             }
+             
+-            outMod = (SonsMod)Activator.CreateInstance(implementation, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, null, null);
++            var mod = (SonsMod)Activator.CreateInstance(implementation, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, null, null);
+             
+-            if(outMod == null)
++            if(mod == null)
+             {
+                 RLog.Error($"Failed to create an instance of {implementation.FullName}");
+                 return false;
+@@ -399,8 +393,8 @@ public class SdkEntryPoint : IModProcessor
+ 
+             data.VersionObject = version;
+                 
+-            outMod.Info = new MelonInfoAttribute(
+-                                                 outMod.GetType(), 
++            mod.Info = new MelonInfoAttribute(
++                                                 mod.GetType(), 
+                                                  string.IsNullOrEmpty(data.Name) ? data.Id : data.Name, 
+                                                  version.Major, 
+                                                  version.Minor,
+@@ -408,18 +402,29 @@ public class SdkEntryPoint : IModProcessor
+                                                  data.Author,
+                                                  data.Url);
+ 
+-            outMod.Manifest = data;
++            mod.Manifest = data;
+                 
+-            outMod.ModAssembly = assembly;
+-            outMod.Priority = data.Priority;
+-            outMod.ConsoleColor = LoaderUtils.ColorFromString(data.LogColor);
+-            outMod.AuthorConsoleColor = RLog.DefaultTextColor;
+-            outMod.SupportedGameVersion = data.GameVersion;
+-            outMod.OptionalDependencies = data.Dependencies;
+-            outMod.ID = data.Id;
+-
+-            outMod.Register();
+-            
++            mod.ModAssembly = assembly;
++            mod.Priority = data.Priority;
++            mod.ConsoleColor = LoaderUtils.ColorFromString(data.LogColor);
++            mod.AuthorConsoleColor = RLog.DefaultTextColor;
++            mod.SupportedGameVersion = data.GameVersion;
++            mod.OptionalDependencies = data.Dependencies;
++            mod.ID = data.Id;
++
++            // Finish metadata discovery before registration publishes callbacks.
++            mod.AssetBundleAttrs = AssetBundleAttributeLoader.GetAllTypes(mod);
++            foreach (var attr in mod.AssetBundleAttrs)
++                attr.Mod = mod;
++
++            if (!mod.Register())
++            {
++                RLog.Error($"Mod '{data.Id}' failed to register.");
++                SonsMod.ReportMod(data.Id, "Mod registration failed");
++                return false;
++            }
++
++            outMod = mod;
+             return true;
+         }
+         catch (ReflectionTypeLoadException e)
+diff --git a/SonsSdk/SonsMod.cs b/SonsSdk/SonsMod.cs
+index 30684b0..b228066 100644
+--- a/SonsSdk/SonsMod.cs
++++ b/SonsSdk/SonsMod.cs
+@@ -71,7 +71,7 @@ public abstract class SonsMod : ModTypeBase<SonsMod>
+         }
+         else
+         {
+-            GlobalEvents.MelonHarmonyInit.Subscribe(HarmonyInit, Priority, true);
++            RegisterCallback(GlobalEvents.MelonHarmonyInit, HarmonyInit, true);
+         }
+ 
+         return true;
+@@ -81,35 +81,35 @@ public abstract class SonsMod : ModTypeBase<SonsMod>
+     {
+         base.RegisterCallbacks();
+         
+-        GlobalEvents.OnSceneWasLoaded.Subscribe(OnSceneWasLoaded, Priority);
+-        GlobalEvents.OnSceneWasInitialized.Subscribe(OnSceneWasInitialized, Priority);
+-        GlobalEvents.OnSceneWasUnloaded.Subscribe(OnSceneWasUnloaded, Priority);
+-        SdkEvents.OnGameStart.Subscribe(OnGameStart, Priority);
+-        SdkEvents.OnSdkInitialized.Subscribe(OnSdkInitialized, Priority);
+-        SdkEvents.OnSonsSceneInitialized.Subscribe(OnSonsSceneInitialized, Priority);
++        RegisterCallback(GlobalEvents.OnSceneWasLoaded, OnSceneWasLoaded);
++        RegisterCallback(GlobalEvents.OnSceneWasInitialized, OnSceneWasInitialized);
++        RegisterCallback(GlobalEvents.OnSceneWasUnloaded, OnSceneWasUnloaded);
++        RegisterCallback(SdkEvents.OnGameStart, OnGameStart);
++        RegisterCallback(SdkEvents.OnSdkInitialized, OnSdkInitialized);
++        RegisterCallback(SdkEvents.OnSonsSceneInitialized, OnSonsSceneInitialized);
+ 
+         if(OnWorldUpdatedCallback != null)
+-            SdkEvents.OnInWorldUpdate.Subscribe(OnWorldUpdatedCallback, Priority);
++            RegisterCallback(SdkEvents.OnInWorldUpdate, OnWorldUpdatedCallback);
+         
+         if (this is IOnUpdateReceiver onUpdateReceiver)
+-            GlobalEvents.OnUpdate.Subscribe(onUpdateReceiver.OnUpdate, Priority);
++            RegisterCallback(GlobalEvents.OnUpdate, onUpdateReceiver.OnUpdate);
+         
+         if (this is IOnInWorldUpdateReceiver onInWorldUpdateReceiver)
+-            SdkEvents.OnInWorldUpdate.Subscribe(onInWorldUpdateReceiver.OnInWorldUpdate, Priority);
++            RegisterCallback(SdkEvents.OnInWorldUpdate, onInWorldUpdateReceiver.OnInWorldUpdate);
+         
+         if (this is IOnAfterSpawnReceiver onAfterSpawnReceiver)
+-            SdkEvents.OnAfterSpawn.Subscribe(onAfterSpawnReceiver.OnAfterSpawn, Priority);
++            RegisterCallback(SdkEvents.OnAfterSpawn, onAfterSpawnReceiver.OnAfterSpawn);
+         
+         if (this is IOnGameActivatedReceiver onGameActivatedReceiver)
+-            SdkEvents.OnGameActivated.Subscribe(onGameActivatedReceiver.OnGameActivated, Priority);
++            RegisterCallback(SdkEvents.OnGameActivated, onGameActivatedReceiver.OnGameActivated);
+         
+         if (this is IOnBeforeLoadSaveReceiver onBeforeLoadSaveReceiver)
+-            SdkEvents.BeforeLoadSave.Subscribe(onBeforeLoadSaveReceiver.OnBeforeLoadSave, Priority);
++            RegisterCallback(SdkEvents.BeforeLoadSave, onBeforeLoadSaveReceiver.OnBeforeLoadSave);
+         
+         if (this is IOnAfterLoadSaveReceiver onAfterLoadSaveReceiver)
+-            SdkEvents.AfterLoadSave.Subscribe(onAfterLoadSaveReceiver.OnAfterLoadSave, Priority);
++            RegisterCallback(SdkEvents.AfterLoadSave, onAfterLoadSaveReceiver.OnAfterLoadSave);
+ 
+-        SdkEvents.OnGameStart.Subscribe(RegisterCommands, Priority);
++        RegisterCallback(SdkEvents.OnGameStart, RegisterCommands);
+     }
+     
+     internal Dictionary<string, Action<SBgButtonOptions>> GetModPanelActions()

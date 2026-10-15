@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>OpenACAI.Endnight.Loader.Bootstrap</AssemblyName>
+    <Title>Modstoke Loader Bootstrap</Title>
+    <Product>Modstoke Loader by OpenACAI</Product>
+    <Company>OpenACAI</Company>
+    <Description>Managed bootstrap for Modstoke Loader by OpenACAI.</Description>
+    <RootNamespace>OpenACAI.Endnight.Loader.Bootstrap</RootNamespace>
+    <ImplicitUsings>false</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GameRoot Condition="'$(GameRoot)' == ''">$(MSBuildProjectDirectory)\..\..\..\..</GameRoot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Entrypoint.cs" />
+    <Compile Include="OpenACAIBootstrapEnvironment.cs" />
+    <Compile Include="OpenACAIChainloaderBoundary.cs" />
+    <Compile Include="OpenACAICompatibilityPathInitializer.cs" />
+    <Compile Include="OpenACAIConsoleManagerInitializer.cs" />
+    <Compile Include="OpenACAIConsoleOutputRedirector.cs" />
+    <Compile Include="OpenACAIEnvironmentBannerWriter.cs" />
+    <Compile Include="OpenACAIHarmonyBackendInitializer.cs" />
+    <Compile Include="OpenACAIIL2CPPChainloaderAdapter.cs" />
+    <Compile Include="OpenACAIIL2CPPPreloaderRunner.cs" />
+    <Compile Include="OpenACAIPreloaderBoundary.cs" />
+    <Compile Include="OpenACAIStdErrRedirector.cs" />
+    <Compile Include="OpenACAIUnityInfoInitializer.cs" />
+  </ItemGroup>
+
+</Project>

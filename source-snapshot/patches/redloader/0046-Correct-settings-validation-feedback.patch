@@ -1,0 +1,154 @@
+diff --git a/SonsSdk/SUI/SettingsRegistry.cs b/SonsSdk/SUI/SettingsRegistry.cs
+index e845a4b..5f3ebb7 100644
+--- a/SonsSdk/SUI/SettingsRegistry.cs
++++ b/SonsSdk/SUI/SettingsRegistry.cs
+@@ -162,14 +162,12 @@ public class SettingsRegistry
+                 }
+                 
+                 var observable = new Observable<float>(entry.Value);
+-                observable.OnValueChanged += value => entry.Value = value;
+-                
+-                entry.OnValueChanged.Subscribe((_,nev) => observable.Value = nev);
+ 
+                 var option = SSlider
+                     .Text(entry.DisplayName)
+                     .Range(entry.Min ?? 0, entry.Max ?? 10)
+                     .Format("0.00").Value(observable.Value).Bind(observable).FlexWidth(1);
++                BindConfig(entry, observable);
+ 
+                 if (!string.IsNullOrEmpty(entry.Description))
+                 {
+@@ -190,14 +188,13 @@ public class SettingsRegistry
+                 }
+                 
+                 var observable = new Observable<float>(entry.Value);
+-                observable.OnValueChanged += value => entry.Value = (int)value;
+-                
+-                entry.OnValueChanged.Subscribe((_,nev) => observable.Value = nev);
+ 
+                 var option = SSlider
+                     .Text(entry.DisplayName)
+                     .Range(entry.Min ?? 0, entry.Max ?? 10)
++                    .IntStep()
+                     .Value(observable.Value).Bind(observable).FlexWidth(1);
++                BindConfig(entry, observable, value => (int)value, value => (float)value);
+                 
+                 if (!string.IsNullOrEmpty(entry.Description))
+                 {
+@@ -218,11 +215,9 @@ public class SettingsRegistry
+                 }
+                 
+                 var observable = new Observable<bool>(entry.Value);
+-                observable.OnValueChanged += value => entry.Value = value;
+-                
+-                entry.OnValueChanged.Subscribe((_,nev) => observable.Value = nev);
+ 
+                 var option = SToggle.Text(entry.DisplayName).Value(observable.Value).Bind(observable).FlexWidth(1);
++                BindConfig(entry, observable);
+                 
+                 if (!string.IsNullOrEmpty(entry.Description))
+                 {
+@@ -243,14 +238,12 @@ public class SettingsRegistry
+                 }
+                 
+                 var observable = new Observable<string>(entry.Value);
+-                observable.OnValueChanged += value => entry.Value = value;
+-                
+-                entry.OnValueChanged.Subscribe((_,nev) => observable.Value = nev);
+ 
+                 if (entry.HasOptions)
+                 {
+                     var option = SOptions.Text(entry.DisplayName).Options(entry.Options.ToArray()).Value(observable.Value).Bind(observable)
+                         .FlexWidth(1);
++                    BindConfig(entry, observable);
+                     var optionContainer = Wrap(option, entry, defaultHeight);
+                     
+                     if (!string.IsNullOrEmpty(entry.Description))
+@@ -264,6 +257,7 @@ public class SettingsRegistry
+                 else
+                 {
+                     var option = STextbox.Text(entry.DisplayName).Value(observable.Value).Bind(observable).FlexWidth(1);
++                    BindConfig(entry, observable);
+                     var optionContainer = Wrap(option, entry, defaultHeight);
+                     
+                     if (!string.IsNullOrEmpty(entry.Description))
+@@ -303,9 +297,6 @@ public class SettingsRegistry
+                 }
+                 
+                 var observable = new Observable<UnityEngine.Color>(entry.Value);
+-                observable.OnValueChanged += value => entry.Value = value;
+-                
+-                entry.OnValueChanged.Subscribe((_,nev) => observable.Value = nev);
+ 
+                 // var option = SToggle.Text(entry.DisplayName).Value(observable.Value).Bind(observable).FlexWidth(1);
+                 var label = SLabel
+@@ -317,6 +308,7 @@ public class SettingsRegistry
+                     .Alignment(TextAlignmentOptions.MidlineLeft)
+                     .Dock(EDockType.Fill);
+                 var option = SColorWheel.Bind(observable).Pivot(1,0.5f).Anchor(AnchorType.MiddleRight).BgActive(false).Size(200, 200);
++                BindConfig(entry, observable);
+                 var entryContainer = SContainer.Dock(EDockType.Fill).FlexWidth(1).Add(label).Add(option);
+                 
+                 if (!string.IsNullOrEmpty(entry.Description))
+@@ -332,6 +324,61 @@ public class SettingsRegistry
+         }
+     }
+ 
++    private static void BindConfig<T>(ConfigEntry<T> entry, Observable<T> observable)
++    {
++        BindConfig(entry, observable, value => value, value => value);
++    }
++
++    private static void BindConfig<TConfig, TValue>(ConfigEntry<TConfig> entry, Observable<TValue> observable,
++        Func<TValue, TConfig> toConfig, Func<TConfig, TValue> toControl)
++    {
++        var refreshing = false;
++
++        void RefreshFromConfig()
++        {
++            var wasRefreshing = refreshing;
++            refreshing = true;
++            try
++            {
++                observable.Value = toControl(entry.Value);
++            }
++            finally
++            {
++                refreshing = wasRefreshing;
++            }
++        }
++
++        // Bind the control first, so a nested correction is not overwritten by an older event.
++        observable.OnValueChanged += _ =>
++        {
++            if (refreshing)
++                return;
++
++            try
++            {
++                entry.Value = toConfig(observable.Value);
++            }
++            catch
++            {
++                try
++                {
++                    RefreshFromConfig();
++                }
++                catch
++                {
++                    // Preserve the original validation or write failure.
++                }
++
++                throw;
++            }
++
++            RefreshFromConfig();
++        };
++
++        entry.OnValueChanged.Subscribe((_, _) => RefreshFromConfig());
++        RefreshFromConfig();
++    }
++
+     public static bool HasSettings(string id)
+     {
+         return SettingsEntries.ContainsKey(id);

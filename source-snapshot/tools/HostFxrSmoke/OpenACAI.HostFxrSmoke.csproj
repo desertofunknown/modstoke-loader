@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>OpenACAI.HostFxrSmoke</AssemblyName>
+    <RootNamespace>OpenACAI.HostFxrSmoke</RootNamespace>
+    <ImplicitUsings>false</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+</Project>

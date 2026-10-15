@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <AssemblyName>BepInEx.Unity.IL2CPP</AssemblyName>
+    <RootNamespace>BepInEx.Unity.IL2CPP</RootNamespace>
+    <Version>6.0.0</Version>
+    <AssemblyVersion>6.0.0.0</AssemblyVersion>
+    <FileVersion>6.0.0.0</FileVersion>
+    <Title>Modstoke IL2CPP Compatibility</Title>
+    <Product>Modstoke Loader by OpenACAI</Product>
+    <Company>OpenACAI</Company>
+    <Description>IL2CPP mod contracts hosted by Modstoke Loader by OpenACAI.</Description>
+    <Copyright>Copyright (C) 2022 BepInEx Team; Copyright (C) 2026 Alex Cooper</Copyright>
+    <PackageLicenseExpression>LGPL-2.1-only</PackageLicenseExpression>
+    <ImplicitUsings>false</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DebugType>embedded</DebugType>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <GameRoot Condition="'$(GameRoot)' == ''">$(MSBuildProjectDirectory)\..\..\..\..</GameRoot>
+    <BepInExCoreRoot Condition="'$(BepInExCoreRoot)' == ''">$(GameRoot)\BepInEx\core</BepInExCoreRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="BepInEx.Core" HintPath="$(BepInExCoreRoot)\BepInEx.Core.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(BepInExCoreRoot)\0Harmony.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(BepInExCoreRoot)\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="MonoMod.RuntimeDetour" HintPath="$(BepInExCoreRoot)\MonoMod.RuntimeDetour.dll" Private="false" />
+    <Reference Include="MonoMod.Utils" HintPath="$(BepInExCoreRoot)\MonoMod.Utils.dll" Private="false" />
+    <ProjectReference Include="..\Modstoke.Compatibility.BepInEx.Preloader.Core\Modstoke.Compatibility.BepInEx.Preloader.Core.csproj" Private="false" />
+    <PackageReference Include="Il2CppInterop.ReferenceLibs" Version="1.0.0" IncludeAssets="compile" PrivateAssets="all" />
+    <!-- Match the BepInEx fork runtime; ReferenceLibs alone leaves a broad transitive version range. -->
+    <PackageReference Include="Il2CppInterop.Runtime" Version="1.5.2-ci.1063" ExcludeAssets="all" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

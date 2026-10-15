@@ -1,0 +1,29 @@
+Subject: [PATCH] Tolerate existing interop instruction-set registrations
+
+OpenACAI now registers Cpp2IL through public APIs. Keep the compatibility
+manager's later static initialization from rejecting those existing entries.
+
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs
+@@ -40,8 +40,18 @@ internal static partial class Il2CppInteropManager
+ {
+     static Il2CppInteropManager()
+     {
+-        InstructionSetRegistry.RegisterInstructionSet<X86InstructionSet>(DefaultInstructionSets.X86_32);
+-        InstructionSetRegistry.RegisterInstructionSet<X86InstructionSet>(DefaultInstructionSets.X86_64);
++        // The OpenACAI public conversion path may have registered these before fallback startup.
++        foreach (var instructionSet in new[] { DefaultInstructionSets.X86_32, DefaultInstructionSets.X86_64 })
++        {
++            try
++            {
++                InstructionSetRegistry.GetInstructionSet(instructionSet);
++            }
++            catch (KeyNotFoundException)
++            {
++                InstructionSetRegistry.RegisterInstructionSet<X86InstructionSet>(instructionSet);
++            }
++        }
+         LibCpp2IlBinaryRegistry.RegisterBuiltInBinarySupport();
+     }
+ 

@@ -1,0 +1,160 @@
+From f1c40045bcb864226cd0b5a262f0ead83ea999f4 Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Fri, 5 Jun 2026 07:36:09 -0500
+Subject: [PATCH 4/4] Validate native runtime architecture before hostfxr
+ startup
+
+---
+ src/bootstrap.c | 122 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 122 insertions(+)
+
+diff --git a/src/bootstrap.c b/src/bootstrap.c
+index 4fdda50..c89b6ce 100644
+--- a/src/bootstrap.c
++++ b/src/bootstrap.c
+@@ -90,6 +90,105 @@ static bool_t has_config_value(char_t *value) {
+     return value && strlen(value) > 0;
+ }
+ 
++#if _WIN32
++static WORD expected_native_machine() {
++#if _WIN64
++    return IMAGE_FILE_MACHINE_AMD64;
++#else
++    return IMAGE_FILE_MACHINE_I386;
++#endif
++}
++
++static const char_t *native_machine_name(WORD machine) {
++    switch (machine) {
++    case IMAGE_FILE_MACHINE_AMD64:
++        return TEXT("x64");
++    case IMAGE_FILE_MACHINE_I386:
++        return TEXT("x86");
++    case IMAGE_FILE_MACHINE_ARM64:
++        return TEXT("arm64");
++    default:
++        return TEXT("unknown");
++    }
++}
++
++static bool_t try_read_pe_machine(char_t *path, WORD *machine) {
++    HANDLE file =
++        CreateFile(path, GENERIC_READ,
++                   FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
++                   OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
++    if (file == INVALID_HANDLE_VALUE) {
++        LOG("Failed to open native runtime for architecture validation: %s "
++            "(error %lu)",
++            path, GetLastError());
++        return FALSE;
++    }
++
++    IMAGE_DOS_HEADER dos_header;
++    DWORD read = 0;
++    if (!ReadFile(file, &dos_header, sizeof(dos_header), &read, NULL) ||
++        read != sizeof(dos_header) || dos_header.e_magic != IMAGE_DOS_SIGNATURE) {
++        LOG("Native runtime is not a valid PE image: %s", path);
++        CloseHandle(file);
++        return FALSE;
++    }
++
++    LARGE_INTEGER nt_offset;
++    nt_offset.QuadPart = dos_header.e_lfanew;
++    if (nt_offset.QuadPart <= 0 ||
++        !SetFilePointerEx(file, nt_offset, NULL, FILE_BEGIN)) {
++        LOG("Native runtime has an invalid PE header offset: %s", path);
++        CloseHandle(file);
++        return FALSE;
++    }
++
++    DWORD signature = 0;
++    if (!ReadFile(file, &signature, sizeof(signature), &read, NULL) ||
++        read != sizeof(signature) || signature != IMAGE_NT_SIGNATURE) {
++        LOG("Native runtime has an invalid NT signature: %s", path);
++        CloseHandle(file);
++        return FALSE;
++    }
++
++    IMAGE_FILE_HEADER file_header;
++    if (!ReadFile(file, &file_header, sizeof(file_header), &read, NULL) ||
++        read != sizeof(file_header)) {
++        LOG("Native runtime PE file header could not be read: %s", path);
++        CloseHandle(file);
++        return FALSE;
++    }
++
++    *machine = file_header.Machine;
++    CloseHandle(file);
++    return TRUE;
++}
++
++static bool_t validate_native_runtime_architecture(char_t *path,
++                                                   const char_t *label) {
++    WORD machine = IMAGE_FILE_MACHINE_UNKNOWN;
++    if (!try_read_pe_machine(path, &machine)) {
++        return FALSE;
++    }
++
++    WORD expected = expected_native_machine();
++    LOG("%s architecture: %s (machine 0x%04x), process expects %s", label,
++        native_machine_name(machine), machine, native_machine_name(expected));
++
++    if (machine != expected) {
++        LOG("%s architecture does not match the current game process: %s",
++            label, path);
++        return FALSE;
++    }
++
++    return TRUE;
++}
++#else
++static bool_t validate_native_runtime_architecture(char_t *path,
++                                                   const char_t *label) {
++    return TRUE;
++}
++#endif
++
+ static char_t *build_doorstop_entrypoint_type_name(char_t *target_name) {
+     const char_t *prefix = TEXT("Doorstop.Entrypoint, ");
+     char_t *result =
+@@ -134,6 +233,24 @@ static bool_t validate_hostfxr_bootstrap_config() {
+         return FALSE;
+     }
+ 
++    if (!validate_native_runtime_architecture(config.clr_runtime_hostfxr_path,
++                                              TEXT("hostfxr"))) {
++        return FALSE;
++    }
++
++    if (has_config_value(config.clr_runtime_coreclr_path)) {
++        if (!file_exists(config.clr_runtime_coreclr_path)) {
++            LOG("Configured coreclr path does not exist: %s",
++                config.clr_runtime_coreclr_path);
++            return FALSE;
++        }
++
++        if (!validate_native_runtime_architecture(
++                config.clr_runtime_coreclr_path, TEXT("coreclr"))) {
++            return FALSE;
++        }
++    }
++
+     if (!has_config_value(config.clr_runtime_config_path)) {
+         LOG("No runtimeconfig path set, skipping modern CoreCLR hosting");
+         return FALSE;
+@@ -550,6 +667,11 @@ void il2cpp_doorstop_bootstrap() {
+         return;
+     }
+ 
++    if (!validate_native_runtime_architecture(config.clr_runtime_coreclr_path,
++                                              TEXT("coreclr"))) {
++        return;
++    }
++
+     void *coreclr_module = dlopen(config.clr_runtime_coreclr_path, RTLD_LAZY);
+     LOG("Loaded coreclr.dll: %p", coreclr_module);
+     if (!coreclr_module) {
+-- 
+2.54.0.windows.1
+

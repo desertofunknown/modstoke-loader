@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>Modstoke.ClientCompanion</AssemblyName>
+    <Title>Modstoke Client Companion</Title>
+    <Product>Modstoke Loader by OpenACAI</Product>
+    <Company>OpenACAI</Company>
+    <Version>0.1.0-preview</Version>
+    <RootNamespace>Modstoke.ClientCompanion</RootNamespace>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <OpenACAICorePath Condition="'$(OpenACAICorePath)' == ''">$(GameRoot)\OpenACAI\Runtime\OpenACAI.Endnight.Loader.Core.dll</OpenACAICorePath>
+    <BepInExCoreRoot Condition="'$(BepInExCoreRoot)' == ''">$(GameRoot)\BepInEx\core</BepInExCoreRoot>
+    <GameInteropRoot Condition="'$(GameInteropRoot)' == ''">$(GameRoot)\BepInEx\interop</GameInteropRoot>
+  </PropertyGroup>
+  <Target Name="RequireGameRoot" BeforeTargets="ResolveReferences" Condition="'$(GameRoot)' == ''">
+    <Error Text="Pass -p:GameRoot to a local Sons of the Forest installation with matching Loader and BepInEx references." />
+  </Target>
+  <ItemGroup>
+    <Compile Remove="tests/**" />
+    <Reference Include="OpenACAI.Endnight.Loader.Core" HintPath="$(OpenACAICorePath)" Private="false" />
+    <Reference Include="BepInEx.Core" HintPath="$(BepInExCoreRoot)\BepInEx.Core.dll" Private="false" />
+    <Reference Include="BepInEx.Unity.IL2CPP" HintPath="$(BepInExCoreRoot)\BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(BepInExCoreRoot)\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="Il2Cppmscorlib" HintPath="$(GameInteropRoot)\Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(GameInteropRoot)\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="bolt" HintPath="$(GameInteropRoot)\bolt.dll" Private="false" />
+  </ItemGroup>
+</Project>

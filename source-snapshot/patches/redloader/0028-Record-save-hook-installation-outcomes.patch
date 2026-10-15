@@ -1,0 +1,66 @@
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 083ee67..d8f4374 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -29,6 +29,14 @@ using Priority = HarmonyLib.Priority;
+ 
+ namespace SonsSdk;
+ 
++internal enum SaveHookPatchState
++{
++    NotAttempted,
++    Applying,
++    Applied,
++    Failed
++}
++
+ internal interface ISdkLifecycleDriver
+ {
+     void RegisterGameEvents();
+@@ -391,6 +399,12 @@ public static class SdkEvents
+     
+     public class SavingCallbackPatches
+     {
++        private static SaveHookPatchState _loadPatchState;
++        private static SaveHookPatchState _savePatchState;
++
++        internal static SaveHookPatchState LoadPatchState => _loadPatchState;
++        internal static SaveHookPatchState SavePatchState => _savePatchState;
++
+         [HarmonyPatch(typeof(SaveGameManager), nameof(SaveGameManager.Load), typeof(string), typeof(SaveGameType))]
+         [HarmonyPrefix]
+         public static void BeforeLoad(string dir, SaveGameType saveGameType)
+@@ -476,7 +490,32 @@ public static class SdkEvents
+     
+         public static void Patch()
+         {
+-            SdkEntryPoint.Harmony.PatchAll(typeof(SavingCallbackPatches));
++            ApplyPatch(
++                AccessTools.Method(typeof(SaveGameManager), nameof(SaveGameManager.Load), new[] { typeof(string), typeof(SaveGameType) }),
++                nameof(BeforeLoad), nameof(AfterLoad), ref _loadPatchState);
++            ApplyPatch(
++                AccessTools.Method(typeof(SaveGameManager), nameof(SaveGameManager.Save), new[] { typeof(string), typeof(string), typeof(bool) }),
++                nameof(BeforeSave), nameof(AfterSave), ref _savePatchState);
++        }
++
++        private static void ApplyPatch(MethodInfo target, string prefixName, string postfixName, ref SaveHookPatchState state)
++        {
++            ArgumentNullException.ThrowIfNull(target);
++            var prefix = new HarmonyMethod(typeof(SavingCallbackPatches), prefixName);
++            var postfix = new HarmonyMethod(typeof(SavingCallbackPatches), postfixName);
++
++            state = SaveHookPatchState.Applying;
++            try
++            {
++                SdkEntryPoint.Harmony.Patch(target, prefix: prefix, postfix: postfix);
++                state = SaveHookPatchState.Applied;
++            }
++            catch
++            {
++                // A failed detour attempt may already have changed native state.
++                state = SaveHookPatchState.Failed;
++                throw;
++            }
+         }
+     }
+ }

@@ -1,0 +1,124 @@
+diff --git a/SonsSdk/Networking/EntityManager.cs b/SonsSdk/Networking/EntityManager.cs
+index 6dc521b..812129e 100644
+--- a/SonsSdk/Networking/EntityManager.cs
++++ b/SonsSdk/Networking/EntityManager.cs
+@@ -6,12 +6,28 @@ using Color = System.Drawing.Color;
+ 
+ namespace SonsSdk.Networking;
+ 
++internal interface ISdkNetworkPrefabDriver
++{
++    void Initialize();
++    void Clear();
++    void RegisterPrefab(BoltEntity entity, string serializer);
++    void RegisterPrefab(GameObject gameObject, string serializer);
++    void UnregisterPrefab(BoltEntity entity);
++}
++
+ public static class EntityManager
+ {
+-    private static readonly List<BoltEntity> RegisteredEntities = new();
++    internal static readonly List<BoltEntity> RegisteredEntities = new();
+ 
+     internal static void Init()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.NetworkPrefabs.Initialize();
++            return;
++        }
++
+         SdkEntryPoint.Harmony.Patch(
+             AccessTools.Method(typeof(PrefabDatabase), nameof(PrefabDatabase.UpdateLookup)),
+             postfix: new(typeof(EntityManager), nameof(OnUpdateLookup)));
+@@ -19,28 +35,30 @@ public static class EntityManager
+ 
+     internal static void Uninit()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.NetworkPrefabs.Clear();
++            return;
++        }
++
+         RegisteredEntities.Clear();
+     }
+     
+     private static void OnUpdateLookup()
+     {
+-        var added = new List<GameObject>();
+-        
+         foreach (var entity in RegisteredEntities)
+         {
+             var go = entity.gameObject;
+             
+             if (PrefabDatabase.Instance.Prefabs.Contains(go))
+             {
+-                return;
++                continue;
+             }
+ 
+-            added.Add(go);
+             PrefabDatabase._lookup[entity.prefabId] = go;
+         }
+ 
+-        //PrefabDatabase.Instance.Prefabs = PrefabDatabase.Instance.Prefabs.Concat(added).ToArray();
+-
+         RLog.Msg(Color.DeepPink, "initialized bolt prefabs");
+     }
+     
+@@ -52,6 +70,13 @@ public static class EntityManager
+     /// <param name="serializer">The optional serializer. If you don't use the overload here, make sure to assign it somewhere else before</param>
+     public static void RegisterPrefab(BoltEntity entity, string serializer = null)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.NetworkPrefabs.RegisterPrefab(entity, serializer);
++            return;
++        }
++
+         if(RegisteredEntities.Contains(entity))
+             return;
+ 
+@@ -76,12 +101,26 @@ public static class EntityManager
+     /// <param name="serializer">The optional serializer. If you don't use the overload here, make sure to assign it somewhere else before</param>
+     public static void RegisterPrefab(GameObject go, string serializer = null)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.NetworkPrefabs.RegisterPrefab(go, serializer);
++            return;
++        }
++
+         if (go.TryGetComponent(out BoltEntity entity))
+             RegisterPrefab(entity, serializer);
+     }
+     
+     public static void UnregisterPrefab(BoltEntity entity)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.NetworkPrefabs.UnregisterPrefab(entity);
++            return;
++        }
++
+         RegisteredEntities.Remove(entity);
+     }
+ }
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 841ad26..c74439a 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -52,6 +52,7 @@ internal interface ISdkLifecycleDriver
+     ISdkModalDialogDriver Dialogs { get; }
+     ISdkTooltipDriver Tooltips { get; }
+     Building.ISdkBlueprintRegistrationDriver Blueprints { get; }
++    Networking.ISdkNetworkPrefabDriver NetworkPrefabs { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);

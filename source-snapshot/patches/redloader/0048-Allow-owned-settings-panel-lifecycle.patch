@@ -1,0 +1,241 @@
+diff --git a/SonsSdk/SUI/SettingsRegistry.cs b/SonsSdk/SUI/SettingsRegistry.cs
+index 5f3ebb7..b920de9 100644
+--- a/SonsSdk/SUI/SettingsRegistry.cs
++++ b/SonsSdk/SUI/SettingsRegistry.cs
+@@ -21,6 +21,18 @@ internal interface ISdkSettingsRegistrationDriver
+         bool changesNeedRestart, Action callback, SContainerOptions userContent);
+     void GenerateUi(ModBase mod, object settingsObject, Type settingsType,
+         SContainerOptions container, List<SettingsRegistry.SettingsConfigEntry> outConfigList);
++    void CreatePanel();
++    bool TryOpenPanel(string id, Action<bool> onClosed);
++    void ClosePanel(bool returnToOwner);
++    void RevertPanel();
++    void UpdatePanel();
++    bool CheckEntryForChanges(SettingsRegistry.SettingsEntry entry);
++    void ParentEntry(SettingsRegistry.SettingsEntry entry, Transform parent);
++    void UnparentEntry(SettingsRegistry.SettingsEntry entry);
++    void RevertEntry(SettingsRegistry.SettingsEntry entry);
++    void ToggleEntryCategory(SettingsRegistry.SettingsEntry entry, string identifier, bool show);
++    void SaveEntry(SettingsRegistry.SettingsEntry entry);
++    void InvokeEntryCallbacks(SettingsRegistry.SettingsEntry entry);
+ }
+ 
+ public class SettingsRegistry
+@@ -588,7 +600,7 @@ public class SettingsRegistry
+ 
+         public List<SettingsConfigEntry> ConfigEntries;
+ 
+-        private Dictionary<string, (SLabelDividerOptions, bool)> _dividers;
++        internal Dictionary<string, (SLabelDividerOptions, bool)> _dividers;
+ 
+         public SettingsEntry()
+         { }
+@@ -607,6 +619,10 @@ public class SettingsRegistry
+ 
+         public bool CheckForChanges()
+         {
++            var driver = SdkEvents.BeginLifecycleSetup();
++            if (driver != null)
++                return driver.Settings.CheckEntryForChanges(this);
++
+             foreach (var configEntry in ConfigEntries)
+             {
+                 var cfg = configEntry.ConfigEntry;
+@@ -664,6 +680,13 @@ public class SettingsRegistry
+ 
+         public void ParentTo(Transform parent)
+         {
++            var driver = SdkEvents.BeginLifecycleSetup();
++            if (driver != null)
++            {
++                driver.Settings.ParentEntry(this, parent);
++                return;
++            }
++
+             ValidateDividers();
+             
+             var categories = ConfigEntries.GroupBy(x => x.CategoryName).ToDictionary(x => x.Key, x => x.ToList());
+@@ -694,6 +717,13 @@ public class SettingsRegistry
+ 
+         public void Unparent()
+         {
++            var driver = SdkEvents.BeginLifecycleSetup();
++            if (driver != null)
++            {
++                driver.Settings.UnparentEntry(this);
++                return;
++            }
++
+             UserContentContainer?.RectTransform.SetParent(Container.RectTransform, false);
+             
+             foreach (var entry in ConfigEntries)
+@@ -717,6 +747,13 @@ public class SettingsRegistry
+ 
+         public void RevertSettings()
+         {
++            var driver = SdkEvents.BeginLifecycleSetup();
++            if (driver != null)
++            {
++                driver.Settings.RevertEntry(this);
++                return;
++            }
++
+             foreach (var configEntry in ConfigEntries)
+             {
+                 if (configEntry.WrappedElement is SKeybindOptions keybind)
+@@ -778,6 +815,13 @@ public class SettingsRegistry
+         
+         public void ToggleCategory(string identifier, bool show)
+         {
++            var driver = SdkEvents.BeginLifecycleSetup();
++            if (driver != null)
++            {
++                driver.Settings.ToggleEntryCategory(this, identifier, show);
++                return;
++            }
++
+             foreach (var configEntry in ConfigEntries)
+             {
+                 if(configEntry.CategoryName == identifier)
+@@ -792,6 +836,13 @@ public class SettingsRegistry
+ 
+         public void Save()
+         {
++            var driver = SdkEvents.BeginLifecycleSetup();
++            if (driver != null)
++            {
++                driver.Settings.SaveEntry(this);
++                return;
++            }
++
+             foreach (var category in ConfigEntries.GroupBy(x=>x.ConfigEntry.Category).Select(x=>x.Key))
+             {
+                 //RLog.Msg(Color.Orange, $"Category: {category.File.FilePath}");
+@@ -801,6 +852,13 @@ public class SettingsRegistry
+ 
+         internal void InvokeCallbacks()
+         {
++            var driver = SdkEvents.BeginLifecycleSetup();
++            if (driver != null)
++            {
++                driver.Settings.InvokeEntryCallbacks(this);
++                return;
++            }
++
+             Callback?.Invoke();
+             ConfigClassCallback?.Invoke();
+         }
+diff --git a/SonsSdk/UIs/ModSettingsUi.cs b/SonsSdk/UIs/ModSettingsUi.cs
+index edc4508..c147d98 100644
+--- a/SonsSdk/UIs/ModSettingsUi.cs
++++ b/SonsSdk/UIs/ModSettingsUi.cs
+@@ -13,28 +13,35 @@ public class ModSettingsUi
+ {
+     public const string MOD_SETTINGS_NAME = "ModSettingsPanel";
+     
+-    public static GraphicRaycaster Raycaster { get; private set; }
++    public static GraphicRaycaster Raycaster { get; internal set; }
+ 
+-    private static readonly BackgroundDefinition MainBg = new(
++    internal static readonly BackgroundDefinition MainBg = new(
+         "#fff",
+         GetBackgroundSprite(EBackground.Sons),
+         Image.Type.Simple);
+     
+-    private static readonly BackgroundDefinition ButtonBg = new(
++    internal static readonly BackgroundDefinition ButtonBg = new(
+         ColorFromString("#191A23"), 
+         GetBackgroundSprite(EBackground.Round10), 
+         Image.Type.Sliced);
+ 
+-    private static SettingsRegistry.SettingsEntry _currentEntry;
++    internal static SettingsRegistry.SettingsEntry _currentEntry;
+     
+-    private static bool _initialized;
+-    private static SScrollContainerOptions _mainContainer;
++    internal static bool _initialized;
++    internal static SScrollContainerOptions _mainContainer;
+     
+-    private static readonly Observable<string> Title = new("Mod Settings");
+-    private static Action<bool> _onClosed;
++    internal static readonly Observable<string> Title = new("Mod Settings");
++    internal static Action<bool> _onClosed;
+ 
+     public static void Create()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Settings.CreatePanel();
++            return;
++        }
++
+         if (_initialized)
+             return;
+ 
+@@ -67,13 +74,25 @@ public class ModSettingsUi
+             .Pivot(0, 0).Anchor(AnchorType.BottomLeft).Position(390, 80).Size(200, 60)
+             .RichText("Revert \uf0e2").FontColor("#c3ba8b").UpperCase().FontSize(20).Notify(RevertSettings));
+ 
++        SubscribeEvents();
++        _initialized = true;
++    }
++
++    internal static void SubscribeEvents()
++    {
+         SdkEvents.OnSonsSceneInitialized.Subscribe(_ => Close(returnToOwner: false));
+         GlobalEvents.OnUpdate.Subscribe(OnUpdate);
+-        _initialized = true;
+     }
+ 
+     private static void OnUpdate()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Settings.UpdatePanel();
++            return;
++        }
++
+         if (Input.GetKeyDown(KeyCode.Escape))
+         {
+             Close();
+@@ -93,6 +112,10 @@ public class ModSettingsUi
+     /// <returns>Whether the requested settings panel was opened.</returns>
+     public static bool TryOpen(string id, Action<bool> onClosed)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.Settings.TryOpenPanel(id, onClosed);
++
+         if (!_initialized || SettingsRegistry.GetEntry(id) is not { } entry)
+         {
+             return false;
+@@ -142,6 +165,13 @@ public class ModSettingsUi
+ 
+     private static void Close(bool returnToOwner)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Settings.ClosePanel(returnToOwner);
++            return;
++        }
++
+         var entry = _currentEntry;
+         var onClosed = _onClosed;
+         _currentEntry = null;
+@@ -177,6 +207,13 @@ public class ModSettingsUi
+ 
+     public static void RevertSettings()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Settings.RevertPanel();
++            return;
++        }
++
+         if (_currentEntry == null)
+         {
+             return;

@@ -1,0 +1,39 @@
+Subject: [PATCH] Balance log source collection registrations
+
+LogSourceCollection.Add inserted twice despite subscribing once. Retain the
+base insertion only, then detach each matching registration when Remove
+removes all matches. This preserves repeated-add and remove-all behavior
+without leaving subscriptions attached to sources no longer in the collection.
+Public logging types and listener behavior are unchanged.
+
+diff --git a/BepInEx.Core/Logging/Logger.cs b/BepInEx.Core/Logging/Logger.cs
+--- a/BepInEx.Core/Logging/Logger.cs
++++ b/BepInEx.Core/Logging/Logger.cs
+@@ -139,10 +139,6 @@ public static class Logger
+             {
+                 item.LogEvent += InternalLogEvent;
+                 base.Add(item);
+-                var copy = new List<ILogSource>(BaseList.Count + 1);
+-                copy.AddRange(BaseList);
+-                copy.Add(item);
+-                BaseList = copy;
+             }
+         }
+ 
+@@ -167,9 +163,15 @@ public static class Logger
+ 
+             lock (SpinLock)
+             {
++                var sourcesBeforeRemoval = BaseList;
+                 var wasPresent = base.Remove(item);
+                 if (wasPresent)
+-                    item.LogEvent -= InternalLogEvent;
++                {
++                    // The base collection removes all matches, including repeated registrations.
++                    foreach (var source in sourcesBeforeRemoval)
++                        if (source.Equals(item))
++                            source.LogEvent -= InternalLogEvent;
++                }
+                 return wasPresent;
+             }
+         }

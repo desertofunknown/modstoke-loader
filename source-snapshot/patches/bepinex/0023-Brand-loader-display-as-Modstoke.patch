@@ -1,0 +1,47 @@
+diff --git a/BepInEx.Core/OpenACAIBranding.cs b/BepInEx.Core/OpenACAIBranding.cs
+index a6c65a4..9fbce62 100644
+--- a/BepInEx.Core/OpenACAIBranding.cs
++++ b/BepInEx.Core/OpenACAIBranding.cs
+@@ -5,14 +5,14 @@ using System.Text.RegularExpressions;
+ namespace BepInEx;
+ 
+ /// <summary>
+-/// Provides the public OpenACAI product name and version strings shown by the loader.
++/// Provides the public Modstoke product name and version strings shown by the loader.
+ /// </summary>
+ public static class OpenACAIBranding
+ {
+     /// <summary>
+     /// Human-facing product name for the Sons Of The Forest loader.
+     /// </summary>
+-    public const string LoaderName = "OpenACAI Endnight Loader";
++    public const string LoaderName = "Modstoke Loader";
+ 
+     /// <summary>
+     /// Version label used when a release manifest is not available.
+@@ -23,7 +23,7 @@ public static class OpenACAIBranding
+         new Regex("\"version\"\\s*:\\s*\"(?<version>[^\"]+)\"", RegexOptions.Compiled);
+ 
+     /// <summary>
+-    /// Gets the OpenACAI loader version from environment or installed manifest metadata.
++    /// Gets the Modstoke loader version from environment or installed manifest metadata.
+     /// </summary>
+     public static string LoaderVersion
+     {
+@@ -39,14 +39,14 @@ public static class OpenACAIBranding
+     }
+ 
+     /// <summary>
+-    /// Gets the product name with the OpenACAI loader version appended for logs and windows.
++    /// Gets the product name with the Modstoke loader version appended for logs and windows.
+     /// </summary>
+     public static string LoaderDisplayName
+     {
+         get
+         {
+             var version = LoaderVersion;
+-            return version == DevelopmentLoaderVersion ? LoaderName + " (" + version + ")" : LoaderName + " v" + version;
++            return version == DevelopmentLoaderVersion ? LoaderName + " (" + version + ") by OpenACAI" : LoaderName + " v" + version + " by OpenACAI";
+         }
+     }
+ 

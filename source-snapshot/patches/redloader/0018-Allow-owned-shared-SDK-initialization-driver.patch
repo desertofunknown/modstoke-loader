@@ -1,0 +1,94 @@
+diff --git a/SonsSdk/Private/MainInitializer.cs b/SonsSdk/Private/MainInitializer.cs
+index c595774..9fe5038 100644
+--- a/SonsSdk/Private/MainInitializer.cs
++++ b/SonsSdk/Private/MainInitializer.cs
+@@ -22,12 +22,42 @@ using Color = System.Drawing.Color;
+ 
+ namespace SonsSdk;
+ 
++internal interface ISdkInitializationDriver
++{
++    bool InitializationFailed { get; }
++    void InitTitleScene();
++    void InitDedicatedServer();
++    void CompleteEventSetup();
++    void ReportInitializationFailure(Exception exception);
++}
++
+ internal class MainInitializer
+ {
+-    internal static bool InitializationFailed { get; private set; }
++    private static ISdkInitializationDriver _initializationDriver;
++    private static bool _initializationFailed;
++
++    internal static bool InitializationFailed => _initializationDriver?.InitializationFailed ?? _initializationFailed;
++
++    internal static void SetInitializationDriver(ISdkInitializationDriver driver)
++    {
++        ArgumentNullException.ThrowIfNull(driver);
++        if (ReferenceEquals(_initializationDriver, driver))
++            return;
++        if (_initializationDriver != null || _initializationStarted || _eventSetupCompleted ||
++            _initializationFinished || _initializationFailed || SdkEvents.OnSdkInitializationCompleted.Disposed)
++            throw new InvalidOperationException("SDK initialization ownership must be selected before startup.");
++
++        _initializationDriver = driver;
++    }
+ 
+     internal static void InitTitleScene()
+     {
++        if (_initializationDriver != null)
++        {
++            _initializationDriver.InitTitleScene();
++            return;
++        }
++
+         if (_initializationStarted || SdkEvents.OnSdkInitializationCompleted.Disposed)
+         {
+             return;
+@@ -46,6 +76,12 @@ internal class MainInitializer
+ 
+     internal static void InitDedicatedServer()
+     {
++        if (_initializationDriver != null)
++        {
++            _initializationDriver.InitDedicatedServer();
++            return;
++        }
++
+         if (_initializationStarted || SdkEvents.OnSdkInitializationCompleted.Disposed)
+         {
+             return;
+@@ -67,6 +103,12 @@ internal class MainInitializer
+ 
+     internal static void CompleteEventSetup()
+     {
++        if (_initializationDriver != null)
++        {
++            _initializationDriver.CompleteEventSetup();
++            return;
++        }
++
+         _eventSetupCompleted = true;
+         TryCompleteInitialization();
+     }
+@@ -81,12 +123,18 @@ internal class MainInitializer
+ 
+     internal static void ReportInitializationFailure(Exception exception)
+     {
++        if (_initializationDriver != null)
++        {
++            _initializationDriver.ReportInitializationFailure(exception);
++            return;
++        }
++
+         if (SdkEvents.OnSdkInitializationCompleted.Disposed)
+         {
+             return;
+         }
+ 
+-        InitializationFailed = true;
++        _initializationFailed = true;
+         SdkEvents.OnSdkInitializationCompleted.Invoke(exception);
+         try
+         {

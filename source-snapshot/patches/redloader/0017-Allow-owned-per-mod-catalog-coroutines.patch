@@ -1,0 +1,29 @@
+diff --git a/SonsSdk/SonsMod.cs b/SonsSdk/SonsMod.cs
+index 2d9f181..7af8809 100644
+--- a/SonsSdk/SonsMod.cs
++++ b/SonsSdk/SonsMod.cs
+@@ -16,6 +16,7 @@ public abstract class SonsMod : ModTypeBase<SonsMod>
+     public ManifestData Manifest { get; internal set; }
+ 
+     internal List<AssetBundleAttribute> AssetBundleAttrs = new();
++    internal Func<SonsMod, System.Collections.IEnumerator> CatalogLoader;
+ 
+     /// <summary>
+     /// Method that gets called on update but only when in the world.
+diff --git a/SonsSdk/Private/MainInitializer.cs b/SonsSdk/Private/MainInitializer.cs
+index ae243fa..c595774 100644
+--- a/SonsSdk/Private/MainInitializer.cs
++++ b/SonsSdk/Private/MainInitializer.cs
+@@ -187,6 +187,12 @@ internal class MainInitializer
+             if (!mod.Registered)
+                 continue;
+ 
++            if (mod.CatalogLoader != null)
++            {
++                yield return mod.CatalogLoader(mod);
++                continue;
++            }
++
+             string[] catalogs;
+             try
+             {
