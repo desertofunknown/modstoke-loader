@@ -70,6 +70,6 @@ as part of a style edit. See [Project Structure](docs/PROJECT_STRUCTURE.md) and
 [Source and Build](docs/NEXUS_SOURCE_AND_BUILD.md) for the repository layout and build inputs.
 
 A successful build is not proof of gameplay or multiplayer behavior. State which
-checks ran and what remains unverified. Keep local session notes, transcripts,
-private paths and diagnostic artifacts out of source and release packages.
+checks ran and what remains unverified. Keep local notes, private paths and
+diagnostic artifacts out of source and release packages.
 Preserve copyright headers, licenses and upstream attribution.
