@@ -33,6 +33,9 @@ Patch sets:
   fallback resolver search call owned preloader implementations. Public resolver
   fields, search-directory mutability, event semantics, generic constraints and
   cache serialization remain compatible. Matching Modstoke preloader required.
+- `il2cppinterop/0001-Modstoke-IL2CPP-runtime-changes.patch` applies on top of
+  `BepInEx/Il2CppInterop` commit `61f44a5801c28add90c541b162bdf7c9951f0026` and
+  holds every change in the Il2CppInterop assemblies the loader ships (LGPL-3.0).
 - `unitydoorstop/` applies on top of `NeighTools/UnityDoorstop`.
 - `redloader/0001-Use-current-MonoMod-fast-invokers.patch` records the SonsSdk
   fast-invoker ABI repair and local reference-resolution build adjustment.
