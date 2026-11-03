@@ -13,6 +13,10 @@ namespace Modstoke.Preloader
 {
     internal sealed class InteropSettings
     {
+        internal const string DefaultLibrarySource = "https://modstoke.com/downloads/unity-libs/{VERSION}.zip";
+        // Configs written by earlier loaders saved BepInEx's host; treat that saved default as the current one.
+        private const string LegacyLibrarySource = "https://unity.bepinex.dev/libraries/{VERSION}.zip";
+
         private readonly ConfigEntry<bool> _update;
         private readonly ConfigEntry<bool> _scanMethods;
         private readonly ConfigEntry<bool> _dumpAssemblies;
@@ -26,8 +30,10 @@ namespace Modstoke.Preloader
             var config = ConfigFile.CoreConfig;
             _update = config.Bind("IL2CPP", "UpdateInteropAssemblies", true,
                 "Regenerate outdated IL2CPP support assemblies automatically. Disabling this keeps valid existing output without checking freshness.");
-            _librarySource = config.Bind("IL2CPP", "UnityBaseLibrariesSource", "https://unity.bepinex.dev/libraries/{VERSION}.zip",
+            _librarySource = config.Bind("IL2CPP", "UnityBaseLibrariesSource", DefaultLibrarySource,
                 "Unity base-library ZIP URL or cached filename. {VERSION} expands to the Unity version. Place a ZIP in unity-libs for offline use; an empty source keeps existing libraries.");
+            if (string.Equals(_librarySource.Value, LegacyLibrarySource, StringComparison.OrdinalIgnoreCase))
+                _librarySource.Value = DefaultLibrarySource;
             _obfuscationRegex = config.Bind("IL2CPP", "UnhollowerDeobfuscationRegex", string.Empty,
                 "Regex matching obfuscated names to replace with stable signature-based names.");
             _scanMethods = config.Bind("IL2CPP", "ScanMethodRefs", Environment.Is64BitProcess,

@@ -177,7 +177,7 @@ internal static class RedInteropManager
                 return;
 
             var version = UnityInfo.Version;
-            var source = $"https://unity.bepinex.dev/libraries/{version.Major}.{version.Minor}.{version.Build}.zip";
+            var source = InteropSettings.DefaultLibrarySource.Replace("{VERSION}", $"{version.Major}.{version.Minor}.{version.Build}");
             UnityBaseLibraries.EnsureAvailable(UnityBaseDirectory, source, PreloaderLog.Log);
             InteropConversion.AddPlatformAssemblies(UnityBaseDirectory);
             var inputHash = ComputeHash();
