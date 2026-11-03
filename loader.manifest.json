@@ -4,7 +4,7 @@
   "name": "Modstoke Loader",
   "publisher": "OpenACAI",
   "description": "Modstoke Loader by OpenACAI. Independent mod loader and SDK for Sons of the Forest.",
-  "version": "0.4.0-net11-preview",
+  "version": "0.4.1-net11-preview",
   "developer": "Alex Cooper",
   "license": "GPL-3.0-or-later",
   "game": "Sons Of The Forest",
@@ -23,7 +23,7 @@
   "redLoaderCompatibility": {
     "component": "Modstoke Loader Core",
     "coreAssembly": "Modstoke.Loader.dll",
-    "version": "0.4.0-net11-preview",
+    "version": "0.4.1-net11-preview",
     "mode": "openacai-endnight-runtime-hostfxr"
   },
   "installLayout": {
