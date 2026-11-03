@@ -1,0 +1,197 @@
+diff --git a/RedLoader/DoorstopEntrypoint.cs b/RedLoader/DoorstopEntrypoint.cs
+index bf8663d..90509c6 100644
+--- a/RedLoader/DoorstopEntrypoint.cs
++++ b/RedLoader/DoorstopEntrypoint.cs
+@@ -1,74 +1,13 @@
+-using System;
+-using System.Diagnostics;
+-using System.IO;
+-using System.Threading;
+-using RedLoader;
+-using RedLoader.Preloader.Core;
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (c) RedLoader and BepInEx contributors. Copyright (C) 2026 Alex Cooper.
++
+ using RedLoader.Unity.IL2CPP;
+-using RedLoader.Unity.IL2CPP.Utils;
+-using MonoMod.Utils;
+-using RedLoader;
+ 
+ // ReSharper disable once CheckNamespace
+ namespace Doorstop;
+ 
+ internal static class Entrypoint
+ {
+-    /// <summary>
+-    ///     The main entrypoint of Redloader, called from Doorstop.
+-    /// </summary>
+-    public static void Start()
+-    {
+-        // We set it to the current directory first as a fallback, but try to use the same location as the .exe file.
+-        var silentExceptionLog = Environment.GetEnvironmentVariable("PRELOADER_LOG") ??
+-                                 $"preloader_{DateTime.Now:yyyyMMdd_HHmmss_fff}.log";
+-        Mutex mutex = null;
+-
+-        try
+-        {
+-            EnvVars.LoadVars();
+-
+-            silentExceptionLog =
+-                Path.Combine(Path.GetDirectoryName(EnvVars.DOORSTOP_PROCESS_PATH), "_Redloader", silentExceptionLog);
+-
+-            var mutexId = Utility.HashStrings(Process.GetCurrentProcess().ProcessName, EnvVars.DOORSTOP_PROCESS_PATH,
+-                                              typeof(Entrypoint).FullName);
+-
+-            mutex = new Mutex(false, $"Global\\{mutexId}");
+-            mutex.WaitOne();
+-
+-            UnityPreloaderRunner.PreloaderMain();
+-        }
+-        catch (Exception ex)
+-        {
+-            File.WriteAllText(silentExceptionLog, ex.ToString());
+-
+-            try
+-            {
+-                if (PlatformHelper.Is(Platform.Windows))
+-                {
+-                    MessageBox.Show("Failed to start Redloader", "Redloader");
+-                }
+-                else if (NotifySend.IsSupported)
+-                {
+-                    NotifySend.Send("Failed to start Redloader", "Check logs for details");
+-                }
+-                else if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("REDLOADER_FAIL_FAST")))
+-                {
+-                    // Don't exit the game if we have no way of signaling to the user that a crash happened
+-                    return;
+-                }
+-            }
+-            catch (Exception)
+-            {
+-                // ignored
+-            }
+-
+-            Environment.Exit(1);
+-        }
+-        finally
+-        {
+-            mutex?.ReleaseMutex();
+-        }
+-    }
++    /// <summary>Enters the Modstoke-owned standalone compatibility startup.</summary>
++    public static void Start() => UnityPreloaderRunner.Start();
+ }
+diff --git a/RedLoader/UnityPreloadRunner.cs b/RedLoader/UnityPreloadRunner.cs
+index b5803f7..adde1b4 100644
+--- a/RedLoader/UnityPreloadRunner.cs
++++ b/RedLoader/UnityPreloadRunner.cs
+@@ -1,78 +1,53 @@
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (c) RedLoader and BepInEx contributors. Copyright (C) 2026 Alex Cooper.
++
+ using System;
+-using System.Drawing;
+ using System.IO;
+-using System.Linq;
+ using System.Reflection;
+-using System.Runtime.InteropServices;
+-using RedLoader.Preloader.Core;
+-using RedLoader;
+-using RedLoader.Utils;
+ 
+ namespace RedLoader.Unity.IL2CPP;
+ 
+ internal static class UnityPreloaderRunner
+ {
+-    public static void PreloaderMain()
+-    {
+-        var bepinPath =
+-            Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(EnvVars.DOORSTOP_INVOKE_DLL_PATH)));
++    private const string OwnerAssemblyName = "OpenACAI.Endnight.Loader.Preloader";
++    private static readonly Lazy<Type> Owner = new(LoadOwner);
++    private static readonly Lazy<Action> StartOwned = new(() => Bind<Action>("Start"));
++    private static readonly Lazy<Action> RunOwned = new(() => Bind<Action>("PreloaderMain"));
++    private static readonly Lazy<ResolveEventHandler> ResolveOwned = new(() => Bind<ResolveEventHandler>("LocalResolve"));
++    private static readonly Lazy<Action> InitReshadeOwned = new(() => Bind<Action>("InitReshade"));
+ 
+-        PlatformUtils.SetPlatform();
++    internal static void Start() => StartOwned.Value();
+ 
+-        LoaderEnvironment.SetExecutablePath(EnvVars.DOORSTOP_PROCESS_PATH, EnvVars.DOORSTOP_DLL_SEARCH_DIRS);
+-        
+-        CorePreferences.Init();
+-        
+-        InitReshade();
+-        
+-        // Cecil 0.11 requires one to manually set up list of trusted assemblies for assembly resolving
+-        // The main BCL path
+-        // AppDomain.CurrentDomain.AddCecilPlatformAssemblies(LoaderEnvironment.ManagedPath);
+-        // The parent path -> .NET has some extra managed DLLs in there
+-        // AppDomain.CurrentDomain.AddCecilPlatformAssemblies(Path.GetDirectoryName(LoaderEnvironment.ManagedPath));
+-        AppDomain.CurrentDomain.AddCecilPlatformAssemblies(Path.Combine(LoaderEnvironment.LoaderDirectory, "dotnet"));
++    public static void PreloaderMain() => RunOwned.Value();
+ 
+-        AppDomain.CurrentDomain.AssemblyResolve += LocalResolve;
++    internal static Assembly LocalResolve(object sender, ResolveEventArgs args) => ResolveOwned.Value(sender, args);
+ 
+-        Preloader.Run();
+-    }
++    internal static void InitReshade() => InitReshadeOwned.Value();
+ 
+-    internal static Assembly LocalResolve(object sender, ResolveEventArgs args)
++    private static T Bind<T>(string name) where T : Delegate
+     {
+-        var assemblyName = new AssemblyName(args.Name);
+-
+-        var foundAssembly = AppDomain.CurrentDomain.GetAssemblies()
+-                                     .FirstOrDefault(x => x.GetName().Name == assemblyName.Name);
+-
+-        if (foundAssembly != null)
+-            return foundAssembly;
+-
+-        if (Utility.TryResolveDllAssembly(assemblyName, LoaderEnvironment.LoaderAssemblyDirectory, out foundAssembly)
+-           || Utility.TryResolveDllAssembly(assemblyName, LoaderEnvironment.LibsDirectory, out foundAssembly)
+-         || Utility.TryResolveDllAssembly(assemblyName, LoaderEnvironment.PatcherPluginPath, out foundAssembly)
+-         || Utility.TryResolveDllAssembly(assemblyName, LoaderEnvironment.ModsDirectory, out foundAssembly))
+-            return foundAssembly;
+-
+-        return null;
++        var type = Owner.Value;
++        var method = type.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, name);
++        return (T)method.CreateDelegate(typeof(T));
+     }
+ 
+-    internal static void InitReshade()
++    private static Type LoadOwner()
+     {
+-        RLog.Msg("Trying to fix and init Reshade");
+-        
+-        var dxgidll = Path.Combine(LoaderEnvironment.GameRootDirectory, "dxgi.dll");
+-        var reshadedll = Path.Combine(LoaderEnvironment.GameRootDirectory, "reshade.dll");
+-        
+-        if (File.Exists(dxgidll))
++        Assembly assembly;
++        try
+         {
+-            File.Move(dxgidll, reshadedll);
+-            RLog.Msg("Renamed Reshade");
++            assembly = Assembly.Load(OwnerAssemblyName);
+         }
+-
+-        if (File.Exists(reshadedll))
++        catch (FileNotFoundException error) when (error.FileName != null &&
++                                                new AssemblyName(error.FileName).Name == OwnerAssemblyName)
+         {
+-            NativeLibrary.TryLoad(reshadedll, out var handle);
+-            RLog.Msg($"Loaded Reshade: {handle != IntPtr.Zero}");
++            // Doorstop may enter this facade before any managed resolver has been installed.
++            var processPath = Environment.GetEnvironmentVariable("DOORSTOP_PROCESS_PATH") ?? Environment.ProcessPath;
++            var path = Path.Combine(Path.GetDirectoryName(processPath), "OpenACAI", "Runtime", OwnerAssemblyName + ".dll");
++            assembly = Assembly.LoadFrom(path);
+         }
++
++        return assembly.GetType("OpenACAI.Endnight.Loader.Preloader.OpenACAIRedStartup", true);
+     }
+ }

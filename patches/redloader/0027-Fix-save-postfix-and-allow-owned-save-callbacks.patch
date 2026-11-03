@@ -1,0 +1,101 @@
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 468d2e1..083ee67 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -36,6 +36,10 @@ internal interface ISdkLifecycleDriver
+     void OnSceneInitialized(int sceneIndex, string sceneName);
+     void OnUpdate();
+     void OnGameStart();
++    void BeforeLoad(string directory, SaveGameType saveGameType);
++    void AfterLoad(string directory, SaveGameType saveGameType);
++    void BeforeSave(string directory, string gameName, bool savePlayerOnly);
++    void AfterSave(string directory, string gameName, bool savePlayerOnly);
+ }
+ 
+ public static class SdkEvents
+@@ -94,23 +98,24 @@ public static class SdkEvents
+     public static readonly MelonEvent OnArmorEquipped = new();
+ 
+     /// <summary>
+-    /// Called before serializing the save game (i.e. saving a save)
++    /// Called by the prefix for the SaveGameManager.Save entry point.
+     /// </summary>
+     public static readonly MelonEvent BeforeSaveLoading = new();
+     
+     /// <summary>
+-    /// Called after serializing the save game. (i.e. saving a save)
+-    /// Returns if it should only save the player (i.e. saveGameType = MultiplayerClient)
++    /// Called by the postfix for the SaveGameManager.Save entry point.
++    /// The argument is savePlayerOnly. This is not confirmation of durable disk writes.
+     /// </summary>
+     public static readonly MelonEvent<bool> AfterSaveLoading = new();
+     
+     /// <summary>
+-    /// Called before deserializing the save game (i.e. loading a save)
++    /// Called by the prefix for the SaveGameManager.Load entry point.
+     /// </summary>
+     public static readonly MelonEvent BeforeLoadSave = new();
+     
+     /// <summary>
+-    /// Called after deserializing the save game (i.e. loading a save)
++    /// Called by the postfix for the SaveGameManager.Load entry point.
++    /// The load result is not checked; this event does not confirm a successful load.
+     /// </summary>
+     public static readonly MelonEvent AfterLoadSave = new();
+ 
+@@ -390,6 +395,12 @@ public static class SdkEvents
+         [HarmonyPrefix]
+         public static void BeforeLoad(string dir, SaveGameType saveGameType)
+         {
++            if (_lifecycleDriver != null)
++            {
++                _lifecycleDriver.BeforeLoad(dir, saveGameType);
++                return;
++            }
++
+             if (!SaveGameManager.HasInstance)
+             {
+                 RLog.Error("SaveGameManager not initialized, aborting load callback.");
+@@ -406,6 +417,12 @@ public static class SdkEvents
+         [HarmonyPostfix]
+         public static void AfterLoad(string dir, SaveGameType saveGameType)
+         {
++            if (_lifecycleDriver != null)
++            {
++                _lifecycleDriver.AfterLoad(dir, saveGameType);
++                return;
++            }
++
+             if (!SaveGameManager.HasInstance)
+             {
+                 return;
+@@ -420,6 +437,12 @@ public static class SdkEvents
+         [HarmonyPrefix]
+         public static void BeforeSave(string dir, string gameName, bool savePlayerOnly)
+         {
++            if (_lifecycleDriver != null)
++            {
++                _lifecycleDriver.BeforeSave(dir, gameName, savePlayerOnly);
++                return;
++            }
++
+             if (!SaveGameManager.HasInstance)
+             {
+                 RLog.Error("SaveGameManager not initialized, aborting save callback.");
+@@ -432,9 +455,15 @@ public static class SdkEvents
+         }
+         
+         [HarmonyPatch(typeof(SaveGameManager), nameof(SaveGameManager.Save), typeof(string), typeof(string), typeof(bool))]
+-        [HarmonyPrefix]
++        [HarmonyPostfix]
+         public static void AfterSave(string dir, string gameName, bool savePlayerOnly)
+         {
++            if (_lifecycleDriver != null)
++            {
++                _lifecycleDriver.AfterSave(dir, gameName, savePlayerOnly);
++                return;
++            }
++
+             if (!SaveGameManager.HasInstance)
+             {
+                 return;

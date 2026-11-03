@@ -1,0 +1,315 @@
+diff --git a/RedLoader/ModBase.cs b/RedLoader/ModBase.cs
+index 8745e60..e6cfd9a 100644
+--- a/RedLoader/ModBase.cs
++++ b/RedLoader/ModBase.cs
+@@ -404,51 +404,17 @@ namespace RedLoader
+ 
+         public static void ExecuteList<T>(LemonAction<T> func, List<T> melons, bool unregisterOnFail = false, string unregistrationReason = null) where T : ModBase
+         {
+-            var failedMelons = (unregisterOnFail ? new List<T>() : null);
+-            
+-            foreach (var mod in melons.ToArray())
+-            {
+-                if (!mod.Registered)
+-                    continue;
+-
+-                try { func(mod); }
+-                catch (Exception ex)
+-                {
+-                    mod.LoggerInstance.Error(ex.ToString());
+-                    if (unregisterOnFail)
+-                        failedMelons.Add(mod);
+-                }
+-            }
+-
+-            if (unregisterOnFail)
+-            {
+-                foreach (var m in failedMelons)
+-                    m.Unregister(unregistrationReason);
+-            }
++            ModExecutionDriver.ExecuteList(func, melons, unregisterOnFail, unregistrationReason);
+         }
+ 
+         public static void SendMessageAll(string name, params object[] arguments)
+         {
+-            var enumerator = _registeredMelons.ToArray().GetEnumerator();
+-            while (enumerator.MoveNext())
+-            {
+-                var melon = (ModBase)enumerator.Current;
+-                if (!melon.Registered)
+-                    continue;
+-        
+-                try { melon.SendMessage(name, arguments); }
+-                catch (Exception ex) { melon.LoggerInstance.Error(ex.ToString()); }
+-            }
++            ModExecutionDriver.SendMessageAll(name, arguments);
+         }
+         
+         public object SendMessage(string name, params object[] arguments)
+         {
+-            var msg = Info.SystemType.GetMethod(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+-        
+-            if (msg == null)
+-                return null;
+-        
+-            return msg.Invoke(msg.IsStatic ? null : this, arguments);
++            return ModExecutionDriver.SendMessage(this, name, arguments);
+         }
+         #endregion
+ 
+diff --git a/RedLoader/Attributes/RegisterTypeInIl2Cpp.cs b/RedLoader/Attributes/RegisterTypeInIl2Cpp.cs
+index 2b48334..579a3b3 100644
+--- a/RedLoader/Attributes/RegisterTypeInIl2Cpp.cs
++++ b/RedLoader/Attributes/RegisterTypeInIl2Cpp.cs
+@@ -1,7 +1,6 @@
+ ﻿using System;
+ using System.Collections.Generic;
+ using System.Reflection;
+-using Il2CppInterop.Runtime.Injection;
+ 
+ namespace RedLoader
+ {
+@@ -11,104 +10,12 @@ namespace RedLoader
+         internal static List<Assembly> registrationQueue = new List<Assembly>();
+         internal static bool ready;
+         internal bool LogSuccess = true;
+-        private static readonly HashSet<Assembly> RegisteringAssemblies = new();
+ 
+         public RegisterTypeInIl2Cpp() { }
+         public RegisterTypeInIl2Cpp(bool logSuccess) { LogSuccess = logSuccess; }
+ 
+-        public static void RegisterAssembly(Assembly asm)
+-        {
+-            if (!ready)
+-            {
+-                registrationQueue.Add(asm);
+-                return;
+-            }
++        public static void RegisterAssembly(Assembly asm) => TypeRegistrationDriver.RegisterAssembly(asm);
+ 
+-            if (!RegisteringAssemblies.Add(asm))
+-                return;
+-
+-            try
+-            {
+-                foreach (var type in GetTypes(asm))
+-                {
+-                    if (type == null)
+-                        continue;
+-
+-                    try
+-                    {
+-                        var attributes = type.GetCustomAttributes(typeof(RegisterTypeInIl2Cpp), false);
+-                        if (attributes.Length == 0 || attributes[0] is not RegisterTypeInIl2Cpp attribute)
+-                            continue;
+-
+-                        ClassInjector.RegisterTypeInIl2Cpp(type, new RegisterTypeOptions { LogSuccess = attribute.LogSuccess });
+-                    }
+-                    catch (Exception exception)
+-                    {
+-                        ReportFailure("register type", asm, type, exception);
+-                    }
+-                }
+-            }
+-            finally
+-            {
+-                RegisteringAssemblies.Remove(asm);
+-            }
+-        }
+-
+-        internal static void SetReady()
+-        {
+-            if (ready)
+-                return;
+-
+-            // Native registration and its log callbacks may reenter this API.
+-            var pending = registrationQueue;
+-            registrationQueue = null;
+-            ready = true;
+-
+-            if (pending == null)
+-                return;
+-
+-            foreach (var asm in pending)
+-            {
+-                try
+-                {
+-                    RegisterAssembly(asm);
+-                }
+-                catch (Exception exception)
+-                {
+-                    ReportFailure("register assembly", asm, null, exception);
+-                }
+-            }
+-        }
+-
+-        private static Type[] GetTypes(Assembly assembly)
+-        {
+-            try
+-            {
+-                return assembly.GetTypes();
+-            }
+-            catch (ReflectionTypeLoadException exception)
+-            {
+-                ReportFailure("load all types", assembly, null, exception);
+-                return exception.Types;
+-            }
+-            catch (Exception exception)
+-            {
+-                ReportFailure("load types", assembly, null, exception);
+-                return Array.Empty<Type>();
+-            }
+-        }
+-
+-        private static void ReportFailure(string operation, Assembly assembly, Type type, Exception exception)
+-        {
+-            try
+-            {
+-                var target = type?.FullName ?? assembly?.FullName ?? "<unknown assembly>";
+-                RLog.Error($"Could not {operation} for IL2CPP: {target}", exception);
+-            }
+-            catch
+-            {
+-                // Logging callbacks must not interrupt the rest of the registration queue.
+-            }
+-        }
++        internal static void SetReady() => TypeRegistrationDriver.SetReady();
+     }
+ }
+diff --git a/RedLoader/Utils/Il2CppUtils.cs b/RedLoader/Utils/Il2CppUtils.cs
+index d312d0b..3ec8dfe 100644
+--- a/RedLoader/Utils/Il2CppUtils.cs
++++ b/RedLoader/Utils/Il2CppUtils.cs
+@@ -1,24 +1,23 @@
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (c) RedLoader and BepInEx contributors. Copyright (C) 2026 Alex Cooper.
++
+ using System;
+-using Il2CppInterop.Runtime;
+-using Il2CppInterop.Runtime.Injection;
++using System.Reflection;
+ using Il2CppInterop.Runtime.InteropTypes;
+-using UnityEngine;
+ 
+ namespace RedLoader.Unity.IL2CPP.Utils;
+ 
+ internal static class Il2CppUtils
+ {
+-    // TODO: Check if we can safely initialize this in Chainloader instead
+-    private static GameObject managerGo;
+-
+-    public static Il2CppObjectBase AddComponent(Type t)
++    private static readonly Lazy<Func<Type, Il2CppObjectBase>> AddComponentHandler = new(() =>
+     {
+-        if (managerGo == null)
+-            managerGo = new GameObject { hideFlags = HideFlags.HideAndDontSave, name = "Redloader_Manager" };
+-
+-        if (!ClassInjector.IsTypeRegisteredInIl2Cpp(t))
+-            ClassInjector.RegisterTypeInIl2Cpp(t);
++        var host = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAIUnityComponentHost", true);
++        var method = host.GetMethod("AddRedLoaderComponent", BindingFlags.NonPublic | BindingFlags.Static,
++            null, new[] { typeof(Type) }, null)
++            ?? throw new MissingMethodException(host.FullName, "AddRedLoaderComponent");
++        return method.CreateDelegate<Func<Type, Il2CppObjectBase>>();
++    });
+ 
+-        return managerGo.AddComponent(Il2CppType.From(t));
+-    }
++    public static Il2CppObjectBase AddComponent(Type t) => AddComponentHandler.Value(t);
+ }
+diff --git a/RedLoader/ModExecutionDriver.cs b/RedLoader/ModExecutionDriver.cs
+new file mode 100644
+index 0000000..56db9c2
+--- /dev/null
++++ b/RedLoader/ModExecutionDriver.cs
+@@ -0,0 +1,45 @@
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (C) 2026 Alex Cooper
++
++using System;
++using System.Collections.Generic;
++using System.Reflection;
++
++namespace RedLoader;
++
++internal static class ModExecutionDriver
++{
++    private static readonly Lazy<Type> Owner = new(() => Assembly.Load("OpenACAI.Endnight.Loader.Core")
++        .GetType("OpenACAI.Endnight.Loader.OpenACAIRedLoaderModExecution", true));
++    private static readonly Lazy<Action<string, object[]>> Broadcast = new(() =>
++        Bind<Action<string, object[]>>("SendMessageAll", typeof(string), typeof(object[])));
++    private static readonly Lazy<Func<ModBase, string, object[], object>> Message = new(() =>
++        Bind<Func<ModBase, string, object[], object>>("SendMessage", typeof(ModBase), typeof(string), typeof(object[])));
++
++    internal static void ExecuteList<T>(LemonAction<T> callback, List<T> mods, bool unregisterOnFail, string reason) where T : ModBase =>
++        Execution<T>.Invoke.Value(callback, mods, unregisterOnFail, reason);
++
++    internal static void SendMessageAll(string name, object[] arguments) => Broadcast.Value(name, arguments);
++    internal static object SendMessage(ModBase mod, string name, object[] arguments) => Message.Value(mod, name, arguments);
++
++    private static T Bind<T>(string name, params Type[] parameters) where T : Delegate
++    {
++        var owner = Owner.Value;
++        var method = owner.GetMethod(name, BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.DeclaredOnly,
++            null, parameters, null) ?? throw new MissingMethodException(owner.FullName, name);
++        return method.CreateDelegate<T>();
++    }
++
++    private static class Execution<T> where T : ModBase
++    {
++        internal static readonly Lazy<Action<LemonAction<T>, List<T>, bool, string>> Invoke = new(BindExecution);
++
++        private static Action<LemonAction<T>, List<T>, bool, string> BindExecution()
++        {
++            var owner = Owner.Value;
++            var method = owner.GetMethod("ExecuteList", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
++                ?? throw new MissingMethodException(owner.FullName, "ExecuteList");
++            return method.MakeGenericMethod(typeof(T)).CreateDelegate<Action<LemonAction<T>, List<T>, bool, string>>();
++        }
++    }
++}
+diff --git a/RedLoader/Attributes/TypeRegistrationDriver.cs b/RedLoader/Attributes/TypeRegistrationDriver.cs
+new file mode 100644
+index 0000000..c51eb41
+--- /dev/null
++++ b/RedLoader/Attributes/TypeRegistrationDriver.cs
+@@ -0,0 +1,38 @@
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (C) 2026 Alex Cooper
++
++using System;
++using System.Linq;
++using System.Reflection;
++
++namespace RedLoader;
++
++internal static class TypeRegistrationDriver
++{
++    private static readonly Lazy<Bindings> Owner = new(() => new Bindings());
++
++    internal static void RegisterAssembly(Assembly assembly) => Owner.Value.RegisterAssembly(assembly);
++    internal static void SetReady() => Owner.Value.SetReady();
++
++    private sealed class Bindings
++    {
++        internal readonly Action<Assembly> RegisterAssembly;
++        internal readonly Action SetReady;
++
++        internal Bindings()
++        {
++            var owner = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++                .GetType("OpenACAI.Endnight.Loader.OpenACAIRedLoaderTypeRegistration", true);
++            RegisterAssembly = Bind<Action<Assembly>>(owner, "RegisterAssembly");
++            SetReady = Bind<Action>(owner, "SetReady");
++        }
++
++        private static T Bind<T>(Type owner, string name) where T : Delegate
++        {
++            var parameters = typeof(T).GetMethod("Invoke").GetParameters().Select(parameter => parameter.ParameterType).ToArray();
++            var method = owner.GetMethod(name, BindingFlags.Static | BindingFlags.NonPublic, null, parameters, null)
++                ?? throw new MissingMethodException(owner.FullName, name);
++            return (T)method.CreateDelegate(typeof(T));
++        }
++    }
++}

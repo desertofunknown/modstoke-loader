@@ -1,0 +1,276 @@
+diff --git a/SonsSdk/SUI/SKeybindOptions.cs b/SonsSdk/SUI/SKeybindOptions.cs
+index afb31a1..a1e9af4 100644
+--- a/SonsSdk/SUI/SKeybindOptions.cs
++++ b/SonsSdk/SUI/SKeybindOptions.cs
+@@ -23,8 +23,9 @@ public class SKeybindOptions : SUiElement<SKeybindOptions>
+     public DynamicInputIcon DynamicInputIcon;
+     public Button RebindButton;
+     
+-    private EventSystem _eventSystem;
+-    private InputActionRebindingExtensions.RebindingOperation _rebindingOperation;
++    private static RebindSession _activeRebind;
++    private static long _rebindGeneration;
++    private RebindSession _rebindSession;
+     private KeybindConfigEntry _keybindConfig;
+     private GameObject _instance;
+ 
+@@ -42,92 +43,163 @@ public class SKeybindOptions : SUiElement<SKeybindOptions>
+     
+     private void StartRebindOperation()
+     {
+-        if(_keybindConfig == null)
+-        {
++        if (_keybindConfig == null || !Root || !Root.activeInHierarchy ||
++            _activeRebind != null || InputSystem.GetState(InputState.InputBinding))
+             return;
+-        }
+ 
+-        void CancelCallback(InputActionRebindingExtensions.RebindingOperation op)
++        var session = new RebindSession(_keybindConfig.GetKeybind(), EventSystem.current, ++_rebindGeneration);
++        _rebindSession = session;
++        _activeRebind = session;
++        try
+         {
+-            _rebindingOperation.Dispose();
+-            _rebindingOperation = null;
+-            OnBindingCancelled();
++            session.BindingModeEntered = true;
++            RebindingInputOptionGui.SetBindingMode(true);
++            if (session.EventSystem && session.EventSystemWasActive)
++            {
++                session.EventSystemDisabled = true;
++                session.EventSystem.gameObject.SetActive(false);
++            }
++
++            session.InputBindingEntered = true;
++            InputSystem.SetState(InputState.InputBinding, true);
++            session.ActionDisabled = true;
++            session.Keybind.Action.Disable();
++
++            session.Operation.WithAction(session.Keybind.Action).WithTimeout(5f).WithMatchingEventsBeingSuppressed()
++                .WithExpectedControlType("Button")
++                .OnApplyBinding((Il2CppSystem.Action<InputActionRebindingExtensions.RebindingOperation, string>)
++                    ((_, path) => ApplyBinding(session, path)))
++                .OnCancel((Il2CppSystem.Action<InputActionRebindingExtensions.RebindingOperation>)
++                    (_ => FinishRebind(session, false)))
++                .OnComplete((Il2CppSystem.Action<InputActionRebindingExtensions.RebindingOperation>)
++                    (_ => FinishRebind(session, true)))
++                .Start();
+         }
+-        
+-        void ChangeBinding(InputActionRebindingExtensions.RebindingOperation op)
++        catch
+         {
+-            _rebindingOperation.Dispose();
+-            _rebindingOperation = null;
+-            OnBindingChanged();
++            FinishRebind(session, false, cancelOperation: true);
++            throw;
+         }
+-        
+-        OnBindingStarted();
+-        _rebindingOperation = new InputActionRebindingExtensions.RebindingOperation();
+-        var action = _keybindConfig.GetAction();
+-        action.Disable();
+-        _rebindingOperation.WithAction(action).WithTimeout(5f).WithMatchingEventsBeingSuppressed()
+-            .WithExpectedControlType("Button")
+-            .OnApplyBinding((Il2CppSystem.Action<InputActionRebindingExtensions.RebindingOperation, string>)OnApplyBinding)
+-            .OnCancel((Il2CppSystem.Action<InputActionRebindingExtensions.RebindingOperation>)CancelCallback)
+-            .OnComplete((Il2CppSystem.Action<InputActionRebindingExtensions.RebindingOperation>)ChangeBinding)
+-            .Start();
+     }
+ 
+-    private void OnApplyBinding(InputActionRebindingExtensions.RebindingOperation op, string path)
++    private void ApplyBinding(RebindSession session, string path)
+     {
+-        var action = _keybindConfig.GetAction();
+-        action.ApplyBindingOverride(path);
++        if (!ReferenceEquals(_rebindSession, session))
++            return;
+ 
+-        RLog.Msg(Color.Orange, $"Applied binding override to {action.name} [Path: {path}");
++        try
++        {
++            session.Keybind.Action.ApplyBindingOverride(path);
++            RLog.Msg(Color.Orange, $"Applied binding override to {session.Keybind.Action.name} [Path: {path}]");
++        }
++        catch
++        {
++            FinishRebind(session, false, cancelOperation: true);
++            throw;
++        }
+     }
+ 
+-    private void OnBindingStarted()
++    internal void CancelRebind()
+     {
+-        RebindingInputOptionGui.SetBindingMode(true);
+-        DisableEventSystem();
++        if (_rebindSession != null)
++            FinishRebind(_rebindSession, false, cancelOperation: true);
+     }
+ 
+-    private void OnBindingChanged()
++    private void FinishRebind(RebindSession session, bool completed, bool cancelOperation = false)
+     {
+-        RebindingInputOptionGui.SetBindingMode(false);
+-        EnableEventSystemWithDelay().RunCoro();
+-        CreateNewInstance();
++        if (!ReferenceEquals(_rebindSession, session))
++            return;
+ 
+-        _keybindConfig?.GetKeybind().SaveToConfig();
++        // Detach before native cancellation can invoke its callback again.
++        _rebindSession = null;
++        try
++        {
++            if (cancelOperation)
++                CleanupRebind(session.Operation.Cancel);
++            CleanupRebind(session.Operation.Dispose);
++            if (session.BindingModeEntered)
++                CleanupRebind(() =>
++                {
++                    if (RebindingInputOptionGui)
++                        RebindingInputOptionGui.SetBindingMode(false);
++                });
+ 
+-        _keybindConfig.GetAction().Enable();
+-        
+-        // == HACK ==
+-        _eventSystem.gameObject.SetActive(true);
+-        InputSystem.SetState(InputState.InputBinding, false);
++            if (completed)
++            {
++                if (Root)
++                    CreateNewInstance();
++                session.Keybind.SaveToConfig();
++            }
++        }
++        finally
++        {
++            if (session.ActionDisabled && session.ActionWasEnabled)
++                CleanupRebind(session.Keybind.Action.Enable);
++            if (session.EventSystemDisabled)
++                CleanupRebind(() =>
++                {
++                    if (session.EventSystem)
++                        session.EventSystem.gameObject.SetActive(true);
++                });
++            if (session.InputBindingEntered)
++                CleanupRebind(() => InputSystem.SetState(InputState.InputBinding, false));
++            if (ReferenceEquals(_activeRebind, session))
++                _activeRebind = null;
++
++            if (session.InputBindingEntered)
++                CleanupRebind(() =>
++                {
++                    if (Root && Root.activeInHierarchy)
++                        EnableEventSystemWithDelay(session).RunCoro();
++                });
++        }
+     }
+ 
+-    private void OnBindingCancelled()
++    private IEnumerator EnableEventSystemWithDelay(RebindSession session)
+     {
+-        RebindingInputOptionGui.SetBindingMode(false);
+-        EnableEventSystemWithDelay().RunCoro();
+-        
+-        _keybindConfig.GetAction().Enable();
+-        
+-        // == HACK ==
+-        _eventSystem.gameObject.SetActive(true);
++        yield return new WaitForSeconds(0.55f);
++        if (session.Generation != _rebindGeneration || _activeRebind != null ||
++            !Root || !Root.activeInHierarchy || InputSystem.GetState(InputState.InputBinding))
++            yield break;
++
++        if (session.EventSystemDisabled && session.EventSystem)
++            session.EventSystem.gameObject.SetActive(true);
+         InputSystem.SetState(InputState.InputBinding, false);
++        RLog.Msg(Color.Orange, "Event system activated");
+     }
+ 
+-    private void DisableEventSystem()
++    private static void CleanupRebind(Action cleanup)
+     {
+-        _eventSystem = EventSystem.current;
+-        
+-        _eventSystem.gameObject.SetActive(false);
+-        InputSystem.SetState(InputState.InputBinding, true);
++        try { cleanup(); }
++        catch (Exception exception)
++        {
++            try { RLog.Warning("Failed to restore keybinding input: " + exception); }
++            catch { /* Preserve the original operation failure. */ }
++        }
+     }
+-    
+-    private IEnumerator EnableEventSystemWithDelay()
++
++    private sealed class RebindSession
+     {
+-        yield return new WaitForSeconds(0.55f);
+-        _eventSystem.gameObject.SetActive(true);
+-        InputSystem.SetState(InputState.InputBinding, false);
+-        RLog.Msg(Color.Orange, "Event system activated");
++        internal readonly ModKeybind Keybind;
++        internal readonly EventSystem EventSystem;
++        internal readonly bool ActionWasEnabled;
++        internal readonly bool EventSystemWasActive;
++        internal readonly long Generation;
++        internal readonly InputActionRebindingExtensions.RebindingOperation Operation;
++        internal bool BindingModeEntered;
++        internal bool EventSystemDisabled;
++        internal bool InputBindingEntered;
++        internal bool ActionDisabled;
++
++        internal RebindSession(ModKeybind keybind, EventSystem eventSystem, long generation)
++        {
++            Keybind = keybind;
++            EventSystem = eventSystem;
++            Generation = generation;
++            ActionWasEnabled = keybind.Action.enabled;
++            EventSystemWasActive = eventSystem && eventSystem.gameObject.activeSelf;
++            Operation = new InputActionRebindingExtensions.RebindingOperation();
++        }
+     }
+ 
+     private GameObject CreateNewInstance()
+@@ -186,12 +258,15 @@ public class SKeybindOptions : SUiElement<SKeybindOptions>
+             return;
+         }
+         
++        CancelRebind();
+         _keybindConfig.GetKeybind().RevertToDefault();
+         CreateNewInstance();
+     }
+ 
+     public SKeybindOptions Config(KeybindConfigEntry config)
+     {
++        ArgumentNullException.ThrowIfNull(config);
++        CancelRebind();
+         _keybindConfig = config;
+         CreateNewInstance();
+         return this;
+@@ -214,4 +289,4 @@ public class SKeybindOptions : SUiElement<SKeybindOptions>
+         rect.sizeDelta = new(height-10, height-10);
+         return this;
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/SonsSdk/SUI/SUiElement.cs b/SonsSdk/SUI/SUiElement.cs
+index a52d368..d9f4ae2 100644
+--- a/SonsSdk/SUI/SUiElement.cs
++++ b/SonsSdk/SUI/SUiElement.cs
+@@ -43,6 +43,9 @@ public class SUiElement
+ 
+     public void Remove()
+     {
++        if (this is SKeybindOptions keybind)
++            keybind.CancelRebind();
++
+         if (this is SPanelOptions panel)
+             SUI.ReleasePanel(panel);
+ 

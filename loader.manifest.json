@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "id": "openacai.loader.sotf",
+  "name": "Modstoke Loader",
+  "publisher": "OpenACAI",
+  "description": "Modstoke Loader by OpenACAI. Independent mod loader and SDK for Sons of the Forest.",
+  "version": "0.4.0-net11-preview",
+  "developer": "Alex Cooper",
+  "license": "GPL-3.0-or-later",
+  "game": "Sons Of The Forest",
+  "bootstrap": "Modstoke Native Host plus Modstoke bootstrap/preloader orchestration with transitional BepInEx.Unity.IL2CPP compatibility APIs",
+  "runtime": {
+    "targetFramework": "net11.0",
+    "dotnetRuntime": "11.0.0-rc.3.26522.148",
+    "hosting": "hostfxr",
+    "nativeHost": "Modstoke Native Host",
+    "runtimeConfig": "Modstoke/Runtime/Modstoke.Loader.runtimeconfig.json",
+    "targetAssembly": "Modstoke/Runtime/Modstoke.Bootstrap.dll",
+    "preloaderAssembly": "Modstoke/Runtime/Modstoke.Preloader.dll",
+    "targetAssemblyCompatibilityBridge": "BepInEx/core/BepInEx.Unity.IL2CPP.dll",
+    "note": "Experimental loader branch targeting .NET 11 RC3. The runtime release candidate does not establish loader or mod compatibility; verify startup and in-game behavior in Sons Of The Forest before release."
+  },
+  "redLoaderCompatibility": {
+    "component": "Modstoke Loader Core",
+    "coreAssembly": "Modstoke.Loader.dll",
+    "version": "0.4.0-net11-preview",
+    "mode": "openacai-endnight-runtime-hostfxr"
+  },
+  "installLayout": {
+    "primaryRuntimeDirectory": "Modstoke/Runtime",
+    "runtimeCompatibilityDirectory": "Modstoke/Runtime/Compatibility",
+    "nativeModsDirectory": "Modstoke/Mods",
+    "userDataDirectory": "Modstoke/UserData",
+    "bootstrapCompatibilityMirror": "BepInEx/plugins/OpenACAILoader",
+    "chainloaderStateFile": "Modstoke/Runtime/openacai-chainloader-state.json",
+    "il2CppPreloaderStateFile": "Modstoke/Runtime/openacai-il2cpp-preloader-state.json",
+    "il2CppChainloaderStateFile": "Modstoke/Runtime/openacai-il2cpp-chainloader-state.json",
+    "stateFileCompatibilityMirror": "BepInEx/plugins/OpenACAILoader/openacai-loader-state.json",
+    "fileManifestCompatibilityMirror": "BepInEx/plugins/OpenACAILoader/openacai-loader-files.json"
+  },
+  "supports": {
+    "bepInExIl2CppPlugins": true,
+    "redLoaderMods": true,
+    "redLoaderSonsSdkUi": true,
+    "redLoaderDoorstopBootstrap": false
+  },
+  "stateFile": "Modstoke/Runtime/openacai-loader-state.json",
+  "chainloaderStateFile": "Modstoke/Runtime/openacai-chainloader-state.json",
+  "il2CppPreloaderStateFile": "Modstoke/Runtime/openacai-il2cpp-preloader-state.json",
+  "il2CppChainloaderStateFile": "Modstoke/Runtime/openacai-il2cpp-chainloader-state.json",
+  "fileManifest": "Modstoke/Runtime/openacai-loader-files.json",
+  "installRoot": "game-root"
+}

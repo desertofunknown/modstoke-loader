@@ -1,0 +1,140 @@
+diff --git a/SonsSdk/SUI/SUI.cs b/SonsSdk/SUI/SUI.cs
+index e2adf91..50f058d 100644
+--- a/SonsSdk/SUI/SUI.cs
++++ b/SonsSdk/SUI/SUI.cs
+@@ -31,6 +31,12 @@ internal interface ISdkUiPrefabDriver
+     void Initialize();
+ }
+ 
++internal interface ISdkUiViewportDriver
++{
++    void Create();
++    void SetEventSystemActive(bool active);
++}
++
+ internal interface ISdkUiPanelDriver
+ {
+     SPanelOptions Register(string id, Transform parent, bool enableInput, KeyCode? toggleKey);
+@@ -73,7 +79,7 @@ public partial class SUI
+     internal static Sprite _sonsBackgroundSprite;
+     internal static Sprite _roundBackgroundSprite;
+ 
+-    private static GameObject _eventSystemObject;
++    internal static GameObject _eventSystemObject;
+     
+     internal static readonly List<MenuButtonRegistration> _registeredMenuButtons = new();
+     internal static PauseMenu _pauseMenu;
+@@ -709,31 +715,83 @@ public partial class SUI
+ 
+     private static void CreateViewport()
+     {
+-        var go = new GameObject("SUICanvas");
+-        SUIViewport = go.AddComponent<Canvas>();
+-        SUIViewport.renderMode = RenderMode.ScreenSpaceOverlay;
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.UiViewport.Create();
++            return;
++        }
++
++        var createdObjects = new List<GameObject>(2);
++        try
++        {
++            var go = new GameObject("SUICanvas");
++            createdObjects.Add(go);
++            var canvas = go.AddComponent<Canvas>();
++            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
++
++            var canvasScaler = go.AddComponent<CanvasScaler>();
++            canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
++            canvasScaler.referenceResolution = new Vector2(1920, 1080);
++            canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
++            canvasScaler.matchWidthOrHeight = 1;
++            canvasScaler.referencePixelsPerUnit = 100;
++
++            var raycaster = go.AddComponent<GraphicRaycaster>();
++            var eventSystem = new GameObject("EventSystem");
++            createdObjects.Add(eventSystem);
++            eventSystem.transform.SetParent(go.transform);
++            eventSystem.SetActive(false);
++            eventSystem.AddComponent<EventSystem>();
++            eventSystem.AddComponent<StandaloneInputModule>();
++            eventSystem.AddComponent<BaseInput>();
++
++            go.DontDestroyOnLoad();
++            PublishViewport(canvas, raycaster, eventSystem);
++        }
++        catch
++        {
++            DiscardViewportObjects(createdObjects);
++            throw;
++        }
++    }
++
++    internal static void PublishViewport(Canvas canvas, GraphicRaycaster raycaster, GameObject eventSystem)
++    {
++        // Keep the public viewport unchanged until its input components are ready.
++        _eventSystemObject = eventSystem;
++        SUIRaycaster = raycaster;
++        SUIViewport = canvas;
++    }
+ 
+-        var canvasScaler = go.AddComponent<CanvasScaler>();
+-        canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+-        canvasScaler.referenceResolution = new Vector2(1920, 1080);
+-        canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+-        canvasScaler.matchWidthOrHeight = 1;
+-        canvasScaler.referencePixelsPerUnit = 100;
++    private static void DiscardViewportObjects(List<GameObject> createdObjects)
++    {
++        for (var i = createdObjects.Count - 1; i >= 0; i--)
++        {
++            var gameObject = createdObjects[i];
++            try { gameObject.SetActive(false); }
++            catch (Exception exception) { ReportViewportCleanupFailure(exception); }
+ 
+-        SUIRaycaster = go.AddComponent<GraphicRaycaster>();
+-        
+-        _eventSystemObject = new GameObject("EventSystem");
+-        _eventSystemObject.transform.SetParent(go.transform);
+-        _eventSystemObject.SetActive(false);
+-        _eventSystemObject.AddComponent<EventSystem>();
+-        _eventSystemObject.AddComponent<StandaloneInputModule>();
+-        _eventSystemObject.AddComponent<BaseInput>();
++            try { Object.Destroy(gameObject); }
++            catch (Exception exception) { ReportViewportCleanupFailure(exception); }
++        }
++    }
+ 
+-        go.DontDestroyOnLoad();
++    private static void ReportViewportCleanupFailure(Exception exception)
++    {
++        try { RLog.Warning("Failed to clean up an incomplete SUI viewport: " + exception); }
++        catch { /* Keep the original construction failure. */ }
+     }
+     
+     internal static void SetEventSystemActive(bool active)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.UiViewport.SetEventSystemActive(active);
++            return;
++        }
++
+         if (_eventSystemObject)
+             _eventSystemObject.SetActive(active);
+     }
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 904f415..22e0625 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -42,6 +42,7 @@ internal interface ISdkLifecycleDriver
+     ISdkOverlayDriver Overlay { get; }
+     SUI.ISdkPanelBlurDriver Blur { get; }
+     SUI.ISdkUiPrefabDriver UiPrefabs { get; }
++    SUI.ISdkUiViewportDriver UiViewport { get; }
+     SUI.ISdkUiPanelDriver UiPanels { get; }
+     SUI.ISdkMenuButtonDriver MenuButtons { get; }
+     void InitializeBootstrapPatches();

@@ -1,0 +1,2442 @@
+diff --git a/SonsSdk/Private/GlobalOverlays.cs b/SonsSdk/Private/GlobalOverlays.cs
+--- a/SonsSdk/Private/GlobalOverlays.cs
++++ b/SonsSdk/Private/GlobalOverlays.cs
+@@ -1,4 +1,5 @@
+-﻿using RedLoader;
++﻿using System.Reflection;
++using RedLoader;
+ using TMPro;
+ using UnityEngine;
+ using UnityEngine.UI;
+@@ -16,6 +17,16 @@
+ 
+ internal class GlobalOverlays
+ {
++    private static readonly Lazy<ISdkOverlayDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsSdkOverlay", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkOverlayDriver>)method.CreateDelegate(typeof(Func<ISdkOverlayDriver>)))();
++    });
++    internal static ISdkOverlayDriver Fallback => FallbackDriver.Value;
++
+     public static GameObject OverlayContainer;
+     public static Image BlackScreenImage;
+     public static TextMeshProUGUI OverlayText;
+@@ -27,102 +38,7 @@
+         if (driver != null)
+             return driver.Overlay.CreateBlackScreen();
+ 
+-        var createdObjects = new List<GameObject>(5);
+-        try
+-        {
+-            var go = new GameObject("BlackScreenCanvas");
+-            createdObjects.Add(go);
+-            go.DontDestroyOnLoad().HideAndDontSave();
+-            go.layer = 5;
+-
+-            var canvas = go.AddComponent<Canvas>();
+-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+-            canvas.sortingOrder = 999;
+-            var blackScreen = CreateChild("BlackScreen", canvas.transform, createdObjects);
+-            var rect = blackScreen.AddComponent<RectTransform>();
+-            rect.anchorMin = Vector2.zero;
+-            rect.anchorMax = Vector2.one;
+-            rect.offsetMin = rect.offsetMax = Vector2.zero;
+-            var textGo = blackScreen.Instantiate();
+-            createdObjects.Add(textGo);
+-            textGo.SetParent(blackScreen.transform);
+-            var blackScreenImage = blackScreen.AddComponent<Image>();
+-            blackScreenImage.color = Color.black;
+-            var overlayText = textGo.AddComponent<TextMeshProUGUI>();
+-            overlayText.fontSize = 30;
+-            overlayText.color = System.Drawing.Color.PaleVioletRed.ToUnityColor();
+-            overlayText.alignment = TextAlignmentOptions.Center;
+-            var progressBar = CreateProgressbar(go.GetComponent<RectTransform>(), createdObjects);
+-
+-            // Publish only complete overlays; failed attempts keep the previous references.
+-            BlackScreenImage = blackScreenImage;
+-            OverlayText = overlayText;
+-            ProgressBar = progressBar;
+-            OverlayContainer = go;
+-            return go;
+-        }
+-        catch
+-        {
+-            DiscardCreatedObjects(createdObjects);
+-            throw;
+-        }
+-    }
+-
+-    private static ProgressBarContainer CreateProgressbar(RectTransform container, List<GameObject> createdObjects)
+-    {
+-        var bar = CreateChild("ProgressBarBackground", container, createdObjects);
+-        var barRect = bar.AddComponent<RectTransform>();
+-        barRect.anchorMin = new(0.1f, 0f);
+-        barRect.anchorMax = new(0.9f, 0f);
+-        barRect.sizeDelta = new(0, 30);
+-        barRect.pivot = new(0.5f, 0);
+-        barRect.anchoredPosition = new(0, 200);
+-        var barImage = bar.AddComponent<Image>();
+-        barImage.color = Color.grey;
+-
+-        var fore = CreateChild("ProgressBarForeground", bar.transform, createdObjects);
+-        var foreRect = fore.AddComponent<RectTransform>();
+-        foreRect.anchorMin = Vector2.zero;
+-        foreRect.anchorMax = new(0, 1);
+-        foreRect.sizeDelta = Vector2.zero;
+-        foreRect.pivot = new(0, 0.5f);
+-        var foreImage = fore.AddComponent<Image>();
+-        foreImage.color = new(0.735849f, 0.1087575f, 0.3132702f);
+-
+-        return new ProgressBarContainer
+-        {
+-            ProgressbarBackground = barRect,
+-            ProgressbarBackgroundImage = barImage,
+-            ProgressbarForeground = foreRect,
+-            ProgressbarForegroundImage = foreImage
+-        };
+-    }
+-
+-    private static GameObject CreateChild(string name, Transform parent, List<GameObject> createdObjects)
+-    {
+-        var child = new GameObject(name);
+-        createdObjects.Add(child);
+-        child.transform.SetParent(parent, false);
+-        return child;
+-    }
+-
+-    private static void DiscardCreatedObjects(List<GameObject> createdObjects)
+-    {
+-        for (var i = createdObjects.Count - 1; i >= 0; i--)
+-        {
+-            var gameObject = createdObjects[i];
+-            try { gameObject.SetActive(false); }
+-            catch (Exception exception) { ReportCleanupFailure(exception); }
+-
+-            try { UnityEngine.Object.Destroy(gameObject); }
+-            catch (Exception exception) { ReportCleanupFailure(exception); }
+-        }
+-    }
+-
+-    private static void ReportCleanupFailure(Exception exception)
+-    {
+-        try { RLog.Warning("Failed to clean up an incomplete startup overlay: " + exception); }
+-        catch { /* Keep the original construction failure. */ }
++        return Fallback.CreateBlackScreen();
+     }
+ 
+     public static void ToggleOverlay(bool enable)
+@@ -134,12 +50,7 @@
+             return;
+         }
+ 
+-        if (!OverlayContainer)
+-        {
+-            return;
+-        }
+-        
+-        OverlayContainer.SetActive(enable);
++        Fallback.ToggleOverlay(enable);
+     }
+ 
+     public static void SetProgressbarOffset(float y)
+@@ -151,12 +62,7 @@
+             return;
+         }
+ 
+-        if (ProgressBar == null)
+-        {
+-            return;
+-        }
+-
+-        ProgressBar.ProgressbarBackground.anchoredPosition = new(0, y);
++        Fallback.SetProgressbarOffset(y);
+     }
+ 
+     public static void ToggleBackground(bool enable)
+@@ -168,12 +74,7 @@
+             return;
+         }
+ 
+-        if (!BlackScreenImage)
+-        {
+-            return;
+-        }
+-
+-        BlackScreenImage.enabled = enable;
++        Fallback.ToggleBackground(enable);
+     }
+ 
+     internal class ProgressBarContainer
+@@ -194,7 +95,7 @@
+                 return;
+             }
+ 
+-            ProgressbarForeground.anchorMax = new(progress, 1);
++            Fallback.SetProgress(ProgressbarForeground, progress);
+         }
+ 
+         public void AddProgress(float progress)
+diff --git a/SonsSdk/SUI/SUI.cs b/SonsSdk/SUI/SUI.cs
+--- a/SonsSdk/SUI/SUI.cs
++++ b/SonsSdk/SUI/SUI.cs
+@@ -2,6 +2,7 @@
+ using System.Diagnostics;
+ using System.Globalization;
+ using System.Linq;
++using System.Reflection;
+ using Endnight.Utilities;
+ using Il2CppInterop.Runtime.Injection;
+ using JetBrains.Annotations;
+@@ -50,6 +51,25 @@
+     void OnPauseMenuCreated(PauseMenu menu);
+ }
+ 
++internal interface ISdkUiFallbackDriver
++{
++    void InitPrefabs(ISdkLifecycleDriver driver);
++    void OnSceneInitialized(ESonsScene scene);
++    SPanelOptions RegisterPanel(string id, Transform parent, bool enableInput, KeyCode? toggleKey);
++    SPanelOptions GetPanel(string id);
++    bool TogglePanel(string id);
++    SPanelOptions TogglePanel(string id, bool show);
++    bool RemovePanel(string id);
++    void ReleasePanel(SPanelOptions panel);
++    void OnPauseMenuCreated(PauseMenu menu);
++    void RegisterMenuButton(Func<SUiElement> generator, string id, ESonsScene scene, int index);
++    IEnumerable<GameObject> GetHoveredUiObjects(GraphicRaycaster raycaster);
++    void CreateViewport();
++    void SetEventSystemActive(bool active);
++    void OnEventSystemEnabled(ref int activeEnablers);
++    void OnEventSystemDisabled(ref int activeEnablers);
++}
++
+ public partial class SUI
+ {
+     public static readonly Color BG_CYAN = new(0, 0.5f, 0.5f, 0.2f);
+@@ -84,6 +104,16 @@
+     internal static readonly List<MenuButtonRegistration> _registeredMenuButtons = new();
+     internal static PauseMenu _pauseMenu;
+ 
++    private static readonly Lazy<ISdkUiFallbackDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsUiFallback", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkUiFallbackDriver>)method.CreateDelegate(typeof(Func<ISdkUiFallbackDriver>)))();
++    });
++    internal static ISdkUiFallbackDriver Fallback => FallbackDriver.Value;
++
+     public static SSliderOptions SSlider => new(Object.Instantiate(_sliderPrefab));
+ 
+     public static SOptionsOptions SOptions => new(Object.Instantiate(_optionsPrefab));
+@@ -162,33 +192,27 @@
+     internal static void InitPrefabs()
+     {
+         var driver = SdkEvents.BeginLifecycleSetup();
+-        var sw = TimingLogger.StartNew("SUI.InitPrefabs");
+-        
+-        if (IsInitialized)
+-            return;
+-
++        Fallback.InitPrefabs(driver);
++    }
++
++    internal static void InitBundleContentForFallback()
++    {
+         InitBundleContent();
+-        
+-        if (driver != null)
+-        {
+-            driver.UiPrefabs.Initialize();
+-        }
+-        else
+-        {
+-            GetPrefabs(); // Gather all the prefabs
+-            BackupPrefabs(); // Create a copy of the prefabs
+-            PreparePrefabs(); // Modify the duplicated prefabs
+-        }
+-        
++    }
++
++    internal static void PrintSpritesForFallback()
++    {
+         PrintSprites();
+-        
+-        CreateViewport();
+-        
++    }
++
++    internal static void LogAddedTitleButton()
++    {
++        RLog.Debug("Added button to title menu");
++    }
++
++    internal static void PublishInitialized()
++    {
+         IsInitialized = true;
+-        
+-        SdkEvents.OnSonsSceneInitialized.Subscribe(OnSonsScene);
+-        
+-        sw.Stop();
+     }
+ 
+     [Conditional("DEBUG")]
+@@ -203,194 +227,7 @@
+         RLog.WriteLine(10);
+     }
+ 
+-    /// <summary>
+-    /// Gather all the prefabs
+-    /// </summary>
+-    private static void GetPrefabs()
+-    {
+-        var optionsPanel = Resources.FindObjectsOfTypeAll<OptionsGuiManager>().FirstWithName("OptionsPanel");
+-        var displayOptions = optionsPanel._optionGroups._items.FirstWithName("DisplayPanel");
+-        var gameplayOptions = optionsPanel._optionGroups._items.FirstWithName("GameplayPanel");
+-        var controlsOptions = optionsPanel._optionGroups._items.FirstWithName("ControlsPanel");
+-        var prefabDialog = ModalDialogManager._instance.transform.Find("DynamicModalDialogGui/Panel");
+-
+-        _sonsBackgroundSprite = SpriteBackground400ppu;
+-        _roundBackgroundSprite = SpriteBackground;
+-
+-        _sliderPrefab = displayOptions.Get<TargetFrameRateOptionGui>()._optionGuiRoot;
+-        _optionsPrefab = displayOptions.Get<FullscreenOptionGui>()._optionGuiRoot;
+-        _labelDividerPrefab = gameplayOptions.Get<FovOffsetOptionGui>()._optionGuiRoot.transform.parent.parent.Find("LabelPanel").gameObject;
+-        _textPrefab = prefabDialog.Find("Content").gameObject;
+-        _inputPrefab = prefabDialog.Find("InputField").gameObject;
+-        _buttonPrefab = prefabDialog.Find("ButtonsLayout/BackButton").gameObject;
+-        _scrollContainerPrefab = _labelDividerPrefab.transform.parent.parent.parent.parent.parent.gameObject;
+-        _keybindPrefab = controlsOptions.GetComponentInChildren<RebindingInputOptionGui>(true).gameObject;
+-        
+-        foreach (var button in Resources.FindObjectsOfTypeAll<Button>())
+-        {
+-            //var parent = button.transform.parent;
+-            // if(parent && parent.name == "PerformanceRaterGui")
+-            //     _bgButtonPrefab = button.gameObject;
+-            if (button.name == "SinglePlayerButton")
+-            {
+-                _menuButtonPrefab = button.gameObject;
+-                _titleMenuButtonsContainer = button.transform.parent;
+-            }
+-        }
+-        
+-        _togglePrefab = CreateTogglePrefab();
+-        _maskedImagePrefab = CreateMaskedImagePrefab();
+-        _tabControllerPrefab = CreateTabControllerPrefab();
+-    }
+-
+-    /// <summary>
+-    /// Create a copy of the prefabs
+-    /// </summary>
+-    private static void BackupPrefabs()
+-    {
+-        CheckForNull(_sonsBackgroundSprite, nameof(_sonsBackgroundSprite));
+-        CheckForNull(_roundBackgroundSprite, nameof(_roundBackgroundSprite));
+-        CheckForNull(_sliderPrefab, nameof(_sliderPrefab));
+-        CheckForNull(_optionsPrefab, nameof(_optionsPrefab));
+-        CheckForNull(_textPrefab, nameof(_textPrefab));
+-        CheckForNull(_labelDividerPrefab, nameof(_labelDividerPrefab));
+-        CheckForNull(_togglePrefab, nameof(_togglePrefab));
+-        CheckForNull(_inputPrefab, nameof(_inputPrefab));
+-        CheckForNull(_buttonPrefab, nameof(_buttonPrefab));
+-        // CheckForNull(_bgButtonPrefab, nameof(_bgButtonPrefab));
+-        CheckForNull(_maskedImagePrefab, nameof(_maskedImagePrefab));
+-        CheckForNull(_menuButtonPrefab, nameof(_menuButtonPrefab));
+-        CheckForNull(_scrollContainerPrefab, nameof(_scrollContainerPrefab));
+-        CheckForNull(_colorWheelPrefab, nameof(_colorWheelPrefab));
+-        CheckForNull(_keybindPrefab, nameof(_keybindPrefab));
+-
+-        // Create a copy so we can access them from anywhere
+-        // and the state can't be modified from outside
+-        _sliderPrefab = TryBackup(_sliderPrefab);
+-        _optionsPrefab = TryBackup(_optionsPrefab);
+-        _textPrefab = TryBackup(_textPrefab);
+-        _labelDividerPrefab = TryBackup(_labelDividerPrefab);
+-        _inputPrefab = TryBackup(_inputPrefab);
+-        _buttonPrefab = TryBackup(_buttonPrefab);
+-        _bgButtonPrefab = new GameObject("BgButton").DontDestroyOnLoad().HideAndDontSave();
+-        _menuButtonPrefab = TryBackup(_menuButtonPrefab);
+-        _scrollContainerPrefab = TryBackup(_scrollContainerPrefab);
+-        _keybindPrefab = TryBackup(_keybindPrefab);
+-        _colorWheelPrefab.DontDestroyOnLoad().HideAndDontSave();
+-    }
+-
+-    /// <summary>
+-    /// Cleanup and modify the duplicated prefabs
+-    /// </summary>
+-    private static void PreparePrefabs()
+-    {
+-        // === SSLIDER ===
+-        {
+-            _sliderPrefab.FindGet<TextMeshProUGUI>("LabelPanel/Label").gameObject.Destroy<LocalizeStringEvent>();
+-            _sliderPrefab.SetActive(false);
+-            _sliderPrefab.name = "Slider";
+-        }
+-        
+-        // === SOPTIONS ===
+-        {
+-            var dropdownObject = _optionsPrefab.FindGet<SonsDropdown>("DropdownPanel/Dropdown");
+-            var textObject = _optionsPrefab.FindGet<TextMeshProUGUI>("LabelPanel/Label");
+-            textObject.gameObject.Destroy<LocalizeStringEvent>();
+-
+-            dropdownObject.gameObject.Destroy<GameObjectLocalizer>();
+-
+-            dropdownObject.ClearOptions();
+-            dropdownObject.m_Options.options.Clear();
+-            dropdownObject.options.Clear();
+-            _optionsPrefab.SetActive(false);
+-            _optionsPrefab.name = "Options";
+-        }
+-        
+-        // === SDIVIDER ===
+-        {
+-            _labelDividerPrefab.FindGet<TextMeshProUGUI>("ScreenLabel").gameObject.Destroy<LocalizeStringEvent>();
+-            _labelDividerPrefab.SetActive(false);
+-            _labelDividerPrefab.name = "Divider";
+-        }
+-        
+-        // === SLABEL ===
+-        {
+-            var textObject = _textPrefab.GetComponent<TextMeshProUGUI>();
+-            textObject.gameObject.Destroy<LocalizeStringEvent>();
+-            textObject.gameObject.Destroy<LayoutElement>();
+-            textObject.gameObject.Destroy<ContentSizeFitter>();
+-            textObject.margin = new Vector4(0, 0, 0, 0);
+-            textObject.enableWordWrapping = false;
+-            textObject.fontSizeMin = 0;
+-            textObject.fontSizeMax = 60;
+-            textObject.enableAutoSizing = false;
+-            textObject.alignment = TextAlignmentOptions.Center;
+-            _textPrefab.SetActive(false);
+-            _textPrefab.name = "Label";
+-        }
+-        
+-        // === STEXTBOX ===
+-        {
+-            var inputFieldObject = _inputPrefab.FindGet<TMP_InputField>("InputPanel/InputField");
+-            var placeholderObject = inputFieldObject.placeholder.GetComponent<TextMeshProUGUI>();
+-            inputFieldObject.gameObject.SetActive(true);
+-            var textObject = _inputPrefab.FindGet<TextMeshProUGUI>("Label");
+-            textObject.gameObject.Destroy<LocalizeStringEvent>();
+-            textObject.gameObject.SetActive(true);
+-
+-            var horizontal = _inputPrefab.GetComponent<HorizontalLayoutGroup>();
+-            horizontal.padding = new RectOffset(0, 0, 0, 0);
+-            horizontal.spacing = 0;
+-            horizontal.childForceExpandWidth = true;
+-        
+-            placeholderObject.color = new Color(1,1,1,0.2f);
+-
+-            textObject.enableAutoSizing = false;
+-            textObject.fontSize = 20;
+-
+-            _inputPrefab.SetActive(false);
+-            _inputPrefab.name = "TextBox";
+-        }
+-        
+-        // === SBUTTON ===
+-        {
+-            var textObject = _buttonPrefab.FindGet<TextMeshProUGUI>("ContentPanel/TextBase");
+-            textObject.fontSize = 30;
+-            textObject.text = "Button";
+-            textObject.margin = new Vector4(0, 0, 0, 0);
+-
+-            _buttonPrefab.Destroy<LocalizeStringEvent>();
+-            _buttonPrefab.GetComponent<Button>().onClick = new Button.ButtonClickedEvent();
+-            _buttonPrefab.SetActive(false);
+-            _buttonPrefab.name = "Button";
+-        }
+-
+-        // === KEYBIND ===
+-        {
+-            //var textObject = _buttonPrefab.FindGet<TextMeshProUGUI>("LabelPanel/Label");
+-            //textObject.fontSize = 30;
+-            //textObject.text = "Action";
+-            //textObject.margin = new Vector4(0, 0, 0, 0);
+-
+-            var button = _keybindPrefab.FindGet<Button>("InputSelectionPanel/Panel/InputButton01");
+-            button.onClick = new Button.ButtonClickedEvent();
+-
+-            _keybindPrefab.SetActive(false);
+-        }
+-        
+-        // === SSCROLLCONTAINER ===
+-        var scrollContainer = _scrollContainerPrefab.transform.Find("Viewport/Content");
+-
+-        for (var i = scrollContainer.childCount - 1; i >= 0; i--)
+-        {
+-            Object.DestroyImmediate(scrollContainer.GetChild(i).gameObject);
+-        }
+-
+-        _scrollContainerPrefab.SetActive(false);
+-        _scrollContainerPrefab.name = "SUI_ScrollContainer";
+-    }
+-
+-    private static void OnSonsScene(ESonsScene scene)
++    internal static void OnSonsScene(ESonsScene scene)
+     {
+         var driver = SdkEvents.BeginLifecycleSetup();
+         if (driver != null)
+@@ -399,21 +236,7 @@
+             return;
+         }
+ 
+-        _pauseMenu = null;
+-        switch (scene)
+-        {
+-            case ESonsScene.Title:
+-                _titleMenuButtonsContainer = Resources.FindObjectsOfTypeAll<Button>().First(x=>x.name == "SinglePlayerButton" && x.gameObject.activeSelf).transform.parent;
+-                break;
+-        }
+-
+-        foreach (var button in _registeredMenuButtons.ToArray())
+-        {
+-            if (scene == ESonsScene.Title && button.Scene == ESonsScene.Title)
+-            {
+-                AddButtonToBottomCanvas(button);
+-            }
+-        }
++        Fallback.OnSceneInitialized(scene);
+     }
+ 
+     /// <inheritdoc cref="RegisterNewPanel(string,bool,System.Nullable{UnityEngine.KeyCode})"/>
+@@ -437,56 +260,22 @@
+         if (driver != null)
+             return driver.UiPanels.Register(id, parent, enableInput, toggleKey);
+ 
+-        if (_panels.ContainsKey(id))
+-            throw new ArgumentException("A panel with this ID is already registered.", nameof(id));
+-
+-        var panel = CreatePanel(parent);
+-        panel.Id = id;
+-        panel.Root.name = id;
+-        _panels[id] = panel;
+-
+-        if (enableInput)
+-        {
+-            var inputCursorState = panel.Root.AddComponent<InputCursorState>();
+-            inputCursorState._enabled = true;
+-            inputCursorState._hardwareCursor = true;
+-            inputCursorState._priority = 100;
+-
+-            var inputActionMapState = panel.Root.AddComponent<InputActionMapState>();
+-            inputActionMapState._applyState = InputState.Console;
+-            
+-            panel.Root.AddComponent<EventSystemEnabler>();
+-        }
+-        
+-        if (toggleKey != null)
+-            panel.RegisterToggleKey(toggleKey.Value);
+-
+-        return panel;
++        return Fallback.RegisterPanel(id, parent, enableInput, toggleKey);
+     }
+     
+     public static SPanelOptions GetPanel(string id)
+     {
+-        if(_panels.TryGetValue(id, out var panel))
+-            return panel;
+-        return null;
++        return Fallback.GetPanel(id);
+     }
+ 
+     public static bool TogglePanel(string id)
+     {
+-        var panel = GetPanel(id);
+-        if (panel == null)
+-            return false;
+-        panel.Toggle();
+-        return panel.Root.activeSelf;
++        return Fallback.TogglePanel(id);
+     }
+     
+     public static SPanelOptions TogglePanel(string id, bool show)
+     {
+-        var panel = GetPanel(id);
+-        if (panel == null)
+-            return null;
+-        panel.Active(show);
+-        return panel;
++        return Fallback.TogglePanel(id, show);
+     }
+     
+     public static bool RemovePanel(string id)
+@@ -495,20 +284,12 @@
+         if (driver != null)
+             return driver.UiPanels.Remove(id);
+ 
+-        var panel = GetPanel(id);
+-        if (panel == null)
+-            return false;
+-        _panels.Remove(id);
+-        panel.Remove();
+-        return true;
++        return Fallback.RemovePanel(id);
+     }
+ 
+     internal static void ReleasePanel(SPanelOptions panel)
+     {
+-        if (panel.Id != null && _panels.TryGetValue(panel.Id, out var registered) && ReferenceEquals(registered, panel))
+-            _panels.Remove(panel.Id);
+-
+-        panel.ReleaseInputBindings();
++        Fallback.ReleasePanel(panel);
+     }
+ 
+     internal static void OnPauseMenuCreated(PauseMenu menu)
+@@ -520,17 +301,7 @@
+             return;
+         }
+ 
+-        var buttonHub = menu.transform.Find("Panel/BottomMenuPanel/LeftPanel");
+-        if (!buttonHub)
+-            throw new InvalidOperationException("Pause menu button container was not found.");
+-
+-        _pauseMenu = menu;
+-
+-        foreach (var button in _registeredMenuButtons.ToArray())
+-        {
+-            if (button.Scene == ESonsScene.Game)
+-                AddButtonToPauseCanvas(menu, buttonHub, button);
+-        }
++        Fallback.OnPauseMenuCreated(menu);
+     }
+ 
+     public static void AddButtonToPauseMenu(Func<SUiElement> generator, string id, int index = -1)
+@@ -545,7 +316,7 @@
+             return;
+         }
+ 
+-        RegisterMenuButton(generator, id, ESonsScene.Game, index);
++        Fallback.RegisterMenuButton(generator, id, ESonsScene.Game, index);
+     }
+     
+     public static void AddButtonToTitleMenu(Func<SUiElement> generator, string id, int index = -1)
+@@ -560,73 +331,13 @@
+             return;
+         }
+ 
+-        RegisterMenuButton(generator, id, ESonsScene.Title, index);
+-    }
+-
+-    private static void RegisterMenuButton(Func<SUiElement> generator, string id, ESonsScene scene, int index)
+-    {
+-        ArgumentNullException.ThrowIfNull(generator);
+-        ArgumentNullException.ThrowIfNull(id);
+-        if (_registeredMenuButtons.Any(button => button.Scene == scene && button.Id == id))
+-            return;
+-
+-        var button = new MenuButtonRegistration(generator, id, scene, index);
+-        // Publish before invoking a factory so reentrant registration sees this ID.
+-        _registeredMenuButtons.Add(button);
+-
+-        try
+-        {
+-            if (scene == ESonsScene.Title && SceneManager.GetActiveScene().name == SonsSceneManager.TitleSceneName)
+-                AddButtonToBottomCanvas(button);
+-            else if (scene == ESonsScene.Game && _pauseMenu)
+-                AddButtonToPauseCanvas(_pauseMenu, _pauseMenu.transform.Find("Panel/BottomMenuPanel/LeftPanel"), button);
+-        }
+-        catch
+-        {
+-            _registeredMenuButtons.Remove(button);
+-            throw;
+-        }
+-    }
+-
+-    private static void AddButtonToPauseCanvas(PauseMenu menu, Transform buttonHub, MenuButtonRegistration button)
+-    {
+-        if (buttonHub.GetChildren().Any(child => child.name == button.Id))
+-            return;
+-
+-        var element = button.ElementFactory();
+-        element.Root.name = button.Id;
+-        element.SetParent(buttonHub);
+-        if (button.Index != -1)
+-            element.RectTransform.SetSiblingIndex(button.Index);
+-
+-        menu._activateForMenu.Add(element.Root);
+-    }
+-
+-    private static void AddButtonToBottomCanvas(MenuButtonRegistration button)
+-    {
+-        if(_titleMenuButtonsContainer.Find(button.Id) != null)
+-            return;
+-
+-        var element = button.ElementFactory();
+-
+-        element.Root.name = button.Id;
+-        element.SetParent(_titleMenuButtonsContainer);
+-        RLog.Debug("Added button to title menu");
+-        if(button.Index != -1)
+-            element.Root.transform.SetSiblingIndex(button.Index);
++        Fallback.RegisterMenuButton(generator, id, ESonsScene.Title, index);
+     }
+     
+     public static IEnumerable<GameObject> GetHoveredUiObjects(GraphicRaycaster raycaster)
+     {
+-        var _raycastResults = new Il2CppSystem.Collections.Generic.List<RaycastResult>();
+-        raycaster.Raycast(new PointerEventData(EventSystem.current)
+-        {
+-            position = Input.mousePosition
+-        }, _raycastResults);
+-        foreach (RaycastResult raycastResult in _raycastResults)
+-        {
+-            yield return raycastResult.gameObject;
+-        }
++        foreach (var gameObject in Fallback.GetHoveredUiObjects(raycaster))
++            yield return gameObject;
+     }
+ 
+     private static void CreateTestUi()
+@@ -713,7 +424,7 @@
+         return panel;
+     }
+ 
+-    private static void CreateViewport()
++    internal static void CreateViewport()
+     {
+         var driver = SdkEvents.BeginLifecycleSetup();
+         if (driver != null)
+@@ -722,38 +433,7 @@
+             return;
+         }
+ 
+-        var createdObjects = new List<GameObject>(2);
+-        try
+-        {
+-            var go = new GameObject("SUICanvas");
+-            createdObjects.Add(go);
+-            var canvas = go.AddComponent<Canvas>();
+-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+-
+-            var canvasScaler = go.AddComponent<CanvasScaler>();
+-            canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+-            canvasScaler.referenceResolution = new Vector2(1920, 1080);
+-            canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+-            canvasScaler.matchWidthOrHeight = 1;
+-            canvasScaler.referencePixelsPerUnit = 100;
+-
+-            var raycaster = go.AddComponent<GraphicRaycaster>();
+-            var eventSystem = new GameObject("EventSystem");
+-            createdObjects.Add(eventSystem);
+-            eventSystem.transform.SetParent(go.transform);
+-            eventSystem.SetActive(false);
+-            eventSystem.AddComponent<EventSystem>();
+-            eventSystem.AddComponent<StandaloneInputModule>();
+-            eventSystem.AddComponent<BaseInput>();
+-
+-            go.DontDestroyOnLoad();
+-            PublishViewport(canvas, raycaster, eventSystem);
+-        }
+-        catch
+-        {
+-            DiscardViewportObjects(createdObjects);
+-            throw;
+-        }
++        Fallback.CreateViewport();
+     }
+ 
+     internal static void PublishViewport(Canvas canvas, GraphicRaycaster raycaster, GameObject eventSystem)
+@@ -763,25 +443,6 @@
+         SUIRaycaster = raycaster;
+         SUIViewport = canvas;
+     }
+-
+-    private static void DiscardViewportObjects(List<GameObject> createdObjects)
+-    {
+-        for (var i = createdObjects.Count - 1; i >= 0; i--)
+-        {
+-            var gameObject = createdObjects[i];
+-            try { gameObject.SetActive(false); }
+-            catch (Exception exception) { ReportViewportCleanupFailure(exception); }
+-
+-            try { Object.Destroy(gameObject); }
+-            catch (Exception exception) { ReportViewportCleanupFailure(exception); }
+-        }
+-    }
+-
+-    private static void ReportViewportCleanupFailure(Exception exception)
+-    {
+-        try { RLog.Warning("Failed to clean up an incomplete SUI viewport: " + exception); }
+-        catch { /* Keep the original construction failure. */ }
+-    }
+     
+     internal static void SetEventSystemActive(bool active)
+     {
+@@ -792,8 +453,7 @@
+             return;
+         }
+ 
+-        if (_eventSystemObject)
+-            _eventSystemObject.SetActive(active);
++        Fallback.SetEventSystemActive(active);
+     }
+ 
+     public static Sprite GetSprite(string name)
+@@ -832,19 +492,6 @@
+         var a = color.Length == 8 ? Convert.ToInt32(color.Substring(6, 2), 16) : 255;
+ 
+         return new Color((float)r/255, (float)g/255, (float)b/255, (float)a/255);
+-    }
+-
+-    private static void CheckForNull(Object obj, string memberName)
+-    {
+-        if (!obj)
+-        {
+-            RLog.Error($"= {memberName} is null! =");
+-        }
+-    }
+-
+-    private static GameObject TryBackup(GameObject go)
+-    {
+-        return Object.Instantiate(go).DontDestroyOnLoad().HideAndDontSave();
+     }
+ 
+     internal static GameObject CreateMaskedImagePrefab()
+@@ -982,19 +629,12 @@
+         
+         private void OnEnable()
+         {
+-            ActiveEnablers++;
+-            RLog.Msg("Enabling event system");
+-            SetEventSystemActive(true);
++            Fallback.OnEventSystemEnabled(ref ActiveEnablers);
+         }
+         
+         private void OnDisable()
+         {
+-            ActiveEnablers--;
+-            if(ActiveEnablers == 0)
+-            {
+-                RLog.Msg("No more active enablers, disabling event system");
+-                SetEventSystemActive(false);
+-            }
++            Fallback.OnEventSystemDisabled(ref ActiveEnablers);
+         }
+     }
+ 
+diff --git a/SonsSdk/SUI/PanelBlur.cs b/SonsSdk/SUI/PanelBlur.cs
+--- a/SonsSdk/SUI/PanelBlur.cs
++++ b/SonsSdk/SUI/PanelBlur.cs
+@@ -1,4 +1,5 @@
+-﻿using RedLoader;
++﻿using System.Reflection;
++using RedLoader;
+ using SonsSdk;
+ using TheForest.Utils;
+ using UnityEngine;
+@@ -15,6 +16,16 @@
+ 
+ public static class PanelBlur
+ {
++    private static readonly Lazy<ISdkPanelBlurDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsSdkPanelBlur", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkPanelBlurDriver>)method.CreateDelegate(typeof(Func<ISdkPanelBlurDriver>)))();
++    });
++    internal static ISdkPanelBlurDriver Fallback => FallbackDriver.Value;
++
+     internal static readonly Dictionary<Color, Material> BlurMaterials = new();
+     internal static UIBlurPass CurrentBlurPass;
+ 
+@@ -24,13 +35,7 @@
+         if (driver != null)
+             return driver.Blur.GetForColor(color);
+ 
+-        if (BlurMaterials.TryGetValue(color, out var blurMat))
+-            return blurMat;
+-
+-        var newMat = new Material(Shader.Find("Sons/UI/SampleBlurHLSL"));
+-        newMat.color = color;
+-        BlurMaterials[color] = newMat;
+-        return newMat;
++        return Fallback.GetForColor(color);
+     }
+ 
+     public static Material GetForShade(float shade)
+@@ -47,10 +52,7 @@
+             return;
+         }
+ 
+-        if (CurrentBlurPass == null)
+-            return;
+-
+-        CurrentBlurPass.radius = radius;
++        Fallback.SetRadius(radius);
+     }
+     
+     internal static void SetupBlur()
+@@ -62,45 +64,7 @@
+             return;
+         }
+ 
+-        if (!LocalPlayer.Inventory)
+-            return;
+-
+-        var invBlur = LocalPlayer.Inventory.CameraController.Camera.transform.Find("SlightBlurPass");
+-        
+-        if(!invBlur)
+-        {
+-            RLog.Error("Failed to find SlightBlurPass!");
+-            return;
+-        }
+-
+-        var go = UnityEngine.Object.Instantiate(invBlur.gameObject, LocalPlayer.MainCamTr, false);
+-
+-        try
+-        {
+-            var volume = go.GetComponent<CustomPassVolume>();
+-            var blurPass = volume.customPasses._items[0].Cast<UIBlurPass>();
+-            blurPass.radius = 25;
+-            CurrentBlurPass = blurPass;
+-        }
+-        catch (Exception e)
+-        {
+-            DiscardFailedSetup(go);
+-            RLog.Error($"Failed to initialize UIBlurPass! {e}");
+-        }
++        Fallback.SetupBlur();
+     }
+ 
+-    private static void DiscardFailedSetup(GameObject gameObject)
+-    {
+-        try { gameObject.SetActive(false); }
+-        catch (Exception exception) { ReportCleanupFailure(exception); }
+-
+-        try { UnityEngine.Object.Destroy(gameObject); }
+-        catch (Exception exception) { ReportCleanupFailure(exception); }
+-    }
+-
+-    private static void ReportCleanupFailure(Exception exception)
+-    {
+-        try { RLog.Warning("Failed to clean up an incomplete panel blur: " + exception); }
+-        catch { /* Preserve the initialization diagnostic. */ }
+-    }
+ }
+diff --git a/SonsSdk/InputIconManager.cs b/SonsSdk/InputIconManager.cs
+--- a/SonsSdk/InputIconManager.cs
++++ b/SonsSdk/InputIconManager.cs
+@@ -1,3 +1,4 @@
++using System.Reflection;
+ using Sons.Gui.Input;
+ using SUI;
+ using TMPro;
+@@ -14,8 +15,27 @@
+     GameObject CreateKeybindIcon(InputAction action, DynamicInputIcon icon, GameObject previous);
+ }
+ 
++internal interface ISdkInputIconFallbackDriver
++{
++    IconAssetDatabase IconDatabase { get; }
++    GameObject Get(string path, out string displayName, out bool isDefaultPrefab);
++    GameObject Add(string path, Transform transform);
++    GameObject CreateKeybindIcon(SKeybindOptions options);
++    void RetireIcon(GameObject icon, GameObject template);
++}
++
+ public class InputIconManager
+ {
++    private static readonly Lazy<ISdkInputIconFallbackDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsInputIconFallback", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkInputIconFallbackDriver>)method.CreateDelegate(typeof(Func<ISdkInputIconFallbackDriver>)))();
++    });
++    internal static ISdkInputIconFallbackDriver Fallback => FallbackDriver.Value;
++
+     internal static IconAssetDatabase _iconDatabase;
+ 
+     public static IconAssetDatabase IconDatabase
+@@ -26,16 +46,8 @@
+             if (driver != null)
+                 return driver.InputIcons.IconDatabase;
+ 
+-            if(!_iconDatabase)
+-                Initialize();
+-            
+-            return _iconDatabase;
++            return Fallback.IconDatabase;
+         }
+-    }
+-
+-    private static void Initialize()
+-    {
+-        _iconDatabase = Resources.FindObjectsOfTypeAll<IconAssetDatabase>().First();
+     }
+ 
+     public static GameObject Get(InputAction inputAction, out string displayName, out bool isDefaultPrefab)
+@@ -57,40 +69,7 @@
+         if (driver != null)
+             return driver.InputIcons.Get(path, out displayName, out isDefaultPrefab);
+ 
+-        if (string.IsNullOrEmpty(path))
+-        {
+-            displayName = null;
+-            isDefaultPrefab = false;
+-            return null;
+-        }
+-        
+-        var icon = IconDatabase.GetIcon(path, out isDefaultPrefab);
+-        if (icon != null)
+-        {
+-            var inputControl = InputSystem.FindControl(path);
+-            displayName = inputControl != null ? inputControl.displayName : "NA";
+-            var newIcon = UnityEngine.Object.Instantiate(icon);
+-            try
+-            {
+-                if (isDefaultPrefab)
+-                {
+-                    var tmpText = newIcon.GetComponentInChildren<TMP_Text>(true);
+-                    if (tmpText != null)
+-                        tmpText.text = displayName;
+-                }
+-
+-                return newIcon;
+-            }
+-            catch
+-            {
+-                RetireIcon(newIcon);
+-                throw;
+-            }
+-        }
+-        
+-        displayName = null;
+-        isDefaultPrefab = false;
+-        return null;
++        return Fallback.Get(path, out displayName, out isDefaultPrefab);
+     }
+ 
+     public static GameObject AddInputIcon(string path, SUiElement element)
+@@ -104,38 +83,12 @@
+         if (driver != null)
+             return driver.InputIcons.Add(path, transform);
+ 
+-        var inputIcon = Get(path, out _, out _);
+-        if (!inputIcon)
+-        {
+-            return null;
+-        }
+-        
+-        try
+-        {
+-            inputIcon.SetActive(true);
+-            inputIcon.transform.SetParent(transform, false);
+-            inputIcon.GetComponent<RectTransform>().anchoredPosition = new(-40, 0);
+-            return inputIcon;
+-        }
+-        catch
+-        {
+-            RetireIcon(inputIcon);
+-            throw;
+-        }
++        return Fallback.Add(path, transform);
+     }
+ 
+     internal static void RetireIcon(GameObject icon, GameObject template = null)
+     {
+-        try { if (icon) icon.SetActive(false); }
+-        catch (Exception exception) { ReportCleanupFailure(exception); }
+-
+-        try { if (icon && icon != template) UnityEngine.Object.Destroy(icon); }
+-        catch (Exception exception) { ReportCleanupFailure(exception); }
++        Fallback.RetireIcon(icon, template);
+     }
+ 
+-    private static void ReportCleanupFailure(Exception exception)
+-    {
+-        try { RedLoader.RLog.Warning("Failed to clean up an input icon: " + exception); }
+-        catch { /* Preserve the original operation failure. */ }
+-    }
+ }
+diff --git a/SonsSdk/SUI/SKeybindOptions.cs b/SonsSdk/SUI/SKeybindOptions.cs
+--- a/SonsSdk/SUI/SKeybindOptions.cs
++++ b/SonsSdk/SUI/SKeybindOptions.cs
+@@ -26,8 +26,8 @@
+     private static RebindSession _activeRebind;
+     private static long _rebindGeneration;
+     private RebindSession _rebindSession;
+-    private KeybindConfigEntry _keybindConfig;
+-    private GameObject _instance;
++    internal KeybindConfigEntry _keybindConfig;
++    internal GameObject _instance;
+ 
+     public SKeybindOptions(GameObject root) : base(root)
+     {
+@@ -215,42 +215,10 @@
+             return replacement;
+         }
+ 
+-        var defaultInstance = DynamicInputIcon._defaultInstance;
+-        var replacementIcon = InputIconManager.Get(_keybindConfig.GetAction(), out _, out _);
+-        if (!replacementIcon)
+-            return null;
+-
+-        GameObject activeIcon;
+-        try
+-        {
+-            if (!defaultInstance)
+-                throw new InvalidOperationException("The keybind icon template is missing.");
+-
+-            var sourceRect = defaultInstance.GetComponent<RectTransform>();
+-            var targetRect = replacementIcon.GetComponent<RectTransform>();
+-            if (!sourceRect || !targetRect)
+-                throw new InvalidOperationException("Keybind icons require RectTransform components.");
+-
+-            replacementIcon.transform.SetParent(defaultInstance.transform.parent, false);
+-            CopyRectTransform(sourceRect, targetRect);
+-            replacementIcon.transform.SetSiblingIndex(defaultInstance.transform.GetSiblingIndex());
+-            activeIcon = DynamicInputIcon._activeInstance;
+-        }
+-        catch
+-        {
+-            InputIconManager.RetireIcon(replacementIcon);
+-            throw;
+-        }
+-
+-        var previous = _instance;
+-        _instance = replacementIcon;
+-        InputIconManager.RetireIcon(activeIcon, defaultInstance);
+-        if (previous != activeIcon)
+-            InputIconManager.RetireIcon(previous, defaultInstance);
+-        return replacementIcon;
+-    }
+-    
+-    private static void CopyRectTransform(RectTransform fromTransform, RectTransform toTransform)
++        return InputIconManager.Fallback.CreateKeybindIcon(this);
++    }
++    
++    internal static void CopyRectTransform(RectTransform fromTransform, RectTransform toTransform)
+     {
+         toTransform.localScale = fromTransform.localScale;
+         toTransform.localRotation = fromTransform.localRotation;
+diff --git a/SonsSdk/GenericModalDialog.cs b/SonsSdk/GenericModalDialog.cs
+--- a/SonsSdk/GenericModalDialog.cs
++++ b/SonsSdk/GenericModalDialog.cs
+@@ -41,6 +41,16 @@
+         ClassInjector.RegisterTypeInIl2Cpp<GenericModalDialog>();
+     }
+ 
++    private static readonly System.Lazy<ISdkModalDialogDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsModalFallback", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new System.MissingMethodException(type.FullName, "Create");
++        return ((System.Func<ISdkModalDialogDriver>)method.CreateDelegate(typeof(System.Func<ISdkModalDialogDriver>)))();
++    });
++    private static ISdkModalDialogDriver Fallback => FallbackDriver.Value;
++
+     internal static GenericModalDialog Instance;
+     
+     internal LinkTextGui _titleTextObject;
+@@ -102,8 +112,7 @@
+             return;
+         }
+ 
+-        CloseInternal();
+-        callback?.Invoke();
++        Fallback.Complete(this, callback);
+     }
+ 
+     internal void SetData(string title, string message)
+@@ -122,9 +131,7 @@
+             return;
+         }
+ 
+-        _option1TextObject.SetText(text);
+-        _option1Button.gameObject.SetActive(true);
+-        OnOption1 += action;
++        Fallback.SetOption1(this, text, action);
+     }
+     
+     [HideFromIl2Cpp]
+@@ -137,9 +144,7 @@
+             return;
+         }
+ 
+-        _option2TextObject.SetText(text);
+-        _option2Button.gameObject.SetActive(true);
+-        OnOption2 += action;
++        Fallback.SetOption2(this, text, action);
+     }
+     
+     [HideFromIl2Cpp]
+@@ -152,9 +157,7 @@
+             return;
+         }
+ 
+-        _option3TextObject.SetText(text);
+-        _option3Button.gameObject.SetActive(true);
+-        OnOption3 += action;
++        Fallback.SetOption3(this, text, action);
+     }
+     
+     [HideFromIl2Cpp]
+@@ -167,10 +170,10 @@
+             return;
+         }
+ 
+-        OnCancel += action;
+-    }
+-
+-    private void CloseInternal()
++        Fallback.SetCancel(this, action);
++    }
++
++    internal void CloseInternal()
+     {
+         var driver = SdkEvents.BeginLifecycleSetup();
+         if (driver != null)
+@@ -179,8 +182,7 @@
+             return;
+         }
+ 
+-        ClearCallbacks();
+-        gameObject.SetActive(false);
++        Fallback.Close(this);
+     }
+ 
+     [HideFromIl2Cpp]
+@@ -192,7 +194,7 @@
+         OnOption3 = null;
+     }
+     
+-    private void OpenInternal(string title, string message)
++    internal void OpenInternal(string title, string message)
+     {
+         var driver = SdkEvents.BeginLifecycleSetup();
+         if (driver != null)
+@@ -201,11 +203,7 @@
+             return;
+         }
+ 
+-        ClearCallbacks();
+-        ResetGui();
+-        SetData(title, message);
+-        gameObject.SetActive(true);
+-        _canvas.overrideSorting = true;
++        Fallback.Open(this, title, message);
+     }
+ 
+     internal void ResetGui()
+@@ -218,16 +216,18 @@
+         _cancelTextObject.SetText("Cancel");
+     }
+ 
++    internal static void LogShown()
++    {
++        RLog.Debug("Shown dialog");
++    }
++
+     public static GenericModalDialog ShowDialog(string title, string message)
+     {
+         var driver = SdkEvents.BeginLifecycleSetup();
+         if (driver != null)
+             return driver.Dialogs.Show(title, message);
+ 
+-        Setup();
+-        Instance.OpenInternal(title, message);
+-        RLog.Debug("Shown dialog");
+-        return Instance;
++        return Fallback.Show(title, message);
+     }
+ 
+     public static void Close()
+@@ -239,10 +239,7 @@
+             return;
+         }
+ 
+-        if(!Instance)
+-            return;
+-        
+-        Instance.CloseInternal();
++        Fallback.Close();
+     }
+ 
+     internal static void Setup()
+@@ -254,93 +251,6 @@
+             return;
+         }
+ 
+-        if (Instance)
+-            return;
+-
+-        var prefab = ModalDialogManager._instance.GameStartingDialog;
+-        var gui = prefab._gui;
+-
+-        var newGui = gui.gameObject.Instantiate();
+-        try
+-        {
+-            newGui.SetParent(SUI.SUI.SUIViewport.transform);
+-            newGui.SetActive(false);
+-
+-            gui = newGui.GetComponent<DynamicModalDialogGui>();
+-
+-            var dialog = newGui.AddComponent<GenericModalDialog>();
+-
+-            dialog._titleTextObject = gui.TitleTextString.GetComponent<LinkTextGui>();
+-            Destroy(gui.TitleTextString);
+-
+-            dialog._contentTextObject = gui.ContentTextString.GetComponent<TextMeshProUGUI>();
+-            Destroy(gui.ContentTextString);
+-
+-            dialog._cancelTextObject = gui.BackTextString.GetComponent<LinkTextGui>();
+-            Destroy(gui.BackTextString);
+-
+-            dialog._option1TextObject = gui.Option1TextString.GetComponent<LinkTextGui>();
+-            Destroy(gui.Option1TextString);
+-
+-            dialog._option2TextObject = gui.Option2TextString.GetComponent<LinkTextGui>();
+-            Destroy(gui.Option2TextString);
+-
+-            dialog._option3TextObject = gui.Option3TextString.GetComponent<LinkTextGui>();
+-            Destroy(gui.Option3TextString);
+-
+-            dialog._option1Button = gui.Option1Button;
+-            dialog._option1Button.onClick.AddListener((UnityAction)dialog.Option1Clicked);
+-
+-            dialog._option2Button = gui.Option2Button;
+-            dialog._option2Button.onClick.AddListener((UnityAction)dialog.Option2Clicked);
+-
+-            dialog._option3Button = gui.Option3Button;
+-            dialog._option3Button.onClick.AddListener((UnityAction)dialog.Option3Clicked);
+-
+-            dialog._cancelButton = gui.BackButton;
+-            dialog._cancelButton.gameObject.SetActive(true);
+-            dialog._cancelButton.onClick = new Button.ButtonClickedEvent();
+-            dialog._cancelButton.onClick.AddListener((UnityAction)dialog.CancelClicked);
+-
+-            dialog._background = gui.Background;
+-
+-            dialog._inputField = gui.InputField;
+-
+-            Destroy(gui.EventSystem.gameObject);
+-            dialog._gamepadMenuHelper = gui.GamepadMenuHelper;
+-
+-            dialog._canvas = newGui.GetComponent<Canvas>();
+-
+-            newGui.transform.localScale = Vector3.one;
+-
+-            var rect = newGui.GetComponent<RectTransform>();
+-            rect.anchorMin = Vector2.zero;
+-            rect.anchorMax = Vector2.one;
+-
+-            Destroy(gui);
+-
+-            // Do not expose a dialog whose native setup has not finished.
+-            Instance = dialog;
+-        }
+-        catch
+-        {
+-            DiscardFailedSetup(newGui);
+-            throw;
+-        }
+-    }
+-
+-    private static void DiscardFailedSetup(GameObject gameObject)
+-    {
+-        try { gameObject.SetActive(false); }
+-        catch (System.Exception exception) { ReportCleanupFailure(exception); }
+-
+-        try { Object.Destroy(gameObject); }
+-        catch (System.Exception exception) { ReportCleanupFailure(exception); }
+-    }
+-
+-    private static void ReportCleanupFailure(System.Exception exception)
+-    {
+-        try { RLog.Warning("Failed to clean up an incomplete modal dialog: " + exception); }
+-        catch { /* Preserve the original setup failure. */ }
++        Fallback.Setup();
+     }
+ }
+diff --git a/SonsSdk/SUI/TooltipProvider.cs b/SonsSdk/SUI/TooltipProvider.cs
+--- a/SonsSdk/SUI/TooltipProvider.cs
++++ b/SonsSdk/SUI/TooltipProvider.cs
+@@ -1,6 +1,7 @@
+ ﻿using Il2CppInterop.Runtime.Injection;
+ using RedLoader;
+ using System;
++using System.Reflection;
+ using System.Collections.Generic;
+ using SUI;
+ using TMPro;
+@@ -26,6 +27,16 @@
+ 
+ public class TooltipProvider
+ {
++    private static readonly System.Lazy<ISdkTooltipDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsTooltipFallback", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new System.MissingMethodException(type.FullName, "Create");
++        return ((System.Func<ISdkTooltipDriver>)method.CreateDelegate(typeof(System.Func<ISdkTooltipDriver>)))();
++    });
++    private static ISdkTooltipDriver Fallback => FallbackDriver.Value;
++
+     internal static bool _initialized;
+     
+     internal static Canvas _canvas;
+@@ -51,83 +62,9 @@
+             return;
+         }
+ 
+-        if (_initialized)
+-            return;
+-
+-        var createdObjects = new List<GameObject>(3);
+-        SLabelOptions label = null;
+-        try
+-        {
+-            var root = new GameObject("TooltipCanvas");
+-            createdObjects.Add(root);
+-            Object.DontDestroyOnLoad(root);
+-            root.hideFlags |= HideFlags.HideAndDontSave;
+-            root.layer = 5;
+-
+-            var canvas = root.AddComponent<Canvas>();
+-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+-            canvas.sortingOrder = 999;
+-
+-            var scaler = root.AddComponent<CanvasScaler>();
+-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+-            scaler.referenceResolution = new Vector2(1920, 1080);
+-            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+-            scaler.matchWidthOrHeight = 0;
+-
+-            var tooltip = SContainer;
+-            createdObjects.Add(tooltip.Root);
+-            tooltip.Pivot(0, 0).Anchor(AnchorType.BottomLeft).Position(0, 0)
+-                .Size(400, 100).Background(CardButtonBg);
+-
+-            label = SLabel;
+-            createdObjects.Add(label.Root);
+-            label.Bind(_tooltipText).Dock(EDockType.Fill).FontSize(18)
+-                .Font(EFont.RobotoLight).FontColor("#ea2f4e60").Alignment(TextAlignmentOptions.Center);
+-            tooltip.Add(label);
+-
+-            var fitter = label.Root.AddComponent<ContentSizeFitter>();
+-            fitter.verticalFit = fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+-            tooltip.Root.AddComponent<FollowMouseHandler>();
+-            tooltip.SetParent(canvas.transform);
+-            tooltip.Root.SetActive(false);
+-            root.SetActive(false);
+-
+-            // Publish only after every control is ready and hidden.
+-            _canvas = canvas;
+-            _tooltipObject = tooltip.Root;
+-            _tooltipRect = tooltip.RectTransform;
+-            _textRect = label.RectTransform;
+-            _initialized = true;
+-        }
+-        catch
+-        {
+-            DiscardFailedSetup(createdObjects, label);
+-            throw;
+-        }
++        Fallback.Setup();
+     }
+ 
+-    private static void DiscardFailedSetup(List<GameObject> createdObjects, SLabelOptions label)
+-    {
+-        try { label?.Unbind(); }
+-        catch (Exception exception) { ReportCleanupFailure(exception); }
+-
+-        for (var i = createdObjects.Count - 1; i >= 0; i--)
+-        {
+-            var gameObject = createdObjects[i];
+-            try { gameObject.SetActive(false); }
+-            catch (Exception exception) { ReportCleanupFailure(exception); }
+-
+-            try { Object.Destroy(gameObject); }
+-            catch (Exception exception) { ReportCleanupFailure(exception); }
+-        }
+-    }
+-
+-    private static void ReportCleanupFailure(Exception exception)
+-    {
+-        try { RLog.Warning("Failed to clean up an incomplete tooltip: " + exception); }
+-        catch { /* Preserve the original setup failure. */ }
+-    }
+-    
+     public static void ShowTooltip(string text)
+     {
+         var driver = SdkEvents.BeginLifecycleSetup();
+@@ -137,14 +74,7 @@
+             return;
+         }
+ 
+-        _tooltipText.Value = text;
+-        
+-        var mousePos = Input.mousePosition;
+-        _tooltipRect.anchoredPosition = new Vector2(mousePos.x * (1920f / Screen.width), mousePos.y * (1080f / Screen.height));
+-        var rectWidth = _textRect.rect.width;
+-        _tooltipRect.sizeDelta = new Vector2(rectWidth + 100, 100);
+-        
+-        _tooltipObject.SetActive(true);
++        Fallback.Show(text);
+     }
+     
+     public static void HideTooltip()
+@@ -156,8 +86,7 @@
+             return;
+         }
+ 
+-        if (_tooltipObject)
+-            _tooltipObject.SetActive(false);
++        Fallback.Hide();
+     }
+ 
+     public static void RaycastFor(GraphicRaycaster raycaster)
+@@ -169,18 +98,7 @@
+             return;
+         }
+ 
+-        if (!raycaster)
+-        {
+-            StopRaycasting();
+-            return;
+-        }
+-
+-        HideTooltip();
+-        _currentRaycaster = raycaster;
+-        _canvas.gameObject.SetActive(true);
+-        
+-        GlobalEvents.OnUpdate.Unsubscribe(OnUpdate);
+-        GlobalEvents.OnUpdate.Subscribe(OnUpdate);
++        Fallback.RaycastFor(raycaster);
+     }
+ 
+     public static void StopRaycasting()
+@@ -192,12 +110,7 @@
+             return;
+         }
+ 
+-        GlobalEvents.OnUpdate.Unsubscribe(OnUpdate);
+-        
+-        _currentRaycaster = null;
+-        HideTooltip();
+-        if (_canvas)
+-            _canvas.gameObject.SetActive(false);
++        Fallback.StopRaycasting();
+     }
+ 
+     internal static void OnUpdate()
+@@ -209,21 +122,6 @@
+             return;
+         }
+ 
+-        if (!_currentRaycaster)
+-        {
+-            StopRaycasting();
+-            return;
+-        }
+-
+-        foreach (var obj in GetHoveredUiObjects(_currentRaycaster))
+-        {
+-            if(obj.TryGetComponent(out TooltipInfo tooltip))
+-            {
+-                ShowTooltip(tooltip.Text);
+-                return;
+-            }
+-        }
+-        
+-        HideTooltip();
++        Fallback.Update();
+     }
+ }
+diff --git a/SonsSdk/SUI/SettingsRegistry.cs b/SonsSdk/SUI/SettingsRegistry.cs
+--- a/SonsSdk/SUI/SettingsRegistry.cs
++++ b/SonsSdk/SUI/SettingsRegistry.cs
+@@ -35,11 +35,30 @@
+     void InvokeEntryCallbacks(SettingsRegistry.SettingsEntry entry);
+ }
+ 
++internal interface ISdkSettingsFallbackDriver : ISdkSettingsRegistrationDriver
++{
++    void RefreshConfigVisibility(SettingsRegistry.SettingsConfigEntry entry);
++    void CreateConfigHeader(SettingsRegistry.SettingsConfigEntry entry);
++    void CreateConfigSpacing(SettingsRegistry.SettingsConfigEntry entry);
++    void SetEntryCharacterLimit(SettingsRegistry.SettingsEntry owner, ConfigEntry entry,
++        int characterLimit, bool disableAutoSizing);
++}
++
+ public class SettingsRegistry
+ {
+     internal static readonly Dictionary<string, SettingsEntry> SettingsEntries = new();
+     
+-    private static BackgroundDefinition ButtonBg => new(
++    private static readonly Lazy<ISdkSettingsFallbackDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsSettingsFallback", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkSettingsFallbackDriver>)method.CreateDelegate(typeof(Func<ISdkSettingsFallbackDriver>)))();
++    });
++    internal static ISdkSettingsFallbackDriver Fallback => FallbackDriver.Value;
++
++    internal static BackgroundDefinition ButtonBg => new(
+         ColorFromString("#796C4E"), 
+         GetBackgroundSprite(EBackground.Round8), 
+         Image.Type.Sliced);
+@@ -90,47 +109,7 @@
+             return;
+         }
+ 
+-        Action onClosed = null;
+-        const string callbackName = "OnSettingsUiClosed";
+-        // The hook is optional; keep Harmony's overload selection only when a declaration exists.
+-        var hasClassCallback = settingsType != null && AccessTools.FindIncludingBaseTypes(settingsType,
+-            type => type.GetMember(callbackName, MemberTypes.Method, AccessTools.all).FirstOrDefault()) != null;
+-        var classCallback = hasClassCallback ? AccessTools.Method(settingsType, callbackName) : null;
+-        if (classCallback != null)
+-        {
+-            if (!classCallback.IsStatic && settingsObject == null)
+-                throw new ArgumentNullException(nameof(settingsObject), "Instance settings callbacks require a settings object.");
+-
+-            onClosed = classCallback.IsStatic
+-                ? classCallback.CreateDelegate<Action>()
+-                : classCallback.CreateDelegate<Action>(settingsObject);
+-        }
+-
+-        var container = SContainer;
+-        var configList = new List<SettingsConfigEntry>();
+-        
+-        GenerateUi(mod, settingsObject, settingsType, container, configList);
+-
+-        container.Root.DontDestroyOnLoad().HideAndDontSave().SetActive(false);
+-        container.Name($"{mod.ID}SettingsPanel");
+-        
+-        var entry = SettingsEntries[mod.ID] = new SettingsEntry(container, changesNeedRestart, callback, configList)
+-        {
+-            ConfigClassCallback = onClosed
+-        };
+-
+-        var settingsEntryField = AccessTools.GetDeclaredFields(settingsType).FirstOrDefault(x=>x.FieldType == typeof(SettingsEntry));
+-        if (settingsEntryField != null)
+-        {
+-            settingsEntryField.SetValue(settingsObject, entry);
+-        }
+-
+-        entry.UserContentContainer = userContent;
+-
+-        if (userContent != null)
+-        {
+-            userContent.RectTransform.SetParent(entry.Container.RectTransform, false);
+-        }
++        Fallback.Create(mod, settingsObject, settingsType, changesNeedRestart, callback, userContent);
+     }
+ 
+     internal static void GenerateUi(ModBase mod,
+@@ -146,253 +125,22 @@
+             return;
+         }
+ 
+-        SContainerOptions Wrap(SUiElement element, ConfigEntry config, float prefHeight, Action customRevertAction = null)
+-        {
+-            return SContainer.Horizontal(0, "CE")
+-                .PHeight(prefHeight)
+-                .Add(element)
+-                .Add(SContainer.PWidth(100) -
+-                     SBgButton.Text("Revert").UpperCase().FontSize(16).FontColor("#c3ba8b")
+-                         .Background(ButtonBg)
+-                         .Ppu(3)
+-                         //.Font(EFont.RobotoLight)
+-                         .Notify(customRevertAction ?? config.ResetToDefault)
+-                         .Dock(EDockType.Fill)
+-                         .Margin(7, 0, 7, 7)
+-                     );
+-        }
+-
+-        var defaultHeight = 65f;
+-        
+-        foreach (var field in GetMembers(settingsType))
+-        {
+-            var headerAttr = field.Attributes.FirstOrDefault(x => x is SettingsUiHeader) as SettingsUiHeader;
+-            var spacingAttr = field.Attributes.FirstOrDefault(x => x is SettingsUiSpacing) as SettingsUiSpacing;
+-            
+-            if (field.Type == typeof(ConfigEntry<float>)) 
+-            {
+-                var entry = (ConfigEntry<float>) field.GetValue(settingsObject);
+-                if (entry == null)
+-                {
+-                    continue;
+-                }
+-                
+-                var observable = new Observable<float>(entry.Value);
+-
+-                var option = SSlider
+-                    .Text(entry.DisplayName)
+-                    .Range(entry.Min ?? 0, entry.Max ?? 10)
+-                    .Format("0.00").Value(observable.Value).Bind(observable).FlexWidth(1);
+-                BindConfig(entry, observable);
+-
+-                if (!string.IsNullOrEmpty(entry.Description))
+-                {
+-                    option.Tooltip(entry.Description);
+-                }
+-
+-                var optionContainer = Wrap(option, entry, defaultHeight);
+-
+-                container.Add(optionContainer);
+-                outConfigList.Add(new(entry, optionContainer, option, headerAttr, spacingAttr));
+-            }
+-            else if (field.Type == typeof(ConfigEntry<int>))
+-            {
+-                var entry = (ConfigEntry<int>) field.GetValue(settingsObject);
+-                if (entry == null)
+-                {
+-                    continue;
+-                }
+-                
+-                var observable = new Observable<float>(entry.Value);
+-
+-                var option = SSlider
+-                    .Text(entry.DisplayName)
+-                    .Range(entry.Min ?? 0, entry.Max ?? 10)
+-                    .IntStep()
+-                    .Value(observable.Value).Bind(observable).FlexWidth(1);
+-                BindConfig(entry, observable, value => (int)value, value => (float)value);
+-                
+-                if (!string.IsNullOrEmpty(entry.Description))
+-                {
+-                    option.Tooltip(entry.Description);
+-                }
+-                
+-                var optionContainer = Wrap(option, entry, defaultHeight);
+-                
+-                container.Add(optionContainer);
+-                outConfigList.Add(new(entry, optionContainer, option, headerAttr, spacingAttr));
+-            }
+-            else if (field.Type == typeof(ConfigEntry<bool>))
+-            {
+-                var entry = (ConfigEntry<bool>) field.GetValue(settingsObject);
+-                if (entry == null)
+-                {
+-                    continue;
+-                }
+-                
+-                var observable = new Observable<bool>(entry.Value);
+-
+-                var option = SToggle.Text(entry.DisplayName).Value(observable.Value).Bind(observable).FlexWidth(1);
+-                BindConfig(entry, observable);
+-                
+-                if (!string.IsNullOrEmpty(entry.Description))
+-                {
+-                    option.Tooltip(entry.Description);
+-                }
+-                
+-                var optionContainer = Wrap(option, entry, defaultHeight);
+-                
+-                container.Add(optionContainer);
+-                outConfigList.Add(new(entry, optionContainer, option, headerAttr, spacingAttr));
+-            }
+-            else if (field.Type == typeof(ConfigEntry<string>))
+-            {
+-                var entry = (ConfigEntry<string>) field.GetValue(settingsObject);
+-                if (entry == null)
+-                {
+-                    continue;
+-                }
+-                
+-                var observable = new Observable<string>(entry.Value);
+-
+-                if (entry.HasOptions)
+-                {
+-                    var option = SOptions.Text(entry.DisplayName).Options(entry.Options.ToArray()).Value(observable.Value).Bind(observable)
+-                        .FlexWidth(1);
+-                    BindConfig(entry, observable);
+-                    var optionContainer = Wrap(option, entry, defaultHeight);
+-                    
+-                    if (!string.IsNullOrEmpty(entry.Description))
+-                    {
+-                        option.Tooltip(entry.Description);
+-                    }
+-                
+-                    container.Add(optionContainer);
+-                    outConfigList.Add(new(entry, optionContainer, option, headerAttr, spacingAttr));
+-                }
+-                else
+-                {
+-                    var option = STextbox.Text(entry.DisplayName).Value(observable.Value).Bind(observable).FlexWidth(1);
+-                    BindConfig(entry, observable);
+-                    var optionContainer = Wrap(option, entry, defaultHeight);
+-                    
+-                    if (!string.IsNullOrEmpty(entry.Description))
+-                    {
+-                        option.Tooltip(entry.Description);
+-                    }
+-                
+-                    container.Add(optionContainer);
+-                    outConfigList.Add(new(entry, optionContainer, option, headerAttr, spacingAttr));
+-                }
+-            }
+-            else if(field.Type == typeof(KeybindConfigEntry))
+-            {
+-                var entry = (KeybindConfigEntry) field.GetValue(settingsObject);
+-                if (entry == null)
+-                {
+-                    continue;
+-                }
+-
+-                var option = SKeybind.Text(entry.DisplayName.ToUpper()).Config(entry).BindingInputHeight(55);
+-                var optionContainer = Wrap(option, entry, defaultHeight, option.RevertToDefault);
+-                
+-                if (!string.IsNullOrEmpty(entry.Description))
+-                {
+-                    option.Tooltip(entry.Description);
+-                }
+-                
+-                container.Add(optionContainer);
+-                outConfigList.Add(new(entry, optionContainer, option, headerAttr, spacingAttr));
+-            }
+-            else if(field.Type == typeof(ConfigEntry<UnityEngine.Color>))
+-            {
+-                var entry = (ConfigEntry<UnityEngine.Color>) field.GetValue(settingsObject);
+-                if (entry == null)
+-                {
+-                    continue;
+-                }
+-                
+-                var observable = new Observable<UnityEngine.Color>(entry.Value);
+-
+-                // var option = SToggle.Text(entry.DisplayName).Value(observable.Value).Bind(observable).FlexWidth(1);
+-                var label = SLabel
+-                    .Text(entry.DisplayName)
+-                    .FontAutoSize(false)
+-                    .FontSize(20)
+-                    .UpperCase()
+-                    .FontColor(new UnityEngine.Color(0.834f, 0.7804f, 0.7804f))
+-                    .Alignment(TextAlignmentOptions.MidlineLeft)
+-                    .Dock(EDockType.Fill);
+-                var option = SColorWheel.Bind(observable).Pivot(1,0.5f).Anchor(AnchorType.MiddleRight).BgActive(false).Size(200, 200);
+-                BindConfig(entry, observable);
+-                var entryContainer = SContainer.Dock(EDockType.Fill).FlexWidth(1).Add(label).Add(option);
+-                
+-                if (!string.IsNullOrEmpty(entry.Description))
+-                {
+-                    label.Tooltip(entry.Description);
+-                }
+-                
+-                var optionContainer = Wrap(entryContainer, entry, 200);
+-                
+-                container.Add(optionContainer);
+-                outConfigList.Add(new(entry, optionContainer, option, headerAttr, spacingAttr));
+-            }
+-        }
+-    }
+-
+-    private static void BindConfig<T>(ConfigEntry<T> entry, Observable<T> observable)
+-    {
+-        BindConfig(entry, observable, value => value, value => value);
+-    }
+-
+-    private static void BindConfig<TConfig, TValue>(ConfigEntry<TConfig> entry, Observable<TValue> observable,
+-        Func<TValue, TConfig> toConfig, Func<TConfig, TValue> toControl)
+-    {
+-        var refreshing = false;
+-
+-        void RefreshFromConfig()
+-        {
+-            var wasRefreshing = refreshing;
+-            refreshing = true;
+-            try
+-            {
+-                observable.Value = toControl(entry.Value);
+-            }
+-            finally
+-            {
+-                refreshing = wasRefreshing;
+-            }
+-        }
+-
+-        // Bind the control first, so a nested correction is not overwritten by an older event.
+-        observable.OnValueChanged += _ =>
+-        {
+-            if (refreshing)
+-                return;
+-
+-            try
+-            {
+-                entry.Value = toConfig(observable.Value);
+-            }
+-            catch
+-            {
+-                try
+-                {
+-                    RefreshFromConfig();
+-                }
+-                catch
+-                {
+-                    // Preserve the original validation or write failure.
+-                }
+-
+-                throw;
+-            }
+-
+-            RefreshFromConfig();
+-        };
+-
+-        entry.OnValueChanged.Subscribe((_, _) => RefreshFromConfig());
+-        RefreshFromConfig();
++        Fallback.GenerateUi(mod, settingsObject, settingsType, container, outConfigList);
++    }
++
++    internal static void LogIgnoredMember(System.Reflection.MemberInfo member, bool notIncluded)
++    {
++        RLog.Debug("Ignored field: " + member.Name + (notIncluded ? " in settings (not included)" : " in settings"));
++    }
++
++    internal static void LogAddedMember(System.Reflection.MemberInfo member, bool isProperty)
++    {
++        RLog.Debug((isProperty ? "Added property: " : "Added field: ") + member.Name + " to settings");
++    }
++
++    internal static void LogChangedEntry(ConfigEntry entry)
++    {
++        RLog.Debug($"{entry.DisplayName} has changed ({entry.GetDefaultValueAsString()} -> {entry.GetValueAsString()})");
+     }
+ 
+     public static bool HasSettings(string id)
+@@ -413,101 +161,6 @@
+     public static bool TryGetEntry(string id, out SettingsEntry entry)
+     {
+         return SettingsEntries.TryGetValue(id, out entry);
+-    }
+-
+-    private static List<MemberInfo> GetMembers(Type type)
+-    {
+-        var members = new List<MemberInfo>();
+-        
+-        var fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+-        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+-
+-        var mode = type.GetCustomAttribute<SettingsUiMode>()?.Mode ?? SettingsUiMode.ESettingsUiMode.OptOut;
+-
+-        foreach (var field in fields)
+-        {
+-            if(field.Name.EndsWith("__BackingField"))
+-                continue;
+-            
+-            if (mode == SettingsUiMode.ESettingsUiMode.OptOut && field.GetCustomAttribute<SettingsUiIgnore>() != null)
+-            {
+-                RLog.Debug("Ignored field: " + field.Name + " in settings");
+-                continue;
+-            }
+-            
+-            if (mode == SettingsUiMode.ESettingsUiMode.OptIn && field.GetCustomAttribute<SettingsUiInclude>() == null)
+-            {
+-                RLog.Debug("Ignored field: " + field.Name + " in settings (not included)");
+-                continue;
+-            }
+-
+-            RLog.Debug("Added field: " + field.Name + " to settings");
+-            members.Add(new FieldMemberInfo(field));
+-        }
+-        
+-        foreach (var property in properties)
+-        {
+-            if (!property.CanRead || property.GetIndexParameters().Length != 0)
+-                continue;
+-
+-            if (mode == SettingsUiMode.ESettingsUiMode.OptOut && property.GetCustomAttribute<SettingsUiIgnore>() != null)
+-            {
+-                RLog.Debug("Ignored field: " + property.Name + " in settings");
+-                continue;
+-            }
+-            
+-            if (mode == SettingsUiMode.ESettingsUiMode.OptIn && property.GetCustomAttribute<SettingsUiInclude>() == null)
+-            {
+-                RLog.Debug("Ignored field: " + property.Name + " in settings (not included)");
+-                continue;
+-            }
+-            
+-            RLog.Debug("Added property: " + property.Name + " to settings");
+-            members.Add(new PropertyMemberInfo(property));
+-        }
+-        
+-        return members;
+-    }
+-
+-    private abstract class MemberInfo
+-    {
+-        public abstract string Name { get; }
+-        public abstract Type Type { get; }
+-        public abstract object GetValue(object obj);
+-        public abstract void SetValue(object obj, object value);
+-        public List<Attribute> Attributes { init; get; }
+-    }
+-    
+-    private class FieldMemberInfo : MemberInfo
+-    {
+-        private readonly FieldInfo _fieldInfo;
+-
+-        public FieldMemberInfo(FieldInfo fieldInfo)
+-        {
+-            _fieldInfo = fieldInfo;
+-            Attributes = fieldInfo.GetCustomAttributes().ToList();
+-        }
+-
+-        public override string Name => _fieldInfo.Name;
+-        public override Type Type => _fieldInfo.FieldType;
+-        public override object GetValue(object obj) => _fieldInfo.GetValue(obj);
+-        public override void SetValue(object obj, object value) => _fieldInfo.SetValue(obj, value);
+-    }
+-    
+-    private class PropertyMemberInfo : MemberInfo
+-    {
+-        private readonly PropertyInfo _propertyInfo;
+-
+-        public PropertyMemberInfo(PropertyInfo propertyInfo)
+-        {
+-            _propertyInfo = propertyInfo;
+-            Attributes = propertyInfo.GetCustomAttributes().ToList();
+-        }
+-
+-        public override string Name => _propertyInfo.Name;
+-        public override Type Type => _propertyInfo.PropertyType;
+-        public override object GetValue(object obj) => _propertyInfo.GetValue(obj);
+-        public override void SetValue(object obj, object value) => _propertyInfo.SetValue(obj, value);
+     }
+ 
+     public class SettingsConfigEntry
+@@ -549,48 +202,17 @@
+         
+         public void RefreshVisibility()
+         {
+-            UiElement.Root.SetActive(_shouldBeVisible);
+-            
+-            foreach (var element in HeaderElements)
+-            {
+-                element.Root.SetActive(_shouldBeVisible);
+-            }
++            Fallback.RefreshConfigVisibility(this);
+         }
+         
+         private void CreateHeader()
+         {
+-            if (HeaderInfo == null)
+-            {
+-                return;
+-            }
+-
+-            var headerElement = SLabel.Text(HeaderInfo.Text).Alignment(HeaderInfo.Alignment).Wrap(true).PHeight(50);
+-            if(HeaderInfo.LightFont)
+-                headerElement.As<SLabelOptions>().Font(EFont.RobotoLight);
+-            if(HeaderInfo.Color.HasValue)
+-                headerElement.As<SLabelOptions>().FontColor(HeaderInfo.Color.Value);
+-            else
+-                headerElement.As<SLabelOptions>().FontColor("#ea2f4e25");
+-            headerElement.SetParent(UiElement.RectTransform.parent);
+-            headerElement.RectTransform.SetSiblingIndex(UiElement.RectTransform.GetSiblingIndex());
+-            headerElement.Root.SetActive(_shouldBeVisible);
+-            
+-            HeaderElements.Add(headerElement);
++            Fallback.CreateConfigHeader(this);
+         }
+ 
+         private void CreateSpacing()
+         {
+-            if(SpacingInfo == null)
+-            {
+-                return;
+-            }
+-
+-            var spacingElement = SContainer.PHeight(SpacingInfo.Spacing);
+-            spacingElement.SetParent(UiElement.RectTransform.parent);
+-            spacingElement.RectTransform.SetSiblingIndex(UiElement.RectTransform.GetSiblingIndex());
+-            spacingElement.Root.SetActive(_shouldBeVisible);
+-            
+-            HeaderElements.Add(spacingElement);
++            Fallback.CreateConfigSpacing(this);
+         }
+     }
+ 
+@@ -627,59 +249,7 @@
+             if (driver != null)
+                 return driver.Settings.CheckEntryForChanges(this);
+ 
+-            foreach (var configEntry in ConfigEntries)
+-            {
+-                var cfg = configEntry.ConfigEntry;
+-                if(cfg.HasChanged)
+-                {
+-                    RLog.Debug($"{cfg.DisplayName} has changed ({cfg.GetDefaultValueAsString()} -> {cfg.GetValueAsString()})");
+-                    return true;
+-                }
+-            }
+-            
+-            return false;
+-        }
+-        
+-        private void ValidateDividers()
+-        {
+-            if (_dividers == null)
+-            {
+-                _dividers = new Dictionary<string, (SLabelDividerOptions, bool)>();
+-            }
+-            
+-            if (_dividers.Count == 0)
+-            {
+-                foreach (var cfg in ConfigEntries)
+-                {
+-                    if(_dividers.ContainsKey(cfg.CategoryName))
+-                        continue;
+-
+-                    var divider = SLabelDivider.RichText("\uf0d7 " + cfg.CategoryName).FontColor("#ea2f4e40").OnClick(() =>
+-                    {
+-                        ToggleCategory(cfg.CategoryName, !_dividers[cfg.CategoryName].Item2);
+-                    } );
+-                    _dividers.Add(cfg.CategoryName, (divider, true));
+-                }
+-            }
+-        }
+-        
+-        private IEnumerator ColorPickerHack()
+-        {
+-            yield return new WaitForSeconds(0.1f);
+-
+-            foreach (var entry in ConfigEntries)
+-            {
+-                if (entry.ConfigEntry is ConfigEntry<UnityEngine.Color> && entry.UiElement.Root.activeSelf)
+-                {
+-                    var pickerOptions = entry.WrappedElement.As<SColorWheelOptions>();
+-                    if (pickerOptions == null)
+-                    {
+-                        continue;
+-                    }
+-                    
+-                    pickerOptions.ColorWheelControl.OnEnable();
+-                }
+-            }
++            return Fallback.CheckEntryForChanges(this);
+         }
+ 
+         public void ParentTo(Transform parent)
+@@ -691,32 +261,7 @@
+                 return;
+             }
+ 
+-            ValidateDividers();
+-            
+-            var categories = ConfigEntries.GroupBy(x => x.CategoryName).ToDictionary(x => x.Key, x => x.ToList());
+-            
+-            foreach (var pair in categories)
+-            {
+-                var category = pair.Key;
+-
+-                _dividers[category].Item1.RectTransform.SetParent(parent, false);
+-                
+-                foreach (var cfg in pair.Value)
+-                {
+-                    foreach (var headerElement in cfg.HeaderElements)
+-                    {
+-                        headerElement.RectTransform.SetParent(parent, false);
+-                    }
+-
+-                    var element = cfg.UiElement;
+-                    element.RectTransform.SetParent(parent, false);
+-                    cfg.RefreshVisibility();
+-                }
+-            }
+-            
+-            UserContentContainer?.RectTransform.SetParent(parent, false);
+-
+-            ColorPickerHack().RunCoro();
++            Fallback.ParentEntry(this, parent);
+         }
+ 
+         public void Unparent()
+@@ -728,25 +273,7 @@
+                 return;
+             }
+ 
+-            UserContentContainer?.RectTransform.SetParent(Container.RectTransform, false);
+-            
+-            foreach (var entry in ConfigEntries)
+-            {
+-                var element = entry.UiElement;
+-                element.RectTransform.SetParent(Container.RectTransform, false);
+-                entry.UiElement.Root.SetActive(false);
+-                
+-                foreach (var headerElement in entry.HeaderElements)
+-                {
+-                    headerElement.RectTransform.SetParent(Container.RectTransform, false);
+-                    headerElement.Root.SetActive(false);
+-                }
+-            }
+-            
+-            foreach (var divider in _dividers)
+-            {
+-                divider.Value.Item1.RectTransform.SetParent(Container.RectTransform, false);
+-            }
++            Fallback.UnparentEntry(this);
+         }
+ 
+         public void RevertSettings()
+@@ -758,13 +285,7 @@
+                 return;
+             }
+ 
+-            foreach (var configEntry in ConfigEntries)
+-            {
+-                if (configEntry.WrappedElement is SKeybindOptions keybind)
+-                    keybind.RevertToDefault();
+-                else
+-                    configEntry.ConfigEntry.ResetToDefault();
+-            }
++            Fallback.RevertEntry(this);
+         }
+ 
+         /// <summary>
+@@ -796,25 +317,7 @@
+         /// <param name="disableAutoSizing">Disable auto sizing of the text inside the textbox</param>
+         public void SetCharacterLimit(ConfigEntry entry, int characterLimit, bool disableAutoSizing = true)
+         {
+-            var element = GetElementForEntry(entry);
+-            if(element == null)
+-                throw new Exception("Config entry has no element");
+-
+-            // all entries are wrapped in a container
+-            var tr = element.RectTransform.GetChild(0);
+-            if (!tr)
+-                throw new Exception("Config element has no child");
+-
+-            var input = tr.Find("InputPanel/InputField").GetComponent<TMP_InputField>();
+-            if(!input)
+-                throw new Exception("Config element has no input field");
+-            
+-            input.characterLimit = characterLimit;
+-            if (disableAutoSizing)
+-            {
+-                input.textComponent.enableAutoSizing = false;
+-                input.textComponent.fontSize = 18;
+-            }
++            Fallback.SetEntryCharacterLimit(this, entry, characterLimit, disableAutoSizing);
+         }
+         
+         public void ToggleCategory(string identifier, bool show)
+@@ -826,16 +329,7 @@
+                 return;
+             }
+ 
+-            foreach (var configEntry in ConfigEntries)
+-            {
+-                if(configEntry.CategoryName == identifier)
+-                    configEntry.ShouldBeVisible = show;
+-            }
+-
+-            var tuple = _dividers[identifier];
+-            tuple.Item2 = show;
+-            tuple.Item1.RichText((show?"\uf0d7 ":"\uf0da ") + identifier);
+-            _dividers[identifier] = tuple;
++            Fallback.ToggleEntryCategory(this, identifier, show);
+         }
+ 
+         public void Save()
+@@ -847,11 +341,7 @@
+                 return;
+             }
+ 
+-            foreach (var category in ConfigEntries.GroupBy(x=>x.ConfigEntry.Category).Select(x=>x.Key))
+-            {
+-                //RLog.Msg(Color.Orange, $"Category: {category.File.FilePath}");
+-                category.SaveToFile();
+-            }
++            Fallback.SaveEntry(this);
+         }
+ 
+         internal void InvokeCallbacks()
+@@ -863,8 +353,7 @@
+                 return;
+             }
+ 
+-            Callback?.Invoke();
+-            ConfigClassCallback?.Invoke();
++            Fallback.InvokeEntryCallbacks(this);
+         }
+     }
+ }
+diff --git a/SonsSdk/UIs/ModSettingsUi.cs b/SonsSdk/UIs/ModSettingsUi.cs
+--- a/SonsSdk/UIs/ModSettingsUi.cs
++++ b/SonsSdk/UIs/ModSettingsUi.cs
+@@ -42,40 +42,7 @@
+             return;
+         }
+ 
+-        if (_initialized)
+-            return;
+-
+-        var panel = RegisterNewPanel(MOD_SETTINGS_NAME)
+-            .OverrideSorting(200)
+-            .Background(MainBg).Material(GameResources.GetMaterial(MaterialAssetMap.DarkGreyBackground))
+-            .Dock(EDockType.Fill).Size(-400,-100);
+-        panel.Active(false);
+-        
+-        Raycaster = panel.Root.GetComponent<GraphicRaycaster>();
+-
+-        panel.Add(SLabel.Bind(Title).Dock(EDockType.Top)
+-            .Size(0, 60).Position(0, -30)
+-            .FontColor(Color.white.WithAlpha(0.3f)).Font(EFont.RobotoLight).FontSpacing(3).Active(false));
+-
+-        // panel.Add(SContainer.Background(new (0.2f, 0.2f, 0.2f), EBackground.None)
+-        //     .Dock(EDockType.Top).Size(-100, 3).Position(0, -100));
+-
+-        _mainContainer = SScrollContainer.Margin(100,100,100,160).As<SScrollContainerOptions>();
+-        _mainContainer.ContainerObject.Padding(2, 4, 0, 0);
+-        panel.Add(_mainContainer);
+-        
+-        panel.Add(SBgButton
+-            .Background(ButtonBg).Background("#990508").Ppu(3)
+-            .Pivot(0, 0).Anchor(AnchorType.BottomLeft).Position(80, 80).Size(300, 60)
+-            .RichText("\uF060 Back").FontColor("#ff5856").UpperCase().FontSize(20).Notify(Close));
+-        
+-        panel.Add(SBgButton
+-            .Background(ButtonBg).Background("#796C4E").Ppu(3)
+-            .Pivot(0, 0).Anchor(AnchorType.BottomLeft).Position(390, 80).Size(200, 60)
+-            .RichText("Revert \uf0e2").FontColor("#c3ba8b").UpperCase().FontSize(20).Notify(RevertSettings));
+-
+-        SubscribeEvents();
+-        _initialized = true;
++        SettingsRegistry.Fallback.CreatePanel();
+     }
+ 
+     internal static void SubscribeEvents()
+@@ -93,10 +60,12 @@
+             return;
+         }
+ 
+-        if (Input.GetKeyDown(KeyCode.Escape))
+-        {
+-            Close();
+-        }
++        SettingsRegistry.Fallback.UpdatePanel();
++    }
++
++    internal static void LogOpenedSettings(string id)
++    {
++        RLog.Debug($"Found panel for {id}");
+     }
+ 
+     public static void Open(string id)
+@@ -116,46 +85,7 @@
+         if (driver != null)
+             return driver.Settings.TryOpenPanel(id, onClosed);
+ 
+-        if (!_initialized || SettingsRegistry.GetEntry(id) is not { } entry)
+-        {
+-            return false;
+-        }
+-
+-        if (_currentEntry != null)
+-        {
+-            Close(returnToOwner: false);
+-            if (_currentEntry != null)
+-            {
+-                return false;
+-            }
+-        }
+-
+-        RLog.Debug($"Found panel for {id}");
+-        try
+-        {
+-            entry.ParentTo(_mainContainer.ContainerObject.RectTransform);
+-            Title.Value = $"MOD SETTINGS <color=#ea2f4e>[{id}]</color>";
+-            TogglePanel(MOD_SETTINGS_NAME, true);
+-            TooltipProvider.RaycastFor(Raycaster);
+-            _currentEntry = entry;
+-            _onClosed = onClosed;
+-            return true;
+-        }
+-        catch
+-        {
+-            try
+-            {
+-                entry.Unparent();
+-                TogglePanel(MOD_SETTINGS_NAME, false);
+-                TooltipProvider.StopRaycasting();
+-            }
+-            catch
+-            {
+-                // Preserve the original opening failure if UI cleanup also fails.
+-            }
+-
+-            throw;
+-        }
++        return SettingsRegistry.Fallback.TryOpenPanel(id, onClosed);
+     }
+ 
+     public static void Close()
+@@ -163,7 +93,7 @@
+         Close(returnToOwner: true);
+     }
+ 
+-    private static void Close(bool returnToOwner)
++    internal static void Close(bool returnToOwner)
+     {
+         var driver = SdkEvents.BeginLifecycleSetup();
+         if (driver != null)
+@@ -172,37 +102,7 @@
+             return;
+         }
+ 
+-        var entry = _currentEntry;
+-        var onClosed = _onClosed;
+-        _currentEntry = null;
+-        _onClosed = null;
+-        var completed = false;
+-        var showRestartPrompt = false;
+-
+-        try
+-        {
+-            entry?.Unparent();
+-            TogglePanel(MOD_SETTINGS_NAME, false);
+-            TooltipProvider.StopRaycasting();
+-
+-            if (entry != null)
+-            {
+-                entry.Save();
+-                entry.InvokeCallbacks();
+-                showRestartPrompt = entry.ChangesNeedRestart && entry.CheckForChanges();
+-            }
+-
+-            if (showRestartPrompt)
+-            {
+-                GenericModalDialog.ShowDialog("Restart", "You need to restart the game for the changes to take effect.").SetOption1("Ok", ()=>{});
+-            }
+-
+-            completed = true;
+-        }
+-        finally
+-        {
+-            onClosed?.Invoke(returnToOwner && completed && !showRestartPrompt && _currentEntry == null);
+-        }
++        SettingsRegistry.Fallback.ClosePanel(returnToOwner);
+     }
+ 
+     public static void RevertSettings()
+@@ -214,11 +114,6 @@
+             return;
+         }
+ 
+-        if (_currentEntry == null)
+-        {
+-            return;
+-        }
+-        
+-        _currentEntry.RevertSettings();
++        SettingsRegistry.Fallback.RevertPanel();
+     }
+ }

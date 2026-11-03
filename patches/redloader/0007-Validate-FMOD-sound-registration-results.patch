@@ -1,0 +1,57 @@
+diff --git a/SonsSdk/SoundTools.cs b/SonsSdk/SoundTools.cs
+index f0f24d9..b8d5c4a 100644
+--- a/SonsSdk/SoundTools.cs
++++ b/SonsSdk/SoundTools.cs
+@@ -71,6 +71,8 @@ public static class SoundTools
+     /// </summary>
+     /// <param name="id">The id of the sound by which you can play it later</param>
+     /// <param name="filepath">The file path of the sound</param>
++    /// <param name="use3d">Whether to create a spatial sound.</param>
++    /// <returns>The registered sound, or null if registration fails.</returns>
+     public static Sound RegisterSound(string id, string filepath, bool use3d = false)
+     {
+         if (Sounds.ContainsKey(id))
+@@ -79,7 +81,12 @@ public static class SoundTools
+             return null;
+         }
+         
+-        CoreSystem.Value.createSound(filepath, use3d ? MODE._3D : MODE.DEFAULT, out var sound);
++        var result = CoreSystem.Value.createSound(filepath, use3d ? MODE._3D : MODE.DEFAULT, out var sound);
++        if (result != FMODCustom.RESULT.OK)
++        {
++            RLog.Error($"Failed to register sound '{id}' from '{filepath}': {result}");
++            return null;
++        }
+         
+         Sounds.Add(id, sound);
+ 
+@@ -91,6 +98,7 @@ public static class SoundTools
+     /// </summary>
+     /// <param name="id">The id of the sound by which you can play it later</param>
+     /// <param name="data">the data of the sound file</param>
++    /// <param name="use3d">Whether to create a spatial sound.</param>
+     public static void RegisterSound(string id, byte[] data, bool use3d = false)
+     {
+         if (Sounds.ContainsKey(id))
+@@ -105,7 +113,13 @@ public static class SoundTools
+             length = (uint)data.Length
+         };
+ 
+-        CoreSystem.Value.createSound(data, use3d ? MODE._3D : MODE.DEFAULT, ref info, out var sound);
++        var mode = MODE.OPENMEMORY | (use3d ? MODE._3D : MODE.DEFAULT);
++        var result = CoreSystem.Value.createSound(data, mode, ref info, out var sound);
++        if (result != FMODCustom.RESULT.OK)
++        {
++            RLog.Error($"Failed to register sound '{id}' from memory ({data.Length} bytes): {result}");
++            return;
++        }
+         
+         Sounds.Add(id, sound);
+     }
+@@ -422,4 +436,4 @@ public static class Vector3Extensions
+             z = vector.z
+         };
+     }
+-}
+\ No newline at end of file
++}

@@ -1,0 +1,317 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\dependencies\Modstoke.Dependencies.props" />
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>SonsSdk</AssemblyName>
+    <RootNamespace>SonsSdk</RootNamespace>
+    <Version>0.8.6</Version>
+    <AssemblyVersion>0.8.6.0</AssemblyVersion>
+    <FileVersion>0.8.6.0</FileVersion>
+    <Title>Modstoke Sons SDK Compatibility</Title>
+    <Description>SonsSdk compatibility contracts hosted by Modstoke Loader by OpenACAI.</Description>
+    <Product>Modstoke Loader by OpenACAI</Product>
+    <Company>OpenACAI</Company>
+    <Authors>BepInEx, Toni Macaroni</Authors>
+    <PackageLicenseExpression>LGPL-2.1-only</PackageLicenseExpression>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DebugType>embedded</DebugType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Keep inherited API documentation without requiring comments on every legacy member. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Modstoke.Compatibility.RedLoader\Modstoke.Compatibility.RedLoader.csproj" Private="false" GlobalPropertiesToRemove="TargetFramework" AdditionalProperties="Configuration=Debug" />
+    <PackageReference Include="HarmonyX" Version="2.16.1" PrivateAssets="all" />
+    <Reference Include="MonoMod.Utils" HintPath="$(RedCompatibilityLibraryRoot)\MonoMod.Utils.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Common" HintPath="$(RedCompatibilityLibraryRoot)\Il2CppInterop.Common.dll" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="GLTF">
+      <HintPath>$(ModstokeDependencyRoot)\managed\GLTF.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime">
+      <HintPath>$(RedCompatibilityLibraryRoot)\Il2CppInterop.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AdvancedTerrainGrass">
+      <HintPath>$(GameInteropRoot)\AdvancedTerrainGrass.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AstarPathfindingProject">
+      <HintPath>$(GameInteropRoot)\AstarPathfindingProject.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="bolt">
+      <HintPath>$(GameInteropRoot)\bolt.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="bolt.user">
+      <HintPath>$(GameInteropRoot)\bolt.user.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="com.rlabrecque.steamworks.net">
+      <HintPath>$(GameInteropRoot)\com.rlabrecque.steamworks.net.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Endnight.Localization">
+      <HintPath>$(GameInteropRoot)\Endnight.Localization.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Endnight.Utilities.Configurations">
+      <HintPath>$(GameInteropRoot)\Endnight.Utilities.Configurations.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Multiplayer.Dedicated">
+      <HintPath>$(GameInteropRoot)\Multiplayer.Dedicated.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="PathologicalGames">
+      <HintPath>$(GameInteropRoot)\PathologicalGames.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.GameApplication">
+      <HintPath>$(GameInteropRoot)\Sons.GameApplication.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Lodding">
+      <HintPath>$(GameInteropRoot)\Sons.Lodding.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Multiplayer">
+      <HintPath>$(GameInteropRoot)\Sons.Multiplayer.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Multiplayer.Configurations">
+      <HintPath>$(GameInteropRoot)\Sons.Multiplayer.Configurations.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Settings">
+      <HintPath>$(GameInteropRoot)\Sons.Settings.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="udpkit">
+      <HintPath>$(GameInteropRoot)\udpkit.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="udpkit.common">
+      <HintPath>$(GameInteropRoot)\udpkit.common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Endnight">
+      <HintPath>$(GameInteropRoot)\Endnight.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="FMOD.Unity">
+      <HintPath>$(GameInteropRoot)\FMOD.Unity.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2Cppmscorlib">
+      <HintPath>$(GameInteropRoot)\Il2Cppmscorlib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppSystem">
+      <HintPath>$(GameInteropRoot)\Il2CppSystem.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppSystem.Core">
+      <HintPath>$(GameInteropRoot)\Il2CppSystem.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(GameInteropRoot)\Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ShapesRuntime">
+      <HintPath>$(GameInteropRoot)\ShapesRuntime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons">
+      <HintPath>$(GameInteropRoot)\Sons.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Ai.Utilities">
+      <HintPath>$(GameInteropRoot)\Sons.Ai.Utilities.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Ai.Vail">
+      <HintPath>$(GameInteropRoot)\Sons.Ai.Vail.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Areas">
+      <HintPath>$(GameInteropRoot)\Sons.Areas.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Construction">
+      <HintPath>$(GameInteropRoot)\Sons.Construction.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Construction.Utils">
+      <HintPath>$(GameInteropRoot)\Sons.Construction.Utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Events">
+      <HintPath>$(GameInteropRoot)\Sons.Events.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.FMOD">
+      <HintPath>$(GameInteropRoot)\Sons.FMOD.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Gameplay.GameSetup">
+      <HintPath>$(GameInteropRoot)\Sons.Gameplay.GameSetup.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Gameplay.LevelProps">
+      <HintPath>$(GameInteropRoot)\Sons.Gameplay.LevelProps.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Gui">
+      <HintPath>$(GameInteropRoot)\Sons.Gui.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Gui.Colors">
+      <HintPath>$(GameInteropRoot)\Sons.Gui.Colors.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Gui.Options">
+      <HintPath>$(GameInteropRoot)\Sons.Gui.Options.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Input">
+      <HintPath>$(GameInteropRoot)\Sons.Input.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Rendering">
+      <HintPath>$(GameInteropRoot)\Sons.Rendering.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Save">
+      <HintPath>$(GameInteropRoot)\Sons.Save.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.SettingsWrappers">
+      <HintPath>$(GameInteropRoot)\Sons.SettingsWrappers.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Item">
+      <HintPath>$(GameInteropRoot)\Sons.Item.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.Loading">
+      <HintPath>$(GameInteropRoot)\Sons.Loading.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sons.UiElements">
+      <HintPath>$(GameInteropRoot)\Sons.UiElements.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="TheForest.Utils">
+      <HintPath>$(GameInteropRoot)\TheForest.Utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Addressables">
+      <HintPath>$(GameInteropRoot)\Unity.Addressables.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.InputSystem">
+      <HintPath>$(GameInteropRoot)\Unity.InputSystem.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Localization">
+      <HintPath>$(GameInteropRoot)\Unity.Localization.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Core.Runtime">
+      <HintPath>$(GameInteropRoot)\Unity.RenderPipelines.Core.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.HighDefinition.Runtime">
+      <HintPath>$(GameInteropRoot)\Unity.RenderPipelines.HighDefinition.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.ResourceManager">
+      <HintPath>$(GameInteropRoot)\Unity.ResourceManager.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(GameInteropRoot)\Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(GameInteropRoot)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>$(GameInteropRoot)\UnityEngine.AnimationModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(GameInteropRoot)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>$(GameInteropRoot)\UnityEngine.ImageConversionModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(GameInteropRoot)\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TerrainModule">
+      <HintPath>$(GameInteropRoot)\UnityEngine.TerrainModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(GameInteropRoot)\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputModule">
+      <HintPath>$(GameInteropRoot)\UnityEngine.InputModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.LocalizationModule">
+      <HintPath>$(GameInteropRoot)\UnityEngine.LocalizationModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.Physics2DModule">
+      <HintPath>$(GameInteropRoot)\UnityEngine.Physics2DModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(GameInteropRoot)\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(GameInteropRoot)\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(GameInteropRoot)\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(GameInteropRoot)\UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>$(GameInteropRoot)\UnityEngine.AssetBundleModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Alt.Json">
+      <HintPath>$(ModstokeDependencyRoot)\managed\Alt.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\bundle" />
+    <EmbeddedResource Include="Resources\bundle" LogicalName="SonsSdk.Resources.bundle" />
+  </ItemGroup>
+</Project>

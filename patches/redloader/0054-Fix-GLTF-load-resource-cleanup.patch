@@ -1,0 +1,188 @@
+diff --git a/GLTF/GLTFSceneImporter.cs b/GLTF/GLTFSceneImporter.cs
+index 84db2d9..eb7543b 100644
+--- a/GLTF/GLTFSceneImporter.cs
++++ b/GLTF/GLTFSceneImporter.cs
+@@ -441,6 +441,8 @@ namespace UnityGLTF
+ 		/// <returns></returns>
+ 		public async Task LoadSceneAsync(int sceneIndex = -1, bool showSceneObj = true, Action<GameObject, ExceptionDispatchInfo> onLoadComplete = null, CancellationToken cancellationToken = default(CancellationToken), IProgress<ImportProgress> progress = null)
+ 		{
++			var ownsLoad = false;
++			var loadSucceeded = false;
+ 			try
+ 			{
+ 				lock (this)
+@@ -451,6 +453,7 @@ namespace UnityGLTF
+ 					}
+ 
+ 					_isRunning = true;
++					ownsLoad = true;
+ 				}
+ 
+ 				// TODO check where the right place is to call OnBeforeImport as early as possible
+@@ -514,25 +517,41 @@ namespace UnityGLTF
+ 				if (LoadUnreferencedImagesAndMaterials)
+ 					await LoadUnreferencedAssetsAsync();
+ 
++				loadSucceeded = true;
++
+ 			}
+ 			catch (Exception ex)
+ 			{
+-				Cleanup();
+-				DisposeNativeBuffers();
++				if (ownsLoad)
++					CleanupFailedLoad();
++
++				try { onLoadComplete?.Invoke(null, ExceptionDispatchInfo.Capture(ex)); }
++				catch (Exception callbackError)
++				{
++					ReportSecondaryFailure("GLTF load failure callback failed", callbackError);
++				}
+ 
+-				onLoadComplete?.Invoke(null, ExceptionDispatchInfo.Capture(ex));
+-				Debug.Log(LogType.Error, $"Error loading file: {_gltfFileName}");
++				try { Debug.Log(LogType.Error, $"Error loading file: {_gltfFileName}"); }
++				catch { /* Preserve the original load failure. */ }
+ 				throw;
+ 			}
+ 			finally
+ 			{
+-				lock (this)
++				// A rejected overlapping call must not release the active load.
++				if (ownsLoad)
+ 				{
+-					_isRunning = false;
++					try
++					{
++						if (loadSucceeded)
++							ReleaseLoadResources();
++					}
++					finally
++					{
++						lock (this)
++							_isRunning = false;
++					}
+ 				}
+ 			}
+-			_gltfStream.Stream.Close();
+-			DisposeNativeBuffers();
+ 			if (progressStatus.NodeLoaded != progressStatus.NodeTotal) Debug.Log(LogType.Error, $"Nodes loaded ({progressStatus.NodeLoaded}) does not match node total in the scene ({progressStatus.NodeTotal}) (File: {_gltfFileName})");
+ 			if (progressStatus.TextureLoaded > progressStatus.TextureTotal) Debug.Log(LogType.Error, $"Textures loaded ({progressStatus.TextureLoaded}) is larger than texture total in the scene ({progressStatus.TextureTotal}) (File: {_gltfFileName})");
+ 
+@@ -1492,8 +1511,44 @@ namespace UnityGLTF
+ #endif
+ 		}
+ 
++		private void CleanupFailedLoad()
++		{
++			try { Cleanup(); }
++			catch (Exception error) { ReportSecondaryFailure("GLTF cache cleanup failed", error); }
++
++			try { ReleaseLoadResources(); }
++			catch (Exception error) { ReportSecondaryFailure("GLTF load resource cleanup failed", error); }
++		}
++
++		private void ReleaseLoadResources()
++		{
++			var stream = _gltfStream.Stream;
++			_gltfStream.Stream = null;
++			ExceptionDispatchInfo failure = null;
++			try { stream?.Close(); }
++			catch (Exception error) { failure = ExceptionDispatchInfo.Capture(error); }
++
++			try { DisposeNativeBuffers(); }
++			catch (Exception error)
++			{
++				if (failure == null)
++					throw;
++				ReportSecondaryFailure("GLTF native-buffer cleanup failed", error);
++			}
++
++			failure?.Throw();
++		}
++
++		private static void ReportSecondaryFailure(string message, Exception error)
++		{
++			try { Debug.Log(LogType.Warning, message + ": " + error); }
++			catch { /* Preserve the original load failure. */ }
++		}
++
+ 		private async Task SetupLoad(Func<Task> callback)
+ 		{
++			var ownsLoad = false;
++			var loadSucceeded = false;
+ 			try
+ 			{
+ 				lock (this)
+@@ -1504,6 +1559,7 @@ namespace UnityGLTF
+ 					}
+ 
+ 					_isRunning = true;
++					ownsLoad = true;
+ 				}
+ 
+ 				Statistics = new ImportStatistics();
+@@ -1523,20 +1579,30 @@ namespace UnityGLTF
+ 				}
+ 
+ 				await callback();
++				loadSucceeded = true;
+ 			}
+ 			catch
+ 			{
+-				Cleanup();
++				if (ownsLoad)
++					CleanupFailedLoad();
+ 				throw;
+ 			}
+ 			finally
+ 			{
+-				lock (this)
++				// A rejected overlapping call must not release the active load.
++				if (ownsLoad)
+ 				{
+-					_isRunning = false;
++					try
++					{
++						if (loadSucceeded)
++							ReleaseLoadResources();
++					}
++					finally
++					{
++						lock (this)
++							_isRunning = false;
++					}
+ 				}
+-				_gltfStream.Stream.Close();
+-				DisposeNativeBuffers();
+ 			}
+ 		}
+ 
+diff --git a/GLTF/GLTF.csproj b/GLTF/GLTF.csproj
+index 14c53c0..c713c61 100644
+--- a/GLTF/GLTF.csproj
++++ b/GLTF/GLTF.csproj
+@@ -6,6 +6,8 @@
+         <ImplicitUsings>enable</ImplicitUsings>
+         <CopyToOuput>true</CopyToOuput>
+         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
++        <DeployToGame Condition="'$(DeployToGame)' == ''">false</DeployToGame>
++        <AssemblySearchPaths Condition="'$(ReferencePath)' != ''">$(AssemblySearchPaths);$(ReferencePath)</AssemblySearchPaths>
+         <DefineConstants>UNITY_2021_3_OR_NEWER;UNITY_2019_1_OR_NEWER;UNITY_2021_2_OR_NEWER;UNITY_2021_1_OR_NEWER;UNITY_ANIMATION</DefineConstants>
+     </PropertyGroup>
+ 
+@@ -107,11 +109,9 @@
+ 
+     <Target Name="CopyProjectDllOnly" AfterTargets="Build">
+         <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(BuildDir)/Unity.IL2CPP" />
+-    </Target>
+-
+-    <Target Name="CopyProjectDllOnly" AfterTargets="Build">
+-        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(BuildDir)/Unity.IL2CPP" />
+-        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(GamePath)\$(ProjectAlias)\net6" />
++        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
++              DestinationFolder="$(GamePath)\$(ProjectAlias)\net6"
++              Condition="'$(DeployToGame)' == 'true' and '$(GamePath)' != '' and Exists('$(GamePath)\$(ProjectAlias)\net6')" />
+     </Target>
+ 
+ </Project>

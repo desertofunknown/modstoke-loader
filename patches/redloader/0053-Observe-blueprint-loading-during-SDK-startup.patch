@@ -1,0 +1,125 @@
+diff --git a/SonsSdk/Building/CustomBlueprintManager.cs b/SonsSdk/Building/CustomBlueprintManager.cs
+index e413008..a2d3ae6 100644
+--- a/SonsSdk/Building/CustomBlueprintManager.cs
++++ b/SonsSdk/Building/CustomBlueprintManager.cs
+@@ -113,11 +113,11 @@ public class CustomBlueprintManager
+         }
+     }
+ 
+-    internal static async void Init()
++    internal static Task Init()
+     {
+         SdkEvents.OnSonsSceneInitialized.Subscribe(OnSceneInit);
+ 
+-        await LoadGltfObjectsFromDirectory();
++        return LoadGltfObjectsFromDirectory();
+     }
+ 
+     internal static void Uninit()
+diff --git a/SonsSdk/Private/MainInitializer.cs b/SonsSdk/Private/MainInitializer.cs
+index fc84115..dc438fa 100644
+--- a/SonsSdk/Private/MainInitializer.cs
++++ b/SonsSdk/Private/MainInitializer.cs
+@@ -66,7 +66,7 @@ internal class MainInitializer
+ 
+         try
+         {
+-            RunInitialization().RunCoro();
++            RunInitialization(InitCoro()).RunCoro();
+         }
+         catch (Exception exception)
+         {
+@@ -90,9 +90,20 @@ internal class MainInitializer
+         _initializationStarted = true;
+         try
+         {
+-            InitSystems();
+-            _initializationFinished = true;
+-            TryCompleteInitialization();
++            // Keep synchronous service setup inside the server bootstrap prefix.
++            var services = InitSystems();
++            if (!services.IsCompleted)
++            {
++                RunInitialization(WaitForServices(services)).RunCoro();
++                return;
++            }
++
++            services.GetAwaiter().GetResult();
++            if (!_initializationFailed)
++            {
++                _initializationFinished = true;
++                TryCompleteInitialization();
++            }
+         }
+         catch (Exception exception)
+         {
+@@ -155,15 +166,18 @@ internal class MainInitializer
+         }
+     }
+ 
+-    private static IEnumerator RunInitialization()
++    private static IEnumerator RunInitialization(IEnumerator initialization)
+     {
+         // Advance this SDK's managed child routines here so their failures reach the host.
+         var routines = new Stack<IEnumerator>();
+-        routines.Push(InitCoro());
++        routines.Push(initialization);
+         try
+         {
+             while (routines.Count > 0)
+             {
++                if (_initializationFailed)
++                    yield break;
++
+                 object current;
+                 try
+                 {
+@@ -191,8 +205,11 @@ internal class MainInitializer
+                 yield return current;
+             }
+ 
+-            _initializationFinished = true;
+-            TryCompleteInitialization();
++            if (!_initializationFailed)
++            {
++                _initializationFinished = true;
++                TryCompleteInitialization();
++            }
+         }
+         finally
+         {
+@@ -338,7 +355,7 @@ internal class MainInitializer
+ 
+         yield return loadCatalogsTask;
+ 
+-        InitSystems();
++        yield return WaitForServices(InitSystems());
+         
+         yield return AddProgress(0.15f);
+ 
+@@ -354,7 +371,7 @@ internal class MainInitializer
+         GlobalOverlays.ToggleOverlay(false);
+     }
+ 
+-    private static void InitSystems()
++    private static Task InitSystems()
+     {
+         if (!LoaderEnvironment.IsDedicatedServer)
+         {
+@@ -369,7 +386,15 @@ internal class MainInitializer
+         Packets.Init();
+         EntityManager.Init();
+         AssetImportingInitializer.Init();
+-        CustomBlueprintManager.Init();
++        return CustomBlueprintManager.Init();
++    }
++
++    private static IEnumerator WaitForServices(Task services)
++    {
++        while (!services.IsCompleted)
++            yield return null;
++
++        services.GetAwaiter().GetResult();
+     }
+ 
+     private static IEnumerator LoadAllModBundles()

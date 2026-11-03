@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <AssemblyName>0Harmony</AssemblyName>
+    <RootNamespace>HarmonyLib</RootNamespace>
+    <AssemblyVersion>2.16.1.0</AssemblyVersion>
+    <FileVersion>2.16.1.0</FileVersion>
+    <InformationalVersion>2.16.1-modstoke-rust.4</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Product>Modstoke Harmony</Product>
+    <Copyright>Copyright BepInEx, Andreas Pardeike and contributors; Modstoke changes copyright 2026 Alex Cooper</Copyright>
+    <Version>2.16.1</Version>
+    <SignAssembly>false</SignAssembly>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <DefineConstants>$(DefineConstants);MODSTOKE_HARMONY</DefineConstants>
+    <HarmonyDependencyRoot Condition="'$(HarmonyDependencyRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\.tools\modstoke-dependencies\managed</HarmonyDependencyRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="MonoMod.RuntimeDetour" HintPath="$(HarmonyDependencyRoot)\MonoMod.RuntimeDetour.dll" Private="false" />
+    <Reference Include="MonoMod.Utils" HintPath="$(HarmonyDependencyRoot)\MonoMod.Utils.dll" Private="false" />
+    <Reference Include="MonoMod.Core" HintPath="$(HarmonyDependencyRoot)\MonoMod.Core.dll" Private="false" />
+    <Reference Include="Mono.Cecil" HintPath="$(HarmonyDependencyRoot)\Mono.Cecil.dll" Private="false" />
+    <Reference Include="Mono.Cecil.Rocks" HintPath="$(HarmonyDependencyRoot)\Mono.Cecil.Rocks.dll" Private="false" />
+    <Reference Include="Mono.Cecil.Mdb" HintPath="$(HarmonyDependencyRoot)\Mono.Cecil.Mdb.dll" Private="false" />
+    <Reference Include="Mono.Cecil.Pdb" HintPath="$(HarmonyDependencyRoot)\Mono.Cecil.Pdb.dll" Private="false" />
+  </ItemGroup>
+</Project>

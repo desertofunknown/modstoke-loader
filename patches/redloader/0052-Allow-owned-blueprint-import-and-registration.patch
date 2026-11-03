@@ -1,0 +1,78 @@
+diff --git a/SonsSdk/Building/CustomBlueprintManager.cs b/SonsSdk/Building/CustomBlueprintManager.cs
+index 8372eb3..e413008 100644
+--- a/SonsSdk/Building/CustomBlueprintManager.cs
++++ b/SonsSdk/Building/CustomBlueprintManager.cs
+@@ -19,6 +19,13 @@ using Object = UnityEngine.Object;
+ 
+ namespace SonsSdk.Building;
+ 
++internal interface ISdkBlueprintRegistrationDriver
++{
++    void Register(ScrewStructureRegistration registration);
++    Task LoadGltfObjectsFromDirectory(string directory);
++    int? GetRecipeIdFromName(string name);
++}
++
+ public record ScrewStructureRegistration(
+     GameObject prefab,
+     int recipeId,
+@@ -43,7 +50,7 @@ public class CustomBlueprintManager
+     private static readonly Regex PascalToHumanRegex = new("[a-z][A-Z]", RegexOptions.Compiled);
+     private static StructureCraftingNode _craftingNodePrefab;
+     private static StructureRecipe _recipePrefab;
+-    private static readonly Dictionary<int, ScrewStructureRegistration> LoadedObjects = new();
++    internal static readonly Dictionary<int, ScrewStructureRegistration> LoadedObjects = new();
+     private static readonly Dictionary<int, StructureRecipe> ProcessedObjects = new();
+ 
+     /// <summary>
+@@ -78,6 +85,13 @@ public class CustomBlueprintManager
+     /// <exception cref="Exception"></exception>
+     public static void TryRegister(ScrewStructureRegistration reg)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.Blueprints.Register(reg);
++            return;
++        }
++
+         if (!LoadedObjects.TryAdd(reg.recipeId, reg))
+         {
+             throw new Exception($"Recipe Collision!!! Blueprint with id {reg.recipeId} already registered!");
+@@ -489,6 +503,13 @@ public class CustomBlueprintManager
+     
+     public static async Task LoadGltfObjectsFromDirectory(string directory = null)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            await driver.Blueprints.LoadGltfObjectsFromDirectory(directory);
++            return;
++        }
++
+         if (string.IsNullOrWhiteSpace(directory))
+         {
+             directory = LoaderEnvironment.BlueprintDirectory;
+@@ -526,6 +547,10 @@ public class CustomBlueprintManager
+ 
+     public static int? GetRecipeIdFromName(string name)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.Blueprints.GetRecipeIdFromName(name);
++
+         if (!name.Contains('.'))
+             return LoaderUtils.HashString(name);
+ 
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index f3a7438..841ad26 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -51,6 +51,7 @@ internal interface ISdkLifecycleDriver
+     SUI.ISdkSettingsRegistrationDriver Settings { get; }
+     ISdkModalDialogDriver Dialogs { get; }
+     ISdkTooltipDriver Tooltips { get; }
++    Building.ISdkBlueprintRegistrationDriver Blueprints { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);

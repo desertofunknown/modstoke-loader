@@ -1,0 +1,139 @@
+diff --git a/SonsSdk/GenericModalDialog.cs b/SonsSdk/GenericModalDialog.cs
+index b90b12a..4a10da5 100644
+--- a/SonsSdk/GenericModalDialog.cs
++++ b/SonsSdk/GenericModalDialog.cs
+@@ -253,60 +253,86 @@ public class GenericModalDialog : MonoBehaviour
+         var gui = prefab._gui;
+ 
+         var newGui = gui.gameObject.Instantiate();
+-        newGui.SetParent(SUI.SUI.SUIViewport.transform);
+-        newGui.SetActive(false);
++        try
++        {
++            newGui.SetParent(SUI.SUI.SUIViewport.transform);
++            newGui.SetActive(false);
+ 
+-        gui = newGui.GetComponent<DynamicModalDialogGui>();
+-        
+-        Instance = newGui.AddComponent<GenericModalDialog>();
+-        
+-        Instance._titleTextObject = gui.TitleTextString.GetComponent<LinkTextGui>();
+-        Destroy(gui.TitleTextString);
++            gui = newGui.GetComponent<DynamicModalDialogGui>();
+ 
+-        Instance._contentTextObject = gui.ContentTextString.GetComponent<TextMeshProUGUI>();
+-        Destroy(gui.ContentTextString);
+-        
+-        Instance._cancelTextObject = gui.BackTextString.GetComponent<LinkTextGui>();
+-        Destroy(gui.BackTextString);
+-        
+-        Instance._option1TextObject = gui.Option1TextString.GetComponent<LinkTextGui>();
+-        Destroy(gui.Option1TextString);
+-        
+-        Instance._option2TextObject = gui.Option2TextString.GetComponent<LinkTextGui>();
+-        Destroy(gui.Option2TextString);
+-        
+-        Instance._option3TextObject = gui.Option3TextString.GetComponent<LinkTextGui>();
+-        Destroy(gui.Option3TextString);
++            var dialog = newGui.AddComponent<GenericModalDialog>();
+ 
+-        Instance._option1Button = gui.Option1Button;
+-        Instance._option1Button.onClick.AddListener((UnityAction)Instance.Option1Clicked);
+-        
+-        Instance._option2Button = gui.Option2Button;
+-        Instance._option2Button.onClick.AddListener((UnityAction)Instance.Option2Clicked);
+-        
+-        Instance._option3Button = gui.Option3Button;
+-        Instance._option3Button.onClick.AddListener((UnityAction)Instance.Option3Clicked);
++            dialog._titleTextObject = gui.TitleTextString.GetComponent<LinkTextGui>();
++            Destroy(gui.TitleTextString);
+ 
+-        Instance._cancelButton = gui.BackButton;
+-        Instance._cancelButton.gameObject.SetActive(true);
+-        Instance._cancelButton.onClick = new Button.ButtonClickedEvent();
+-        Instance._cancelButton.onClick.AddListener((UnityAction)Instance.CancelClicked);
++            dialog._contentTextObject = gui.ContentTextString.GetComponent<TextMeshProUGUI>();
++            Destroy(gui.ContentTextString);
+ 
+-        Instance._background = gui.Background;
+-        
+-        Instance._inputField = gui.InputField;
+-        
+-        Destroy(gui.EventSystem.gameObject);
+-        Instance._gamepadMenuHelper = gui.GamepadMenuHelper;
++            dialog._cancelTextObject = gui.BackTextString.GetComponent<LinkTextGui>();
++            Destroy(gui.BackTextString);
+ 
+-        Instance._canvas = newGui.GetComponent<Canvas>();
+-        
+-        newGui.transform.localScale = Vector3.one;
+-        
+-        var rect = newGui.GetComponent<RectTransform>();
+-        rect.anchorMin = Vector2.zero;
+-        rect.anchorMax = Vector2.one;
++            dialog._option1TextObject = gui.Option1TextString.GetComponent<LinkTextGui>();
++            Destroy(gui.Option1TextString);
++
++            dialog._option2TextObject = gui.Option2TextString.GetComponent<LinkTextGui>();
++            Destroy(gui.Option2TextString);
++
++            dialog._option3TextObject = gui.Option3TextString.GetComponent<LinkTextGui>();
++            Destroy(gui.Option3TextString);
++
++            dialog._option1Button = gui.Option1Button;
++            dialog._option1Button.onClick.AddListener((UnityAction)dialog.Option1Clicked);
++
++            dialog._option2Button = gui.Option2Button;
++            dialog._option2Button.onClick.AddListener((UnityAction)dialog.Option2Clicked);
++
++            dialog._option3Button = gui.Option3Button;
++            dialog._option3Button.onClick.AddListener((UnityAction)dialog.Option3Clicked);
+ 
+-        Destroy(gui);
++            dialog._cancelButton = gui.BackButton;
++            dialog._cancelButton.gameObject.SetActive(true);
++            dialog._cancelButton.onClick = new Button.ButtonClickedEvent();
++            dialog._cancelButton.onClick.AddListener((UnityAction)dialog.CancelClicked);
++
++            dialog._background = gui.Background;
++
++            dialog._inputField = gui.InputField;
++
++            Destroy(gui.EventSystem.gameObject);
++            dialog._gamepadMenuHelper = gui.GamepadMenuHelper;
++
++            dialog._canvas = newGui.GetComponent<Canvas>();
++
++            newGui.transform.localScale = Vector3.one;
++
++            var rect = newGui.GetComponent<RectTransform>();
++            rect.anchorMin = Vector2.zero;
++            rect.anchorMax = Vector2.one;
++
++            Destroy(gui);
++
++            // Do not expose a dialog whose native setup has not finished.
++            Instance = dialog;
++        }
++        catch
++        {
++            DiscardFailedSetup(newGui);
++            throw;
++        }
++    }
++
++    private static void DiscardFailedSetup(GameObject gameObject)
++    {
++        try { gameObject.SetActive(false); }
++        catch (System.Exception exception) { ReportCleanupFailure(exception); }
++
++        try { Object.Destroy(gameObject); }
++        catch (System.Exception exception) { ReportCleanupFailure(exception); }
++    }
++
++    private static void ReportCleanupFailure(System.Exception exception)
++    {
++        try { RLog.Warning("Failed to clean up an incomplete modal dialog: " + exception); }
++        catch { /* Preserve the original setup failure. */ }
+     }
+ }

@@ -1,0 +1,8 @@
+diff --git a/SonsSdk/Properties/AssemblyInfo.cs b/SonsSdk/Properties/AssemblyInfo.cs
+--- a/SonsSdk/Properties/AssemblyInfo.cs
++++ b/SonsSdk/Properties/AssemblyInfo.cs
+@@ -2,3 +2,4 @@ using System.Runtime.CompilerServices;
+ 
+ [assembly: InternalsVisibleTo("SonsLoaderPlugin")]
+ [assembly: InternalsVisibleTo("SonsGameManager")]
++[assembly: InternalsVisibleTo("OpenACAI.Endnight.Loader.Core")]

@@ -1,0 +1,239 @@
+diff --git a/SonsSdk/Savegame/CustomRegisteredSerializers.cs b/SonsSdk/Savegame/CustomRegisteredSerializers.cs
+index e083d72..1b3611c 100644
+--- a/SonsSdk/Savegame/CustomRegisteredSerializers.cs
++++ b/SonsSdk/Savegame/CustomRegisteredSerializers.cs
+@@ -1,5 +1,5 @@
+-using Alt.Json;
+-using RedLoader;
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (c) RedLoader contributors. Copyright (C) 2026 Alex Cooper.
+ 
+ namespace SonsSdk;
+ 
+@@ -18,15 +18,12 @@ internal class CustomRegisteredSerializers<T> : ICustomRegisteredSerializer
+ 
+     public string Serialize()
+     {
+-        // return JSON.Dump(Serializer.Save(), EncodeOptions.NoTypeHints);
+-        return LoaderUtils.JsonSerialize(Serializer.Save());
++        return SonsSaveTools.Driver.Serialize(this);
+     }
+ 
+     public void Deserialize(string json)
+     {
+-        // var data = JSON.Load(json).Make<T>();
+-        var data = LoaderUtils.JsonDeserialize<T>(json);
+-        Serializer.Load(data);
++        SonsSaveTools.Driver.Deserialize(this, json);
+     }
+ 
+     public bool IsType(Type type)
+diff --git a/SonsSdk/Savegame/RedloaderModSerializer.cs b/SonsSdk/Savegame/RedloaderModSerializer.cs
+index 25a7828..093331a 100644
+--- a/SonsSdk/Savegame/RedloaderModSerializer.cs
++++ b/SonsSdk/Savegame/RedloaderModSerializer.cs
+@@ -1,15 +1,8 @@
+-using System.Diagnostics;
+-using System.Drawing;
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (c) RedLoader contributors. Copyright (C) 2026 Alex Cooper.
++
+ using Il2CppInterop.Runtime.Injection;
+-using Il2CppSystem.Collections.Generic;
+-using Newtonsoft.Json;
+-using RedLoader;
+-using RedLoader.Utils;
+-using Sons.Save;
+ using Object = Il2CppSystem.Object;
+-using CppString = Il2CppSystem.String;
+-using CppStringList = Il2CppSystem.Collections.Generic.List<Il2CppSystem.String>;
+-using JsonConvert = Alt.Json.JsonConvert;
+ 
+ namespace SonsSdk;
+ 
+@@ -21,22 +14,12 @@ public class RedloaderModSerializer : Object
+     
+     internal static void Init()
+     {
+-        ClassInjector.RegisterTypeInIl2Cpp<ModSaveData>();
+-        ClassInjector.RegisterTypeInIl2Cpp<RedloaderModSerializer>(new()
+-        {
+-            LogSuccess = true,
+-            Interfaces = new[] { typeof(ISaveGameSerializer<ModSaveData>) }
+-        });
+-        
+-        Instance = new RedloaderModSerializer();
+-
+-        RegisterSerializer();
++        SonsSaveTools.Driver.Initialize();
+     }
+ 
+     internal static void RegisterSerializer()
+     {
+-        var cs = new ISaveGameSerializer<ModSaveData>(Instance.Pointer);
+-        SaveGameManager.RegisterSerializer(cs);
++        SonsSaveTools.Driver.RegisterSerializer();
+     }
+     
+     public string SerializedName => "Mod";
+@@ -48,39 +31,7 @@ public class RedloaderModSerializer : Object
+     
+     ModSaveData OnSerialize()
+     {
+-        RLog.Msg(Color.Yellow, new string('=', 50));
+-        RLog.Msg(Color.Yellow, "SERIALIZING MOD DATA");
+-
+-        var sw = new Stopwatch();
+-
+-        var datas = new System.Collections.Generic.List<NamedSaveData>();
+-        
+-        foreach (var (name, saveable) in SonsSaveTools.CustomSaveables)
+-        {
+-            try
+-            {
+-                var namedSaveData = new NamedSaveData();
+-                namedSaveData.Name = name;
+-                namedSaveData.Data = saveable.Serialize();
+-                datas.Add(namedSaveData);
+-                RLog.Msg(Color.Orange, $"Serializing {name} took {sw.ElapsedMilliseconds}ms");
+-            }
+-            catch (Exception e)
+-            {
+-                Console.WriteLine(e);
+-            }
+-
+-            sw.Reset();
+-        }
+-
+-        // var modSaveData = new ModSaveData(JSON.Dump(datas, EncodeOptions.NoTypeHints));
+-        var modSaveData = new ModSaveData(JsonConvert.SerializeObject(datas));
+-        sw.Stop();
+-        RLog.Msg(Color.Orange, $"Finishing up took {sw.ElapsedMilliseconds}ms");
+-        
+-        RLog.Msg(Color.Yellow, new string('=', 50));
+-
+-        return modSaveData;
++        return SonsSaveTools.Driver.Serialize();
+     }
+     
+     private ModSaveData DeserializeOverride(string data)
+@@ -92,63 +43,7 @@ public class RedloaderModSerializer : Object
+     // input data will be null here, so disregard it
+     void OnDeserialize(ModSaveData _)
+     {
+-        RLog.Msg(Color.Yellow, new string('=', 50));
+-        RLog.Msg(Color.Yellow, "DESERIALIZING MOD DATA");
+-
+-        if (string.IsNullOrEmpty(_lastData))
+-        {
+-            RLog.Error("Could not deserialize mod data, no data was found.");
+-            return;
+-        }
+-
+-        var sw = new Stopwatch();
+-
+-        var data = SaveGameManager.Deserialize<ModSaveData>(_lastData);
+-        _lastData = null;
+-
+-        RLog.Msg(Color.Orange, $"SaveGameManager deserializing took {sw.ElapsedMilliseconds}ms");
+-        sw.Reset();
+-
+-        System.Collections.Generic.List<NamedSaveData> datas;
+-        
+-        try
+-        {
+-            // datas = JSON.Load(data.ModData.Get()).Make<System.Collections.Generic.List<NamedSaveData>>();
+-            datas = JsonConvert.DeserializeObject<System.Collections.Generic.List<NamedSaveData>>(data.ModData.Get());
+-        }
+-        catch (Exception e)
+-        {
+-            RLog.Error($"Error in deserializing mod data: {e}");
+-            throw;
+-        }
+-
+-        RLog.Msg(Color.Orange, $"Constructing mod list took {sw.ElapsedMilliseconds}ms");
+-        sw.Reset();
+-
+-        foreach (var modData in datas)
+-        {
+-            if (SonsSaveTools.CustomSaveables.TryGetValue(modData.Name, out var saveable))
+-            {
+-                try
+-                {
+-                    saveable.Deserialize(modData.Data);
+-                    RLog.Msg(Color.Orange, $"Deserializing {modData.Name} took {sw.ElapsedMilliseconds}ms");
+-                }
+-                catch (Exception e)
+-                {
+-                    RLog.Error($"Error deserializing {modData.Name}: {e}");
+-                    throw;
+-                }
+-                
+-                sw.Reset();
+-                continue;
+-            }
+-            
+-            RLog.Error($"Could not find saveable with name {modData.Name}");
+-        }
+-        
+-        sw.Stop();
+-        RLog.Msg(Color.Yellow, new string('=', 50));
++        SonsSaveTools.Driver.Deserialize(ref _lastData);
+     }
+ 
+     public RedloaderModSerializer(IntPtr ptr) : base(ptr)
+diff --git a/SonsSdk/Savegame/SonsSaveTools.cs b/SonsSdk/Savegame/SonsSaveTools.cs
+index 555b503..8ba860b 100644
+--- a/SonsSdk/Savegame/SonsSaveTools.cs
++++ b/SonsSdk/Savegame/SonsSaveTools.cs
+@@ -1,21 +1,43 @@
+-using System.Drawing;
+-using RedLoader;
+-using Sons.Gameplay.GameSetup;
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (c) RedLoader contributors. Copyright (C) 2026 Alex Cooper.
++
++using System.Reflection;
+ 
+ namespace SonsSdk;
+ 
++internal interface ISdkSaveDriver
++{
++    void Register<T>(ICustomSaveable<T> saveable);
++    void Unregister<T>(ICustomSaveable<T> saveable);
++    void Initialize();
++    void RegisterSerializer();
++    string Serialize<T>(CustomRegisteredSerializers<T> registration);
++    void Deserialize<T>(CustomRegisteredSerializers<T> registration, string json);
++    ModSaveData Serialize();
++    void Deserialize(ref string data);
++}
++
+ public static class SonsSaveTools
+ {
+     internal static Dictionary<string, ICustomRegisteredSerializer> CustomSaveables = new();
+-    
++    private static readonly Lazy<ISdkSaveDriver> SaveDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsSdkSave", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkSaveDriver>)method.CreateDelegate(typeof(Func<ISdkSaveDriver>)))();
++    });
++    internal static ISdkSaveDriver Driver => SaveDriver.Value;
++
+     public static void Register<T>(ICustomSaveable<T> saveable)
+     {
+-        CustomSaveables.Add(saveable.Name, new CustomRegisteredSerializers<T>(saveable));
++        Driver.Register(saveable);
+     }
+-    
++
+     public static void Unregister<T>(ICustomSaveable<T> saveable)
+     {
+-        CustomSaveables.Remove(saveable.Name);
++        Driver.Unregister(saveable);
+     }
+ 
+     public static void Init()

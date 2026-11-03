@@ -1,0 +1,44 @@
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/OpenACAIIL2CPPHookStatus.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/OpenACAIIL2CPPHookStatus.cs
+index bd7b266..c0f2e48 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/OpenACAIIL2CPPHookStatus.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/OpenACAIIL2CPPHookStatus.cs
+@@ -13,6 +13,7 @@ public static class OpenACAIIL2CPPHookStatus
+ 
+     private static readonly object SyncRoot = new();
+     private static readonly Dictionary<string, bool> ProviderAvailability = new(StringComparer.OrdinalIgnoreCase);
++    private static Action<object> _stateWriter;
+ 
+     private static string _status = "pending";
+     private static string _detail = "IL2CPP hook status has not been initialized.";
+@@ -208,10 +209,31 @@ public static class OpenACAIIL2CPPHookStatus
+         }
+     }
+ 
++    internal static void RegisterStateWriter(Action<object> writer)
++    {
++        ArgumentNullException.ThrowIfNull(writer);
++        lock (SyncRoot)
++        {
++            if (_stateWriter == writer)
++                return;
++            if (_stateWriter != null)
++                throw new InvalidOperationException("A native hook status writer is already registered.");
++
++            _stateWriter = writer;
++            WriteNoThrow();
++        }
++    }
++
+     private static void WriteNoThrow()
+     {
+         try
+         {
++            if (_stateWriter != null)
++            {
++                _stateWriter(CreateStateNoLock());
++                return;
++            }
++
+             var directory = ResolveStateDirectory();
+             if (string.IsNullOrWhiteSpace(directory))
+             {

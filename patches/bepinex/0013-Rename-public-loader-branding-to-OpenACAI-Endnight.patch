@@ -1,0 +1,135 @@
+From 810068c5699216c4dcaeb3085614b344daead313 Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Fri, 5 Jun 2026 19:44:25 -0500
+Subject: [PATCH 13/13] Rename public loader branding to OpenACAI Endnight
+
+---
+ BepInEx.Core/OpenACAIBranding.cs              | 24 ++++++++++++++++++-
+ .../Logging/ChainloaderLogHelper.cs           |  2 +-
+ OPENACAI_FORK_NOTES.md                        |  6 ++---
+ .../DoorstopEntrypoint.cs                     |  4 ++--
+ 4 files changed, 29 insertions(+), 7 deletions(-)
+
+diff --git a/BepInEx.Core/OpenACAIBranding.cs b/BepInEx.Core/OpenACAIBranding.cs
+index 641e44e..a6c65a4 100644
+--- a/BepInEx.Core/OpenACAIBranding.cs
++++ b/BepInEx.Core/OpenACAIBranding.cs
+@@ -4,14 +4,27 @@ using System.Text.RegularExpressions;
+ 
+ namespace BepInEx;
+ 
++/// <summary>
++/// Provides the public OpenACAI product name and version strings shown by the loader.
++/// </summary>
+ public static class OpenACAIBranding
+ {
+-    public const string LoaderName = "OpenACAI Loader";
++    /// <summary>
++    /// Human-facing product name for the Sons Of The Forest loader.
++    /// </summary>
++    public const string LoaderName = "OpenACAI Endnight Loader";
++
++    /// <summary>
++    /// Version label used when a release manifest is not available.
++    /// </summary>
+     public const string DevelopmentLoaderVersion = "development";
+ 
+     private static readonly Regex ManifestVersionPattern =
+         new Regex("\"version\"\\s*:\\s*\"(?<version>[^\"]+)\"", RegexOptions.Compiled);
+ 
++    /// <summary>
++    /// Gets the OpenACAI loader version from environment or installed manifest metadata.
++    /// </summary>
+     public static string LoaderVersion
+     {
+         get
+@@ -25,6 +38,9 @@ public static class OpenACAIBranding
+         }
+     }
+ 
++    /// <summary>
++    /// Gets the product name with the OpenACAI loader version appended for logs and windows.
++    /// </summary>
+     public static string LoaderDisplayName
+     {
+         get
+@@ -34,8 +50,14 @@ public static class OpenACAIBranding
+         }
+     }
+ 
++    /// <summary>
++    /// Gets the Windows console title used by the preloader.
++    /// </summary>
+     public static string ConsoleTitle => LoaderDisplayName + " - " + Paths.ProcessName;
+ 
++    /// <summary>
++    /// Gets the BepInEx compatibility runtime version preserved for plugin compatibility.
++    /// </summary>
+     public static string BepInExRuntimeVersion
+     {
+         get
+diff --git a/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs b/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs
+index 178bd35..cb4de1e 100644
+--- a/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs
++++ b/BepInEx.Preloader.Core/Logging/ChainloaderLogHelper.cs
+@@ -39,7 +39,7 @@ public static class ChainloaderLogHelper
+         var consoleTitle = OpenACAIBranding.ConsoleTitle;
+         log.Log(LogLevel.Message, $"{consoleTitle} ({File.GetLastWriteTime(Paths.ExecutablePath)})");
+         log.Log(LogLevel.Message,
+-                $"BepInEx compatibility runtime {OpenACAIBranding.BepInExRuntimeVersion}; RedLoader/SonsSDK compatibility is handled by OpenACAI Loader");
++                $"BepInEx compatibility runtime {OpenACAIBranding.BepInExRuntimeVersion}; RedLoader/SonsSDK compatibility is handled by {OpenACAIBranding.LoaderName}");
+ 
+         if (ConsoleManager.ConsoleActive)
+             ConsoleManager.SetConsoleTitle(consoleTitle);
+diff --git a/OPENACAI_FORK_NOTES.md b/OPENACAI_FORK_NOTES.md
+index a6d0076..ca6faad 100644
+--- a/OPENACAI_FORK_NOTES.md
++++ b/OPENACAI_FORK_NOTES.md
+@@ -2,7 +2,7 @@
+ 
+ Developer: Alex Cooper
+ 
+-This fork is transitional source for OpenACAI Loader's Sons Of The Forest
++This fork is transitional source for OpenACAI Endnight Loader's Sons Of The Forest
+ runtime work. BepInEx remains credited upstream code under its existing license;
+ OpenACAI changes are intended to unblock the `.NET 10` LTS and `.NET 11`
+ preview runtime lines while the long-term loader is rewritten into
+@@ -14,7 +14,7 @@ OpenACAI-owned modules.
+ - Preserve BepInEx plugin compatibility while OpenACAI rewrites the runtime,
+   patch host, plugin inventory, resolver, interop repair, and state reporting
+   into OpenACAI namespaces.
+-- Keep RedLoader/SonsSdk support as compatibility behavior in OpenACAI Loader,
++- Keep RedLoader/SonsSdk support as compatibility behavior in OpenACAI Endnight Loader,
+   not as an external sidecar framework.
+ 
+ ## Harmony And MonoMod Baseline
+@@ -39,7 +39,7 @@ version, so changing that assembly version to the public OpenACAI release line
+ would make otherwise-compatible plugins look mismatched. The public loader
+ version is exposed through `OpenACAIBranding` from `OPENACAI_LOADER_VERSION` or
+ `BepInEx\plugins\OpenACAILoader\openacai-loader.manifest.json`; missing manifest
+-data now displays as `OpenACAI Loader (development)` rather than reusing the
++data now displays as `OpenACAI Endnight Loader (development)` rather than reusing the
+ BepInEx runtime version.
+ 
+ ## API Replacements Used
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/DoorstopEntrypoint.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/DoorstopEntrypoint.cs
+index 684d611..b030544 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/DoorstopEntrypoint.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/DoorstopEntrypoint.cs
+@@ -73,11 +73,11 @@ public static class Entrypoint
+             {
+                 if (PlatformHelper.Is(Platform.Windows))
+                 {
+-                    MessageBox.Show("Failed to start OpenACAI Loader", OpenACAIBranding.LoaderName);
++                    MessageBox.Show("Failed to start " + OpenACAIBranding.LoaderName, OpenACAIBranding.LoaderName);
+                 }
+                 else if (NotifySend.IsSupported)
+                 {
+-                    NotifySend.Send("Failed to start OpenACAI Loader", "Check logs for details");
++                    NotifySend.Send("Failed to start " + OpenACAIBranding.LoaderName, "Check logs for details");
+                 }
+                 else if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("BEPINEX_FAIL_FAST")))
+                 {
+-- 
+2.54.0.windows.1
+

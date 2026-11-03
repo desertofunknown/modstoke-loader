@@ -1,0 +1,1014 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\dependencies\Modstoke.Dependencies.props" />
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>Modstoke.Loader</AssemblyName>
+    <Title>Modstoke Loader Core</Title>
+    <Product>Modstoke Loader by OpenACAI</Product>
+    <Company>OpenACAI</Company>
+    <Description>Modstoke Loader core and Modstoke SDK by OpenACAI.</Description>
+    <RootNamespace>Modstoke.Loader</RootNamespace>
+    <ImplicitUsings>false</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <NoWarn>1701;1702</NoWarn>
+    <GameRoot Condition="'$(GameRoot)' == ''">$(MSBuildProjectDirectory)\..\..\..\..</GameRoot>
+    <GameInteropRoot Condition="'$(GameInteropRoot)' == ''">$(GameRoot)\BepInEx\interop</GameInteropRoot>
+  </PropertyGroup>
+
+  <Target Name="ValidateGameInteropReferences" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(GameInteropRoot)\Il2Cppmscorlib.dll') Or !Exists('$(GameInteropRoot)\UnityEngine.UnityWebRequestAudioModule.dll')" Text="GameInteropRoot must contain the complete generated IL2CPP wrapper set. Launch the loader to generate BepInEx\interop, or set GameInteropRoot to an existing generated set. Unity base libraries cannot substitute for wrappers." />
+  </Target>
+
+  <ItemGroup>
+    <Compile Include="Configuration/Config.cs" />
+    <Compile Include="Sons/Diagnostics/WarningCapture.cs" />
+    <Compile Include="Sons/Diagnostics/WarningCapture.Native.cs" />
+    <Compile Include="Sons/Audio/ImpactAudioPatch.cs" />
+    <Compile Include="Sons/Runtime/GameLifecycleFixes.cs" />
+    <Compile Include="Sons/Runtime/GatheringLifecycleFix.cs" />
+    <Compile Include="Sons/Server/ServerEvents.cs" />
+    <Compile Include="Sons/Server/ServerDispatchGate.cs" />
+    <Compile Include="Sons/Networking/Bolt/BoltEventSchema.cs" />
+    <Compile Include="Sons/Networking/Bolt/BoltPackets.cs" />
+    <Compile Include="Sons/Networking/Bolt/BoltStates.cs" />
+    <Compile Include="Sons/Networking/Bolt/BoltEntities.cs" />
+    <Compile Include="Sons/Networking/Bolt/BoltCommands.cs" />
+    <Compile Include="Sons/Networking/Bolt/BoltStreams.cs" />
+    <Compile Include="Sons/Networking/Bolt/BoltReceiveGuard.cs" />
+    <Compile Include="Sons/Networking/Bolt/BoltStateAdmission.cs" />
+    <Compile Include="Sons/Networking/Bolt/BoltStateAdmission.Observation.cs" />
+    <Compile Include="Sons/Networking/Bolt/BoltProperties.cs" />
+    <Compile Include="Sons/Networking/Bolt/Corrections/BoltCorrectionProtocol.cs" />
+    <Compile Include="Sons/Networking/Bolt/Corrections/BoltCorrectionTarget.cs" />
+    <Compile Include="Sons/Networking/Bolt/Corrections/BoltCorrections.cs" />
+    <Compile Include="Sons/Networking/Bolt/Migration/BoltMigrationContracts.cs" />
+    <Compile Include="Sons/Networking/Bolt/Migration/BoltMigrationProtocol.cs" />
+    <Compile Include="Sons/Networking/Bolt/Migration/BoltMigrationNative.cs" />
+    <Compile Include="Sons/Networking/Bolt/Migration/BoltMigrationReferences.cs" />
+    <Compile Include="Sons/Networking/Bolt/Migration/BoltMigrationBarrier.cs" />
+    <Compile Include="Sons/Networking/Bolt/Migration/BoltMigrationSession.cs" />
+    <Compile Include="Sons/Networking/Bolt/Migration/BoltMigrationCoordinator.cs" />
+    <Compile Include="Sons/Networking/Bolt/Migration/BoltMigrationCoordinator.Dispatch.cs" />
+    <Compile Include="Sons/Networking/Bolt/Migration/BoltMigrationCoordinator.Lifetime.cs" />
+    <Compile Include="Sons/Networking/Bolt/Migration/BoltMigrationTransport.cs" />
+    <Compile Include="Sons/Players/Bridge/PlayerBridgeProtocol.cs" />
+    <Compile Include="Sons/Players/Bridge/PlayerBridge.cs" />
+    <Compile Include="Sons/Players/Bridge/PlayerBridge.NativeModes.cs" />
+    <Compile Include="Sons/Players/Bridge/PlayerBridge.ModeTransitions.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerMigrationAdapter.Animation.cs" />
+    <Compile Include="Sons/Inventory/Operations/Crafting/PlayerInventoryAuthority.CraftEffects.cs" />
+    <Compile Include="Sons/Inventory/Operations/Crafting/PlayerInventoryEnforcement.CraftingHooks.cs" />
+    <Compile Include="Sons/Inventory/Operations/Crafting/PlayerInventoryEnforcement.CraftingMat.cs" />
+    <Compile Include="Sons/Inventory/Operations/Crafting/PlayerInventoryEnforcement.CraftingMatHooks.cs" />
+    <Compile Include="Sons/Inventory/Operations/Crafting/PlayerInventoryEnforcement.CraftPresentation.cs" />
+    <Compile Include="Sons/Inventory/Operations/Crafting/PlayerInventoryEnforcement.CraftRouting.cs" />
+    <Compile Include="Sons/Inventory/Operations/Crafting/PlayerInventoryEnforcement.CraftTransport.cs" />
+    <Compile Include="Sons/Inventory/Operations/Death/InventoryDeathBag.cs" />
+    <Compile Include="Sons/Inventory/Operations/Death/PlayerInventoryAuthority.DeathTransfers.cs" />
+    <Compile Include="Sons/Inventory/Operations/Power/InventoryPower.Hooks.cs" />
+    <Compile Include="Sons/Inventory/Operations/Power/InventoryPower.Projection.cs" />
+    <Compile Include="Sons/Inventory/Operations/Power/PowerWire.cs" />
+    <Compile Include="Sons/Inventory/Operations/Power/InventoryPower.Runtime.cs" />
+    <Compile Include="Sons/Inventory/Operations/Storage/InventoryStorage.Geometry.cs" />
+    <Compile Include="Sons/Inventory/Operations/Storage/InventoryStorage.Interaction.cs" />
+    <Compile Include="Sons/Inventory/Operations/Storage/InventoryStorage.Intents.cs" />
+    <Compile Include="Sons/Inventory/Operations/Storage/InventoryStorage.Writers.cs" />
+    <Compile Include="Sons/Inventory/Operations/Storage/InventoryStorage.Requests.cs" />
+    <Compile Include="Sons/Players/Movement/Client/PlayerClientMovement.Transitions.cs" />
+    <Compile Include="Sons/Players/Movement/Client/PlayerClientMovement.Climb.cs" />
+    <Compile Include="Sons/Players/Movement/Climbing/PlayerClimbDriver.cs" />
+    <Compile Include="Sons/Players/Movement/Climbing/PlayerClimbMotor.cs" />
+    <Compile Include="Sons/Players/Movement/Flight/PlayerFlightDispatch.cs" />
+    <Compile Include="Sons/Players/Movement/Flight/PlayerFlightGlider.Runtime.cs" />
+    <Compile Include="Sons/Players/Movement/Flight/PlayerFlightGlider.Source.cs" />
+    <Compile Include="Sons/Players/Movement/Flight/PlayerFlightZipline.Runtime.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerGroundMovement.Activation.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerGroundMovement.NativeModes.cs" />
+    <Compile Include="Sons/Players/Inventory/PlayerInventoryAuthority.CraftingRequests.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.CraftingProtocol.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.CraftingRequests.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.WorldHooks.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.WorldProtocol.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.WorldRequests.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.WorldSource.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.ConsumptionTransport.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.ConsumptionPresentation.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.ConsumptionPresentation.Hooks.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.ConsumptionPresentation.Fades.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerPreservation.AnimationState.Runtime.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerPreservation.AnimationState.RuntimeClimb.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalRuntime.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Bindings.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Climate.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Reader.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Interior.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Temperature.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Temperature.Native.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Temperature.Receiver.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Water.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalRuntime.Models.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalRuntime.Numerics.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalRuntime.Settings.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalRuntime.Smell.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalSnapshot.Codec.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalSnapshot.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalSnapshot.Storage.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterConfiguration.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.DriverAuthority.Binding.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.SaveParticipant.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.Players.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.PlayerRuntime.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.PlayerRuntime.Callbacks.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.PlayerRuntime.DriverYield.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.PlayerRuntime.Movement.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.PlayerRuntime.Passengers.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.PlayerRuntime.PassengerExit.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.PlayerRuntime.PassengerExit.Client.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.PlayerRuntime.PassengerExit.Hooks.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.PlayerRuntime.PassengerGround.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.PlayerRuntime.Proxy.cs" />
+    <Compile Include="Sons/Players/Bridge/PlayerEventRouting.cs" />
+    <Compile Include="Sons/Players/Bridge/PlayerEventRouting.Fields.cs" />
+    <Compile Include="Sons/Players/Bridge/PlayerEventRouting.Protection.cs" />
+    <Compile Include="Sons/Players/Bridge/PlayerEventRouting.Protection.Native.cs" />
+    <Compile Include="Sons/Players/Bridge/PlayerEventRouting.Protection.Dispatch.cs" />
+    <Compile Include="Sons/Inventory/Operations/Consumption/InventoryConsumption.cs" />
+    <Compile Include="Sons/Inventory/Operations/Consumption/InventoryConsumption.Effects.cs" />
+    <Compile Include="Sons/Inventory/Operations/Consumption/InventoryConsumption.Presentation.cs" />
+    <Compile Include="Sons/Inventory/Operations/Crafting/PlayerInventoryAuthority.Crafting.cs" />
+    <Compile Include="Sons/Inventory/Operations/Crafting/PlayerInventoryEnforcement.CraftReceipt.cs" />
+    <Compile Include="Sons/Inventory/Operations/Crafting/InventoryCraftRecipe.cs" />
+    <Compile Include="Sons/Inventory/Operations/Death/PlayerInventoryAuthority.DeathInventory.cs" />
+    <Compile Include="Sons/Inventory/Operations/Death/InventoryDeath.cs" />
+    <Compile Include="Sons/Inventory/Operations/Death/PlayerInventoryEnforcement.DeathInventory.cs" />
+    <Compile Include="Sons/Inventory/Operations/Equipment/EquipmentTransfer.cs" />
+    <Compile Include="Sons/Inventory/Operations/Equipment/EquipmentTransfer.Custody.cs" />
+    <Compile Include="Sons/Inventory/Operations/Equipment/EquipmentTransfer.Writers.cs" />
+    <Compile Include="Sons/Inventory/Operations/Equipment/EquipmentTransfer.State.cs" />
+    <Compile Include="Sons/Inventory/Operations/Power/InventoryPower.Authority.cs" />
+    <Compile Include="Sons/Inventory/Operations/Power/InventoryPower.cs" />
+    <Compile Include="Sons/Inventory/Operations/Power/InventoryPower.Supplies.cs" />
+    <Compile Include="Sons/Inventory/Operations/Storage/InventoryStorage.cs" />
+    <Compile Include="Sons/Inventory/Operations/Storage/InventoryStorage.Structures.cs" />
+    <Compile Include="Sons/Inventory/Operations/Storage/InventoryStorage.World.cs" />
+    <Compile Include="Sons/Players/Movement/Climbing/PlayerClimb.cs" />
+    <Compile Include="Sons/Players/Movement/Climbing/PlayerClimbCollision.cs" />
+    <Compile Include="Sons/Players/Movement/Flight/PlayerFlightGlider.cs" />
+    <Compile Include="Sons/Players/Movement/Flight/PlayerFlightZipline.cs" />
+    <Compile Include="Sons/Players/Movement/Sleds/PlayerSled.cs" />
+    <Compile Include="Sons/Players/Movement/Sleds/PlayerSledAuthority.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerAuthorityDynamics.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerAuthorityDynamics.Runtime.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerAuthorityDynamics.Models.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerAuthorityDynamics.Survival.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerMigrationAdapter.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerMigrationAdapter.Inventory.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerMigrationAdapter.Lifecycle.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerMigrationAdapter.Movement.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerMigrationAdapter.Environment.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerMigrationAdapter.CartExit.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerHeldOnlyAuthority.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerArmourAuthority.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerArmourAuthority.Snapshot.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerArmourAuthority.Numeric.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerHeldOnlyAuthority.Snapshot.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerHeldOnlyAuthority.Custody.cs" />
+    <Compile Include="Sons/Inventory/Operations/Consumption/InventoryConsumption.Definitions.cs" />
+    <Compile Include="Sons/Inventory/Operations/Consumption/PlayerInventoryAuthority.ConsumptionDefinitions.cs" />
+    <Compile Include="Sons/Players/Life/PlayerStatProjection.cs" />
+    <Compile Include="Sons/Players/Life/PlayerStatProjection.Values.cs" />
+    <Compile Include="Sons/Players/Life/PlayerStatProjection.Life.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifeProtocol.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifeRoute.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifeRoute.Forced.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifePresentation.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifePresentation.Hooks.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifePresentation.Continuations.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifePresentation.Equipment.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterContactAuthority.Geometry.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterContactAuthority.Storage.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterContactAuthority.Server.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerAuthorityDynamics.Water.cs" />
+    <Compile Include="Sons/Players/Combat/PlayerCombatIngress.cs" />
+    <Compile Include="Sons/Players/Combat/PlayerCombatIngress.Hooks.cs" />
+    <Compile Include="Sons/Players/Combat/PlayerCombatIngress.Provenance.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerGroundMovement.Water.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerHeldOnlyRoute.Forced.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.HeldOnly.Baseline.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.HeldOnly.Forced.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifeAuthority.Burning.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifePresentation.Burning.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Reader.Bindings.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Reader.Composition.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterContactAuthority.Presentation.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterPresentation.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterPresentation.Protocol.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterPresentation.Scheduling.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Exposure.Graph.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Exposure.Graph.Events.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Exposure.Graph.Proxies.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Exposure.Spatial.Native.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerHeldOnlyAuthority.Compound.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.HeldOnly.Equipment.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerHeldOnlyRoute.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerHeldOnlyRoute.Transport.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerHeldOnlyRoute.World.cs" />
+    <Compile Include="Sons/Players/Movement/Client/PlayerClientMovement.Life.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifeAuthority.Transport.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalRuntime.SleepNative.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.Stats.cs" />
+    <Compile Include="Sons/Inventory/Operations/Crafting/PlayerInventoryEnforcement.CraftVariantPresentation.cs" />
+    <Compile Include="Sons/Inventory/Operations/Crafting/CraftVariantPlan.cs" />
+    <Compile Include="Sons/Inventory/Operations/Crafting/PlayerInventoryEnforcement.CraftVariantTransport.cs" />
+    <Compile Include="Sons/Inventory/Operations/Storage/InventoryStorage.WorldVariants.cs" />
+    <Compile Include="Sons/Inventory/Operations/Storage/InventoryStorage.WorldVariants.Transfers.cs" />
+    <Compile Include="Sons/Players/Bridge/PlayerBridge.NativeModes.Zipline.cs" />
+    <Compile Include="Sons/Players/Movement/Client/PlayerClientMovement.Zipline.cs" />
+    <Compile Include="Sons/Players/Movement/Client/PlayerClientMovement.Zipline.Hooks.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerHeldOnlyAuthority.NativeActions.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerHeldOnlyAuthority.NativeCodec.cs" />
+    <Compile Include="Sons/Players/Inventory/PlayerInventoryAuthority.WorldVariants.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.EquipmentIntent.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.HeldOnly.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.HeldOnly.Effects.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.HeldOnly.Hooks.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.HeldOnly.Intents.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifeAuthority.Admission.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifeAuthority.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifeAuthority.Forced.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifeAuthority.Models.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifecycle.HeldOnly.cs" />
+    <Compile Include="Sons/Players/Movement/Flight/PlayerNativeZiplineRoute.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Exposure.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Exposure.Native.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalEnvironment.Exposure.Server.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalRuntime.Life.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalRuntime.Sleep.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalRuntime.SleepProfiles.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalRuntime.SleepReceiver.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalSnapshot.Exposure.cs" />
+    <Compile Include="Sons/Players/Survival/PlayerSurvivalSnapshot.WaterContacts.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterContactAuthority.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterContactAuthority.Identity.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterContactAuthority.Native.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerMigrationAdapter.Replicas.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerMigrationAdapterFactory.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.PlayerHolds.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.PlayerHolds.Hooks.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerGroundMovement.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerGroundMovement.Native.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerGroundMovement.Native.Models.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerGroundMovement.Stamina.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerGroundMovement.Swim.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerGroundMovement.Swim.Contacts.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerGroundMovement.Swim.Models.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerMovementModes.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerMovementModes.Models.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerMovementModes.Swim.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerMovementModes.Water.cs" />
+    <Compile Include="Sons/Players/Animation/PlayerAnimationGround.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerEquipment.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerEquipment.Capture.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerEquipment.Protocol.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerEquipment.Publisher.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerEquipment.Modules.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerEquipment.Modules.Readback.cs" />
+    <Compile Include="Sons/Players/Inventory/PlayerInventoryAuthority.cs" />
+    <Compile Include="Sons/Players/Inventory/PlayerInventoryAuthority.Armour.cs" />
+    <Compile Include="Sons/Players/Inventory/PlayerInventoryAuthority.Equipment.cs" />
+    <Compile Include="Sons/Players/Inventory/PlayerInventoryAuthority.Baseline.cs" />
+    <Compile Include="Sons/Players/Inventory/PlayerInventoryAuthority.Mutations.cs" />
+    <Compile Include="Sons/Players/Inventory/PlayerInventoryAuthority.Passive.cs" />
+    <Compile Include="Sons/Players/Inventory/PlayerInventoryAuthority.Stow.cs" />
+    <Compile Include="Sons/Players/Inventory/PlayerInventoryBaseline.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.Hooks.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.Protocol.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.Native.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.Grants.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.Stow.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.Modules.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.Passive.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.Requests.cs" />
+    <Compile Include="Sons/Players/Inventory/Enforcement/PlayerInventoryEnforcement.Swimming.cs" />
+    <Compile Include="Sons/Players/Inventory/PlayerInventoryAuthority.Grants.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerMotionHistory.cs" />
+    <Compile Include="Sons/Players/Movement/Client/PlayerClientMovement.cs" />
+    <Compile Include="Sons/Players/Movement/Client/PlayerClientMovement.Water.cs" />
+    <Compile Include="Sons/Players/Movement/Client/PlayerClientMovement.SourceHold.cs" />
+    <Compile Include="Sons/Players/Movement/Client/PlayerClientMovement.Run.cs" />
+    <Compile Include="Sons/Players/Movement/Client/PlayerClientMovement.NativeModes.cs" />
+    <Compile Include="Sons/Players/Movement/Client/PlayerClientMovement.Rig.cs" />
+    <Compile Include="Sons/Players/Movement/Client/PlayerClientMovement.Reconciliation.cs" />
+    <Compile Include="Sons/Players/Movement/Client/PlayerClientMovement.Presentation.cs" />
+    <Compile Include="Sons/Players/Animation/PlayerRigBindings.cs" />
+    <Compile Include="Sons/Players/Animation/PlayerAnimationLayers.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerPreservation.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerMigrationSnapshot.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerCarrierProfile.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerCarrierProfile.Codec.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerCarrierProfile.Interaction.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerArmourSource.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerArmourSource.Hooks.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerArmourSource.Inventory.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerArmourRoute.cs" />
+    <Compile Include="Sons/Players/Equipment/PlayerArmourRoute.Protocol.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterTransition.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterTransition.Modes.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterTransition.Protocol.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterPresentation.Transitions.cs" />
+    <Compile Include="Sons/Players/Water/PlayerWaterPresentation.Native.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerCarrier.cs" />
+    <Compile Include="Sons/Players/Movement/PlayerCarrier.Startup.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerMigrationReferences.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerMigrationReferences.Caches.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerPreservation.Schema.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerPreservation.Animator.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerPreservation.Transforms.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerPreservation.Tokens.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerPreservation.TransformState.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerPreservation.TransformState.Native.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerPreservation.AnimationState.cs" />
+    <Compile Include="Sons/Players/Migration/PlayerPreservation.AnimationState.Codec.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehiclePreservation.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehiclePreservation.Models.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehiclePreservation.Values.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.SaveHandoff.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.SaveRecords.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.Writers.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.DriverAuthority.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.State.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.Resume.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.Occupants.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.OccupantWriters.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.OccupantHolds.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.OccupantHolds.Hooks.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.OccupantBindings.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.ActorBindings.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.PlayerBindings.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.Deferred.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.ReplacementGate.cs" />
+    <Compile Include="Sons/Vehicles/Lifecycle/VehicleLifecycle.SaveCustody.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.Lifecycle.cs" />
+    <Compile Include="Sons/Vehicles/Migration/GolfCartMigrationAdapter.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.Values.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.Snapshot.cs" />
+    <Compile Include="Sons/Vehicles/Migration/VehicleMigration.Transforms.cs" />
+    <Compile Include="Sons/Players/PlayerRoles.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifecycle.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifecycle.SourceHold.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifecycle.SourceHold.Hooks.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifecycle.Callbacks.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifecycle.Writers.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifecycle.Actions.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifecycle.Fence.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifecycle.Triggers.cs" />
+    <Compile Include="Sons/Players/Life/PlayerLifecycle.Ingress.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.EntityControl.cs" />
+    <Compile Include="Sons/Settings/SettingsStartup.cs" />
+    <Compile Include="Sons/Settings/SettingsStartup.Native.cs" />
+    <Compile Include="Sons/Settings/SettingsStartup.SceneManagers.cs" />
+    <Compile Include="Sons/Settings/SettingsStartup.UiPrefabs.cs" />
+    <Compile Include="Sons/Settings/SettingsStartup.Audio.cs" />
+    <Compile Include="Sons/UI/UiPrefabScene.cs" />
+    <Compile Include="Compatibility/AxelCompatibility.cs" />
+    <Compile Include="Discovery/LoadedMods.cs" />
+    <Compile Include="Runtime/Mods/ModRequirements.cs" />
+    <Compile Include="Sons/Networking/Enrollment/ModAdmission.cs" />
+    <Compile Include="Sons/Networking/Enrollment/ModAdmissionWire.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.Models.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.Protocol.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.ReadinessProtocol.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientReadiness.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatServerHits.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.ImpactAudioProtocol.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.ImpactPresentationProtocol.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientImpactAudio.cs" />
+    <Compile Include="Sons/Combat/Presentation/StrictCombat.ImpactParticlePrefab.cs" />
+    <Compile Include="Sons/Combat/Presentation/StrictCombat.ImpactParticles.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.OwnedArmour.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.ArmourProtocol.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientArmourDelivery.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.ArmourBinding.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientArmourBinding.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatArmourBarrier.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatArmourHooks.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientArmourBarrier.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatArmourHooks.Break.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientArmourProjection.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatArmourHooks.Handoff.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientArmourHandoff.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientState.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientState.Rebreather.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientState.RebreatherWear.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.Client.cs" />
+    <Compile Include="Sons/Combat/Local/StrictCombat.LocalPlayer.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientArmour.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.ArmourModels.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatArmour.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatLifeBarrier.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatLifeHooks.VitalsStartup.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatLifeHooks.cs" />
+    <Compile Include="Sons/Combat/Local/StrictCombat.HealthProjection.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatLifeHooks.Health.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatLifeHooks.Vitals.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatLifeHooks.VitalsLoad.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatLifeHooks.VitalsProgression.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientLife.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.RespawnModels.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.RespawnProtocol.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientRespawn.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientWeapon.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientEquipment.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentCleanupPump.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientAmmunition.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientRebreather.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientRebreatherHandoff.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.RebreatherModels.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.BreathingModels.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.BreathingProtocol.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientBreathingDelivery.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientBreathing.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatBreathingBarrier.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatLifeHooks.BreathingOwnership.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatLifeHooks.Breathing.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.RebreatherProtocol.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.RebreatherRefillProtocol.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.RebreatherWearProtocol.cs" />
+    <Compile Include="Sons/Combat/Protocol/StrictCombat.RebreatherProgressProtocol.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientRebreatherRequests.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientRebreatherWear.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientRebreatherDelivery.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientRebreatherProjection.cs" />
+    <Compile Include="Sons/Combat/Local/StrictCombat.LocalRebreather.cs" />
+    <Compile Include="Sons/Combat/Local/StrictCombat.LocalRebreather.Projection.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatRebreatherBarrier.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatRebreatherHooks.Handoff.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatRebreatherHooks.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatRebreatherHooks.Equipment.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatRebreatherHooks.Detours.cs" />
+    <Compile Include="Sons/Combat/Client/StrictCombat.ClientShotPresentation.cs" />
+    <Compile Include="Sons/Combat/Local/StrictCombat.LocalWeapon.cs" />
+    <Compile Include="Sons/Combat/Local/StrictCombat.LocalWeapon.Ammunition.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentTransfer.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentPrefab.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentEvents.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentBinding.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentRenderer.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentAnimation.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatWeaponHooks.EquipmentAnimation.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentAppearance.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentController.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentController.Audio.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentHandoff.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentHandoff.Cancellation.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentOperation.cs" />
+    <Compile Include="Sons/Combat/Equipment/StrictCombat.EquipmentActivation.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatWeaponHooks.EquipmentActivation.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatPreparedEquipment.cs" />
+    <Compile Include="Sons/Combat/Local/StrictCombat.LocalWeapon.Presentation.cs" />
+    <Compile Include="Sons/Combat/Presentation/StrictCombat.ParticleEffects.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatWeaponBarrier.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatDiagnostics.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatWeaponHooks.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatWeaponHooks.Ammo.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatWeaponHooks.Detours.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatWeaponHooks.ProjectileDetours.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatWeaponHooks.Cleanup.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatWeaponHooks.EquipmentInitialization.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatWeaponHooks.Initialization.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatLifeHooks.EquipmentPose.cs" />
+    <Compile Include="Sons/Combat/Local/StrictCombat.LocalLife.Respawn.cs" />
+    <Compile Include="Sons/Combat/Local/StrictCombat.LocalLife.cs" />
+    <Compile Include="Sons/Combat/Local/StrictCombat.LocalLife.Presentation.cs" />
+    <Compile Include="Sons/Combat/Local/StrictCombat.LocalLife.Equipment.cs" />
+    <Compile Include="Sons/Combat/Local/StrictCombat.LocalLife.EquipmentCleanup.cs" />
+    <Compile Include="Sons/Combat/GameHooks/StrictCombatLifeHooks.HealthDetours.cs" />
+    <Compile Include="Sons/Networking/Enrollment/NativeModReport.cs" />
+    <Compile Include="Discovery/AssemblyResolver.cs" />
+    <Compile Include="Discovery/DiscoveryFiles.cs" />
+    <Compile Include="Compatibility/BepInEx/BepInExPluginActivationProbe.cs" />
+    <Compile Include="Compatibility/BepInEx/BepInExPluginCompatibility.cs" />
+    <Compile Include="Compatibility/BepInEx/BepInExPluginCompatibility.Discovery.cs" />
+    <Compile Include="Compatibility/BepInEx/BepInExPluginCompatibility.Planning.cs" />
+    <Compile Include="Compatibility/BepInEx/BepInExPluginCompatibility.Menu.cs" />
+    <Compile Include="Compatibility/BepInEx/BepInExPluginCompatibilitySnapshots.cs" />
+    <Compile Include="Compatibility/BepInEx/BepInExPluginStageSnapshots.cs" />
+    <Compile Include="Compatibility/BepInEx/BepInExPluginHost.cs" />
+    <Compile Include="Compatibility/BepInEx/BepInExActivationSnapshot.cs" />
+    <Compile Include="Compatibility/BepInEx/BepInExPluginMetadata.cs" />
+    <Compile Include="Compatibility/BepInEx/BepInExRegistry.cs" />
+    <Compile Include="Diagnostics/ChainloaderStatus.cs" />
+    <Compile Include="Compatibility/CompatibilityDependencies.cs" />
+    <Compile Include="Compatibility/RedLoader/EntrypointlessModPorts.cs" />
+    <Compile Include="Discovery/FileIntegrity.cs" />
+    <Compile Include="Runtime/Interop/HarmonySupport.cs" />
+    <Compile Include="Runtime/Interop/IL2CPPHookState.cs" />
+    <Compile Include="UI/Input.cs" />
+    <Compile Include="Compatibility/RedLoader/LegacyLifecycleBridge.cs" />
+    <Compile Include="Compatibility/RedLoader/LegacyRedLoaderShim.cs" />
+    <Compile Include="Compatibility/RedLoader/RedLoaderModActivation.cs" />
+    <Compile Include="Compatibility/RedLoader/RedLoaderRegistration.cs" />
+    <Compile Include="Compatibility/RedLoader/RedLoaderModExecution.cs" />
+    <Compile Include="Compatibility/RedLoader/RedChainloaderLifecycle.cs" />
+    <Compile Include="Compatibility/RedLoader/RedScriptLifecycle.cs" />
+    <Compile Include="Compatibility/RedLoader/RedLoaderTypeRegistration.cs" />
+    <Compile Include="Compatibility/RedLoader/RedLoaderEventDispatcher.cs" />
+    <Compile Include="Compatibility/RedLoader/RedLoaderPreferences.cs" />
+    <Compile Include="Compatibility/RedLoader/RedLoaderAssets.cs" />
+    <Compile Include="Compatibility/RedLoader/RedLoaderCatalogs.cs" />
+    <Compile Include="Runtime/Coroutines/ManagedEnumerator.cs" />
+    <Compile Include="Runtime/Coroutines/CoroutineHost.cs" />
+    <Compile Include="Runtime/Coroutines/Coroutines.cs" />
+    <Compile Include="UI/Menus/MenuRegistrationPolicy.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkInitialization.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkEntryPoint.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkResources.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkSave.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkEventFallback.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkEventFallback.Saving.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkInitializationFallback.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkCommandFallback.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkGameManagerFallback.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkBootstrapFallback.cs" />
+    <Compile Include="Compatibility/RedLoader/RedGlobalBehaviourFallback.cs" />
+    <Compile Include="Compatibility/RedLoader/RedSceneFallback.cs" />
+    <Compile Include="Compatibility/RedLoader/RedCoroutineFallback.cs" />
+    <Compile Include="Compatibility/RedLoader/RedManagedEnumeratorFallback.cs" />
+    <Compile Include="Sons/UI/Input/InputFallback.cs" />
+    <Compile Include="Sons/Networking/Prefabs/NetworkPrefabFallback.cs" />
+    <Compile Include="Sons/Server/Communication/ServerCommandFallback.cs" />
+    <Compile Include="Sons/Networking/Transport/PacketFallback.cs" />
+    <Compile Include="Sons/Building/BlueprintFallback.cs" />
+    <Compile Include="Sons/Building/BlueprintFallback.Prefabs.cs" />
+    <Compile Include="Sons/Building/BlueprintFallback.Recipes.cs" />
+    <Compile Include="Sons/UI/Input/InputIconFallback.cs" />
+    <Compile Include="Sons/UI/ModalFallback.cs" />
+    <Compile Include="Sons/UI/TooltipFallback.cs" />
+    <Compile Include="Sons/Settings/SettingsFallback.cs" />
+    <Compile Include="Sons/Settings/SettingsFallback.Widgets.cs" />
+    <Compile Include="Sons/Settings/SettingsFallback.Entries.cs" />
+    <Compile Include="Sons/Settings/SettingsFallback.Panel.cs" />
+    <Compile Include="Sons/UI/UiFallback.cs" />
+    <Compile Include="Sons/UI/UiFallback.Prefabs.cs" />
+    <Compile Include="Sons/UI/UiFallback.Viewport.cs" />
+    <Compile Include="Sons/UI/UiFallback.Panels.cs" />
+    <Compile Include="Sons/UI/UiFallback.MenuButtons.cs" />
+    <Compile Include="Sons/UI/LinkUi.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkOverlay.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkPanelBlur.cs" />
+    <Compile Include="Sons/UI/UiPrefabs.cs" />
+    <Compile Include="Sons/UI/UiViewport.cs" />
+    <Compile Include="Sons/UI/UiPanels.cs" />
+    <Compile Include="Sons/UI/UiMenuButtons.cs" />
+    <Compile Include="Sons/UI/Input/InputIcons.cs" />
+    <Compile Include="Sons/UI/Input/Keybinds.cs" />
+    <Compile Include="Sons/UI/Input/GlobalInput.cs" />
+    <Compile Include="Sons/Settings/SettingsRegistration.cs" />
+    <Compile Include="Sons/Settings/SettingsRegistration.Widgets.cs" />
+    <Compile Include="Sons/Settings/SettingsRegistration.Panel.cs" />
+    <Compile Include="Sons/Settings/SettingsRegistration.Entries.cs" />
+    <Compile Include="Sons/UI/ModalDialogs.cs" />
+    <Compile Include="Sons/UI/Tooltips.cs" />
+    <Compile Include="Sons/UI/Stage/PreviewStage.cs" />
+    <Compile Include="Sons/UI/Stage/PreviewStage.Types.cs" />
+    <Compile Include="Sons/UI/Stage/PreviewStage.Camera.cs" />
+    <Compile Include="Sons/UI/Stage/PreviewStage.Rig.cs" />
+    <Compile Include="Sons/UI/Stage/PreviewStage.Lights.cs" />
+    <Compile Include="Sons/UI/Stage/PreviewStage.Isolation.cs" />
+    <Compile Include="Sons/UI/Stage/PreviewStage.Build.cs" />
+    <Compile Include="Sons/UI/Stage/PreviewStage.Capture.cs" />
+    <Compile Include="Sons/UI/Stage/PreviewSkeleton.cs" />
+    <Compile Include="Sons/UI/Stage/PreviewPart.cs" />
+    <Compile Include="Sons/Players/Appearance/PlayerAppearanceCapture.cs" />
+    <Compile Include="Sons/UI/Stage/PreviewStageProbe.cs" />
+    <Compile Include="Sons/Building/BlueprintRegistration.cs" />
+    <Compile Include="Sons/Building/BlueprintRegistration.Runtime.cs" />
+    <Compile Include="Sons/Building/BlueprintRegistration.Helpers.cs" />
+    <Compile Include="Sons/Networking/Prefabs/NetworkPrefabs.cs" />
+    <Compile Include="Sons/Networking/Transport/Packets.cs" />
+    <Compile Include="Sons/Server/Communication/ServerCommands.cs" />
+    <Compile Include="Sons/Networking/Commands/Commands.cs" />
+    <Compile Include="Sons/Networking/Commands/Commands.Host.cs" />
+    <Compile Include="Sons/Networking/LocalHost.cs" />
+    <Compile Include="Sons/Server/Communication/ServerChat.cs" />
+    <Compile Include="Sons/Server/Communication/ServerVoice.cs" />
+    <Compile Include="Sons/Server/Communication/ServerVoice.Routing.cs" />
+    <Compile Include="Sons/Server/Communication/ServerVoice.Requests.cs" />
+    <Compile Include="Sons/Server/Building/ServerPrinters.cs" />
+    <Compile Include="Sons/Crafting/PrinterDevices.cs" />
+    <Compile Include="Sons/Crafting/PrinterDevices.Models.cs" />
+    <Compile Include="Sons/Server/Building/ServerPrinters.Requests.cs" />
+    <Compile Include="Sons/Server/ServerNamedStates.cs" />
+    <Compile Include="Sons/Server/ServerNamedStates.Requests.cs" />
+    <Compile Include="Sons/Server/Npcs/ServerCompanions.cs" />
+    <Compile Include="Sons/Server/Npcs/ServerCompanions.Requests.cs" />
+    <Compile Include="Sons/Server/Npcs/ServerCompanions.Validation.cs" />
+    <Compile Include="Sons/Server/Npcs/ServerCompanions.Observations.cs" />
+    <Compile Include="Sons/Server/Npcs/ServerCompanions.Lifecycle.cs" />
+    <Compile Include="Sons/Companions/CompanionJobs.cs" />
+    <Compile Include="Sons/Companions/CompanionJobs.Models.cs" />
+    <Compile Include="Sons/Companions/CompanionJobs.Native.cs" />
+    <Compile Include="Sons/Companions/CompanionJobs.Hooks.cs" />
+    <Compile Include="Sons/Server/Npcs/ServerNpcSearch.cs" />
+    <Compile Include="Sons/Server/Npcs/ServerNpcSearch.Reads.cs" />
+    <Compile Include="Sons/Server/Npcs/ServerNpcSearch.Requests.cs" />
+    <Compile Include="Sons/Server/Npcs/ServerNpcParties.cs" />
+    <Compile Include="Sons/Server/Npcs/ServerNpcParties.Models.cs" />
+    <Compile Include="Sons/Server/Communication/ServerChat.Sending.cs" />
+    <Compile Include="Sons/Server/Access/ServerAdminRequests.cs" />
+    <Compile Include="Sons/Server/ServerSessions.cs" />
+    <Compile Include="Sons/Server/Access/ServerAuthentication.cs" />
+    <Compile Include="Sons/Networking/Transport/ControlTransport.cs" />
+    <Compile Include="Sons/Networking/Transport/ControlTransport.Hooks.cs" />
+    <Compile Include="Sons/Networking/Transport/ControlTransport.State.cs" />
+    <Compile Include="Sons/Networking/Transport/ControlWire.cs" />
+    <Compile Include="Sons/Networking/Enrollment/ClientEnrollment.cs" />
+    <Compile Include="Sons/Networking/Enrollment/ClientEnrollment.Protocol.cs" />
+    <Compile Include="Sons/Networking/Enrollment/ClientEnrollment.Gate.cs" />
+    <Compile Include="Sons/Networking/Transport/Datagrams.cs" />
+    <Compile Include="Sons/Networking/Transport/Datagrams.Hooks.cs" />
+    <Compile Include="Sons/Networking/Transport/Datagram.cs" />
+    <Compile Include="Sons/Networking/Enrollment/EnrollmentWire.cs" />
+    <Compile Include="Sons/Server/Access/ServerAdmission.cs" />
+    <Compile Include="Sons/Server/Access/ServerIdentity.cs" />
+    <Compile Include="Sons/Server/Access/ServerConnectionReads.cs" />
+    <Compile Include="Sons/Server/Access/ServerConnectionReads.Clock.cs" />
+    <Compile Include="Sons/Server/Access/ServerEndpointReads.cs" />
+    <Compile Include="Sons/Server/Access/ClientSignals.cs" />
+    <Compile Include="Sons/Server/Access/ServerRoles.cs" />
+    <Compile Include="Sons/Server/Access/StoredRoles.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.PlayerBindings.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.PlayerIdentity.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.WeaponCapture.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.WeaponObservationModels.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.WeaponObservations.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.Collisions.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.Water.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.PlayerWaterline.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.PlayerWaterVolumes.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.OceanHeights.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.PlayerOceanHeights.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.WaterCoverage.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.TerrainHeights.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.PlayerWaterEnvironment.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.MuzzleClearance.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.CollisionModels.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.ImpactReceivers.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.DamageNodes.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.DamageNodeModels.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.DamageNodeObservation.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.MeleeDamageNodes.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.MeleeTargets.cs" />
+    <Compile Include="Sons/Server/Combat/ServerMeleeImpacts.cs" />
+    <Compile Include="Sons/Server/Combat/ServerMeleeImpacts.Activations.cs" />
+    <Compile Include="Sons/Server/Combat/ServerMeleeImpacts.Source.cs" />
+    <Compile Include="Sons/Server/Combat/ServerMeleeImpacts.Models.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.Ballistics.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.BallisticModels.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.WeaponTiming.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.BallisticFrame.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.BallisticSurface.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.BallisticSurfaceModels.cs" />
+    <Compile Include="Sons/Audio/BallisticImpactSound.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.BallisticImpactSound.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.PlayerLife.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.Validation.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.Placement.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.FreeFormGeometry.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.FreeFormStructures.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.BlueprintProgress.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.BlueprintRelocation.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.Vehicles.cs" />
+    <Compile Include="Sons/Server/Players/ServerPlayerReads.cs" />
+    <Compile Include="Sons/World/EnvironmentReads.cs" />
+    <Compile Include="Sons/World/WorldLocatorReads.cs" />
+    <Compile Include="Sons/World/LocatorRecordReads.cs" />
+    <Compile Include="Sons/World/LocatorRecordCapture.cs" />
+    <Compile Include="Sons/World/LocatorRecordSnapshots.cs" />
+    <Compile Include="Sons/World/LocatorPrefabReads.cs" />
+    <Compile Include="Sons/Server/World/ServerSaves.cs" />
+    <Compile Include="Sons/Server/World/ServerTime.cs" />
+    <Compile Include="Sons/Server/World/ServerWeather.cs" />
+    <Compile Include="Sons/Server/Players/ServerPlayerSpawns.cs" />
+    <Compile Include="Sons/Server/Players/ServerPlayerRevives.cs" />
+    <Compile Include="Sons/Server/World/ServerSleep.cs" />
+    <Compile Include="Sons/Server/Items/ServerInventory.cs" />
+    <Compile Include="Sons/Server/Items/ServerInventory.Policy.cs" />
+    <Compile Include="Sons/Server/Items/ServerItemDrops.cs" />
+    <Compile Include="Sons/Server/Items/ServerItemDrops.Observations.cs" />
+    <Compile Include="Sons/Server/Items/ServerItemDrops.Snapshots.cs" />
+    <Compile Include="Sons/Server/Items/ServerPickups.cs" />
+    <Compile Include="Sons/Server/Items/ServerPickups.Requests.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.PickupModels.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.Pickups.cs" />
+    <Compile Include="Sons/Server/Items/ServerLootSpawns.cs" />
+    <Compile Include="Sons/Server/Items/ServerActorItems.cs" />
+    <Compile Include="Sons/Server/Items/ServerActorItems.Requests.cs" />
+    <Compile Include="Sons/Server/World/ServerWorldPlacements.cs" />
+    <Compile Include="Sons/Server/World/ServerWorldPlacements.Requests.cs" />
+    <Compile Include="Sons/Server/Vehicles/ServerTransports.cs" />
+    <Compile Include="Sons/Server/Vehicles/ServerTransports.Requests.cs" />
+    <Compile Include="Sons/Server/World/ServerInteractions.cs" />
+    <Compile Include="Sons/Server/World/ServerInteractions.Requests.cs" />
+    <Compile Include="Sons/Server/World/ServerTreeSpawns.cs" />
+    <Compile Include="Sons/Server/Items/ServerStorage.cs" />
+    <Compile Include="Sons/Server/World/ServerWorldObjects.cs" />
+    <Compile Include="Sons/Server/World/ServerWorldLocators.cs" />
+    <Compile Include="Sons/Server/World/ServerWorldLocators.Requests.cs" />
+    <Compile Include="Sons/Server/Combat/ServerStructureHits.cs" />
+    <Compile Include="Sons/Server/Building/ServerConstruction.cs" />
+    <Compile Include="Sons/Server/Building/ServerConstruction.Ingredients.cs" />
+    <Compile Include="Sons/Server/Building/ServerConstruction.Completion.cs" />
+    <Compile Include="Sons/Server/Building/ServerConstruction.CompletionResults.cs" />
+    <Compile Include="Sons/Server/Building/ServerConstruction.CompletionSnapshots.cs" />
+    <Compile Include="Sons/Server/Vehicles/ServerVehicles.cs" />
+    <Compile Include="Sons/Server/Vehicles/ServerVehicles.Requests.cs" />
+    <Compile Include="Sons/Server/Building/ServerFreeForm.cs" />
+    <Compile Include="Sons/Server/Combat/ServerPlayerHits.cs" />
+    <Compile Include="Sons/Server/Combat/ServerVailHits.cs" />
+    <Compile Include="Sons/Server/Combat/ServerVailHits.Outcomes.cs" />
+    <Compile Include="Sons/Server/Combat/ServerDismemberHits.cs" />
+    <Compile Include="Sons/Server/Communication/ServerNotices.cs" />
+    <Compile Include="Sons/Networking/Transport/Messenger.cs" />
+    <Compile Include="Sons/Networking/Transport/Messenger.Transport.cs" />
+    <Compile Include="Sons/Networking/Notices/NoticePeers.cs" />
+    <Compile Include="Sons/Networking/Notices/NoticeProtocol.cs" />
+    <Compile Include="Sons/Networking/Notices/NoticeTracking.cs" />
+    <Compile Include="Sons/Networking/Commands/ClientCommands.cs" />
+    <Compile Include="Sons/Networking/Commands/ClientCommands.Host.cs" />
+    <Compile Include="Sons/Networking/Notices/NoticeDisplay.cs" />
+    <Compile Include="Sons/Runtime/GameManagers.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkLifecycle.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkLifecycle.Bootstrap.cs" />
+    <Compile Include="Sons/Players/PlayerLimitPatch.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.Population.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.CombatSettings.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkLifecycle.Commands.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkLifecycle.EntryPoint.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkLifecycle.GameEvents.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkLifecycle.Gameplay.cs" />
+    <Compile Include="Compatibility/SonsSdk/SdkLifecycle.Saving.cs" />
+    <Compile Include="Compatibility/RedLoader/LegacyRedLoaderCompatibilityPatches.cs" />
+    <Compile Include="Hosting/LoaderCapabilities.cs" />
+    <Compile Include="Diagnostics/LoaderState.cs" />
+    <Compile Include="Diagnostics/LoaderStatePersistence.cs" />
+    <Compile Include="UI/Menus/Menu.cs" />
+    <Compile Include="UI/Menus/Menu.Inputs.cs" />
+    <Compile Include="UI/Menus/Menu.Invocation.cs" />
+    <Compile Include="UI/Menus/Menu.Settings.cs" />
+    <Compile Include="Runtime/Interop/MonoModRuntimeBootstrap.cs" />
+    <Compile Include="UI/Menus/ModMenuDispatcher.cs" />
+    <Compile Include="Hosting/ModActions.cs" />
+    <Compile Include="UI/Menus/MenuController.cs" />
+    <Compile Include="UI/Menus/ModMenuFallback.cs" />
+    <Compile Include="UI/Menus/ModMenuRenderer.cs" />
+    <Compile Include="UI/Console/ConsoleOverlay.cs" />
+    <Compile Include="UI/Console/ConsoleOverlay.View.cs" />
+    <Compile Include="UI/Console/ConsoleOverlay.Content.cs" />
+    <Compile Include="Diagnostics/RuntimeConsole.cs" />
+    <Compile Include="Diagnostics/ServerConsoleInput.cs" />
+    <Compile Include="UI/Menus/ModMenuState.cs" />
+    <Compile Include="UI/Menus/MenuText.cs" />
+    <Compile Include="UI/Menus/MenuView.cs" />
+    <Compile Include="UI/Menus/MenuViewBuilder.cs" />
+    <Compile Include="UI/Menus/MenuScroll.cs" />
+    <Compile Include="UI/Menus/MenuRows.cs" />
+    <Compile Include="UI/Screens/ScreenHost.cs" />
+    <Compile Include="UI/Screens/ScreenHost.Types.cs" />
+    <Compile Include="UI/Screens/ScreenHostView.cs" />
+    <Compile Include="UI/Screens/ScreenHostInput.cs" />
+    <Compile Include="UI/Screens/ScreenPanel.cs" />
+    <Compile Include="UI/Screens/ScreenStageView.cs" />
+    <Compile Include="Discovery/ModInventory.cs" />
+    <Compile Include="Hosting/Modding.cs" />
+    <Compile Include="Discovery/ModSources.cs" />
+    <Compile Include="Runtime/Mods/LifecyclePlanners.cs" />
+    <Compile Include="Runtime/Mods/LifecyclePlanners.Snapshots.cs" />
+    <Compile Include="Runtime/Mods/ModHost.cs" />
+    <Compile Include="Runtime/Mods/ModDependencies.cs" />
+    <Compile Include="Runtime/Mods/ModRuntime.cs" />
+    <Compile Include="Configuration/Paths.cs" />
+    <Compile Include="Diagnostics/LibraryInventoryStatus.cs" />
+    <Compile Include="Diagnostics/ProtectedRuntimeStatus.cs" />
+    <Compile Include="Diagnostics/RuntimeAttestation.cs" />
+    <Compile Include="Configuration/ServerPolicy.cs" />
+    <Compile Include="Hosting/Runtime.cs" />
+    <Compile Include="Hosting/RuntimeCommands.cs" />
+    <Compile Include="Hosting/RuntimeDriver.cs" />
+    <Compile Include="Configuration/RuntimePreferences.cs" />
+    <Compile Include="Sons/Runtime/Sons.cs" />
+    <Compile Include="Sons/Runtime/Assets.cs" />
+    <Compile Include="Sons/Audio/AudioBanks.cs" />
+    <Compile Include="Sons/Audio/AudioPlayback.cs" />
+    <Compile Include="Sons/Audio/CapabilityAudioAccess.cs" />
+    <Compile Include="Sons/Companions/CapabilityScheduling.cs" />
+    <Compile Include="Sons/Diagnostics/RoutineInspection.cs" />
+    <Compile Include="Sons/Building/Building.cs" />
+    <Compile Include="Sons/Building/Building.Runtime.cs" />
+    <Compile Include="Sons/Building/Building.Actions.cs" />
+    <Compile Include="Sons/Building/Building.Modes.cs" />
+    <Compile Include="Sons/Building/Building.Files.cs" />
+    <Compile Include="Sons/Building/Building.Observation.cs" />
+    <Compile Include="Sons/Building/Building.Profiles.cs" />
+    <Compile Include="Sons/Building/Building.FreeFormProfiles.cs" />
+    <Compile Include="Sons/Building/Building.SlopedProfiles.cs" />
+    <Compile Include="Sons/Building/Building.HalfStairsProfiles.cs" />
+    <Compile Include="Sons/Building/Building.HalfStairsPose.cs" />
+    <Compile Include="Sons/Building/Building.HalfStairsLinks.cs" />
+    <Compile Include="Sons/Building/Building.HalfStairsContinuity.cs" />
+    <Compile Include="Sons/Building/Building.PlacementEvidence.cs" />
+    <Compile Include="Sons/Building/Building.CompletionEvidence.cs" />
+    <Compile Include="Sons/Crafting/Crafting.cs" />
+    <Compile Include="Sons/Crafting/Crafting.Execution.cs" />
+    <Compile Include="Sons/Crafting/Crafting.Transfers.cs" />
+    <Compile Include="Sons/Crafting/Crafting.Specialized.cs" />
+    <Compile Include="Sons/Crafting/Crafting.AuthoredModules.cs" />
+    <Compile Include="Sons/Crafting/Crafting.AuthoredLayouts.cs" />
+    <Compile Include="Sons/Crafting/CraftingRecipes.cs" />
+    <Compile Include="Sons/Crafting/Crafting.Mat.cs" />
+    <Compile Include="Sons/Audio/AudioPlayback.State.cs" />
+    <Compile Include="Sons/Companions/CompanionJobs.Observation.cs" />
+    <Compile Include="Sons/Crafting/Crafting.Query.cs" />
+    <Compile Include="Sons/World/EnvironmentReads.Atmosphere.cs" />
+    <Compile Include="Sons/Diagnostics/FieldInspection.cs" />
+    <Compile Include="Sons/Inventory/Inventory.Equipment.cs" />
+    <Compile Include="Sons/Inventory/Inventory.Drop.cs" />
+    <Compile Include="Sons/Inventory/Items.Ammunition.cs" />
+    <Compile Include="Sons/Players/LocalPlayerReads.cs" />
+    <Compile Include="Sons/Players/LocalPlayerReads.MovementDefaults.cs" />
+    <Compile Include="Sons/Server/Items/ServerStorage.Contents.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.NpcState.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.NpcHealth.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.NpcDamageNodes.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.PlayerAnimation.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.PlayerPose.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.SphereCasts.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.VolumeCasts.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.StructureLinks.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.TerrainSurface.cs" />
+    <Compile Include="Sons/Server/World/ServerWorld.VehicleOccupants.cs" />
+    <Compile Include="Sons/Inventory/Inventory.cs" />
+    <Compile Include="Sons/Inventory/Inventory.Execution.cs" />
+    <Compile Include="Sons/Inventory/Inventory.Models.cs" />
+    <Compile Include="Sons/Inventory/Inventory.Layouts.cs" />
+    <Compile Include="Sons/Inventory/Inventory.PrimaryActions.cs" />
+    <Compile Include="Sons/Inventory/InventoryEvents.cs" />
+    <Compile Include="Sons/Inventory/InventoryReads.cs" />
+    <Compile Include="Sons/Inventory/ItemRegistration.cs" />
+    <Compile Include="Sons/Inventory/ItemRegistration.Runtime.cs" />
+    <Compile Include="Sons/Inventory/ItemRegistration.Modules.cs" />
+    <Compile Include="Sons/Inventory/Modules/ItemModuleSnapshot.cs" />
+    <Compile Include="Sons/Inventory/Modules/ModuleStackStore.cs" />
+    <Compile Include="Sons/Inventory/Modules/ModuleStackStore.Serialization.cs" />
+    <Compile Include="Sons/Inventory/Modules/ModuleStackStore.Transactions.cs" />
+    <Compile Include="Sons/Inventory/Modules/ModuleStorage.cs" />
+    <Compile Include="Sons/Inventory/Modules/ModuleStorage.Protocol.cs" />
+    <Compile Include="Sons/Inventory/Modules/ModuleStorage.Native.cs" />
+    <Compile Include="Sons/Inventory/Modules/ModuleStorage.Crafting.cs" />
+    <Compile Include="Sons/Inventory/Modules/ModuleStorage.Persistence.cs" />
+    <Compile Include="Sons/Inventory/Modules/ModuleStorage.Transport.cs" />
+    <Compile Include="Sons/Inventory/Modules/ModuleStorage.Transport.Wire.cs" />
+    <Compile Include="Sons/Networking/Enrollment/ClientEnrollment.ModuleStorage.cs" />
+    <Compile Include="Sons/Inventory/ItemRegistration.UiData.cs" />
+    <Compile Include="Sons/Inventory/Items.cs" />
+    <Compile Include="Sons/Inventory/Items.Pages.cs" />
+    <Compile Include="Sons/Inventory/Items.Prefabs.cs" />
+    <Compile Include="Sons/Inventory/Items.Pickups.cs" />
+    <Compile Include="Sons/Inventory/Items.Tokens.cs" />
+    <Compile Include="Sons/Networking/Networking.cs" />
+    <Compile Include="Sons/Networking/Transport/BlobTransport.cs" />
+    <Compile Include="Sons/Building/ConstructionSync.cs" />
+    <Compile Include="Sons/Building/PlacementCollisionPatch.cs" />
+    <Compile Include="Sons/Runtime/GameBuild.cs" />
+    <Compile Include="Sons/Building/ConstructionDirtyPatch.cs" />
+    <Compile Include="Sons/Diagnostics/PerformanceCapture.cs" />
+    <Compile Include="Sons/Diagnostics/PerformanceCapture.Callbacks.cs" />
+    <Compile Include="Sons/Diagnostics/PerformanceCapture.Native.cs" />
+    <Compile Include="Sons/UI/MenuBridge.cs" />
+    <Compile Include="Sons/UI/MenuBridgeState.cs" />
+    <Compile Include="Sons/UI/MenuTheme.cs" />
+    <Compile Include="Sons/Runtime/RuntimeStateStatus.cs" />
+    <Compile Include="Sons/Saves/SaveData.cs" />
+    <Compile Include="Sons/Saves/SaveLifecycle.cs" />
+    <Compile Include="Sons/Saves/SaveRegistry.cs" />
+    <Compile Include="Sons/World/WorldRecords.cs" />
+    <Compile Include="Sons/World/WorldRecords.Native.cs" />
+    <Compile Include="Diagnostics/Timings.cs" />
+    <Compile Include="Runtime/Jobs/TransformJobs.cs" />
+    <Compile Include="Runtime/Jobs/ParticleJobs.cs" />
+    <Compile Include="Runtime/Jobs/ParticleJobData.cs" />
+    <Compile Include="Runtime/Jobs/ParticleJobData.Native.cs" />
+    <Compile Include="UI/Ui.cs" />
+    <Compile Include="UI/UiEventSystem.cs" />
+    <Compile Include="Runtime/Graphics/GraphicsCapabilities.cs" />
+    <Compile Include="Runtime/Unity/UnityLifecycle.cs" />
+    <Compile Include="Runtime/Unity/UnityComponentHost.cs" />
+    <Compile Include="Diagnostics/UnityLogSource.cs" />
+    <Compile Include="Plugin.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Modstoke.Compatibility.BepInEx.Core\Modstoke.Compatibility.BepInEx.Core.csproj" Private="false" />
+    <ProjectReference Include="..\Modstoke.Console\Modstoke.Console.csproj" Private="false" />
+    <ProjectReference Include="..\Modstoke.Compatibility.BepInEx.Unity.IL2CPP\Modstoke.Compatibility.BepInEx.Unity.IL2CPP.csproj" Private="false" />
+    <Reference Include="Mono.Cecil" HintPath="$(BepInExCoreRoot)\Mono.Cecil.dll" Private="false" />
+    <Reference Include="Iced" HintPath="$(ModstokeDependencyRoot)\managed\Iced.dll" Private="false" />
+    <Reference Include="MonoMod.Utils" HintPath="$(BepInExCoreRoot)\MonoMod.Utils.dll" Private="false" />
+    <Reference Include="SemanticVersioning" HintPath="$(ModstokeDependencyRoot)\managed\SemanticVersioning.dll" Private="false" />
+    <Reference Include="Tomlet" HintPath="$(ModstokeDependencyRoot)\managed\Tomlet.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(BepInExCoreRoot)\0Harmony.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(BepInExCoreRoot)\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Common" HintPath="$(BepInExCoreRoot)\Il2CppInterop.Common.dll" Private="false" />
+    <Reference Include="MonoMod.RuntimeDetour" HintPath="$(BepInExCoreRoot)\MonoMod.RuntimeDetour.dll" Private="false" />
+    <Reference Include="Il2Cppmscorlib" HintPath="$(GameInteropRoot)\Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="Il2CppSystem.Core" HintPath="$(GameInteropRoot)\Il2CppSystem.Core.dll" Private="false" />
+    <ProjectReference Include="..\Modstoke.Compatibility.RedLoader\Modstoke.Compatibility.RedLoader.csproj" Private="false" GlobalPropertiesToRemove="TargetFramework" AdditionalProperties="Configuration=Debug" />
+    <ProjectReference Include="..\Modstoke.Compatibility.SonsSdk\Modstoke.Compatibility.SonsSdk.csproj" Private="false" GlobalPropertiesToRemove="TargetFramework" AdditionalProperties="Configuration=Debug" />
+    <Reference Include="GLTF" HintPath="$(ModstokeDependencyRoot)\managed\GLTF.dll" Private="false" />
+    <Reference Include="bolt" HintPath="$(GameInteropRoot)\bolt.dll" Private="false" />
+    <Reference Include="bolt.user" HintPath="$(GameInteropRoot)\bolt.user.dll" Private="false" />
+    <Reference Include="Bolt.Unity" HintPath="$(GameInteropRoot)\Bolt.Unity.dll" Private="false" />
+    <Reference Include="udpkit" HintPath="$(GameInteropRoot)\udpkit.dll" Private="false" />
+    <Reference Include="udpkit.common" HintPath="$(GameInteropRoot)\udpkit.common.dll" Private="false" />
+    <Reference Include="com.rlabrecque.steamworks.net" HintPath="$(GameInteropRoot)\com.rlabrecque.steamworks.net.dll" Private="false" />
+    <Reference Include="Endnight" HintPath="$(GameInteropRoot)\Endnight.dll" Private="false" />
+    <Reference Include="Endnight.Localization" HintPath="$(GameInteropRoot)\Endnight.Localization.dll" Private="false" />
+    <Reference Include="Endnight.Utilities.Configurations" HintPath="$(GameInteropRoot)\Endnight.Utilities.Configurations.dll" Private="false" />
+    <Reference Include="FMOD.Unity" HintPath="$(GameInteropRoot)\FMOD.Unity.dll" Private="false" />
+    <Reference Include="Multiplayer.Dedicated" HintPath="$(GameInteropRoot)\Multiplayer.Dedicated.dll" Private="false" />
+    <Reference Include="PathologicalGames" HintPath="$(GameInteropRoot)\PathologicalGames.dll" Private="false" />
+    <Reference Include="Sons" HintPath="$(GameInteropRoot)\Sons.dll" Private="false" Aliases="global,SonsGame" />
+    <Reference Include="Sons.Environment" HintPath="$(GameInteropRoot)\Sons.Environment.dll" Private="false" />
+    <Reference Include="Sons.Lodding" HintPath="$(GameInteropRoot)\Sons.Lodding.dll" Private="false" />
+    <Reference Include="Sons.Atmosphere" HintPath="$(GameInteropRoot)\Sons.Atmosphere.dll" Private="false" />
+    <Reference Include="Sons.Areas" HintPath="$(GameInteropRoot)\Sons.Areas.dll" Private="false" />
+    <Reference Include="Sons.Construction.Utils" HintPath="$(GameInteropRoot)\Sons.Construction.Utils.dll" Private="false" />
+    <Reference Include="Sons.Construction" HintPath="$(GameInteropRoot)\Sons.Construction.dll" Private="false" />
+    <Reference Include="Sons.StatSystem" HintPath="$(GameInteropRoot)\Sons.StatSystem.dll" Private="false" />
+    <Reference Include="Sons.Utilities" HintPath="$(GameInteropRoot)\Sons.Utilities.dll" Private="false" />
+    <Reference Include="Sons.FMOD" HintPath="$(GameInteropRoot)\Sons.FMOD.dll" Private="false" />
+    <Reference Include="Sons.Settings" HintPath="$(GameInteropRoot)\Sons.Settings.dll" Private="false" />
+    <Reference Include="Sons.SettingsWrappers" HintPath="$(GameInteropRoot)\Sons.SettingsWrappers.dll" Private="false" />
+    <Reference Include="Sons.Quality" HintPath="$(GameInteropRoot)\Sons.Quality.dll" Private="false" />
+    <Reference Include="Sons.Tests" HintPath="$(GameInteropRoot)\Sons.Tests.dll" Private="false" />
+    <Reference Include="Sons.SteamTimelineExtended" HintPath="$(GameInteropRoot)\Sons.SteamTimelineExtended.dll" Private="false" />
+    <Reference Include="Sons.FpsUtility" HintPath="$(GameInteropRoot)\Sons.FpsUtility.dll" Private="false" />
+    <Reference Include="Sons.Ai.Vail" HintPath="$(GameInteropRoot)\Sons.Ai.Vail.dll" Private="false" />
+    <Reference Include="Sons.Animation.Mae" HintPath="$(GameInteropRoot)\Sons.Animation.Mae.dll" Private="false" />
+    <Reference Include="Sons.Events" HintPath="$(GameInteropRoot)\Sons.Events.dll" Private="false" />
+    <Reference Include="Sons.GameApplication" HintPath="$(GameInteropRoot)\Sons.GameApplication.dll" Private="false" />
+    <Reference Include="Sons.Gameplay.GameSetup" HintPath="$(GameInteropRoot)\Sons.Gameplay.GameSetup.dll" Private="false" />
+    <Reference Include="Sons.Gameplay.StatusEffects" HintPath="$(GameInteropRoot)\Sons.Gameplay.StatusEffects.dll" Private="false" />
+    <Reference Include="Sons.Gui" HintPath="$(GameInteropRoot)\Sons.Gui.dll" Private="false" />
+    <Reference Include="Sons.Gui.Options" HintPath="$(GameInteropRoot)\Sons.Gui.Options.dll" Private="false" />
+    <Reference Include="Sons.Item" HintPath="$(GameInteropRoot)\Sons.Item.dll" Private="false" />
+    <Reference Include="Sons.Weapon" HintPath="$(GameInteropRoot)\Sons.Weapon.dll" Private="false" />
+    <Reference Include="Sons.FieldOfView" HintPath="$(GameInteropRoot)\Sons.FieldOfView.dll" Private="false" />
+    <Reference Include="BulletBallistics" HintPath="$(GameInteropRoot)\BulletBallistics.dll" Private="false" />
+    <Reference Include="Sons.Input" HintPath="$(GameInteropRoot)\Sons.Input.dll" Private="false" />
+    <Reference Include="Sons.Electricity" HintPath="$(GameInteropRoot)\Sons.Electricity.dll" Private="false" />
+    <Reference Include="Sons.Interfaces" HintPath="$(GameInteropRoot)\Sons.Interfaces.dll" Private="false" />
+    <Reference Include="Sons.Loading" HintPath="$(GameInteropRoot)\Sons.Loading.dll" Private="false" />
+    <Reference Include="Sons.Multiplayer" HintPath="$(GameInteropRoot)\Sons.Multiplayer.dll" Private="false" />
+    <Reference Include="Sons.Multiplayer.NamedIntIds" HintPath="$(GameInteropRoot)\Sons.Multiplayer.NamedIntIds.dll" Private="false" />
+    <Reference Include="BlobNetworking" HintPath="$(GameInteropRoot)\BlobNetworking.dll" Private="false" />
+    <Reference Include="Sons.Multiplayer.Configurations" HintPath="$(GameInteropRoot)\Sons.Multiplayer.Configurations.dll" Private="false" />
+    <Reference Include="Sons.Save" HintPath="$(GameInteropRoot)\Sons.Save.dll" Private="false" />
+    <Reference Include="Sons.Physics" HintPath="$(GameInteropRoot)\Sons.Physics.dll" Private="false" />
+    <Reference Include="Crest" HintPath="$(GameInteropRoot)\Crest.dll" Private="false" />
+    <Reference Include="Sons.Rendering" HintPath="$(GameInteropRoot)\Sons.Rendering.dll" Private="false" />
+    <Reference Include="Sons.UiElements" HintPath="$(GameInteropRoot)\Sons.UiElements.dll" Private="false" />
+    <Reference Include="TheForest.Utils" HintPath="$(GameInteropRoot)\TheForest.Utils.dll" Private="false" />
+    <Reference Include="Newtonsoft.Json" HintPath="$(GameInteropRoot)\Newtonsoft.Json.dll" Private="false" />
+    <Reference Include="Unity.Addressables" HintPath="$(GameInteropRoot)\Unity.Addressables.dll" Private="false" />
+    <Reference Include="Unity.ResourceManager" HintPath="$(GameInteropRoot)\Unity.ResourceManager.dll" Private="false" />
+    <Reference Include="Unity.Localization" HintPath="$(GameInteropRoot)\Unity.Localization.dll" Private="false" />
+    <Reference Include="Unity.RenderPipelines.HighDefinition.Runtime" HintPath="$(GameInteropRoot)\Unity.RenderPipelines.HighDefinition.Runtime.dll" Private="false" />
+    <Reference Include="Unity.RenderPipelines.Core.Runtime" HintPath="$(GameInteropRoot)\Unity.RenderPipelines.Core.Runtime.dll" Private="false" />
+    <Reference Include="UnityEngine.AudioModule" HintPath="$(GameInteropRoot)\UnityEngine.AudioModule.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(GameInteropRoot)\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.ImageConversionModule" HintPath="$(GameInteropRoot)\UnityEngine.ImageConversionModule.dll" Private="false" />
+    <Reference Include="UnityEngine.AnimationModule" HintPath="$(GameInteropRoot)\UnityEngine.AnimationModule.dll" Private="false" />
+    <Reference Include="UnityEngine.PhysicsModule" HintPath="$(GameInteropRoot)\UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TerrainModule" HintPath="$(GameInteropRoot)\UnityEngine.TerrainModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TerrainPhysicsModule" HintPath="$(GameInteropRoot)\UnityEngine.TerrainPhysicsModule.dll" Private="false" />
+    <Reference Include="UnityEngine.ParticleSystemModule" HintPath="$(GameInteropRoot)\UnityEngine.ParticleSystemModule.dll" Private="false" />
+    <Reference Include="UnityEngine.AssetBundleModule" HintPath="$(GameInteropRoot)\UnityEngine.AssetBundleModule.dll" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(GameInteropRoot)\UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(GameInteropRoot)\UnityEngine.InputLegacyModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(GameInteropRoot)\UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UIModule" HintPath="$(GameInteropRoot)\UnityEngine.UIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UnityWebRequestModule" HintPath="$(GameInteropRoot)\UnityEngine.UnityWebRequestModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UnityWebRequestAudioModule" HintPath="$(GameInteropRoot)\UnityEngine.UnityWebRequestAudioModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UI" HintPath="$(GameInteropRoot)\UnityEngine.UI.dll" Private="false" />
+    <Reference Include="Unity.TextMeshPro" HintPath="$(GameInteropRoot)\Unity.TextMeshPro.dll" Private="false" />
+    <Reference Include="Unity.InputSystem" HintPath="$(GameInteropRoot)\Unity.InputSystem.dll" Private="false" />
+  </ItemGroup>
+</Project>

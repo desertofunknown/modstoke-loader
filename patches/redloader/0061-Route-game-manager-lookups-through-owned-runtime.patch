@@ -1,0 +1,111 @@
+diff --git a/SonsSdk/GameManagers.cs b/SonsSdk/GameManagers.cs
+index 1bee8f8..14e3bdf 100644
+--- a/SonsSdk/GameManagers.cs
++++ b/SonsSdk/GameManagers.cs
+@@ -4,28 +4,57 @@ using UnityEngine;
+ 
+ namespace SonsSdk;
+ 
++internal interface ISdkGameManagerDriver
++{
++    void Initialize();
++    void Create();
++    T GetManager<T>(string managerName) where T : Component;
++}
++
+ public class GameManagers
+ {
+-    private static GameManagers _instance;
+-    private readonly Transform _gameManagersTr;
++    internal static GameManagers _instance;
++    internal readonly Transform _gameManagersTr;
++
++    internal GameManagers() : this(DebugConsole.Instance.transform.parent)
++    {
++    }
+ 
+-    internal GameManagers()
++    internal GameManagers(Transform gameManagersTransform)
+     {
+-        _gameManagersTr = DebugConsole.Instance.transform.parent;
++        _gameManagersTr = gameManagersTransform;
+     }
+ 
+     internal static void Create()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.GameManagers.Create();
++            return;
++        }
++
+         _instance = new GameManagers();
+     }
+ 
+     internal static void Init()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.GameManagers.Initialize();
++            return;
++        }
++
+         SdkEvents.OnGameActivated.Subscribe(Create);
+     }
+     
+     public static T GetManager<T>(string managerName) where T : Component
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++            return driver.GameManagers.GetManager<T>(managerName);
++
+         if (_instance == null)
+         {
+             return null;
+@@ -34,8 +63,9 @@ public class GameManagers
+         if (!_instance._gameManagersTr)
+             return null;
+         
+-        return _instance._gameManagersTr.Find(managerName).GetComponent<T>();
++        var manager = _instance._gameManagersTr.Find(managerName);
++        return manager ? manager.GetComponent<T>() : null;
+     }
+ 
+     public static CharacterManager GetCharacterManager() => GetManager<CharacterManager>("CharacterManager");
+-}
+\ No newline at end of file
++}
+diff --git a/SonsSdk/GameCommands.cs b/SonsSdk/GameCommands.cs
+index 45a364f..48c59e8 100644
+--- a/SonsSdk/GameCommands.cs
++++ b/SonsSdk/GameCommands.cs
+@@ -273,7 +273,14 @@ public static class GameCommands
+         
+                  break;
+              case "characters":
+-                 foreach (var def in GameManagers.GetCharacterManager()._definitions)
++                 var characterManager = GameManagers.GetCharacterManager();
++                 if (!characterManager)
++                 {
++                     Report("Character manager is unavailable");
++                     return;
++                 }
++
++                 foreach (var def in characterManager._definitions)
+                  {
+                      writer.AppendLine($"{def._id}");
+                      foreach (var vari in def._variations)
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 9eac4e3..5aa7330 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -55,6 +55,7 @@ internal interface ISdkLifecycleDriver
+     Networking.ISdkNetworkPrefabDriver NetworkPrefabs { get; }
+     Networking.ISdkPacketDriver Packets { get; }
+     Networking.ISdkServerCommandDriver ServerCommands { get; }
++    ISdkGameManagerDriver GameManagers { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);

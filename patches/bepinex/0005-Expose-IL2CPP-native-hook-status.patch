@@ -1,0 +1,453 @@
+From c7a7a851af34a9c581ce7464722b1d4c9a9160d8 Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Fri, 5 Jun 2026 06:48:15 -0500
+Subject: [PATCH 05/13] Expose IL2CPP native hook status
+
+---
+ .../Hook/INativeDetour.cs                     |  21 +-
+ .../BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs |  16 +
+ .../OpenACAIIL2CPPHookStatus.cs               | 287 ++++++++++++++++++
+ 3 files changed, 320 insertions(+), 4 deletions(-)
+ create mode 100644 Runtimes/Unity/BepInEx.Unity.IL2CPP/OpenACAIIL2CPPHookStatus.cs
+
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs
+index 72e6e53..bc6d036 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/INativeDetour.cs
+@@ -3,6 +3,7 @@ using System.Collections.Generic;
+ using System.Reflection;
+ using BepInEx.Configuration;
+ using BepInEx.Logging;
++using BepInEx.Unity.IL2CPP;
+ using BepInEx.Unity.IL2CPP.Hook.Dobby;
+ using BepInEx.Unity.IL2CPP.Hook.Funchook;
+ using MonoMod.RuntimeDetour;
+@@ -26,15 +27,21 @@ public interface INativeDetour : IDetour
+ 
+     private static INativeDetour CreateDefault<T>(nint original, T target) where T : Delegate
+     {
+-        if (DobbyLib.IsAvailable())
++        var dobbyAvailable = DobbyLib.IsAvailable();
++        OpenACAIIL2CPPHookStatus.RecordProviderProbe("Dobby", dobbyAvailable);
++        if (dobbyAvailable)
+         {
+             Logger.LogDebug("Using Dobby native detour provider");
++            OpenACAIIL2CPPHookStatus.RecordProviderSelected("Dobby", "default");
+             return new DobbyDetour(original, target);
+         }
+ 
+-        if (FunchookLib.IsAvailable())
++        var funchookAvailable = FunchookLib.IsAvailable();
++        OpenACAIIL2CPPHookStatus.RecordProviderProbe("Funchook", funchookAvailable);
++        if (funchookAvailable)
+         {
+             Logger.LogDebug("Using Funchook native detour provider");
++            OpenACAIIL2CPPHookStatus.RecordProviderSelected("Funchook", "default");
+             return new FunchookDetour(original, target);
+         }
+ 
+@@ -59,19 +66,25 @@ public interface INativeDetour : IDetour
+ 
+     private static INativeDetour CreateDobby<T>(nint original, T target) where T : Delegate
+     {
+-        if (!DobbyLib.IsAvailable())
++        var available = DobbyLib.IsAvailable();
++        OpenACAIIL2CPPHookStatus.RecordProviderProbe("Dobby", available);
++        if (!available)
+             throw new InvalidOperationException("Dobby native detour provider was selected, but dobby could not be loaded.");
+ 
+         Logger.LogDebug("Using configured Dobby native detour provider");
++        OpenACAIIL2CPPHookStatus.RecordProviderSelected("Dobby", "configured");
+         return new DobbyDetour(original, target);
+     }
+ 
+     private static INativeDetour CreateFunchook<T>(nint original, T target) where T : Delegate
+     {
+-        if (!FunchookLib.IsAvailable())
++        var available = FunchookLib.IsAvailable();
++        OpenACAIIL2CPPHookStatus.RecordProviderProbe("Funchook", available);
++        if (!available)
+             throw new InvalidOperationException("Funchook native detour provider was selected, but funchook could not be loaded.");
+ 
+         Logger.LogDebug("Using configured Funchook native detour provider");
++        OpenACAIIL2CPPHookStatus.RecordProviderSelected("Funchook", "configured");
+         return new FunchookDetour(original, target);
+     }
+ 
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs
+index ad28239..0984fc7 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/IL2CPPChainloader.cs
+@@ -57,21 +57,29 @@ public class IL2CPPChainloader : BaseChainloader<BasePlugin>
+     {
+         base.Initialize(gameExePath);
+         Instance = this;
++        OpenACAIIL2CPPHookStatus.MarkInitializing();
+ 
+         if (!NativeLibrary.TryLoad("GameAssembly", typeof(IL2CPPChainloader).Assembly, null, out var il2CppHandle))
+         {
++            OpenACAIIL2CPPHookStatus.MarkGameAssemblyMissing(
++                "Could not locate Il2Cpp game assembly (GameAssembly.dll, UserAssembly.dll or libil2cpp.so).");
+             Logger.Log(LogLevel.Fatal,
+                        "Could not locate Il2Cpp game assembly (GameAssembly.dll, UserAssembly.dll or libil2cpp.so). The game might be obfuscated or use a yet unsupported build of Unity.");
+             return;
+         }
+ 
++        OpenACAIIL2CPPHookStatus.MarkGameAssemblyLoaded();
++
+         if (!NativeLibrary.TryGetExport(il2CppHandle, "il2cpp_runtime_invoke", out var runtimeInvokePtr))
+         {
++            OpenACAIIL2CPPHookStatus.MarkRuntimeInvokeMissing(
++                "Could not locate il2cpp_runtime_invoke in the Il2Cpp game assembly. IL2CPP plugin loading is disabled for this run.");
+             Logger.Log(LogLevel.Fatal,
+                        "Could not locate il2cpp_runtime_invoke in the Il2Cpp game assembly. IL2CPP plugin loading is disabled for this run.");
+             return;
+         }
+ 
++        OpenACAIIL2CPPHookStatus.MarkRuntimeInvokeExportFound(runtimeInvokePtr);
+         PreloaderLogger.Log.Log(LogLevel.Debug, $"Runtime invoke pointer: 0x{runtimeInvokePtr.ToInt64():X}");
+         RuntimeInvokeDetourDelegate invokeMethodDetour = OnInvokeMethod;
+ 
+@@ -80,11 +88,13 @@ public class IL2CPPChainloader : BaseChainloader<BasePlugin>
+             RuntimeInvokeDetour =
+                 INativeDetour.CreateAndApply(runtimeInvokePtr, invokeMethodDetour, out originalInvoke);
+             PreloaderLogger.Log.Log(LogLevel.Debug, "Runtime invoke patched");
++            OpenACAIIL2CPPHookStatus.MarkRuntimeInvokePatched(runtimeInvokePtr);
+         }
+         catch (Exception ex)
+         {
+             originalInvoke = null;
+             RuntimeInvokeDetour = null;
++            OpenACAIIL2CPPHookStatus.MarkRuntimeInvokePatchFailed(ex);
+             Logger.Log(LogLevel.Fatal,
+                        "Unable to patch il2cpp_runtime_invoke. IL2CPP plugin loading is disabled for this run.");
+             Logger.Log(LogLevel.Error, ex);
+@@ -100,6 +110,8 @@ public class IL2CPPChainloader : BaseChainloader<BasePlugin>
+         if (methodName == "Internal_ActiveSceneChanged")
+             try
+             {
++                OpenACAIIL2CPPHookStatus.MarkChainloaderExecuting(methodName);
++
+                 if (ConfigUnityLogging.Value)
+                 {
+                     Logger.Sources.Add(new IL2CPPUnityLogSource());
+@@ -113,9 +125,11 @@ public class IL2CPPChainloader : BaseChainloader<BasePlugin>
+                 Il2CppInteropManager.PreloadInteropAssemblies();
+ 
+                 Instance.Execute();
++                OpenACAIIL2CPPHookStatus.MarkChainloaderExecuted();
+             }
+             catch (Exception ex)
+             {
++                OpenACAIIL2CPPHookStatus.MarkChainloaderFailed(ex);
+                 Logger.Log(LogLevel.Fatal, "Unable to execute IL2CPP chainloader");
+                 Logger.Log(LogLevel.Error, ex);
+             }
+@@ -142,9 +156,11 @@ public class IL2CPPChainloader : BaseChainloader<BasePlugin>
+         {
+             detour.Dispose();
+             PreloaderLogger.Log.Log(LogLevel.Debug, "Runtime invoke unpatched");
++            OpenACAIIL2CPPHookStatus.MarkRuntimeInvokeUnpatched();
+         }
+         catch (Exception ex)
+         {
++            OpenACAIIL2CPPHookStatus.MarkRuntimeInvokeCleanupFailed(ex);
+             Logger.Log(LogLevel.Warning, "Runtime invoke detour cleanup failed");
+             Logger.Log(LogLevel.Warning, ex);
+         }
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/OpenACAIIL2CPPHookStatus.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/OpenACAIIL2CPPHookStatus.cs
+new file mode 100644
+index 0000000..bd7b266
+--- /dev/null
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/OpenACAIIL2CPPHookStatus.cs
+@@ -0,0 +1,287 @@
++using System;
++using System.Collections.Generic;
++using System.IO;
++using System.Runtime.InteropServices;
++using System.Text.Json;
++
++namespace BepInEx.Unity.IL2CPP;
++
++public static class OpenACAIIL2CPPHookStatus
++{
++    public const string StateDirectoryName = "OpenACAILoader";
++    public const string StateFileName = "openacai-il2cpp-hook-state.json";
++
++    private static readonly object SyncRoot = new();
++    private static readonly Dictionary<string, bool> ProviderAvailability = new(StringComparer.OrdinalIgnoreCase);
++
++    private static string _status = "pending";
++    private static string _detail = "IL2CPP hook status has not been initialized.";
++    private static string _selectedProvider;
++    private static string _detourProviderMode;
++    private static string _runtimeInvokePointer;
++    private static string _lastError;
++    private static bool _gameAssemblyLoaded;
++    private static bool _runtimeInvokeExportFound;
++    private static bool _runtimeInvokePatched;
++    private static bool _chainloaderExecutionStarted;
++    private static bool _chainloaderExecuted;
++    private static bool _hookDisposed;
++    private static bool _failed;
++
++    public static void MarkInitializing()
++    {
++        Update(() =>
++        {
++            _status = "initializing";
++            _detail = "BepInEx IL2CPP chainloader is preparing the runtime invoke detour.";
++            _failed = false;
++            _lastError = null;
++        });
++    }
++
++    public static void MarkGameAssemblyLoaded()
++    {
++        Update(() =>
++        {
++            _gameAssemblyLoaded = true;
++            _status = "game-assembly-loaded";
++            _detail = "GameAssembly was loaded and is ready for il2cpp_runtime_invoke lookup.";
++        });
++    }
++
++    public static void MarkGameAssemblyMissing(string detail)
++    {
++        MarkFailed("game-assembly-missing", detail, null);
++    }
++
++    public static void MarkRuntimeInvokeMissing(string detail)
++    {
++        Update(() =>
++        {
++            _gameAssemblyLoaded = true;
++            _runtimeInvokeExportFound = false;
++            _runtimeInvokePatched = false;
++            _status = "failed";
++            _detail = detail;
++            _failed = true;
++            _lastError = detail;
++        });
++    }
++
++    public static void MarkRuntimeInvokeExportFound(IntPtr runtimeInvokePtr)
++    {
++        Update(() =>
++        {
++            _runtimeInvokeExportFound = true;
++            _runtimeInvokePointer = FormatPointer(runtimeInvokePtr);
++            _status = "runtime-invoke-found";
++            _detail = "il2cpp_runtime_invoke was found and is ready for native detour setup.";
++        });
++    }
++
++    public static void RecordProviderProbe(string provider, bool available)
++    {
++        if (string.IsNullOrWhiteSpace(provider))
++        {
++            return;
++        }
++
++        Update(() =>
++        {
++            ProviderAvailability[provider] = available;
++            _detail = available
++                ? provider + " native detour provider is available."
++                : provider + " native detour provider is unavailable.";
++        });
++    }
++
++    public static void RecordProviderSelected(string provider, string mode)
++    {
++        Update(() =>
++        {
++            _selectedProvider = provider;
++            _detourProviderMode = mode;
++            _status = "provider-selected";
++            _detail = provider + " native detour provider selected" + (string.IsNullOrWhiteSpace(mode) ? "." : " in " + mode + " mode.");
++        });
++    }
++
++    public static void MarkRuntimeInvokePatched(IntPtr runtimeInvokePtr)
++    {
++        Update(() =>
++        {
++            _runtimeInvokeExportFound = true;
++            _runtimeInvokePatched = true;
++            _runtimeInvokePointer = FormatPointer(runtimeInvokePtr);
++            _status = "ready";
++            _detail = "il2cpp_runtime_invoke was patched successfully. Waiting for Unity scene activation to run plugins.";
++            _failed = false;
++            _lastError = null;
++        });
++    }
++
++    public static void MarkRuntimeInvokePatchFailed(Exception exception)
++    {
++        MarkFailed("failed", "Unable to patch il2cpp_runtime_invoke. IL2CPP plugin loading is disabled for this run.", exception);
++    }
++
++    public static void MarkChainloaderExecuting(string methodName)
++    {
++        Update(() =>
++        {
++            _chainloaderExecutionStarted = true;
++            _status = "chainloader-executing";
++            _detail = "Unity method " + (string.IsNullOrWhiteSpace(methodName) ? "<unknown>" : methodName) + " triggered IL2CPP chainloader execution.";
++        });
++    }
++
++    public static void MarkChainloaderExecuted()
++    {
++        Update(() =>
++        {
++            _chainloaderExecutionStarted = true;
++            _chainloaderExecuted = true;
++            _status = "loaded";
++            _detail = "BepInEx IL2CPP chainloader executed successfully.";
++            _failed = false;
++            _lastError = null;
++        });
++    }
++
++    public static void MarkChainloaderFailed(Exception exception)
++    {
++        MarkFailed("failed", "Unable to execute IL2CPP chainloader.", exception);
++    }
++
++    public static void MarkRuntimeInvokeUnpatched()
++    {
++        Update(() =>
++        {
++            _hookDisposed = true;
++            if (_failed)
++            {
++                _detail += " Runtime invoke detour was released during failure cleanup.";
++                return;
++            }
++
++            _status = _chainloaderExecuted ? "loaded" : "warning";
++            _detail = _chainloaderExecuted
++                ? "Runtime invoke detour was released after chainloader execution."
++                : "Runtime invoke detour was released before the chainloader reported successful execution.";
++        });
++    }
++
++    public static void MarkRuntimeInvokeCleanupFailed(Exception exception)
++    {
++        Update(() =>
++        {
++            if (_failed)
++            {
++                _detail += " Runtime invoke detour cleanup also failed.";
++                _lastError = (_lastError ?? string.Empty) + Environment.NewLine + exception;
++                return;
++            }
++
++            _status = "warning";
++            _detail = "Runtime invoke detour cleanup failed after startup.";
++            _lastError = exception?.ToString();
++        });
++    }
++
++    private static void MarkFailed(string status, string detail, Exception exception)
++    {
++        Update(() =>
++        {
++            _status = string.IsNullOrWhiteSpace(status) ? "failed" : status;
++            _detail = detail;
++            _failed = true;
++            _lastError = exception?.ToString() ?? detail;
++        });
++    }
++
++    private static void Update(Action update)
++    {
++        lock (SyncRoot)
++        {
++            update?.Invoke();
++            WriteNoThrow();
++        }
++    }
++
++    private static void WriteNoThrow()
++    {
++        try
++        {
++            var directory = ResolveStateDirectory();
++            if (string.IsNullOrWhiteSpace(directory))
++            {
++                return;
++            }
++
++            Directory.CreateDirectory(directory);
++            var path = Path.Combine(directory, StateFileName);
++            var json = JsonSerializer.Serialize(CreateStateNoLock(), new JsonSerializerOptions
++            {
++                WriteIndented = true,
++                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
++            });
++            File.WriteAllText(path, json);
++        }
++        catch
++        {
++            // This status file is diagnostic-only and must never affect startup.
++        }
++    }
++
++    private static object CreateStateNoLock()
++    {
++        return new
++        {
++            schema = 1,
++            generatedUtc = DateTimeOffset.UtcNow.ToString("O"),
++            status = _status,
++            detail = _detail,
++            failed = _failed,
++            gameAssemblyLoaded = _gameAssemblyLoaded,
++            runtimeInvokeExportFound = _runtimeInvokeExportFound,
++            runtimeInvokePatched = _runtimeInvokePatched,
++            runtimeInvokePointer = _runtimeInvokePointer,
++            chainloaderExecutionStarted = _chainloaderExecutionStarted,
++            chainloaderExecuted = _chainloaderExecuted,
++            hookDisposed = _hookDisposed,
++            selectedProvider = _selectedProvider,
++            detourProviderMode = _detourProviderMode,
++            providerAvailability = new Dictionary<string, bool>(ProviderAvailability, StringComparer.OrdinalIgnoreCase),
++            dotnetRuntimeVersion = Environment.Version.ToString(),
++            dotnetFrameworkDescription = RuntimeInformation.FrameworkDescription,
++            gameRoot = Paths.GameRootPath,
++            processName = Paths.ProcessName,
++            lastError = _lastError
++        };
++    }
++
++    private static string ResolveStateDirectory()
++    {
++        if (!string.IsNullOrWhiteSpace(Paths.PluginPath))
++        {
++            return Path.Combine(Paths.PluginPath, StateDirectoryName);
++        }
++
++        if (!string.IsNullOrWhiteSpace(Paths.BepInExRootPath))
++        {
++            return Path.Combine(Paths.BepInExRootPath, "plugins", StateDirectoryName);
++        }
++
++        if (!string.IsNullOrWhiteSpace(Paths.GameRootPath))
++        {
++            return Path.Combine(Paths.GameRootPath, "BepInEx", "plugins", StateDirectoryName);
++        }
++
++        return null;
++    }
++
++    private static string FormatPointer(IntPtr pointer)
++    {
++        return pointer == IntPtr.Zero ? "0x0" : "0x" + pointer.ToInt64().ToString("X");
++    }
++}
+-- 
+2.54.0.windows.1
+

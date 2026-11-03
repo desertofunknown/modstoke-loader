@@ -1,0 +1,153 @@
+Subject: [PATCH] Route compatibility plugin batches to Modstoke
+
+diff --git a/BepInEx.Core/Bootstrap/BaseChainloader.cs b/BepInEx.Core/Bootstrap/BaseChainloader.cs
+index 38b8136..f1ac237 100644
+--- a/BepInEx.Core/Bootstrap/BaseChainloader.cs
++++ b/BepInEx.Core/Bootstrap/BaseChainloader.cs
+@@ -3,7 +3,6 @@ using System.Collections.Generic;
+ using System.IO;
+ using System.Linq;
+ using System.Reflection;
+-using System.Runtime.CompilerServices;
+ using System.Text;
+ using System.Text.RegularExpressions;
+ using BepInEx.Configuration;
+@@ -345,97 +344,29 @@ public abstract class BaseChainloader<TPlugin>
+     private IList<PluginInfo> LoadPlugins(IList<PluginInfo> plugins)
+     {
+         var sortedPlugins = ModifyLoadOrder(plugins);
++        return CompatibilityPluginBatch.Value(sortedPlugins, Plugins, DependencyErrors,
++                                              (plugin, assembly) => LoadPlugin(plugin, assembly), OnPluginLoaded);
++    }
+ 
+-        var invalidPlugins = new HashSet<string>();
+-        var processedPlugins = new Dictionary<string, SemanticVersioning.Version>();
+-        var loadedAssemblies = new Dictionary<string, Assembly>();
+-        var loadedPlugins = new List<PluginInfo>();
+-
+-        foreach (var plugin in sortedPlugins)
+-        {
+-            var dependsOnInvalidPlugin = false;
+-            var missingDependencies = new List<BepInDependency>();
+-            foreach (var dependency in plugin.Dependencies)
+-            {
+-                static bool IsHardDependency(BepInDependency dep) =>
+-                    (dep.Flags & BepInDependency.DependencyFlags.HardDependency) != 0;
+-
+-                // If the dependency wasn't already processed, it's missing altogether
+-                var dependencyExists =
+-                    processedPlugins.TryGetValue(dependency.DependencyGUID, out var pluginVersion);
+-                // Alternatively, if the dependency hasn't been loaded before, it's missing too
+-                if (!dependencyExists)
+-                {
+-                    dependencyExists = Plugins.TryGetValue(dependency.DependencyGUID, out var pluginInfo);
+-                    pluginVersion = pluginInfo?.Metadata.Version;
+-                }
+-
+-                if (!dependencyExists || dependency.VersionRange != null &&
+-                    !dependency.VersionRange.IsSatisfied(pluginVersion))
+-                {
+-                    // If the dependency is hard, collect it into a list to show
+-                    if (IsHardDependency(dependency))
+-                        missingDependencies.Add(dependency);
+-                    continue;
+-                }
+-
+-                // If the dependency is a hard and is invalid (e.g. has missing dependencies), report that to the user
+-                if (invalidPlugins.Contains(dependency.DependencyGUID) && IsHardDependency(dependency))
+-                {
+-                    dependsOnInvalidPlugin = true;
+-                    break;
+-                }
+-            }
+-
+-            processedPlugins.Add(plugin.Metadata.GUID, plugin.Metadata.Version);
+-
+-            if (dependsOnInvalidPlugin)
+-            {
+-                var message =
+-                    $"Skipping [{plugin}] because it has a dependency that was not loaded. See previous errors for details.";
+-                DependencyErrors.Add(message);
+-                Logger.Log(LogLevel.Warning, message);
+-                continue;
+-            }
+-
+-            if (missingDependencies.Count != 0)
+-            {
+-                var message = $@"Could not load [{plugin}] because it has missing dependencies: {
+-                    string.Join(", ", missingDependencies.Select(s => s.VersionRange == null ? s.DependencyGUID : $"{s.DependencyGUID} ({s.VersionRange})").ToArray())
+-                }";
+-                DependencyErrors.Add(message);
+-                Logger.Log(LogLevel.Error, message);
+-
+-                invalidPlugins.Add(plugin.Metadata.GUID);
+-                continue;
+-            }
+-
+-            try
+-            {
+-                Logger.Log(LogLevel.Info, $"Loading [{plugin}]");
+-
+-                if (!loadedAssemblies.TryGetValue(plugin.Location, out var ass))
+-                    loadedAssemblies[plugin.Location] = ass = Assembly.LoadFrom(plugin.Location);
+-
+-                Plugins[plugin.Metadata.GUID] = plugin;
+-                TryRunModuleCtor(plugin, ass);
+-                plugin.Instance = LoadPlugin(plugin, ass);
+-                loadedPlugins.Add(plugin);
+-
+-                OnPluginLoaded(plugin);
+-            }
+-            catch (Exception ex)
+-            {
+-                invalidPlugins.Add(plugin.Metadata.GUID);
+-                Plugins.Remove(plugin.Metadata.GUID);
++    private delegate IList<PluginInfo> LoadCompatibilityPluginBatch(
++        IList<PluginInfo> plugins, Dictionary<string, PluginInfo> registry, List<string> dependencyErrors,
++        Func<PluginInfo, Assembly, object> activate, Action<PluginInfo> loaded);
+ 
+-                Logger.Log(LogLevel.Error,
+-                           $"Error loading [{plugin}]: {(ex is ReflectionTypeLoadException re ? TypeLoader.TypeLoadExceptionToString(re) : ex.ToString())}");
+-            }
+-        }
+-
+-        return loadedPlugins;
+-    }
++    // Bind only when legacy batch loading is requested; discovery does not start the owned runtime.
++    private static readonly Lazy<LoadCompatibilityPluginBatch> CompatibilityPluginBatch = new(() =>
++    {
++        var owner = Assembly.Load("OpenACAI.Endnight.Loader.Preloader")
++                            .GetType("OpenACAI.Endnight.Loader.Preloader.OpenACAICompatibilityPluginBatch", true);
++        var method = owner.GetMethod("Load", BindingFlags.Static | BindingFlags.NonPublic, null,
++                                     new[]
++                                     {
++                                         typeof(IList<PluginInfo>), typeof(Dictionary<string, PluginInfo>),
++                                         typeof(List<string>), typeof(Func<PluginInfo, Assembly, object>),
++                                         typeof(Action<PluginInfo>)
++                                     }, null)
++                     ?? throw new MissingMethodException(owner.FullName, "Load");
++        return (LoadCompatibilityPluginBatch)method.CreateDelegate(typeof(LoadCompatibilityPluginBatch));
++    });
+ 
+     /// <summary>
+     /// Detects and loads all plugins in the specified directories.
+@@ -455,19 +386,6 @@ public abstract class BaseChainloader<TPlugin>
+         return LoadPlugins(plugins);
+     }
+ 
+-    private static void TryRunModuleCtor(PluginInfo plugin, Assembly assembly)
+-    {
+-        try
+-        {
+-            RuntimeHelpers.RunModuleConstructor(assembly.GetType(plugin.TypeName).Module.ModuleHandle);
+-        }
+-        catch (Exception e)
+-        {
+-            Logger.Log(LogLevel.Warning,
+-                       $"Couldn't run Module constructor for {assembly.FullName}::{plugin.TypeName}: {e}");
+-        }
+-    }
+-
+     public abstract TPlugin LoadPlugin(PluginInfo pluginInfo, Assembly pluginAssembly);
+ 
+     #endregion

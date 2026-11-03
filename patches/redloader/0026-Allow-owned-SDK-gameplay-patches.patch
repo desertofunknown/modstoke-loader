@@ -1,0 +1,25 @@
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index e315a9e..468d2e1 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -32,6 +32,7 @@ namespace SonsSdk;
+ internal interface ISdkLifecycleDriver
+ {
+     void RegisterGameEvents();
++    void PatchGameplayEvents();
+     void OnSceneInitialized(int sceneIndex, string sceneName);
+     void OnUpdate();
+     void OnGameStart();
+@@ -181,7 +182,11 @@ public static class SdkEvents
+             EventRegistry.Register(GameEvent.ArmorEquipped, (EventRegistry.SubscriberCallback)SonsEventOnArmorEquipped);
+         }
+ 
+-        Patches.Patch();
++        if (_lifecycleDriver != null)
++            _lifecycleDriver.PatchGameplayEvents();
++        else
++            Patches.Patch();
++
+         SavingCallbackPatches.Patch();
+ 
+         _isInitialized = true;

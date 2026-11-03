@@ -1,0 +1,252 @@
+diff --git a/RedLoader/Bootstrap/TypeLoader.cs b/RedLoader/Bootstrap/TypeLoader.cs
+index a5943be..9e99a3a 100644
+--- a/RedLoader/Bootstrap/TypeLoader.cs
++++ b/RedLoader/Bootstrap/TypeLoader.cs
+@@ -1,12 +1,12 @@
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (c) RedLoader and BepInEx contributors. Copyright (C) 2026 Alex Cooper.
++
+ using System;
+ using System.Collections.Generic;
+ using System.IO;
+-using System.Linq;
+ using System.Reflection;
+ using System.Text;
+ using Mono.Cecil;
+-using RedLoader;
+-using RedLoader.Utils;
+ 
+ namespace RedLoader.Bootstrap;
+ 
+@@ -63,6 +63,48 @@ public static class TypeLoader
+ 
+     public static HashSet<string> SearchDirectories = new();
+ 
++    private delegate Dictionary<string, List<T>> FindTypes<T>(string directory,
++        Func<TypeDefinition, string, T> selector, Func<AssemblyDefinition, bool> filter,
++        string cacheName, ReaderParameters readerParameters, Func<bool> cacheEnabled) where T : ICacheable, new();
++
++    private delegate Dictionary<string, CachedAssembly<T>> ReadCache<T>(string cacheName,
++        Func<bool> cacheEnabled) where T : ICacheable, new();
++
++    private delegate void WriteCache<T>(string cacheName, Dictionary<string, List<T>> entries,
++        Dictionary<string, string> hashes, Func<bool> cacheEnabled) where T : ICacheable;
++
++    private delegate AssemblyDefinition ResolveFailure(object sender, AssemblyNameReference reference,
++        ReaderParameters readerParameters, IEnumerable<string> searchDirectories,
++        Func<object, AssemblyNameReference, AssemblyDefinition> fallback);
++
++    // Binding stays lazy so the public resolver fields are initialized before owned code is reached.
++    private static readonly Lazy<ResolveFailure> ResolveFailureHandler = new(() => Bind<ResolveFailure>("ResolveFailure"));
++
++    private static class ReaderBindings<T> where T : ICacheable, new()
++    {
++        internal static readonly Lazy<FindTypes<T>> Find = new(() => Bind<FindTypes<T>>("Find", typeof(T)));
++        internal static readonly Lazy<ReadCache<T>> Load = new(() => Bind<ReadCache<T>>("LoadCache", typeof(T)));
++    }
++
++    // Writing has no constructor constraint, unlike discovery and cache reads.
++    private static class WriterBindings<T> where T : ICacheable
++    {
++        internal static readonly Lazy<WriteCache<T>> Save = new(() => Bind<WriteCache<T>>("SaveCache", typeof(T)));
++    }
++
++    private static TDelegate Bind<TDelegate>(string name, Type itemType = null) where TDelegate : Delegate
++    {
++        var owner = Assembly.Load("OpenACAI.Endnight.Loader.Preloader")
++            .GetType("OpenACAI.Endnight.Loader.Preloader.OpenACAIRedTypeDiscovery", true);
++        var method = owner.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(owner.FullName, name);
++        if (itemType != null)
++            method = method.MakeGenericMethod(itemType);
++        return (TDelegate)method.CreateDelegate(typeof(TDelegate));
++    }
++
++    private static bool IsCacheEnabled() => EnableAssemblyCache;
++
+     #region Config
+ 
+     private static readonly bool EnableAssemblyCache = true;
+@@ -79,33 +121,12 @@ public static class TypeLoader
+ 
+     public static AssemblyDefinition CecilResolveOnFailure(object sender, AssemblyNameReference reference)
+     {
+-        if (!Utility.TryParseAssemblyName(reference.FullName, out var name))
+-            return null;
+-
+-        var resolveDirs = new[]
+-        {
+-            LoaderEnvironment.LoaderAssemblyDirectory,
+-            LoaderEnvironment.ModsDirectory,
+-            LoaderEnvironment.PatcherPluginPath,
+-            LoaderEnvironment.LibsDirectory
+-            // LoaderEnvironment.ManagedPath
+-        }.Concat(SearchDirectories);
+-
+-        foreach (var dir in resolveDirs)
+-        {
+-            if (!Directory.Exists(dir))
+-            {
+-                RLog.Debug($"Unable to resolve cecil search directory '{dir}'");
+-                continue;
+-            }
+-
+-            if (Utility.TryResolveDllAssembly(name, dir, ReaderParameters, out var assembly))
+-                return assembly;
+-        }
+-
+-        return AssemblyResolve?.Invoke(sender, reference);
++        return ResolveFailureHandler.Value(sender, reference, ReaderParameters, SearchDirectories, InvokeAssemblyResolve);
+     }
+ 
++    internal static AssemblyDefinition InvokeAssemblyResolve(object sender, AssemblyNameReference reference) =>
++        AssemblyResolve?.Invoke(sender, reference);
++
+     /// <summary>
+     ///     Event fired when <see cref="TypeLoader" /> fails to resolve a type during type loading.
+     /// </summary>
+@@ -130,58 +151,7 @@ public static class TypeLoader
+                                                                  string cacheName = null)
+         where T : ICacheable, new()
+     {
+-        var result = new Dictionary<string, List<T>>();
+-        var hashes = new Dictionary<string, string>();
+-        Dictionary<string, CachedAssembly<T>> cache = null;
+-
+-        if (cacheName != null)
+-            cache = LoadAssemblyCache<T>(cacheName);
+-
+-        foreach (var dll in Directory.GetFiles(Path.GetFullPath(directory), "*.dll", SearchOption.AllDirectories))
+-            try
+-            {
+-                using var dllMs = new MemoryStream(File.ReadAllBytes(dll));
+-                var hash = Utility.HashStream(dllMs);
+-                hashes[dll] = hash;
+-                dllMs.Position = 0;
+-                if (cache != null && cache.TryGetValue(dll, out var cacheEntry))
+-                    if (hash == cacheEntry.Hash)
+-                    {
+-                        result[dll] = cacheEntry.CacheItems;
+-                        continue;
+-                    }
+-
+-                using var ass = AssemblyDefinition.ReadAssembly(dllMs, ReaderParameters);
+-                // Logger.Log(LogLevel.Debug, $"Examining '{dll}'");
+-                RLog.Debug($"Examining '{dll}'");
+-
+-                if (!assemblyFilter?.Invoke(ass) ?? false)
+-                {
+-                    result[dll] = new List<T>();
+-                    continue;
+-                }
+-
+-                var matches = ass.MainModule.Types
+-                                 .Select(t => typeSelector(t, dll))
+-                                 .Where(t => t != null).ToList();
+-                result[dll] = matches;
+-            }
+-            catch (BadImageFormatException e)
+-            {
+-                // Logger.Log(LogLevel.Debug,
+-                //            $"Skipping loading {dll} because it's not a valid .NET assembly. Full error: {e.Message}");
+-                RLog.Debug($"Skipping loading {dll} because it's not a valid .NET assembly. Full error: {e.Message}");
+-            }
+-            catch (Exception e)
+-            {
+-                // Logger.Log(LogLevel.Error, e);
+-                RLog.Error(e);
+-            }
+-
+-        if (cacheName != null)
+-            SaveAssemblyCache(cacheName, result, hashes);
+-
+-        return result;
++        return ReaderBindings<T>.Find.Value(directory, typeSelector, assemblyFilter, cacheName, ReaderParameters, IsCacheEnabled);
+     }
+ 
+     /// <summary>
+@@ -196,46 +166,7 @@ public static class TypeLoader
+     public static Dictionary<string, CachedAssembly<T>> LoadAssemblyCache<T>(string cacheName)
+         where T : ICacheable, new()
+     {
+-        if (!EnableAssemblyCache)
+-            return null;
+-
+-        var result = new Dictionary<string, CachedAssembly<T>>();
+-        try
+-        {
+-            var path = Path.Combine(LoaderEnvironment.CachePath, $"{cacheName}_typeloader.dat");
+-            if (!File.Exists(path))
+-                return null;
+-
+-            using (var br = new BinaryReader(File.OpenRead(path)))
+-            {
+-                var entriesCount = br.ReadInt32();
+-
+-                for (var i = 0; i < entriesCount; i++)
+-                {
+-                    var entryIdentifier = br.ReadString();
+-                    var hash = br.ReadString();
+-                    var itemsCount = br.ReadInt32();
+-                    var items = new List<T>();
+-
+-                    for (var j = 0; j < itemsCount; j++)
+-                    {
+-                        var entry = new T();
+-                        entry.Load(br);
+-                        items.Add(entry);
+-                    }
+-
+-                    result[entryIdentifier] = new CachedAssembly<T> { Hash = hash, CacheItems = items };
+-                }
+-            }
+-        }
+-        catch (Exception e)
+-        {
+-            // Logger.Log(LogLevel.Warning,
+-            //            $"Failed to load cache \"{cacheName}\"; skipping loading cache. Reason: {e.Message}.");
+-            RLog.Warning($"Failed to load cache \"{cacheName}\"; skipping loading cache. Reason: {e.Message}.");
+-        }
+-
+-        return result;
++        return ReaderBindings<T>.Load.Value(cacheName, IsCacheEnabled);
+     }
+ 
+     /// <summary>
+@@ -250,35 +181,7 @@ public static class TypeLoader
+                                             Dictionary<string, string> hashes)
+         where T : ICacheable
+     {
+-        if (!EnableAssemblyCache)
+-            return;
+-
+-        try
+-        {
+-            if (!Directory.Exists(LoaderEnvironment.CachePath))
+-                Directory.CreateDirectory(LoaderEnvironment.CachePath);
+-
+-            var path = Path.Combine(LoaderEnvironment.CachePath, $"{cacheName}_typeloader.dat");
+-
+-            using var bw = new BinaryWriter(File.OpenWrite(path));
+-            bw.Write(entries.Count);
+-
+-            foreach (var kv in entries)
+-            {
+-                bw.Write(kv.Key);
+-                bw.Write(hashes.TryGetValue(kv.Key, out var hash) ? hash : "");
+-                bw.Write(kv.Value.Count);
+-
+-                foreach (var item in kv.Value)
+-                    item.Save(bw);
+-            }
+-        }
+-        catch (Exception e)
+-        {
+-            // Logger.Log(LogLevel.Warning,
+-            //            $"Failed to save cache \"{cacheName}\"; skipping saving cache. Reason: {e.Message}.");
+-            RLog.Warning($"Failed to save cache \"{cacheName}\"; skipping saving cache. Reason: {e.Message}.");
+-        }
++        WriterBindings<T>.Save.Value(cacheName, entries, hashes, IsCacheEnabled);
+     }
+ 
+     /// <summary>

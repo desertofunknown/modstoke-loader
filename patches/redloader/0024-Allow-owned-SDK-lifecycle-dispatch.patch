@@ -1,0 +1,91 @@
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index efa3366..a414dbb 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -29,6 +29,13 @@ using Priority = HarmonyLib.Priority;
+ 
+ namespace SonsSdk;
+ 
++internal interface ISdkLifecycleDriver
++{
++    void OnSceneInitialized(int sceneIndex, string sceneName);
++    void OnUpdate();
++    void OnGameStart();
++}
++
+ public static class SdkEvents
+ {
+     /// <summary>
+@@ -138,12 +145,24 @@ public static class SdkEvents
+     /// </summary>
+     public static readonly MelonEvent<bool> OnCheatsEnabledChanged = new();
+ 
++    internal static void SetLifecycleDriver(ISdkLifecycleDriver driver)
++    {
++        ArgumentNullException.ThrowIfNull(driver);
++        if (ReferenceEquals(_lifecycleDriver, driver))
++            return;
++        if (_lifecycleDriver != null || _eventSetupStarted)
++            throw new InvalidOperationException("SDK lifecycle ownership must be selected before event setup.");
++
++        _lifecycleDriver = driver;
++    }
++
+     internal static void Init()
+     {
+         if (_isInitialized)
+         {
+             return;
+         }
++        _eventSetupStarted = true;
+         
+         GlobalEvents.OnSceneWasInitialized.Subscribe(OnSceneWasInitialized, Priority.First);
+         GlobalEvents.OnUpdate.Subscribe(OnUpdateInternal, Priority.First);
+@@ -173,6 +192,12 @@ public static class SdkEvents
+ 
+     private static void OnSceneWasInitialized(int sceneIdx, string sceneName)
+     {
++        if (_lifecycleDriver != null)
++        {
++            _lifecycleDriver.OnSceneInitialized(sceneIdx, sceneName);
++            return;
++        }
++
+         switch (sceneName)
+         {
+             case TitleSceneName:
+@@ -194,6 +219,12 @@ public static class SdkEvents
+     
+     private static void OnUpdateInternal()
+     {
++        if (_lifecycleDriver != null)
++        {
++            _lifecycleDriver.OnUpdate();
++            return;
++        }
++
+         ModInputCache.CheckAll();
+         
+         if (!LocalPlayer.IsInWorld)
+@@ -247,6 +278,12 @@ public static class SdkEvents
+     
+     private static void SonsEventsOnGameStart(object o)
+     {
++        if (_lifecycleDriver != null)
++        {
++            _lifecycleDriver.OnGameStart();
++            return;
++        }
++
+         OnGameStart.Invoke();
+         ItemTools.ItemHookAdder.Flush();
+     }
+@@ -263,6 +300,8 @@ public static class SdkEvents
+     private const string LoadingSceneName = "SonsMainLoading";
+     private const string GameSceneName = "SonsMain";
+     
++    private static ISdkLifecycleDriver _lifecycleDriver;
++    private static bool _eventSetupStarted;
+     private static bool _isInitialized;
+     private static bool _onAfterSpawnCalled;
+     

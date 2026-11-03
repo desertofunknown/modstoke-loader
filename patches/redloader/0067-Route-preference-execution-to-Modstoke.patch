@@ -1,0 +1,388 @@
+diff --git a/RedLoader/Preferences/ConfigSystem.cs b/RedLoader/Preferences/ConfigSystem.cs
+index 447b597..898ef25 100644
+--- a/RedLoader/Preferences/ConfigSystem.cs
++++ b/RedLoader/Preferences/ConfigSystem.cs
+@@ -59,136 +59,12 @@ namespace RedLoader
+ 
+         public static void Load()
+         {
+-            try
+-            {
+-                DefaultFile.LegacyLoad();
+-            }
+-            catch (Exception ex)
+-            {
+-                RLog.Error($"Error while Loading Legacy Preferences from {DefaultFile.LegacyFilePath}: {ex}");
+-                DefaultFile.WasError = true;
+-            }
+-
+-            try
+-            {
+-                DefaultFile.Load();
+-            }
+-            catch (Exception ex)
+-            {
+-                RLog.Error($"Error while Loading Preferences from {DefaultFile.FilePath}: {ex}");
+-                DefaultFile.WasError = true;
+-            }
+-
+-            if (PrefFiles.Count >= 0)
+-            {
+-                foreach (Preferences.IO.File file in PrefFiles)
+-                {
+-                    try
+-                    {
+-                        file.Load();
+-                    }
+-                    catch (Exception ex)
+-                    {
+-                        RLog.Error($"Error while Loading Preferences from {file.FilePath}: {ex}");
+-                        file.WasError = true;
+-                    }
+-                }
+-            }
+-
+-            if (Categories.Count > 0)
+-            {
+-                foreach (ConfigCategory category in Categories)
+-                {
+-                    if (category.Entries.Count <= 0)
+-                        continue;
+-                    Preferences.IO.File currentFile = category.File;
+-                    if (currentFile == null)
+-                        currentFile = DefaultFile;
+-                    if (currentFile.WasError)
+-                        continue;
+-                    foreach (ConfigEntry entry in category.Entries)
+-                        currentFile.SetupEntryFromRawValue(entry);
+-                }
+-            }
+-
+-            if (ReflectiveCategories.Count > 0)
+-            {
+-                foreach (ReflectiveConfigCategory category in ReflectiveCategories)
+-                {
+-                    Preferences.IO.File currentFile = category.File;
+-                    if (currentFile == null)
+-                        currentFile = DefaultFile;
+-                    if (currentFile.WasError)
+-                        continue;
+-                    if (!(currentFile.TryGetCategoryTable(category.Identifier) is { } table))
+-                    {
+-                        category.LoadDefaults();
+-                        continue;
+-                    }
+-
+-                    category.Load(table);
+-
+-                    OnPreferencesLoaded.Invoke(currentFile.FilePath);
+-                }
+-            }
+-
+-            RLog.Msg("Preferences Loaded!");
++            PreferenceDriver.Load();
+         }
+ 
+         public static void Save()
+         {
+-            if (Categories.Count > 0)
+-            {
+-                foreach (ConfigCategory category in Categories)
+-                {
+-                    Preferences.IO.File currentFile = category.File;
+-                    if (currentFile == null)
+-                        currentFile = DefaultFile;
+-                    foreach (ConfigEntry entry in category.Entries)
+-                        if (!(entry.DontSaveDefault && entry.GetValueAsString() == entry.GetDefaultValueAsString()) && entry.GetValueAsString() != null)
+-                            currentFile.InsertIntoDocument(category.Identifier, entry.Identifier, entry.Save());
+-                }
+-            }
+-            if (ReflectiveCategories.Count > 0)
+-            {
+-                foreach (ReflectiveConfigCategory category in ReflectiveCategories)
+-                {
+-                    Preferences.IO.File currentFile = category.File;
+-                    if (currentFile == null)
+-                        currentFile = DefaultFile;
+-                    currentFile.document.PutValue(category.Identifier, category.Save());
+-                }
+-            }
+-
+-            try
+-            {
+-                DefaultFile.Save();
+-            }
+-            catch (Exception ex)
+-            {
+-                RLog.Error($"Error while Saving Preferences to {DefaultFile.FilePath}: {ex}");
+-                DefaultFile.WasError = true;
+-            }
+-
+-            if (PrefFiles.Count >= 0)
+-            {
+-                foreach (Preferences.IO.File file in PrefFiles)
+-                {
+-                    try
+-                    {
+-                        file.Save();
+-                    }
+-                    catch (Exception ex)
+-                    {
+-                        RLog.Error($"Error while Saving Preferences to {file.FilePath}: {ex}");
+-                        file.WasError = true;
+-                        continue;
+-                    }
+-                    OnPreferencesSaved.Invoke(file.FilePath);
+-                }
+-            }
+-
+-            RLog.Msg("Preferences Saved!");
++            PreferenceDriver.Save();
+         }
+ 
+         public static ConfigCategory CreateCategory(string identifier) => CreateCategory(identifier, null, false);
+@@ -346,54 +222,7 @@ namespace RedLoader
+ 
+         internal static void LoadFileAndRefreshCategories(Preferences.IO.File file, bool printmsg = true)
+         {
+-            try
+-            {
+-                file.Load();
+-            }
+-            catch (TomlUnescapedUnicodeControlCharException ex)
+-            {
+-                RLog.Error($"Error while Loading Preferences from {file.FilePath}: {ex}");
+-                return;
+-            }
+-            catch (Exception ex)
+-            {
+-                RLog.Error($"Error while Loading Preferences from {file.FilePath}: {ex}");
+-                file.WasError = true;
+-                return;
+-            }
+-
+-            if (Categories.Count > 0)
+-                foreach (ConfigCategory category in Categories)
+-                {
+-                    Preferences.IO.File currentFile = category.File;
+-                    if (currentFile == null)
+-                        currentFile = DefaultFile;
+-                    if ((currentFile != file) || (category.Entries.Count <= 0))
+-                        continue;
+-                    foreach (ConfigEntry entry in category.Entries)
+-                        currentFile.SetupEntryFromRawValue(entry);
+-                }
+-
+-            if (ReflectiveCategories.Count > 0)
+-                foreach (ReflectiveConfigCategory category in ReflectiveCategories)
+-                {
+-                    Preferences.IO.File currentFile = category.File;
+-                    if (currentFile == null)
+-                        currentFile = DefaultFile;
+-                    if (currentFile != file)
+-                        continue;
+-                    if (!(file.TryGetCategoryTable(category.Identifier) is { } table))
+-                    {
+-                        category.LoadDefaults();
+-                        continue;
+-                    }
+-                    category.Load(table);
+-                }
+-
+-            if (printmsg)
+-                RLog.MsgDirect($"MelonPreferences Loaded from {file.FilePath}");
+-
+-            OnPreferencesLoaded.Invoke(file.FilePath);
++            PreferenceDriver.Reload(file, printmsg);
+         }
+ 
+         public static void RemoveCategoryFromFile(string filePath, string categoryName)
+diff --git a/RedLoader/Preferences/ConfigCategory.cs b/RedLoader/Preferences/ConfigCategory.cs
+index c6589c7..2e94e56 100644
+--- a/RedLoader/Preferences/ConfigCategory.cs
++++ b/RedLoader/Preferences/ConfigCategory.cs
+@@ -208,25 +208,7 @@ namespace RedLoader
+ 
+         public void SaveToFile(bool printmsg = true)
+         {
+-            Preferences.IO.File currentfile = File;
+-            if (currentfile == null)
+-                currentfile = ConfigSystem.DefaultFile;
+-            foreach (ConfigEntry entry in Entries)
+-                if (!(entry.DontSaveDefault && entry.GetValueAsString() == entry.GetDefaultValueAsString()) && entry.GetValueAsString() != null)
+-                    currentfile.InsertIntoDocument(Identifier, entry.Identifier, entry.Save(), IsInlined);
+-            try
+-            {
+-                currentfile.Save();
+-            }
+-            catch (Exception ex)
+-            {
+-                RLog.Error($"Error while Saving Preferences to {currentfile.FilePath}: {ex}");
+-                currentfile.WasError = true;
+-            }
+-            if (printmsg)
+-                RLog.Msg($"MelonPreferences Saved to {currentfile.FilePath}");
+-
+-            ConfigSystem.OnPreferencesSaved.Invoke(currentfile.FilePath);
++            PreferenceDriver.SaveCategory(this, printmsg);
+         }
+ 
+         public void LoadFromFile(bool printmsg = true)
+diff --git a/RedLoader/Preferences/ReflectiveConfigCategory.cs b/RedLoader/Preferences/ReflectiveConfigCategory.cs
+index e4fd382..daec006 100644
+--- a/RedLoader/Preferences/ReflectiveConfigCategory.cs
++++ b/RedLoader/Preferences/ReflectiveConfigCategory.cs
+@@ -109,24 +109,7 @@ namespace RedLoader.Preferences
+         
+         public void SaveToFile(bool printmsg = true)
+         {
+-            IO.File currentfile = File;
+-            if (currentfile == null)
+-                currentfile = ConfigSystem.DefaultFile;
+-
+-            currentfile.document.PutValue(Identifier, Save());
+-            try
+-            {
+-                currentfile.Save();
+-            }
+-            catch (Exception ex)
+-            {
+-                RLog.Error($"Error while Saving Preferences to {currentfile.FilePath}: {ex}");
+-                currentfile.WasError = true;
+-            }
+-            if (printmsg)
+-                RLog.Msg($"MelonPreferences Saved to {currentfile.FilePath}");
+-
+-            ConfigSystem.OnPreferencesSaved.Invoke(currentfile.FilePath);
++            PreferenceDriver.SaveReflectiveCategory(this, printmsg);
+         }
+ 
+         public void LoadFromFile(bool printmsg = true)
+diff --git a/RedLoader/Preferences/IO/File.cs b/RedLoader/Preferences/IO/File.cs
+index 7ea2eec..8bd582b 100644
+--- a/RedLoader/Preferences/IO/File.cs
++++ b/RedLoader/Preferences/IO/File.cs
+@@ -42,56 +42,17 @@ namespace RedLoader.Preferences.IO
+ 
+         internal void LegacyLoad()
+         {
+-            if (string.IsNullOrEmpty(LegacyFilePath) || !System.IO.File.Exists(LegacyFilePath))
+-                return;
+-            string filestr = System.IO.File.ReadAllText(LegacyFilePath);
+-            string[] lines = filestr.Split('\n');
+-            string category = null;
+-
+-            foreach (string line in lines)
+-            {
+-                if (string.IsNullOrEmpty(line))
+-                    continue;
+-                string newline = line.Replace("\n", "").Replace("\r", "").Replace(" ", "");
+-                if (newline.Contains("[") && newline.Contains("]"))
+-                {
+-                    category = newline.Replace("[", "").Replace("]", "");
+-                    continue;
+-                }
+-
+-                if (!newline.Contains("="))
+-                    continue;
+-                string[] parts = line.Split('=');
+-                if (string.IsNullOrEmpty(parts[0]) || string.IsNullOrEmpty(parts[1]))
+-                    continue;
+-                if (parts[1].ToLower().StartsWith("true") || parts[1].ToLower().StartsWith("false"))
+-                    InsertIntoDocument(category, parts[0], TomletMain.ValueFrom(parts[1].ToLower().StartsWith("true")));
+-                else if (int.TryParse(parts[1], out int val_int))
+-                    InsertIntoDocument(category, parts[0], TomletMain.ValueFrom(val_int));
+-                else if (float.TryParse(parts[1], out float val_float))
+-                    InsertIntoDocument(category, parts[0], TomletMain.ValueFrom(val_float));
+-                else
+-                    InsertIntoDocument(category, parts[0], TomletMain.ValueFrom(parts[1].Replace("\r", "")));
+-            }
++            PreferenceDriver.ReadLegacyFile(this);
+         }
+ 
+         internal void Load()
+         {
+-            if (_waserror)
+-                return;
+-            if (!System.IO.File.Exists(FilePath))
+-                return;
+-            document = TomlParser.ParseFile(FilePath);
++            PreferenceDriver.ReadFile(this);
+         }
+ 
+         internal void Save()
+         {
+-            if (_waserror || !ShouldSave)
+-                return;
+-            IsSaving = true;
+-            System.IO.File.WriteAllText(FilePath, document.SerializedValue);
+-            if ((LegacyFilePath != null) && System.IO.File.Exists(LegacyFilePath))
+-                System.IO.File.Delete(LegacyFilePath);
++            PreferenceDriver.WriteFile(this);
+         }
+         
+         private static string QuoteKey(string key) =>
+diff --git a/RedLoader/Preferences/PreferenceDriver.cs b/RedLoader/Preferences/PreferenceDriver.cs
+new file mode 100644
+index 0000000..2a03c37
+--- /dev/null
++++ b/RedLoader/Preferences/PreferenceDriver.cs
+@@ -0,0 +1,58 @@
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (C) 2026 Alex Cooper
++
++using System;
++using System.Linq;
++using System.Reflection;
++using RedLoader.Preferences;
++using File = RedLoader.Preferences.IO.File;
++
++namespace RedLoader;
++
++internal static class PreferenceDriver
++{
++    private static readonly Lazy<Bindings> Owner = new(() => new Bindings());
++
++    internal static void Load() => Owner.Value.Load();
++    internal static void Save() => Owner.Value.Save();
++    internal static void Reload(File file, bool printmsg) => Owner.Value.Reload(file, printmsg);
++    internal static void SaveCategory(ConfigCategory category, bool printmsg) => Owner.Value.SaveCategory(category, printmsg);
++    internal static void SaveReflectiveCategory(ReflectiveConfigCategory category, bool printmsg) => Owner.Value.SaveReflectiveCategory(category, printmsg);
++    internal static void ReadLegacyFile(File file) => Owner.Value.ReadLegacyFile(file);
++    internal static void ReadFile(File file) => Owner.Value.ReadFile(file);
++    internal static void WriteFile(File file) => Owner.Value.WriteFile(file);
++
++    private sealed class Bindings
++    {
++        internal readonly Action Load;
++        internal readonly Action Save;
++        internal readonly Action<File, bool> Reload;
++        internal readonly Action<ConfigCategory, bool> SaveCategory;
++        internal readonly Action<ReflectiveConfigCategory, bool> SaveReflectiveCategory;
++        internal readonly Action<File> ReadLegacyFile;
++        internal readonly Action<File> ReadFile;
++        internal readonly Action<File> WriteFile;
++
++        internal Bindings()
++        {
++            var owner = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++                .GetType("OpenACAI.Endnight.Loader.OpenACAIRedLoaderPreferences", true);
++            Load = Bind<Action>(owner, "Load");
++            Save = Bind<Action>(owner, "Save");
++            Reload = Bind<Action<File, bool>>(owner, "Reload");
++            SaveCategory = Bind<Action<ConfigCategory, bool>>(owner, "SaveCategory");
++            SaveReflectiveCategory = Bind<Action<ReflectiveConfigCategory, bool>>(owner, "SaveReflectiveCategory");
++            ReadLegacyFile = Bind<Action<File>>(owner, "ReadLegacyFile");
++            ReadFile = Bind<Action<File>>(owner, "ReadFile");
++            WriteFile = Bind<Action<File>>(owner, "WriteFile");
++        }
++
++        private static T Bind<T>(Type owner, string name) where T : Delegate
++        {
++            var parameters = typeof(T).GetMethod("Invoke").GetParameters().Select(parameter => parameter.ParameterType).ToArray();
++            var method = owner.GetMethod(name, BindingFlags.Static | BindingFlags.NonPublic, null, parameters, null)
++                ?? throw new MissingMethodException(owner.FullName, name);
++            return (T)method.CreateDelegate(typeof(T));
++        }
++    }
++}

@@ -1,0 +1,14 @@
+Subject: [PATCH] Share native provider config identity with owned preloader
+
+ConfigFile.Bind requires the same enum type when a key is bound again. Allow
+the owned detour factory to retain the original provider enum identity so the
+compatibility chainloader can still bind the same setting later.
+
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/OpenACAIFriendAssemblies.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/OpenACAIFriendAssemblies.cs
+new file mode 100644
+--- /dev/null
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/OpenACAIFriendAssemblies.cs
+@@ -0,0 +1,3 @@
++using System.Runtime.CompilerServices;
++
++[assembly: InternalsVisibleTo("OpenACAI.Endnight.Loader.Preloader")]

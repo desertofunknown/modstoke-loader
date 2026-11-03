@@ -1,0 +1,22 @@
+diff --git a/SonsSdk/Private/SdkEntryPoint.cs b/SonsSdk/Private/SdkEntryPoint.cs
+index 40ea1a4..4cd46e0 100644
+--- a/SonsSdk/Private/SdkEntryPoint.cs
++++ b/SonsSdk/Private/SdkEntryPoint.cs
+@@ -61,7 +61,16 @@ public class SdkEntryPoint : IModProcessor
+     
+     public List<ModBase> TryLoadFromPath(string assemblyPath)
+     {
+-        var manifestPath = ResolveLegacyManifestPath(assemblyPath);
++        return TryLoadFromPath(assemblyPath, ResolveLegacyManifestPath(assemblyPath));
++    }
++
++    /// <summary>Loads a mod using the manifest selected by the hosting loader.</summary>
++    /// <param name="assemblyPath">The mod assembly to load.</param>
++    /// <param name="manifestPath">The selected manifest, or null to use the legacy location.</param>
++    /// <returns>The accepted mod instances, or an empty list when loading is rejected.</returns>
++    public List<ModBase> TryLoadFromPath(string assemblyPath, string manifestPath)
++    {
++        manifestPath ??= ResolveLegacyManifestPath(assemblyPath);
+         return TryLoadFromCandidate(new ModCandidate(assemblyPath, manifestPath, TryReadManifestSafe(manifestPath, assemblyPath), 0));
+     }
+ 

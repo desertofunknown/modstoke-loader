@@ -1,0 +1,1582 @@
+{
+  "schema": 1,
+  "name": "Modstoke pinned dependency inventory",
+  "dobbyVersion": "1.0.5",
+  "unityVersion": "2022.2.16",
+  "baseline": {
+    "packageManifestSha256": "9CB19D41FD75395E1CCB3D112344B2D7039C40CB3E9FCC23EF6E5D92E904A82E",
+    "generatedUtc": "2026-10-15T16:56:06.9524413Z",
+    "bepinex": {
+      "upstream": "https://github.com/BepInEx/BepInEx",
+      "fork": "https://github.com/desertofunknown/openacai-bepinex",
+      "branch": "openacai-net11-preview",
+      "upstreamBaseRef": "upstream/master",
+      "upstreamBaseCommit": "3fab71a1914132a1ce3a545caf3192da603f2258",
+      "forkCommit": "810068c5699216c4dcaeb3085614b344daead313",
+      "dirty": true,
+      "patchDirectory": "patches/bepinex"
+    },
+    "redLoaderSonsSdk": {
+      "role": "Compatibility source provenance and pinned third-party library inputs",
+      "upstream": "https://github.com/ToniMacaroni/RedLoader",
+      "fork": "https://github.com/desertofunknown/openacai-redloader",
+      "branch": "openacai-loader-compat",
+      "upstreamBaseRef": "origin/rewrite",
+      "upstreamBaseCommit": "3b9f3551c7d2cbae11ea6a4354054a9f9c5777c8",
+      "forkCommit": "fdcf7c0e4f304e27ffe86260401d72bf4039a361",
+      "dirty": true
+    }
+  },
+  "assets": [
+    {
+      "cachePath": "managed/0Harmony.dll",
+      "sha256": "70E7647876B6C3D874EA99B56627A95D1DCE2E1DD791981A002578A2FEBC9BBD",
+      "size": 294912,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/BepInEx/HarmonyX",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/0Harmony.dll",
+      "assemblyIdentity": "0Harmony, Version=2.16.1.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/0Harmony.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/AsmResolver.dll",
+      "sha256": "8E18B7694BA35EE9E098B2C6F75CE60E41E0CF3E5339388D661426ECCD1BEDA4",
+      "size": 67072,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/Washi1337/AsmResolver",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/AsmResolver.dll",
+      "assemblyIdentity": "AsmResolver, Version=6.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/AsmResolver.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/AsmResolver.DotNet.dll",
+      "sha256": "72D067F72E2BA841936F348A38A5379679B7BA08CEC64255F8E41F0D2FF90A4D",
+      "size": 564736,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/Washi1337/AsmResolver",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/AsmResolver.DotNet.dll",
+      "assemblyIdentity": "AsmResolver.DotNet, Version=6.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/AsmResolver.DotNet.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/AsmResolver.PE.dll",
+      "sha256": "4C45FF51CF3AB6ADD9DD5E480EBCF542033DD13A7FF2522AE96AE18ADCF6C994",
+      "size": 397312,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/Washi1337/AsmResolver",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/AsmResolver.PE.dll",
+      "assemblyIdentity": "AsmResolver.PE, Version=6.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/AsmResolver.PE.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/AsmResolver.PE.File.dll",
+      "sha256": "83F7E46B206F19101600168FE0BFAC198B625CC6FDF3F2B3B6E745922F0A4FC7",
+      "size": 40448,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/Washi1337/AsmResolver",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/AsmResolver.PE.File.dll",
+      "assemblyIdentity": "AsmResolver.PE.File, Version=6.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/AsmResolver.PE.File.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/AssetRipper.CIL.dll",
+      "sha256": "2F36927D557A0A3A0B103E87B066BA9AC09290664F26B7899D130E14F58FFF83",
+      "size": 38912,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/AssetRipper",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/AssetRipper.CIL.dll",
+      "assemblyIdentity": "AssetRipper.CIL, Version=1.2.2.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/AssetRipper.CIL.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/AssetRipper.Primitives.dll",
+      "sha256": "9E431F3CB8A17A258EE0DBCCEF11A766052435C5BBFCE377BF6E0585676833AB",
+      "size": 35328,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/AssetRipper",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/AssetRipper.Primitives.dll",
+      "assemblyIdentity": "AssetRipper.Primitives, Version=3.2.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/AssetRipper.Primitives.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Cpp2IL.Core.dll",
+      "sha256": "B87B0B307F93E7187CB52BC5729E88B13D7987EBD5F198BC265F9465573D6980",
+      "size": 373760,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/SamboyCoding/Cpp2IL",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Cpp2IL.Core.dll",
+      "assemblyIdentity": "Cpp2IL.Core, Version=2022.1.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/Cpp2IL.Core.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Disarm.dll",
+      "sha256": "40E804C35369825884534734725D06831A534759478C8D9F3F908D80779A1A93",
+      "size": 139264,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/SamboyCoding/Disarm",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Disarm.dll",
+      "assemblyIdentity": "Disarm, Version=2022.1.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/Disarm.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Gee.External.Capstone.dll",
+      "sha256": "41AEF753408C59A28A7E01EC9CA0957D67D5CBEA432EE2A36E5EA1C1CDBCD8A3",
+      "size": 289792,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/9ee1/Capstone.NET",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Gee.External.Capstone.dll",
+      "assemblyIdentity": "Gee.External.Capstone, Version=2.3.2.0, Culture=neutral, PublicKeyToken=b117d7a2dc33ffa6",
+      "packagePaths": [
+        "BepInEx/core/Gee.External.Capstone.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Iced.dll",
+      "sha256": "F058C01321B4CDFC9B9151879E88E59571C8D0BA176FBCF95BC936A8F3D073ED",
+      "size": 1896448,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/icedland/iced",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Iced.dll",
+      "assemblyIdentity": "Iced, Version=1.21.0.0, Culture=neutral, PublicKeyToken=5baba79f4264913b",
+      "packagePaths": [
+        "BepInEx/core/Iced.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Il2CppInterop.Common.dll",
+      "sha256": "0D9A045FCBBA9BAAC5769BE3CC17278A66008FF3848A42C23859255E09E5BF0A",
+      "size": 41472,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/BepInEx/Il2CppInterop",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Il2CppInterop.Common.dll",
+      "assemblyIdentity": "Il2CppInterop.Common, Version=1.5.2.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/Il2CppInterop.Common.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Il2CppInterop.Generator.dll",
+      "sha256": "88157561F2968AB5EB4CF270528FF052A8596E9B53C6351D90260C030645D07C",
+      "size": 219648,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/BepInEx/Il2CppInterop",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Il2CppInterop.Generator.dll",
+      "assemblyIdentity": "Il2CppInterop.Generator, Version=1.5.2.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/Il2CppInterop.Generator.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Il2CppInterop.HarmonySupport.dll",
+      "sha256": "D29B947CE7D351DD8859271CEA50FD8A3B39CBA399810151C3B4F0DB70617DB1",
+      "size": 26624,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/BepInEx/Il2CppInterop",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Il2CppInterop.HarmonySupport.dll",
+      "assemblyIdentity": "Il2CppInterop.HarmonySupport, Version=1.5.2.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/Il2CppInterop.HarmonySupport.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Il2CppInterop.Runtime.dll",
+      "sha256": "4E2D8D90E2E478B8A565CF3590048DDFE55F4AF4501BF34F40FC85431773DDBC",
+      "size": 284672,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/BepInEx/Il2CppInterop",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Il2CppInterop.Runtime.dll",
+      "assemblyIdentity": "Il2CppInterop.Runtime, Version=1.5.2.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/Il2CppInterop.Runtime.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/LibCpp2IL.dll",
+      "sha256": "5724C0B59FF9B8D810637CCB5B0FE51E8E39D0005B6FFAAE66E1BBA8C3E858D9",
+      "size": 290816,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/SamboyCoding/Cpp2IL",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/LibCpp2IL.dll",
+      "assemblyIdentity": "LibCpp2IL, Version=2022.1.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/LibCpp2IL.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Microsoft.Extensions.DependencyInjection.dll",
+      "sha256": "642983F61CED02961727B6B5DF8BF2A76A43D70F64C91188D4E6EFE4A1E25FE7",
+      "size": 97064,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/dotnet/runtime",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Microsoft.Extensions.DependencyInjection.dll",
+      "assemblyIdentity": "Microsoft.Extensions.DependencyInjection, Version=11.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60",
+      "packagePaths": [
+        "BepInEx/core/Microsoft.Extensions.DependencyInjection.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Microsoft.Extensions.Logging.dll",
+      "sha256": "F25D423883523259100E0B0F03ADE2D843C6A122CD474CA5351573FC46CDEC5A",
+      "size": 51536,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/dotnet/runtime",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Microsoft.Extensions.Logging.dll",
+      "assemblyIdentity": "Microsoft.Extensions.Logging, Version=11.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60",
+      "packagePaths": [
+        "BepInEx/core/Microsoft.Extensions.Logging.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Mono.Cecil.dll",
+      "sha256": "831DCA77470D85CB6FFBEA3072DAA7A3DF5B7C9FCFD9C3F43674A9BE99D4BFCF",
+      "size": 361472,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/jbevain/cecil",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Mono.Cecil.dll",
+      "assemblyIdentity": "Mono.Cecil, Version=0.11.6.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e",
+      "packagePaths": [
+        "BepInEx/core/Mono.Cecil.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Mono.Cecil.Mdb.dll",
+      "sha256": "28CB367972BDC1CD43E4006306AF2FD96D37F4ED4B239EE90E1DC7237A93AF7F",
+      "size": 39936,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/jbevain/cecil",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Mono.Cecil.Mdb.dll",
+      "assemblyIdentity": "Mono.Cecil.Mdb, Version=0.11.6.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e",
+      "packagePaths": [
+        "BepInEx/core/Mono.Cecil.Mdb.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Mono.Cecil.Pdb.dll",
+      "sha256": "A332332633FBCB20E8D50E49B4DB7BD1557721417122CF0C5F4C42F2332391D0",
+      "size": 90112,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/jbevain/cecil",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Mono.Cecil.Pdb.dll",
+      "assemblyIdentity": "Mono.Cecil.Pdb, Version=0.11.6.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e",
+      "packagePaths": [
+        "BepInEx/core/Mono.Cecil.Pdb.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Mono.Cecil.Rocks.dll",
+      "sha256": "BF992F3DCE364EBCC3200FA7832EF07E20B4E2DBC3A8A6213CE44E3D239DB984",
+      "size": 27136,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/jbevain/cecil",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/Mono.Cecil.Rocks.dll",
+      "assemblyIdentity": "Mono.Cecil.Rocks, Version=0.11.6.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e",
+      "packagePaths": [
+        "BepInEx/core/Mono.Cecil.Rocks.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/MonoMod.Backports.dll",
+      "sha256": "AC3F32BFD44AAB83ABF71ABDFF6DDE548D57B7C0F8A1FE6D8964E348B4EEAFB1",
+      "size": 27648,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/MonoMod/MonoMod",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/MonoMod.Backports.dll",
+      "assemblyIdentity": "MonoMod.Backports, Version=1.1.2.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/MonoMod.Backports.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/MonoMod.Core.dll",
+      "sha256": "A27844AF640254451D2D9224E41A1EF62A7FE29658FED0AA1C30C2444F539634",
+      "size": 448512,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/MonoMod/MonoMod",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/MonoMod.Core.dll",
+      "assemblyIdentity": "MonoMod.Core, Version=1.3.5.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/MonoMod.Core.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/MonoMod.Iced.dll",
+      "sha256": "60DCAF437A4748ECCB8773A8A1991FCE2A3C4718E67DA7F0FE50B5C90358CADD",
+      "size": 645632,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/MonoMod/MonoMod",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/MonoMod.Iced.dll",
+      "assemblyIdentity": "MonoMod.Iced, Version=1.21.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/MonoMod.Iced.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/MonoMod.ILHelpers.dll",
+      "sha256": "FDD0E3538340FD78B8F521E62B8CAC1EBB7683AC1F27F6AAEDFC1044B14BF4BB",
+      "size": 4096,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/MonoMod/MonoMod",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/MonoMod.ILHelpers.dll",
+      "assemblyIdentity": "MonoMod.ILHelpers, Version=1.1.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/MonoMod.ILHelpers.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/MonoMod.RuntimeDetour.dll",
+      "sha256": "D64DB2386B2CEE26B2237985661DDCA0932DFA2C7710C607BEB8F9C8854AA3A1",
+      "size": 74752,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/MonoMod/MonoMod",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/MonoMod.RuntimeDetour.dll",
+      "assemblyIdentity": "MonoMod.RuntimeDetour, Version=25.3.5.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/MonoMod.RuntimeDetour.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/MonoMod.Utils.dll",
+      "sha256": "51DABFF018018CA6292E5D8DC35A46A8DCC9EBF714E18591C163BA4FC779BFC7",
+      "size": 346624,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/MonoMod/MonoMod",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/MonoMod.Utils.dll",
+      "assemblyIdentity": "MonoMod.Utils, Version=25.0.13.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/MonoMod.Utils.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/SemanticVersioning.dll",
+      "sha256": "1EC4E9D7312678E23E40724207D871D0DD68A9518E39FE8165BEB6E5F98B0961",
+      "size": 34816,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/adamreeve/semver.net",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/SemanticVersioning.dll",
+      "assemblyIdentity": "SemanticVersioning, Version=3.0.0.0, Culture=neutral, PublicKeyToken=a89bb7dc6f7a145c",
+      "packagePaths": [
+        "BepInEx/core/SemanticVersioning.dll",
+        "Modstoke/Runtime/Compatibility/SemanticVersioning.dll",
+        "BepInEx/plugins/OpenACAILoader/SemanticVersioning.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/StableNameDotNet.dll",
+      "sha256": "280373B93A140395489D714703AC61F8D02C7AA07AC6E34024F8F0E26901325A",
+      "size": 28160,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/SamboyCoding/Cpp2IL (StableNameDotNet dependency)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/StableNameDotNet.dll",
+      "assemblyIdentity": "StableNameDotNet, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/StableNameDotNet.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/WasmDisassembler.dll",
+      "sha256": "F316B978EAF41B4E9852737E90D5660EDF774E3D4E6A2F8FAEDF704F1F650B8D",
+      "size": 22016,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/SamboyCoding/Cpp2IL",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/WasmDisassembler.dll",
+      "assemblyIdentity": "WasmDisassembler, Version=2022.1.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/core/WasmDisassembler.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Alt.Json.dll",
+      "sha256": "DD9928C9304D24B61AFA28BB5775B6705C704B74CDCB924600BF513A77E6B236",
+      "size": 697856,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/ToniMacaroni/RedLoader (retained library input)",
+      "acquiredFrom": "dist/OpenACAILoader/OpenACAI/Runtime/Compatibility/Alt.Json.dll",
+      "assemblyIdentity": "Alt.Json, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "Modstoke/Runtime/Compatibility/Alt.Json.dll",
+        "BepInEx/plugins/OpenACAILoader/Alt.Json.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/GLTF.dll",
+      "sha256": "67DAAAFE729A01EA5B074EDB2E971D0A29A32914D9F3CDBEAF1770251945791B",
+      "size": 600576,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/ToniMacaroni/RedLoader (retained library input)",
+      "acquiredFrom": "dist/OpenACAILoader/OpenACAI/Runtime/Compatibility/GLTF.dll",
+      "assemblyIdentity": "GLTF, Version=0.8.6.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "Modstoke/Runtime/Compatibility/GLTF.dll",
+        "BepInEx/plugins/OpenACAILoader/GLTF.dll"
+      ]
+    },
+    {
+      "cachePath": "managed/Tomlet.dll",
+      "sha256": "D177BF7B3CCD5DCFF493266E559859C634804DAADC964BE65CE70BEB74C03914",
+      "size": 105984,
+      "category": "runtime-support",
+      "selection": "default",
+      "origin": "https://github.com/SamboyCoding/Tomlet",
+      "acquiredFrom": "dist/OpenACAILoader/OpenACAI/Runtime/Compatibility/Tomlet.dll",
+      "assemblyIdentity": "Tomlet, Version=5.4.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "Modstoke/Runtime/Compatibility/Tomlet.dll",
+        "BepInEx/plugins/OpenACAILoader/Tomlet.dll"
+      ]
+    },
+    {
+      "cachePath": "config/BepInEx.Unity.IL2CPP.dll.config",
+      "sha256": "CB455007CD9DC56B206D66BAFEDB39D6DDF7CD5C7D9919A0D95CBEC3305A2434",
+      "size": 467,
+      "category": "runtime-config",
+      "selection": "default",
+      "origin": "https://github.com/BepInEx/BepInEx (retained Mono.Cecil binding redirect)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/BepInEx.Unity.IL2CPP.dll.config",
+      "assemblyIdentity": null,
+      "packagePaths": [
+        "BepInEx/core/BepInEx.Unity.IL2CPP.dll.config"
+      ]
+    },
+    {
+      "cachePath": "native/win-x64/dobby.dll",
+      "sha256": "8015DE7D867245A1095D13947A63763878E4CF5FD3D3089B63CC39200B055DED",
+      "size": 205312,
+      "category": "native-runtime",
+      "selection": "default",
+      "origin": "https://github.com/BepInEx/Dobby/releases/tag/v1.0.5",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/dobby.dll",
+      "assemblyIdentity": null,
+      "packagePaths": [
+        "BepInEx/core/dobby.dll",
+        "BepInEx/core/runtimes/win-x64/native/dobby.dll"
+      ]
+    },
+    {
+      "cachePath": "native/win-x64/capstone.dll",
+      "sha256": "F03321188A1615D044314B1183DCD9A7FFDA09286C31C369D109165D4892DCBB",
+      "size": 5596672,
+      "category": "native-runtime",
+      "selection": "default",
+      "origin": "https://github.com/capstone-engine/capstone (Gee.External.Capstone runtime asset)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/core/runtimes/win-x64/native/capstone.dll",
+      "assemblyIdentity": null,
+      "packagePaths": [
+        "BepInEx/core/runtimes/win-x64/native/capstone.dll"
+      ]
+    },
+    {
+      "cachePath": "native/linux-arm/libcapstone.so",
+      "sha256": "0CE87B2D091DEFE3DA80DDBC71263308AEBDFC8666357F8A6016FD2137E4C08C",
+      "size": 5075300,
+      "category": "native-runtime",
+      "selection": "all-native",
+      "origin": "https://github.com/capstone-engine/capstone (Gee.External.Capstone runtime asset)",
+      "acquiredFrom": "../Forks/BepInEx/Runtimes/Unity/BepInEx.Unity.IL2CPP/bin/Unity.IL2CPP/runtimes/linux-arm/native/libcapstone.so",
+      "assemblyIdentity": null,
+      "packagePaths": [
+        "BepInEx/core/runtimes/linux-arm/native/libcapstone.so"
+      ]
+    },
+    {
+      "cachePath": "native/linux-arm64/libcapstone.so",
+      "sha256": "0676E5011D81E188DCF53368AFA83E5EBFD5ADD2BCD64DA04F195FD7C28598DD",
+      "size": 7301048,
+      "category": "native-runtime",
+      "selection": "all-native",
+      "origin": "https://github.com/capstone-engine/capstone (Gee.External.Capstone runtime asset)",
+      "acquiredFrom": "../Forks/BepInEx/Runtimes/Unity/BepInEx.Unity.IL2CPP/bin/Unity.IL2CPP/runtimes/linux-arm64/native/libcapstone.so",
+      "assemblyIdentity": null,
+      "packagePaths": [
+        "BepInEx/core/runtimes/linux-arm64/native/libcapstone.so"
+      ]
+    },
+    {
+      "cachePath": "native/linux-x64/libcapstone.so",
+      "sha256": "E85E1AC723954C77843A89899E31853F7F92B6CE9FBBCB095C198B392EEE6ABB",
+      "size": 6874138,
+      "category": "native-runtime",
+      "selection": "all-native",
+      "origin": "https://github.com/capstone-engine/capstone (Gee.External.Capstone runtime asset)",
+      "acquiredFrom": "../Forks/BepInEx/Runtimes/Unity/BepInEx.Unity.IL2CPP/bin/Unity.IL2CPP/runtimes/linux-x64/native/libcapstone.so",
+      "assemblyIdentity": null,
+      "packagePaths": [
+        "BepInEx/core/runtimes/linux-x64/native/libcapstone.so"
+      ]
+    },
+    {
+      "cachePath": "native/linux-x86/libcapstone.so",
+      "sha256": "FCFFB349374EDA1884396AD0BF207C5ACF0F298371501E7A0A5BDA4959DB2C27",
+      "size": 5203625,
+      "category": "native-runtime",
+      "selection": "all-native",
+      "origin": "https://github.com/capstone-engine/capstone (Gee.External.Capstone runtime asset)",
+      "acquiredFrom": "../Forks/BepInEx/Runtimes/Unity/BepInEx.Unity.IL2CPP/bin/Unity.IL2CPP/runtimes/linux-x86/native/libcapstone.so",
+      "assemblyIdentity": null,
+      "packagePaths": [
+        "BepInEx/core/runtimes/linux-x86/native/libcapstone.so"
+      ]
+    },
+    {
+      "cachePath": "native/osx-arm64/libcapstone.dylib",
+      "sha256": "2F7AFCB7C77BD06CF9E668C8AAC37B7B698A9E682CC4F1DDA3930D28700B1949",
+      "size": 4641952,
+      "category": "native-runtime",
+      "selection": "all-native",
+      "origin": "https://github.com/capstone-engine/capstone (Gee.External.Capstone runtime asset)",
+      "acquiredFrom": "../Forks/BepInEx/Runtimes/Unity/BepInEx.Unity.IL2CPP/bin/Unity.IL2CPP/runtimes/osx-arm64/native/libcapstone.dylib",
+      "assemblyIdentity": null,
+      "packagePaths": [
+        "BepInEx/core/runtimes/osx-arm64/native/libcapstone.dylib"
+      ]
+    },
+    {
+      "cachePath": "native/osx-x64/libcapstone.dylib",
+      "sha256": "81EB5C90CC9857B9F8B30D51E99BCD9B913D2D000CFEEB25DC139AA1D1BB16EA",
+      "size": 4686744,
+      "category": "native-runtime",
+      "selection": "all-native",
+      "origin": "https://github.com/capstone-engine/capstone (Gee.External.Capstone runtime asset)",
+      "acquiredFrom": "../Forks/BepInEx/Runtimes/Unity/BepInEx.Unity.IL2CPP/bin/Unity.IL2CPP/runtimes/osx-x64/native/libcapstone.dylib",
+      "assemblyIdentity": null,
+      "packagePaths": [
+        "BepInEx/core/runtimes/osx-x64/native/libcapstone.dylib"
+      ]
+    },
+    {
+      "cachePath": "native/win-arm64/capstone.dll",
+      "sha256": "5D697C69379A679987540FE00A0136A510F3349F91B16054B6C75DF9944B9142",
+      "size": 5148672,
+      "category": "native-runtime",
+      "selection": "all-native",
+      "origin": "https://github.com/capstone-engine/capstone (Gee.External.Capstone runtime asset)",
+      "acquiredFrom": "../Forks/BepInEx/Runtimes/Unity/BepInEx.Unity.IL2CPP/bin/Unity.IL2CPP/runtimes/win-arm64/native/capstone.dll",
+      "assemblyIdentity": null,
+      "packagePaths": [
+        "BepInEx/core/runtimes/win-arm64/native/capstone.dll"
+      ]
+    },
+    {
+      "cachePath": "native/win-x86/capstone.dll",
+      "sha256": "7C9688E96FB4D5819BBC8705D51F1C89BF12331200416CEBC136ED02C54F9CEB",
+      "size": 4827136,
+      "category": "native-runtime",
+      "selection": "all-native",
+      "origin": "https://github.com/capstone-engine/capstone (Gee.External.Capstone runtime asset)",
+      "acquiredFrom": "../Forks/BepInEx/Runtimes/Unity/BepInEx.Unity.IL2CPP/bin/Unity.IL2CPP/runtimes/win-x86/native/capstone.dll",
+      "assemblyIdentity": null,
+      "packagePaths": [
+        "BepInEx/core/runtimes/win-x86/native/capstone.dll"
+      ]
+    },
+    {
+      "cachePath": "build-reference/red/Il2CppInterop.Common.dll",
+      "sha256": "23146B99483693DA86E708578001CD7181C31E22CBAE66B1FCA9CBC51EB8D169",
+      "size": 45056,
+      "category": "build-reference",
+      "selection": "default",
+      "origin": "https://github.com/BepInEx/Il2CppInterop (Red compatibility build reference)",
+      "acquiredFrom": "../RedLoader/bin/Unity.IL2CPP/Il2CppInterop.Common.dll",
+      "assemblyIdentity": "Il2CppInterop.Common, Version=1.4.6.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": []
+    },
+    {
+      "cachePath": "build-reference/red/Il2CppInterop.Generator.dll",
+      "sha256": "4B848C2A9DFACA3089E46C8FCE651E05FE2A05E4BC76644FF457F54068BFFCDE",
+      "size": 237568,
+      "category": "build-reference",
+      "selection": "default",
+      "origin": "https://github.com/BepInEx/Il2CppInterop (Red compatibility build reference)",
+      "acquiredFrom": "../RedLoader/bin/Unity.IL2CPP/Il2CppInterop.Generator.dll",
+      "assemblyIdentity": "Il2CppInterop.Generator, Version=1.4.6.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": []
+    },
+    {
+      "cachePath": "build-reference/red/Il2CppInterop.HarmonySupport.dll",
+      "sha256": "C285F6941A27E8636DABB544D57A7970764EE0877E2001C33EE3AE419CEE8EF4",
+      "size": 27136,
+      "category": "build-reference",
+      "selection": "default",
+      "origin": "https://github.com/BepInEx/Il2CppInterop (Red compatibility build reference)",
+      "acquiredFrom": "../RedLoader/bin/Unity.IL2CPP/Il2CppInterop.HarmonySupport.dll",
+      "assemblyIdentity": "Il2CppInterop.HarmonySupport, Version=1.4.6.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": []
+    },
+    {
+      "cachePath": "build-reference/red/Il2CppInterop.Runtime.dll",
+      "sha256": "BB550E6D819FB12FA813B5E2AD97A054376B590E67D9C61D7AEB1127CA394DFA",
+      "size": 315904,
+      "category": "build-reference",
+      "selection": "default",
+      "origin": "https://github.com/BepInEx/Il2CppInterop (Red compatibility build reference)",
+      "acquiredFrom": "../RedLoader/bin/Unity.IL2CPP/Il2CppInterop.Runtime.dll",
+      "assemblyIdentity": "Il2CppInterop.Runtime, Version=1.4.6.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": []
+    },
+    {
+      "cachePath": "build-reference/red/MonoMod.Utils.dll",
+      "sha256": "1789507279E579A8DBF22AB3B45FEBA3A24B6C4230444738611654225926947C",
+      "size": 342528,
+      "category": "build-reference",
+      "selection": "default",
+      "origin": "https://github.com/MonoMod/MonoMod (Red compatibility build reference)",
+      "acquiredFrom": "../RedLoader/bin/Unity.IL2CPP/MonoMod.Utils.dll",
+      "assemblyIdentity": "MonoMod.Utils, Version=25.0.12.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": []
+    },
+    {
+      "cachePath": "build-reference/red/Il2Cppmscorlib.dll",
+      "sha256": "2951E236D581E620D8545CDFF18B542FD209A5354C28312B441B973A1968A085",
+      "size": 2960896,
+      "category": "build-reference",
+      "selection": "default",
+      "origin": "https://github.com/ToniMacaroni/RedLoader (Libs reference input; not redistributed in package)",
+      "acquiredFrom": "../RedLoader/Libs/Il2Cppmscorlib.dll",
+      "assemblyIdentity": "Il2Cppmscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": []
+    },
+    {
+      "cachePath": "build-reference/red/mcs.dll",
+      "sha256": "27316D3032D6E8D3FBA72313B447D638BAD0061CDC287B8A32D0672082CB39DE",
+      "size": 1337344,
+      "category": "build-reference",
+      "selection": "default",
+      "origin": "https://github.com/ToniMacaroni/RedLoader (Libs reference input; not redistributed in package)",
+      "acquiredFrom": "../RedLoader/Libs/mcs.dll",
+      "assemblyIdentity": "mcs, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": []
+    },
+    {
+      "cachePath": "build-reference/red/UnityEngine.CoreModule-nstrip.dll",
+      "sha256": "FAAA57D95862FAEDE93E42536A81945E7490114A28CF54126B46716BB5728E65",
+      "size": 1227264,
+      "category": "build-reference",
+      "selection": "default",
+      "origin": "https://github.com/ToniMacaroni/RedLoader (Libs reference input; not redistributed in package)",
+      "acquiredFrom": "../RedLoader/Libs/UnityEngine.CoreModule-nstrip.dll",
+      "assemblyIdentity": "UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": []
+    },
+    {
+      "cachePath": "unity-libs/2022.2.16.zip",
+      "sha256": "2341EFC7635E0982E93C61680A8CE6C99DE2EA0E2AB1BC2785D44B1D2B7F838E",
+      "size": 1866648,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/2022.2.16.zip",
+      "assemblyIdentity": null,
+      "packagePaths": [
+        "BepInEx/unity-libs/2022.2.16.zip"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.AccessibilityModule.dll",
+      "sha256": "BA37F3A39F6D832328B6B9E52AC4D544E47274C7E6BC2E776BA025B230DF494E",
+      "size": 12800,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.AccessibilityModule.dll",
+      "assemblyIdentity": "UnityEngine.AccessibilityModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.AccessibilityModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.AIModule.dll",
+      "sha256": "1CCA4DFB1E33061FE408C280ADECE567004EE8FD35BA5CAE01ED24367D78D130",
+      "size": 47616,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.AIModule.dll",
+      "assemblyIdentity": "UnityEngine.AIModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.AIModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.AndroidJNIModule.dll",
+      "sha256": "B4530AF218454740AD7BF10D4D21E3FF132F8756D9EC9F60A29068E67EB20146",
+      "size": 82432,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.AndroidJNIModule.dll",
+      "assemblyIdentity": "UnityEngine.AndroidJNIModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.AndroidJNIModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.AnimationModule.dll",
+      "sha256": "4C3F1C9864C62B7AA2873ADDCEB5CBF29F7997B7CD3E00D99C7AD298BC4A9A27",
+      "size": 153600,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.AnimationModule.dll",
+      "assemblyIdentity": "UnityEngine.AnimationModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.AnimationModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.AssetBundleModule.dll",
+      "sha256": "5F7B6E928AC8ADFCE4D88972CB3B2E7FD5063ED8D6C820FF64AA8FECF6384CC3",
+      "size": 22016,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.AssetBundleModule.dll",
+      "assemblyIdentity": "UnityEngine.AssetBundleModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.AssetBundleModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.AudioModule.dll",
+      "sha256": "08D16C0CE6701F770C3050DF90183B843C9D61AC25506FB8ED69E2C50B72B7E8",
+      "size": 60416,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.AudioModule.dll",
+      "assemblyIdentity": "UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.AudioModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.ClothModule.dll",
+      "sha256": "14EBBC4F7C64BE59426271B20F1C224A3156CD7E220744A8908F7D7279EF1D90",
+      "size": 15360,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.ClothModule.dll",
+      "assemblyIdentity": "UnityEngine.ClothModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.ClothModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.ClusterInputModule.dll",
+      "sha256": "E6C0FEEA4C35B625DC334C6A84DD1DD2BA9228281DEE90E0F1354C0818717753",
+      "size": 11264,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.ClusterInputModule.dll",
+      "assemblyIdentity": "UnityEngine.ClusterInputModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.ClusterInputModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.ClusterRendererModule.dll",
+      "sha256": "94E5205FC28FD1F6A57C34231B42397D52E6801650786B53A4318B471B76E6AC",
+      "size": 11776,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.ClusterRendererModule.dll",
+      "assemblyIdentity": "UnityEngine.ClusterRendererModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.ClusterRendererModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.ContentLoadModule.dll",
+      "sha256": "A5375FD75377D4B6C860F4BB872E561546BD0EBE2F6B88321B615413A2939DD2",
+      "size": 16384,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.ContentLoadModule.dll",
+      "assemblyIdentity": "UnityEngine.ContentLoadModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.ContentLoadModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.CoreModule.dll",
+      "sha256": "6B465079537366D7F7933C77E3D6453BF8098CBD020A86EB66642532A9D5279A",
+      "size": 1344000,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.CoreModule.dll",
+      "assemblyIdentity": "UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.CoreModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.CrashReportingModule.dll",
+      "sha256": "230438CD969AB7A2E4415F316FD5605656A0D43A0697A56FC69179FD3B19E9A1",
+      "size": 10752,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.CrashReportingModule.dll",
+      "assemblyIdentity": "UnityEngine.CrashReportingModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.CrashReportingModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.DirectorModule.dll",
+      "sha256": "D9DE218A7745F0A6126EC8EA30571DD86564A51997CA83D500F5DA483D4AFC1B",
+      "size": 14336,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.DirectorModule.dll",
+      "assemblyIdentity": "UnityEngine.DirectorModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.DirectorModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.dll",
+      "sha256": "DF807004E3CF28079034F60DEE2C1FD50CCDF9F405D8534B3C5459201876CE89",
+      "size": 114176,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.dll",
+      "assemblyIdentity": "UnityEngine, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.DSPGraphModule.dll",
+      "sha256": "218372D89B3298B0FA4DF3A3525FB9A3739C9C4E8D29B3DE75F21948FECA0244",
+      "size": 18944,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.DSPGraphModule.dll",
+      "assemblyIdentity": "UnityEngine.DSPGraphModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.DSPGraphModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.GameCenterModule.dll",
+      "sha256": "BEC113BBDE1858204636E61CDDA7BB06E9EC35352D050D38A87656D00E81085B",
+      "size": 29696,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.GameCenterModule.dll",
+      "assemblyIdentity": "UnityEngine.GameCenterModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.GameCenterModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.GIModule.dll",
+      "sha256": "818EC351CB2E0D512186111880BE6923AB1325AAFFAB7E372EDA54E0CBC32732",
+      "size": 9728,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.GIModule.dll",
+      "assemblyIdentity": "UnityEngine.GIModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.GIModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.GridModule.dll",
+      "sha256": "F4C3A2F1DE2AD0D82C0E03B06A9D003F68E73EC352586314A581E8299C0E5759",
+      "size": 14336,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.GridModule.dll",
+      "assemblyIdentity": "UnityEngine.GridModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.GridModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.HotReloadModule.dll",
+      "sha256": "633923EFEB545A2A1875F56C272DFF8CECD55622AC68243CB62540A32A36BB61",
+      "size": 9728,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.HotReloadModule.dll",
+      "assemblyIdentity": "UnityEngine.HotReloadModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.HotReloadModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.ImageConversionModule.dll",
+      "sha256": "7D606AFFCF0E9F8C92FD5ACAB2AB897D382378F8169F207D7063DC505FEE6B5F",
+      "size": 13824,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.ImageConversionModule.dll",
+      "assemblyIdentity": "UnityEngine.ImageConversionModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.ImageConversionModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.IMGUIModule.dll",
+      "sha256": "09FA03F8698A8BF69F357A50AA8E724823EF13DD1E612DC326665EE40687693E",
+      "size": 178688,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.IMGUIModule.dll",
+      "assemblyIdentity": "UnityEngine.IMGUIModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.IMGUIModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.InputLegacyModule.dll",
+      "sha256": "DDA071CD070FE56CD1AB5084F80FEF4E068EE86874E7FF30B3442094274B4CA0",
+      "size": 28672,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.InputLegacyModule.dll",
+      "assemblyIdentity": "UnityEngine.InputLegacyModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.InputLegacyModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.InputModule.dll",
+      "sha256": "6A81D7BA00D8FFFB38B8B265A910364172DEEEF806C73AFB1A4AD453B8A31F84",
+      "size": 13312,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.InputModule.dll",
+      "assemblyIdentity": "UnityEngine.InputModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.InputModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.JSONSerializeModule.dll",
+      "sha256": "2BB6BC74C9E29AA0798D13BB921283FB797DA21178F4F3E2EB1544B1EB2844A5",
+      "size": 11776,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.JSONSerializeModule.dll",
+      "assemblyIdentity": "UnityEngine.JSONSerializeModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.JSONSerializeModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.LocalizationModule.dll",
+      "sha256": "F3A9B6BDECB7A5D9EF794103404FC3192A127E350A8553FE8178204C04F99E01",
+      "size": 10752,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.LocalizationModule.dll",
+      "assemblyIdentity": "UnityEngine.LocalizationModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.LocalizationModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.ParticleSystemModule.dll",
+      "sha256": "06278322D1B75E5BFFCE66A9E26042F08AB7D8B4720813F56E06E46B2E02559F",
+      "size": 145920,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.ParticleSystemModule.dll",
+      "assemblyIdentity": "UnityEngine.ParticleSystemModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.ParticleSystemModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.PerformanceReportingModule.dll",
+      "sha256": "52C4DC68315748BEC7ED605723312DC316C00B8AE9B666C02D3939D9A13D7B4F",
+      "size": 10240,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.PerformanceReportingModule.dll",
+      "assemblyIdentity": "UnityEngine.PerformanceReportingModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.PerformanceReportingModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.Physics2DModule.dll",
+      "sha256": "4D07531608E0037FBAF7E0D30679E5894DF748C4D2292C511D3BE3D9BF34FFED",
+      "size": 131072,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.Physics2DModule.dll",
+      "assemblyIdentity": "UnityEngine.Physics2DModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.Physics2DModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.PhysicsModule.dll",
+      "sha256": "23908F9F2EBBEACB6A2D4159170E04AD53F9BAB9575A0D8DF1CEC6C24D3167E8",
+      "size": 127488,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.PhysicsModule.dll",
+      "assemblyIdentity": "UnityEngine.PhysicsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.PhysicsModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.ProfilerModule.dll",
+      "sha256": "952112AF43C274EDD95ADB33B522EB8D6C966424CFC9EBC36DE5479829AF038A",
+      "size": 9728,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.ProfilerModule.dll",
+      "assemblyIdentity": "UnityEngine.ProfilerModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.ProfilerModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.PropertiesModule.dll",
+      "sha256": "A6BB2A8BB937D11EFA5A10A76AEEC63EDF2EAA451594C3EDAE5BC6DD437F3D8E",
+      "size": 141312,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.PropertiesModule.dll",
+      "assemblyIdentity": "UnityEngine.PropertiesModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.PropertiesModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll",
+      "sha256": "3BDCAF7FE7E447741563F7C01E9BFA08E77825557175D2D61BAFF7C535B70581",
+      "size": 9728,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll",
+      "assemblyIdentity": "UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.ScreenCaptureModule.dll",
+      "sha256": "431305D14528CD075C281CA7F01AF68BDF3B6CAC48B1730A88597987F7BC7093",
+      "size": 10752,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.ScreenCaptureModule.dll",
+      "assemblyIdentity": "UnityEngine.ScreenCaptureModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.ScreenCaptureModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.SharedInternalsModule.dll",
+      "sha256": "86697F7DD2E7F119A9B85530AC776798393E21A7E9B09CF4FC750B2E3DBFDFA7",
+      "size": 22528,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.SharedInternalsModule.dll",
+      "assemblyIdentity": "UnityEngine.SharedInternalsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.SharedInternalsModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.SpriteMaskModule.dll",
+      "sha256": "A5EF59BE2FC08CB9ED70254592D1AD5A6BE1AB73BDF38D10243F02784D35DCB8",
+      "size": 10752,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.SpriteMaskModule.dll",
+      "assemblyIdentity": "UnityEngine.SpriteMaskModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.SpriteMaskModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.SpriteShapeModule.dll",
+      "sha256": "0DE82FE2381847A2BA12074BBBDF404752366322B7C35D43820B83A80C000749",
+      "size": 15872,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.SpriteShapeModule.dll",
+      "assemblyIdentity": "UnityEngine.SpriteShapeModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.SpriteShapeModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.StreamingModule.dll",
+      "sha256": "CFCCA3AAA740AD130BD9671CD835EB943415551BD8FD4011D3137078183EA9A2",
+      "size": 10240,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.StreamingModule.dll",
+      "assemblyIdentity": "UnityEngine.StreamingModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.StreamingModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.SubstanceModule.dll",
+      "sha256": "1F097E8E8C5BF6316BA72DE4945C2E3F1AB44ADF1994CAE423E16051428AEBFD",
+      "size": 14336,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.SubstanceModule.dll",
+      "assemblyIdentity": "UnityEngine.SubstanceModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.SubstanceModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.SubsystemsModule.dll",
+      "sha256": "B1B37D6101B3C3C6004A72A5008D37B3D84DF09B674104786B6EAB2D16A777AF",
+      "size": 24576,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.SubsystemsModule.dll",
+      "assemblyIdentity": "UnityEngine.SubsystemsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.SubsystemsModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.TerrainModule.dll",
+      "sha256": "49943D322B5C85B21BB6A7256701C7A48B344D436FE369CBB1C672FB3E9CDCA8",
+      "size": 90112,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.TerrainModule.dll",
+      "assemblyIdentity": "UnityEngine.TerrainModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.TerrainModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.TerrainPhysicsModule.dll",
+      "sha256": "0327CD87CAB44E9A8DE791EBE7DE73835EC9E4D6000823E2A6A1C7A0492067FB",
+      "size": 10240,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.TerrainPhysicsModule.dll",
+      "assemblyIdentity": "UnityEngine.TerrainPhysicsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.TerrainPhysicsModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.TextCoreFontEngineModule.dll",
+      "sha256": "D44E4464452217E435EE6DC50A0907905AB8F15C8E9E5199D20E46075F6DAF82",
+      "size": 61952,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.TextCoreFontEngineModule.dll",
+      "assemblyIdentity": "UnityEngine.TextCoreFontEngineModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.TextCoreFontEngineModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.TextCoreTextEngineModule.dll",
+      "sha256": "56EC97DD69BB18CE0A6ECDA19A188711FBF3BCEA315BE9D9F34BB58AE162D335",
+      "size": 239104,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.TextCoreTextEngineModule.dll",
+      "assemblyIdentity": "UnityEngine.TextCoreTextEngineModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.TextCoreTextEngineModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.TextRenderingModule.dll",
+      "sha256": "758A16055C11D38AE89BF7FDF743C8DA345FF1D8A19D740392A72BE0F4C53388",
+      "size": 28672,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.TextRenderingModule.dll",
+      "assemblyIdentity": "UnityEngine.TextRenderingModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.TextRenderingModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.TilemapModule.dll",
+      "sha256": "FBB8FBDDDEE499BB846503F162262B54514AB8329BF6168FB8F5FA2E6012546E",
+      "size": 36352,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.TilemapModule.dll",
+      "assemblyIdentity": "UnityEngine.TilemapModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.TilemapModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.TLSModule.dll",
+      "sha256": "27E1ED86D707FB56A9716B7F37D0D844346FEB8C6734D67C10280FBE55FA4645",
+      "size": 16384,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.TLSModule.dll",
+      "assemblyIdentity": "UnityEngine.TLSModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.TLSModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.UIElementsModule.dll",
+      "sha256": "EE6E54289BF2F8FCBAD2C494053FA6661AE4B29C0B712B80FEED0A2C159ABE67",
+      "size": 1490944,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.UIElementsModule.dll",
+      "assemblyIdentity": "UnityEngine.UIElementsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.UIElementsModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.UIModule.dll",
+      "sha256": "918BD7859558F82CC3BE63DC9F87F7616D7A8E9E209964801B231B5F9731474F",
+      "size": 26112,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.UIModule.dll",
+      "assemblyIdentity": "UnityEngine.UIModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.UIModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.UmbraModule.dll",
+      "sha256": "78976CD187A05F3C6F6B988AF9119D415A0EEAAC9DDB24A74EA5D905D7B40078",
+      "size": 9728,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.UmbraModule.dll",
+      "assemblyIdentity": "UnityEngine.UmbraModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.UmbraModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.UnityAnalyticsCommonModule.dll",
+      "sha256": "4E139FAAFDD59B1BDF004291ADE8F33ADE5980B51225CFCDBC8B7F630CC64452",
+      "size": 10240,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.UnityAnalyticsCommonModule.dll",
+      "assemblyIdentity": "UnityEngine.UnityAnalyticsCommonModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.UnityAnalyticsCommonModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.UnityAnalyticsModule.dll",
+      "sha256": "215AC69A52FB303D648471477EBDD3C0A329FA7763B8E22DAC7EE45548338D34",
+      "size": 34304,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.UnityAnalyticsModule.dll",
+      "assemblyIdentity": "UnityEngine.UnityAnalyticsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.UnityAnalyticsModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.UnityConnectModule.dll",
+      "sha256": "8435E47A69022F2541756BF5D5C959761229D0F8B249FC05CC439B7B3C3AE12A",
+      "size": 11264,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.UnityConnectModule.dll",
+      "assemblyIdentity": "UnityEngine.UnityConnectModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.UnityConnectModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.UnityCurlModule.dll",
+      "sha256": "7EDCC22D906745AB2272605BEA72F2F928F6890EA2A2F0863B294F253A1C5923",
+      "size": 11264,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.UnityCurlModule.dll",
+      "assemblyIdentity": "UnityEngine.UnityCurlModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.UnityCurlModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.UnityTestProtocolModule.dll",
+      "sha256": "86C7901413DE7E3D93DB94FACF21B49B89C8DD0501A866FF96F400E0F615E3DD",
+      "size": 9728,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.UnityTestProtocolModule.dll",
+      "assemblyIdentity": "UnityEngine.UnityTestProtocolModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.UnityTestProtocolModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.UnityWebRequestAssetBundleModule.dll",
+      "sha256": "CCFF2F65739BA6EFB01C41F4D34590AE596CDDC4E08FA2D53571AA6A0382C92C",
+      "size": 12800,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.UnityWebRequestAssetBundleModule.dll",
+      "assemblyIdentity": "UnityEngine.UnityWebRequestAssetBundleModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.UnityWebRequestAssetBundleModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.UnityWebRequestAudioModule.dll",
+      "sha256": "208EB1A791B09F29395135367AE7A32A24A291546AD129DE3579EA31E38D173A",
+      "size": 12288,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.UnityWebRequestAudioModule.dll",
+      "assemblyIdentity": "UnityEngine.UnityWebRequestAudioModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.UnityWebRequestAudioModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.UnityWebRequestModule.dll",
+      "sha256": "CE5F2ACF53A7595505189A096308135B9CF4FAE7E0EE6AABF204E149281FB16B",
+      "size": 47616,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.UnityWebRequestModule.dll",
+      "assemblyIdentity": "UnityEngine.UnityWebRequestModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.UnityWebRequestModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.UnityWebRequestTextureModule.dll",
+      "sha256": "2F9FB2603F62F7B09F06A681C9B673534E13A47E9EBEC0BAAE28D239C69DDBDE",
+      "size": 11264,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.UnityWebRequestTextureModule.dll",
+      "assemblyIdentity": "UnityEngine.UnityWebRequestTextureModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.UnityWebRequestTextureModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.UnityWebRequestWWWModule.dll",
+      "sha256": "B828F2A9F87C024616D1F82CAFC3F8AAB2AA960BD38E1A6D1FED5814C5D2CBB5",
+      "size": 20992,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.UnityWebRequestWWWModule.dll",
+      "assemblyIdentity": "UnityEngine.UnityWebRequestWWWModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.UnityWebRequestWWWModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.VehiclesModule.dll",
+      "sha256": "561F00489472CDF8EF940D53FED128DDE0962AA9E040C16BA9AB74F17C99D8DA",
+      "size": 13824,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.VehiclesModule.dll",
+      "assemblyIdentity": "UnityEngine.VehiclesModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.VehiclesModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.VFXModule.dll",
+      "sha256": "0CCE1681516631BEC289910EE251218FC74179850A77A0E2B1A11C36DFD8EFCF",
+      "size": 47616,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.VFXModule.dll",
+      "assemblyIdentity": "UnityEngine.VFXModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.VFXModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.VideoModule.dll",
+      "sha256": "9F835D11026D88821EC78173D88625A101A2876575EACCA2308DEA6FD5A3FCD2",
+      "size": 30720,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.VideoModule.dll",
+      "assemblyIdentity": "UnityEngine.VideoModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.VideoModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.VirtualTexturingModule.dll",
+      "sha256": "89FDE17BCA960B27309040E189B3848B7A30C9F7D99638F9FB452803A0C6913B",
+      "size": 24576,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.VirtualTexturingModule.dll",
+      "assemblyIdentity": "UnityEngine.VirtualTexturingModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.VirtualTexturingModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.VRModule.dll",
+      "sha256": "8B5DF77D76F4B379612B0E6723C858199BE9F08128F4D15982F003AB670C9F6D",
+      "size": 15872,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.VRModule.dll",
+      "assemblyIdentity": "UnityEngine.VRModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.VRModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.WindModule.dll",
+      "sha256": "827867F8C228A581D90BB975295A8E6319708C2D70685C36F5DC8786A769C57F",
+      "size": 10752,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.WindModule.dll",
+      "assemblyIdentity": "UnityEngine.WindModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.WindModule.dll"
+      ]
+    },
+    {
+      "cachePath": "unity-libs/UnityEngine.XRModule.dll",
+      "sha256": "1A9C22BF3E8711D985989DFB5916F62312E8CDFEA54187006257E221F74B332C",
+      "size": 60416,
+      "category": "unity-base-library",
+      "selection": "default",
+      "origin": "https://unity.bepinex.dev/libraries/2022.2.16.zip (Unity 2022.2.16 base libraries)",
+      "acquiredFrom": "dist/OpenACAILoader/BepInEx/unity-libs/UnityEngine.XRModule.dll",
+      "assemblyIdentity": "UnityEngine.XRModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "packagePaths": [
+        "BepInEx/unity-libs/UnityEngine.XRModule.dll"
+      ]
+    }
+  ]
+}

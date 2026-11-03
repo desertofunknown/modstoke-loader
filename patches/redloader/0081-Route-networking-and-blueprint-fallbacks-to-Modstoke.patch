@@ -1,0 +1,1135 @@
+diff --git a/SonsSdk/Networking/Packets.cs b/SonsSdk/Networking/Packets.cs
+--- a/SonsSdk/Networking/Packets.cs
++++ b/SonsSdk/Networking/Packets.cs
+@@ -1,4 +1,4 @@
+-﻿using System.Diagnostics.CodeAnalysis;
++﻿using System.Reflection;
+ using Bolt;
+ using Endnight.Extensions;
+ using HarmonyLib;
+@@ -7,7 +7,6 @@
+ using Sons.Multiplayer;
+ using UdpKit;
+ using UnityEngine;
+-using Color = System.Drawing.Color;
+ 
+ namespace SonsSdk.Networking;
+ 
+@@ -22,9 +21,28 @@
+     Packets.EventPacket GetPacket(int typeId, int size, uint targetConnectionId);
+ }
+ 
++internal interface ISdkPacketFallbackDriver : ISdkPacketDriver
++{
++    UdpPacket ClonePacket(UdpPacket packet);
++    bool PacketReceived(BoltConnection instance, UdpPacket packet);
++    bool PacketDelivered(BoltConnection instance, Packet packet);
++    bool ChatEventPatch(CoopServerCallbacks instance, ChatEvent evnt);
++    void Patch();
++}
++
+ public static class Packets
+ {
+     internal static readonly Dictionary<int, NetRegistration> RegisteredEvents = new();
++
++    private static readonly Lazy<ISdkPacketFallbackDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsPacketFallback", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkPacketFallbackDriver>)method.CreateDelegate(typeof(Func<ISdkPacketFallbackDriver>)))();
++    });
++    internal static ISdkPacketFallbackDriver Fallback => FallbackDriver.Value;
+ 
+     /// <summary>
+     /// Gets called when a chat message arrives. Returning true means you handled the message and none of the other handlers get called.
+@@ -43,7 +61,7 @@
+             return;
+         }
+ 
+-        NetworkingPatches.Patch();
++        Fallback.Initialize();
+     }
+ 
+     internal static void Uninit()
+@@ -59,11 +77,7 @@
+             return;
+         }
+ 
+-        var hash = ev.GetIdHash();
+-        if (!RegisteredEvents.TryAdd(hash, new(hash, ev.Read)))
+-        {
+-            throw new Exception($"Net Event with id '{ev.Id}' already registered");
+-        }
++        Fallback.Register(ev);
+     }
+ 
+     public static bool Unregister(NetEvent ev)
+@@ -72,16 +86,12 @@
+         if (driver != null)
+             return driver.Packets.Unregister(ev);
+ 
+-        var hash = ev.GetIdHash();
+-        return RegisteredEvents.Remove(hash);
+-    }
+-
+-    // I don't know why I have to clone the packet this way. Seems like some Il2Cpp issue.
+-    private static UdpPacket ClonePacket(UdpPacket packet)
+-    {
+-        var newPacket = new UdpPacket(new byte[packet.Data.Length]);
+-        newPacket.WriteByteArray(packet.Data);
+-        return newPacket;
++        return Fallback.Unregister(ev);
++    }
++
++    internal static UdpPacket ClonePacket(UdpPacket packet)
++    {
++        return Fallback.ClonePacket(packet);
+     }
+ 
+     /// <summary>
+@@ -98,42 +108,7 @@
+             return;
+         }
+ 
+-        //RLog.Msg(Color.Gray, LoaderUtils.ByteStr(packet.Data));
+-        var targetByte = packet.ReadByte();
+-        var target = (GlobalTargets)targetByte;
+-        uint targetConn = 0;
+-
+-        if (targetByte == 0)
+-        {
+-            targetConn = packet.ReadUInt();
+-        }
+-        
+-        var id = packet.ReadInt();
+-        if (!RegisteredEvents.TryGetValue(id, out var reg))
+-        {
+-            return;
+-        }
+-        
+-        if (BoltNetwork.isServer)
+-        {
+-            // first read the packet if it also meant for us as a server
+-            if (target is GlobalTargets.OnlyServer or GlobalTargets.Everyone or GlobalTargets.Others)
+-            {
+-                reg.ReadFunc(packet, fromConnection);
+-            }
+-
+-            if (target is GlobalTargets.OnlyServer)
+-            {
+-                return;
+-            }
+-
+-            // handle relaying the source connection
+-            SendPacket(new EventPacket(ClonePacket(packet), target, targetConn), target is GlobalTargets.Others ? fromConnection.ConnectionId : null);
+-
+-            return;
+-        }
+-
+-        reg.ReadFunc(packet, fromConnection);
++        Fallback.HandlePacket(packet, fromConnection);
+     }
+ 
+     internal static void SendPacket(EventPacket packet, uint? skipConn = null)
+@@ -145,41 +120,7 @@
+             return;
+         }
+ 
+-        if (!BoltNetwork.isRunning)
+-            return;
+-        
+-        // if we are the client send it to the server
+-        if (BoltNetwork.isClient)
+-        {
+-            BoltNetwork.server._udp.Send(packet.Packet);
+-            return;
+-        }
+-        
+-        // if we are the server check the target
+-
+-        if (packet.Targets is GlobalTargets.Everyone or GlobalTargets.Others or GlobalTargets.AllClients)
+-        {
+-            BoltNetwork.clients.ForEach((Action<BoltConnection>)(conn =>
+-            {
+-                if (skipConn != null && conn.ConnectionId == skipConn.Value)
+-                {
+-                    return;
+-                }
+-
+-                conn._udp.Send(packet.Packet);
+-            }));
+-        }
+-
+-        if (packet.Targets is GlobalTargets.OnlySelf)
+-        {
+-            BoltNetwork.clients.ForEach((Action<BoltConnection>)(conn =>
+-            {
+-                if (conn.ConnectionId == packet.TargetConnectionId)
+-                {
+-                    conn._udp.Send(packet.Packet);
+-                }
+-            }));
+-        }
++        Fallback.SendPacket(packet, skipConn);
+     }
+ 
+     internal static EventPacket GetPacket(int typeId, int size, GlobalTargets targets)
+@@ -188,12 +129,7 @@
+         if (driver != null)
+             return driver.Packets.GetPacket(typeId, size, targets);
+ 
+-        size += 7;
+-        var packet = new UdpPacket(new byte[size]);
+-        packet.WriteUShort(6969);
+-        packet.WriteByte((byte)targets);
+-        packet.WriteInt(typeId);
+-        return new EventPacket(packet, targets, 0);
++        return Fallback.GetPacket(typeId, size, targets);
+     }
+     
+     internal static EventPacket GetPacket(int typeId, int size, uint targetConnectionId)
+@@ -202,13 +138,7 @@
+         if (driver != null)
+             return driver.Packets.GetPacket(typeId, size, targetConnectionId);
+ 
+-        size += 11;
+-        var packet = new UdpPacket(new byte[size]);
+-        packet.WriteUShort(6969);
+-        packet.WriteByte(0);
+-        packet.WriteUInt(targetConnectionId);
+-        packet.WriteInt(typeId);
+-        return new EventPacket(packet, GlobalTargets.OnlySelf, targetConnectionId);
++        return Fallback.GetPacket(typeId, size, targetConnectionId);
+     }
+     
+     public abstract class NetEvent
+@@ -279,67 +209,32 @@
+         public void ReadPacket(UdpPacket packet, BoltConnection fromConnection);
+     }
+ 
+-    private class NetworkingPatches
++    internal class NetworkingPatches
+     {
+         [HarmonyPatch(typeof(BoltConnection), nameof(BoltConnection.PacketReceived), typeof(UdpPacket))]
+         [HarmonyPrefix]
+         private static bool PacketReceived(BoltConnection __instance, UdpPacket udpPacket)
+         {
+-            // Marker, target byte and event ID occupy seven bytes.
+-            if (udpPacket.Size < 7 || udpPacket.ReadUShort() != 6969)
+-            {
+-                udpPacket.Position = 0;
+-                return true;
+-            }
+-
+-            HandlePacket(udpPacket, __instance);
+-
+-            return false;
++            return Fallback.PacketReceived(__instance, udpPacket);
+         }
+ 
+         [HarmonyPatch(typeof(BoltConnection), nameof(BoltConnection.PacketDelivered), typeof(Packet))]
+         [HarmonyPrefix]
+         private static bool PacketDelivered(BoltConnection __instance, Packet packet)
+         {
+-            if (packet == null)
+-            {
+-                return false;
+-            }
+-    
+-            if (packet.UdpPacket == null)
+-            {
+-                return true;
+-            }
+-    
+-            if (packet.UdpPacket.Size < 2 || packet.UdpPacket.ReadUShort() != 6969)
+-            {
+-                packet.UdpPacket.Position = 0;
+-                return true;
+-            }
+-
+-            return false;
++            return Fallback.PacketDelivered(__instance, packet);
+         }
+         
+         [HarmonyPatch(typeof(CoopServerCallbacks), nameof(CoopServerCallbacks.OnEvent), typeof(ChatEvent))]
+         [HarmonyPrefix]
+         public static bool ChatEventPatch(CoopServerCallbacks __instance, ChatEvent evnt)
+         {
+-            var handlers = OnChatReceived;
+-            if (handlers == null)
+-                return true;
+-
+-            foreach (Func<ChatEvent, bool> handler in handlers.GetInvocationList())
+-            {
+-                if (handler(evnt))
+-                    return false;
+-            }
+-
+-            return true;
++            return Fallback.ChatEventPatch(__instance, evnt);
+         }
+         
+         public static void Patch()
+         {
+-            SdkEntryPoint.Harmony.PatchAll(typeof(NetworkingPatches));
++            Fallback.Patch();
+         }
+     }
+ }
+diff --git a/SonsSdk/Networking/EntityManager.cs b/SonsSdk/Networking/EntityManager.cs
+--- a/SonsSdk/Networking/EntityManager.cs
++++ b/SonsSdk/Networking/EntityManager.cs
+@@ -1,4 +1,5 @@
+-﻿using Bolt;
++﻿using System.Reflection;
++using Bolt;
+ using HarmonyLib;
+ using RedLoader;
+ using UnityEngine;
+@@ -15,9 +16,24 @@
+     void UnregisterPrefab(BoltEntity entity);
+ }
+ 
++internal interface ISdkNetworkPrefabFallbackDriver : ISdkNetworkPrefabDriver
++{
++    void OnUpdateLookup();
++}
++
+ public static class EntityManager
+ {
+     internal static readonly List<BoltEntity> RegisteredEntities = new();
++
++    private static readonly Lazy<ISdkNetworkPrefabFallbackDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsNetworkPrefabFallback", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkNetworkPrefabFallbackDriver>)method.CreateDelegate(typeof(Func<ISdkNetworkPrefabFallbackDriver>)))();
++    });
++    internal static ISdkNetworkPrefabFallbackDriver Fallback => FallbackDriver.Value;
+ 
+     internal static void Init()
+     {
+@@ -28,9 +44,7 @@
+             return;
+         }
+ 
+-        SdkEntryPoint.Harmony.Patch(
+-            AccessTools.Method(typeof(PrefabDatabase), nameof(PrefabDatabase.UpdateLookup)),
+-            postfix: new(typeof(EntityManager), nameof(OnUpdateLookup)));
++        Fallback.Initialize();
+     }
+ 
+     internal static void Uninit()
+@@ -42,24 +56,12 @@
+             return;
+         }
+ 
+-        RegisteredEntities.Clear();
++        Fallback.Clear();
+     }
+     
+-    private static void OnUpdateLookup()
++    internal static void OnUpdateLookup()
+     {
+-        foreach (var entity in RegisteredEntities)
+-        {
+-            var go = entity.gameObject;
+-            
+-            if (PrefabDatabase.Instance.Prefabs.Contains(go))
+-            {
+-                continue;
+-            }
+-
+-            PrefabDatabase._lookup[entity.prefabId] = go;
+-        }
+-
+-        RLog.Msg(Color.DeepPink, "initialized bolt prefabs");
++        Fallback.OnUpdateLookup();
+     }
+     
+     /// <summary>
+@@ -77,20 +79,7 @@
+             return;
+         }
+ 
+-        if(RegisteredEntities.Contains(entity))
+-            return;
+-
+-        if (!string.IsNullOrEmpty(serializer))
+-        {
+-            entity._serializerGuid = serializer;
+-        }
+-        
+-        if (BoltNetwork.isRunning)
+-        {
+-            PrefabDatabase._lookup[entity.prefabId] = entity.gameObject;
+-        }
+-        
+-        RegisteredEntities.Add(entity);
++        Fallback.RegisterPrefab(entity, serializer);
+     }
+ 
+     /// <summary>
+@@ -108,8 +97,7 @@
+             return;
+         }
+ 
+-        if (go.TryGetComponent(out BoltEntity entity))
+-            RegisterPrefab(entity, serializer);
++        Fallback.RegisterPrefab(go, serializer);
+     }
+     
+     public static void UnregisterPrefab(BoltEntity entity)
+@@ -121,6 +109,6 @@
+             return;
+         }
+ 
+-        RegisteredEntities.Remove(entity);
++        Fallback.UnregisterPrefab(entity);
+     }
+ }
+diff --git a/SonsSdk/Networking/ServerCommands.cs b/SonsSdk/Networking/ServerCommands.cs
+--- a/SonsSdk/Networking/ServerCommands.cs
++++ b/SonsSdk/Networking/ServerCommands.cs
+@@ -41,7 +41,7 @@
+             return;
+         }
+ 
+-        Commands[command.ToLower()] = new(){Action = action, Name = command, Permission = permission};
++        NetUtils.Fallback.RegisterCommand(command, permission, action);
+     }
+     
+     internal static EExecutionResult TryExecuteCommand(string command, bool fromUser, ulong steamId)
+@@ -50,19 +50,7 @@
+         if (driver != null)
+             return driver.ServerCommands.TryExecuteCommand(command, fromUser, steamId);
+ 
+-        var split = command.Split(' ');
+-        var cmd = split[0].Substring(1).ToLower();
+-        if (Commands.TryGetValue(cmd, out var commandInstance))
+-        {
+-            if(fromUser && !commandInstance.CanExecute(steamId))
+-                return EExecutionResult.NoPermission;
+-
+-            RLog.Msg(Color.GreenYellow, $"Executing server command {commandInstance.Name}");
+-            
+-            return commandInstance.Action(new(command, steamId));
+-        }
+-
+-        return EExecutionResult.InvalidCommand;
++        return NetUtils.Fallback.TryExecuteCommand(command, fromUser, steamId);
+     }
+ 
+     internal static bool HandleChatEvent(ChatEvent ev)
+@@ -71,25 +59,7 @@
+         if (driver != null)
+             return driver.ServerCommands.HandleChatEvent(ev);
+ 
+-        var message = ev.Message;
+-        if (message.StartsWith("/"))
+-        {
+-            var steamId = MultiplayerUtilities.GetSteamId(ev.RaisedBy);
+-            var userName = "Unknown";
+-            if (MultiplayerPlayerRoles._instance.TryGetData(steamId, out var playerData))
+-            {
+-                userName = playerData.GetPlayerName();
+-            }
+-        
+-            RLog.Msg(Color.Gray, $"Command received from {userName}: {message}");
+-
+-            var result = TryExecuteCommand(message, true, steamId);
+-            NetUtils.SendChatMessage(ev.Sender, ExecutionResultToText(result), "blue", ev.RaisedBy);
+-
+-            return true;
+-        }
+-
+-        return false;
++        return NetUtils.Fallback.HandleChatEvent(ev);
+     }
+     
+     public static string ExecutionResultToText(EExecutionResult result)
+@@ -98,15 +68,7 @@
+         if (driver != null)
+             return driver.ServerCommands.ExecutionResultToText(result);
+ 
+-        return result switch
+-        {
+-            EExecutionResult.Success => "Command executed successfully",
+-            EExecutionResult.NoPermission => "You don't have permission to execute this command",
+-            EExecutionResult.InvalidCommand => "Invalid command",
+-            EExecutionResult.CommandFailed => "Command failed",
+-            EExecutionResult.WrongArguments => "Wrong arguments",
+-            _ => "Unknown result"
+-        };
++        return NetUtils.Fallback.ExecutionResultToText(result);
+     }
+ 
+     public enum EExecutionResult
+diff --git a/SonsSdk/Networking/NetUtils.cs b/SonsSdk/Networking/NetUtils.cs
+--- a/SonsSdk/Networking/NetUtils.cs
++++ b/SonsSdk/Networking/NetUtils.cs
+@@ -1,4 +1,5 @@
+-﻿using System.Drawing;
++﻿using System.Reflection;
++using System.Drawing;
+ using Bolt;
+ using RedLoader;
+ using RedLoader.Utils;
+@@ -8,6 +9,16 @@
+ 
+ public static class NetUtils
+ {
++    private static readonly Lazy<ISdkServerCommandDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsServerCommandFallback", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkServerCommandDriver>)method.CreateDelegate(typeof(Func<ISdkServerCommandDriver>)))();
++    });
++    internal static ISdkServerCommandDriver Fallback => FallbackDriver.Value;
++
+     public static bool IsMultiplayer => BoltNetwork.isRunning;
+     public static bool IsServer => BoltNetwork.isServer;
+     public static bool IsClient => BoltNetwork.isClient;
+@@ -29,21 +40,7 @@
+             return;
+         }
+ 
+-        if (!BoltNetwork.isRunning || !BoltNetwork.isServer)
+-        {
+-            RLog.Msg("Chat messages can only be sent by the server in a multiplayer game");
+-            return;
+-        }
+-        
+-        var chat = receiver != null ? ChatEvent.Create(receiver) : ChatEvent.Create(GlobalTargets.AllClients);
+-        
+-        if(!string.IsNullOrEmpty(color))
+-            message = $"<color={color}>{message}</color>";
+-        
+-        chat.Message = message;
+-        chat.Sender = sender;
+-        
+-        chat.Send();
++        Fallback.SendChatMessage(sender, message, color, receiver);
+     }
+ 
+     public static bool HasUserPermission(ulong steamId, PlayerRoles minRequiredRole)
+@@ -52,6 +49,6 @@
+         if (driver != null)
+             return driver.ServerCommands.HasUserPermission(steamId, minRequiredRole);
+ 
+-        return (int)MultiplayerPlayerRoles._instance.GetRoleValue(steamId) >= (int)minRequiredRole;
++        return Fallback.HasUserPermission(steamId, minRequiredRole);
+     }
+ }
+diff --git a/SonsSdk/Building/CustomBlueprintManager.cs b/SonsSdk/Building/CustomBlueprintManager.cs
+--- a/SonsSdk/Building/CustomBlueprintManager.cs
++++ b/SonsSdk/Building/CustomBlueprintManager.cs
+@@ -1,20 +1,12 @@
+-﻿using System.Text.RegularExpressions;
+-using Bolt;
++﻿using System.Reflection;
++using System.Text.RegularExpressions;
+ using Construction;
+-using Endnight.Localization;
+-using HarmonyLib;
+-using Il2CppInterop.Runtime.Injection;
+ using Il2CppInterop.Runtime.InteropTypes.Arrays;
+-using Il2CppInterop.Runtime.InteropTypes.Fields;
+ using RedLoader;
+ using RedLoader.Utils;
+ using Sons.Crafting;
+ using Sons.Crafting.Structures;
+-using Sons.Weapon;
+-using SonsSdk.Networking;
+ using UnityEngine;
+-using UnityGLTF;
+-using Color = System.Drawing.Color;
+ using Object = UnityEngine.Object;
+ 
+ namespace SonsSdk.Building;
+@@ -40,6 +32,33 @@
+     string ToDisplayName(string name);
+ }
+ 
++internal interface ISdkBlueprintFallbackDriver
++{
++    void TryRegister(ScrewStructureRegistration reg);
++    void OnGameActivated();
++    Task Init();
++    void OnSceneInit(ESonsScene scene);
++    Task LoadGltfObjectsFromDirectory(string directory);
++    void InitializePrefabs();
++    void DiscardPrefabCandidate(Object candidate);
++    void ReportPrefabCleanupFailure(Exception exception);
++    void PrepareBuiltStructure(GameObject built, StructureRecipe recipe);
++    void ProcessFreeformStructure(Transform freeformStructure);
++    List<StructureCraftingNodeIngredient> ProcessStructure(Transform structureRoot, int itemId);
++    Il2CppArrayBase<StructureCraftingNodeIngredient> GetIngredients(Transform structureRoot);
++    StructureCraftingNode CreateCraftingNode(
++        Transform transformToWrap,
++        int? ingredientItemId);
++    void InitObjectInteraction(StructureCraftingNode node);
++    void SetupRecipeIngredients(StructureRecipe recipe);
++    bool AddRecipeToDatabase(StructureRecipe recipe);
++    StructureRecipe CreateNewRecipe(int id, string name, StructureCraftingNode node, GameObject built);
++    void InitRecipeLocalization(StructureRecipe recipe);
++    void InitRecipe(StructureRecipe recipe);
++    void CreateBookPage(StructureRecipe topRecipe, StructureRecipe bottomRecipe, Texture2D background);
++    void SetupObjectAsCraftingNode(ScrewStructureRegistration reg);
++}
++
+ public record ScrewStructureRegistration(
+     GameObject prefab,
+     int recipeId,
+@@ -47,6 +66,14 @@
+ 
+ public class CustomBlueprintManager
+ {
++    private static readonly Lazy<ISdkBlueprintFallbackDriver> BlueprintFallback = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsBlueprintFallback", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkBlueprintFallbackDriver>)method.CreateDelegate(typeof(Func<ISdkBlueprintFallbackDriver>)))();
++    });
+     
+     // For GLTF blueprints they first will be loaded from the Blueprints folder during OnSdkInitialized
+     // and put into LoadedObjects. On game activation a StructureCraftingNode will be created and initialized from those.
+@@ -70,49 +97,19 @@
+     /// <summary>
+     /// Make an empty crafting node setup from the lean to structure.
+     /// </summary>
+-    private static void InitializePrefabs()
+-    {
+-        if (_craftingNodePrefab)
+-            return;
+-        
+-        var structure = ConstructionTools.GetRecipe(25)._structureNodePrefab;
+-        var go = structure.Instantiate();
+-        StructureRecipe newRecipe = null;
+-        try
+-        {
+-            go.name = "CustomStructurePrefab";
+-            var structureCraftingNode = go.GetComponent<StructureCraftingNode>();
+-            go.transform.Find("Ingredients").gameObject.TryDestroy();
+-            go.DontDestroyOnLoad().SetActive(false);
+-
+-            var recipePrefab = structureCraftingNode._recipe;
+-            newRecipe = Object.Instantiate(recipePrefab);
+-            newRecipe._id = 777;
+-            structureCraftingNode._recipe = newRecipe;
+-
+-            _recipePrefab = recipePrefab;
+-            _craftingNodePrefab = structureCraftingNode;
+-        }
+-        catch
+-        {
+-            try { go.SetActive(false); }
+-            catch (Exception exception) { ReportPrefabCleanupFailure(exception); }
+-            DiscardPrefabCandidate(go);
+-            DiscardPrefabCandidate(newRecipe);
+-            throw;
+-        }
+-    }
+-
+-    private static void DiscardPrefabCandidate(Object candidate)
+-    {
+-        try { if (candidate) Object.Destroy(candidate); }
+-        catch (Exception exception) { ReportPrefabCleanupFailure(exception); }
+-    }
+-
+-    private static void ReportPrefabCleanupFailure(Exception exception)
+-    {
+-        try { RLog.Error($"Could not clean up blueprint template: {exception}"); }
+-        catch { }
++    internal static void InitializePrefabs()
++    {
++        BlueprintFallback.Value.InitializePrefabs();
++    }
++
++    internal static void DiscardPrefabCandidate(Object candidate)
++    {
++        BlueprintFallback.Value.DiscardPrefabCandidate(candidate);
++    }
++
++    internal static void ReportPrefabCleanupFailure(Exception exception)
++    {
++        BlueprintFallback.Value.ReportPrefabCleanupFailure(exception);
+     }
+ 
+     /// <summary>
+@@ -132,12 +129,7 @@
+             return;
+         }
+ 
+-        if (!LoadedObjects.TryAdd(reg.recipeId, reg))
+-        {
+-            throw new Exception($"Recipe Collision!!! Blueprint with id {reg.recipeId} already registered!");
+-        }
+-        
+-        OnPrefabLoaded.Invoke(reg);
++        BlueprintFallback.Value.TryRegister(reg);
+     }
+ 
+     public static IEnumerable<ScrewStructureRegistration> GetRegistrations() => LoadedObjects.Values;
+@@ -152,19 +144,12 @@
+             return;
+         }
+ 
+-        InitializePrefabs();
+-
+-        foreach (var loadedObject in LoadedObjects.Values)
+-        {
+-            SetupObjectAsCraftingNode(loadedObject);
+-        }
++        BlueprintFallback.Value.OnGameActivated();
+     }
+ 
+     internal static Task Init()
+     {
+-        SdkEvents.OnSonsSceneInitialized.Subscribe(OnSceneInit);
+-
+-        return LoadGltfObjectsFromDirectory();
++        return BlueprintFallback.Value.Init();
+     }
+ 
+     internal static void Uninit()
+@@ -172,11 +157,9 @@
+         
+     }
+ 
+-    private static void OnSceneInit(ESonsScene scene)
+-    {
+-        if (scene != ESonsScene.Game) return;
+-        
+-        OnGameActivated();
++    internal static void OnSceneInit(ESonsScene scene)
++    {
++        BlueprintFallback.Value.OnSceneInit(scene);
+     }
+ 
+     public static void SetupRecipeIngredients(StructureRecipe recipe)
+@@ -188,13 +171,7 @@
+             return;
+         }
+ 
+-        var node = recipe._structureNodePrefab.GetComponent<StructureCraftingNode>();
+-        var ingredients = recipe._ingredients = new Il2CppSystem.Collections.Generic.List<StructureCraftingRecipeIngredient>();
+-        foreach (var link in node._craftingIngredientLinks)
+-        {
+-            var ingredient = link.Ingredient;
+-            ingredients.Add(new(){ItemId = ingredient.ItemId, Count = ingredient.Count});
+-        }
++        BlueprintFallback.Value.SetupRecipeIngredients(recipe);
+     }
+ 
+     /// <summary>
+@@ -212,30 +189,7 @@
+             return;
+         }
+ 
+-        foreach (var ingredient in built.GetComponentsInChildren<StructureCraftingNodeIngredient>(true))
+-        {
+-            Object.Destroy(ingredient);
+-        }
+-        
+-        if (!built.GetComponent<BoltEntity>())
+-        {
+-            var bolt = built.AddComponent<BoltEntity>().Init(recipe._id, BoltFactories.ScrewStructureState);
+-            bolt._queryOptionIEntityBehaviour = QueryOptions.GetComponentsInChildren;
+-        }
+-        
+-        EntityManager.RegisterPrefab(built);
+-
+-        var screwStructure = built.AddComponent<ScrewStructure>();
+-        screwStructure._recipe = recipe;
+-        screwStructure.enabled = false;
+-        
+-        built.AddComponent<FreeFormStructureBuiltLinker>();
+-        built.AddComponent<ScrewStructureDestruction>();
+-        built.AddComponent<BoxCollider>();
+-        
+-        built.DontDestroyOnLoad();
+-
+-        built.AsPrefab(screwStructure);
++        BlueprintFallback.Value.PrepareBuiltStructure(built, recipe);
+     }
+ 
+     /// <summary>
+@@ -250,18 +204,7 @@
+         if (driver != null)
+             return driver.Blueprints.AddRecipeToDatabase(recipe);
+ 
+-        if (!StructureCraftingSystem.TryGetInstance(out var system))
+-        {
+-            return false;
+-        }
+-
+-        if (system._recipeDatabase.TryGetRecipeById(recipe._id, out _))
+-        {
+-            return false;
+-        }
+-        
+-        system._recipeDatabase._recipes.Add(recipe);
+-        return true;
++        return BlueprintFallback.Value.AddRecipeToDatabase(recipe);
+     }
+ 
+     /// <summary>
+@@ -278,29 +221,7 @@
+         if (driver != null)
+             return driver.Blueprints.CreateNewRecipe(id, name, node, built);
+ 
+-        var recipe = Object.Instantiate(_recipePrefab);
+-        recipe._id = id;
+-        recipe._boltPrefabId = id - 1;
+-        recipe._category = StructureCategory;
+-
+-        if (node)
+-        {
+-            recipe._structureNodePrefab = node.gameObject;
+-            node._recipe = recipe;
+-        }
+-
+-        if (built)
+-            recipe._builtPrefab = built;
+-
+-        recipe.name = name;
+-        recipe._displayName = ToDisplayName(name);
+-        recipe.hideFlags = HideFlags.HideAndDontSave;
+-        
+-        AddRecipeToDatabase(recipe);
+-
+-        RLog.Msg(Color.LawnGreen, $"Added recipe {recipe.name}");
+-        
+-        return recipe;
++        return BlueprintFallback.Value.CreateNewRecipe(id, name, node, built);
+     }
+ 
+     /// <summary>
+@@ -316,35 +237,7 @@
+             return;
+         }
+ 
+-        foreach (var structureElement in freeformStructure.GetComponentsInChildren<StructureElement>())
+-        {
+-            foreach (var rend in structureElement.gameObject.GetComponentsInChildren<Renderer>(true))
+-            {
+-                if (rend.name is "TerrainBumpProjector" or "Shadows" or "GrassPusher")
+-                {
+-                    rend.gameObject.TryDestroy();
+-                    continue;
+-                }
+-
+-                if (!rend.GetComponent<StructureGhostSwapper>())
+-                    rend.gameObject.AddComponent<StructureGhostSwapper>();
+-
+-                //if (rend.TryGetComponent(out MeshOutliner outliner))
+-                //     {
+-                //         Object.Destroy(outliner);
+-                //     }
+-            }
+-
+-            var itemId = structureElement._profile?._item?._id ?? 0;
+-
+-            if (itemId < 1)
+-                continue;
+-
+-            var ingredient = structureElement.gameObject.AddComponent<StructureCraftingNodeIngredient>();
+-            ingredient.OnValidate();
+-            ingredient._itemId = itemId;
+-            ingredient._requiresAllPreviousIngredients = false;
+-        }
++        BlueprintFallback.Value.ProcessFreeformStructure(freeformStructure);
+     }
+ 
+     /// <summary>
+@@ -359,27 +252,7 @@
+         if (driver != null)
+             return driver.Blueprints.ProcessStructure(structureRoot, itemId);
+ 
+-        var ingredients = new List<StructureCraftingNodeIngredient>();
+-        
+-        foreach (var rend in structureRoot.GetComponentsInChildren<Renderer>(true))
+-        {
+-            if (rend.name is "TerrainBumpProjector" or "Shadows" or "GrassPusher")
+-            {
+-                rend.gameObject.TryDestroy();
+-                continue;
+-            }
+-
+-            if (!rend.GetComponent<StructureGhostSwapper>())
+-                rend.gameObject.AddComponent<StructureGhostSwapper>();
+-            
+-            var ingredient = rend.gameObject.AddComponent<StructureCraftingNodeIngredient>();
+-            ingredient.OnValidate();
+-            ingredient._itemId = itemId;
+-            ingredient._requiresAllPreviousIngredients = false;
+-            ingredients.Add(ingredient);
+-        }
+-
+-        return ingredients;
++        return BlueprintFallback.Value.ProcessStructure(structureRoot, itemId);
+     }
+ 
+     /// <summary>
+@@ -391,7 +264,7 @@
+         var driver = SdkEvents.BeginLifecycleSetup();
+         return driver != null
+             ? driver.Blueprints.GetIngredients(structureRoot)
+-            : structureRoot.GetComponentsInChildren<StructureCraftingNodeIngredient>(true);
++            : BlueprintFallback.Value.GetIngredients(structureRoot);
+     }
+ 
+     /// <summary>
+@@ -410,74 +283,7 @@
+         if (driver != null)
+             return driver.Blueprints.CreateCraftingNode(transformToWrap, ingredientItemId);
+ 
+-        var ingredients = 
+-            ingredientItemId == null 
+-            ? GetIngredients(transformToWrap).ToList() 
+-            : ProcessStructure(transformToWrap, ingredientItemId.Value);
+-
+-        var structureCraftingNode = Object.Instantiate(_craftingNodePrefab);
+-        structureCraftingNode.name = transformToWrap.name.Replace("(Clone)", "") + "CraftingNode";
+-
+-        foreach (var node in structureCraftingNode.GetComponentsInChildren<StructureCraftingNodeIngredient>(true))
+-        {
+-            node.gameObject.TryDestroy();
+-        }
+-        foreach (var structureElement in structureCraftingNode.GetComponentsInChildren<StructureElement>(true))
+-        {
+-            structureElement.gameObject.TryDestroy();
+-        }
+-        foreach (var collider in transformToWrap.GetComponentsInChildren<Collider>())
+-        {
+-            Object.Destroy(collider);
+-        }
+-        
+-        var go = structureCraftingNode.gameObject.DontDestroyOnLoad();
+-        structureCraftingNode.enabled = false;
+-        structureCraftingNode._isActive = false;
+-        go.AsPrefab(structureCraftingNode);
+-        var tr = go.transform;
+-        
+-        go.transform.Find("Ingredients")?.gameObject.TryDestroy();
+-        // go.transform.Find("AutoFoundationRope").gameObject.TryDestroy();
+-        // go.Destroy<AutoFoundations>();
+-        // go.Destroy<BoltEntity>();
+-        // go.Destroy<StructureDestruction>();
+-        // go.Destroy<FreeFormStructureLinker>();
+-
+-        tr.SetPositionAndRotation(transformToWrap.position, transformToWrap.rotation);
+-
+-        transformToWrap.SetParent(tr, false);
+-        transformToWrap.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+-
+-        var groupings = new Dictionary<int, Il2CppSystem.Collections.Generic.List<StructureCraftingNodeIngredient>>();
+-        foreach (var node in ingredients)
+-        {
+-            var itemId = node.ItemId;
+-            
+-            if (!groupings.ContainsKey(itemId))
+-                groupings.Add(itemId, new());
+-            
+-            groupings[itemId].Add(node);
+-        }
+-        
+-        structureCraftingNode._craftingIngredientLinks.Clear();
+-        foreach (var (itemId, nodesIngredients) in groupings)
+-        {
+-            structureCraftingNode._craftingIngredientLinks.Add(new()
+-            {
+-                Ingredient = new()
+-                {
+-                    Count = nodesIngredients.Count,
+-                    ItemId = itemId
+-                },
+-                _ingredients = nodesIngredients
+-            });
+-        }
+-        
+-        go.SetActive(true);
+-        
+-        
+-        return structureCraftingNode;
++        return BlueprintFallback.Value.CreateCraftingNode(transformToWrap, ingredientItemId);
+     }
+ 
+     public static void InitObjectInteraction(StructureCraftingNode node)
+@@ -489,33 +295,7 @@
+             return;
+         }
+ 
+-        if (node._ingredientUiTemplate)
+-            return;
+-        
+-        var newInteraction = _craftingNodePrefab.transform.Find("StructureInteractionObjects").gameObject.Instantiate();
+-        try
+-        {
+-            var t = newInteraction.transform;
+-            t.SetParent(node.transform, false);
+-            t.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+-
+-            var ingredientTemplate = t.Find("Canvas/UiRoot/Ingredients/IngredientUiTemplate").gameObject;
+-            var cancelElement = t.Find("Canvas/UiRoot/CancelStructureInteractionElement").gameObject;
+-            var ingredients = new Il2CppSystem.Collections.Generic.List<StructureCraftingNodeIngredientUi>();
+-            ingredients.Add(t.Find("Canvas/UiRoot/Ingredients/IngredientUi").GetComponent<StructureCraftingNodeIngredientUi>());
+-            t.Find("UiLocator").localPosition = node.GetComponent<BoxCollider>().center;
+-
+-            node._cancelStructureInteractionElement = cancelElement;
+-            node._ingredientUi = ingredients;
+-            node._ingredientUiTemplate = ingredientTemplate;
+-        }
+-        catch
+-        {
+-            try { newInteraction.SetActive(false); }
+-            catch (Exception exception) { ReportPrefabCleanupFailure(exception); }
+-            DiscardPrefabCandidate(newInteraction);
+-            throw;
+-        }
++        BlueprintFallback.Value.InitObjectInteraction(node);
+     }
+     
+     public static void InitRecipeLocalization(StructureRecipe recipe)
+@@ -527,9 +307,7 @@
+             return;
+         }
+ 
+-        var key = LocalizationUtils.GetLocalizationKey(recipe._displayName);
+-        LocalizationTools.BlueprintBookTable.AddEntry(key, recipe._displayName);
+-        recipe._localizationId = key;
++        BlueprintFallback.Value.InitRecipeLocalization(recipe);
+     }
+ 
+     /// <summary>
+@@ -538,20 +316,7 @@
+     /// <param name="recipe"></param>
+     private static void InitRecipe(StructureRecipe recipe)
+     {
+-        AddRecipeToDatabase(recipe);
+-
+-        EntityManager.RegisterPrefab(recipe._builtPrefab);
+-
+-        if (recipe._structureNodePrefab)
+-        {
+-            EntityManager.RegisterPrefab(recipe._structureNodePrefab);
+-            InitObjectInteraction(recipe._structureNodePrefab.GetComponent<StructureCraftingNode>());
+-            return;
+-        }
+-
+-        var builtCopy = recipe._builtPrefab.Instantiate();
+-        var craftingNode = CreateCraftingNode(builtCopy.transform);
+-        recipe._structureNodePrefab = craftingNode.gameObject;
++        BlueprintFallback.Value.InitRecipe(recipe);
+     }
+ 
+     /// <summary>
+@@ -570,26 +335,7 @@
+             return;
+         }
+ 
+-        if(topRecipe)
+-        {
+-            InitRecipeLocalization(topRecipe);
+-        }
+-
+-        if(bottomRecipe)
+-        {
+-            InitRecipeLocalization(bottomRecipe);
+-        }
+-
+-        var data = new BlueprintBookPageData
+-        {
+-            _topRecipe = topRecipe,
+-            _bottomRecipe = bottomRecipe,
+-            _pageTitleLocalizationId = NextLocalizationString
+-        };
+-
+-        var controller = ItemTools.GetHeldPrefab(ItemTools.Identifiers.BlueprintBook).GetComponent<BlueprintBookController>();
+-        data._pageImage = background;
+-        controller._pages._pages.Add(data);
++        BlueprintFallback.Value.CreateBookPage(topRecipe, bottomRecipe, background);
+     }
+     
+     /// <summary>
+@@ -606,29 +352,7 @@
+             return;
+         }
+ 
+-        if (ProcessedObjects.TryGetValue(reg.recipeId, out var existingRecipe))
+-        {
+-            AddRecipeToDatabase(existingRecipe);
+-            return;
+-        }
+-        
+-        // create crafting node
+-        var craftingNode = CreateCraftingNode(reg.prefab.Instantiate(Vector3.zero, Quaternion.identity).transform);
+-        var be = craftingNode.GetComponent<BoltEntity>();
+-        be._prefabId = reg.recipeId - 1;
+-        EntityManager.RegisterPrefab(be);
+-        
+-        // create recipe
+-        var built = reg.prefab.Instantiate(Vector3.zero, Quaternion.identity);
+-        var recipe = CreateNewRecipe(reg.recipeId, reg.recipeName, craftingNode, built);
+-        PrepareBuiltStructure(built, recipe);
+-        SetupRecipeIngredients(recipe);
+-        
+-        OnCraftingNodeCreated.Invoke(craftingNode);
+-
+-        ProcessedObjects[recipe._id] = recipe;
+-
+-        RLog.Msg(Color.PaleGreen, $"Registered gltf crafting node with recipe id {recipe._id}");
++        BlueprintFallback.Value.SetupObjectAsCraftingNode(reg);
+     }
+     
+     public static async Task LoadGltfObjectsFromDirectory(string directory = null)
+@@ -640,39 +364,7 @@
+             return;
+         }
+ 
+-        if (string.IsNullOrWhiteSpace(directory))
+-        {
+-            directory = LoaderEnvironment.BlueprintDirectory;
+-        }
+-
+-        foreach (var file in Directory.GetFiles(directory))
+-        {
+-            if(!file.EndsWith(".gltf") && !file.EndsWith(".glb"))
+-                continue;
+-            
+-            var fileName = Path.GetFileNameWithoutExtension(file);
+-            var recipeId = GetRecipeIdFromName(fileName);
+-
+-            if (fileName.Contains(" "))
+-            {
+-                RLog.Error($"Name of blueprint cannot contain spaces ({file})");
+-                continue;
+-            }
+-
+-            if (recipeId == null)
+-            {
+-                RLog.Error("Couldn't setup recipe id from name");
+-                continue;
+-            }
+-            
+-            var loader = new GLTFSceneImporter(file, new());
+-            loader.ProcessMaterials = !ServerMode;
+-            await loader.LoadSceneAsync();
+-
+-            TryRegister(new(loader.CreatedObject.HideAndDontSave(), recipeId.Value, fileName + "Recipe"));
+-            
+-            RLog.Msg(Color.PaleGreen, $"Loaded {file}");
+-        }
++        await BlueprintFallback.Value.LoadGltfObjectsFromDirectory(directory);
+     }
+ 
+     public static int? GetRecipeIdFromName(string name)

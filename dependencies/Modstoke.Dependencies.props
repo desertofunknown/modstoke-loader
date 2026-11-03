@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <ModstokeDependencyRoot Condition="'$(ModstokeDependencyRoot)' == ''">$(MSBuildThisFileDirectory)..\.tools\modstoke-dependencies</ModstokeDependencyRoot>
+    <BepInExCoreRoot Condition="'$(BepInExCoreRoot)' == ''">$(ModstokeDependencyRoot)\managed</BepInExCoreRoot>
+    <RedCompatibilityLibraryRoot Condition="'$(RedCompatibilityLibraryRoot)' == ''">$(ModstokeDependencyRoot)\build-reference\red</RedCompatibilityLibraryRoot>
+    <RedFrameworkReferenceRoot Condition="'$(RedFrameworkReferenceRoot)' == ''">$(RedCompatibilityLibraryRoot)\net6-framework</RedFrameworkReferenceRoot>
+    <GameRoot Condition="'$(GameRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..</GameRoot>
+    <GameInteropRoot Condition="'$(GameInteropRoot)' == ''">$(GameRoot)\BepInEx\interop</GameInteropRoot>
+  </PropertyGroup>
+  <Target Name="RequireModstokeDependencies" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(ModstokeDependencyRoot)\managed\Alt.Json.dll') Or !Exists('$(BepInExCoreRoot)\Mono.Cecil.dll')"
+           Text="Restore the pinned Modstoke dependency cache described in dependencies/README.md, or set ModstokeDependencyRoot to an existing verified cache. Original loader outputs and installed loader libraries are not searched." />
+  </Target>
+</Project>

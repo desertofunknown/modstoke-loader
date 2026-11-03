@@ -1,0 +1,79 @@
+diff --git a/SonsSdk/GameCommands.cs b/SonsSdk/GameCommands.cs
+index 1fc0cb7..45a364f 100644
+--- a/SonsSdk/GameCommands.cs
++++ b/SonsSdk/GameCommands.cs
+@@ -413,6 +413,13 @@ public static class GameCommands
+     
+     public static void RegisterFromType(Type targetType, object instance = null)
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.RegisterCommands(targetType, instance);
++            return;
++        }
++
+         var methods = targetType.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+ 
+         foreach (MethodInfo method in methods)
+@@ -436,4 +443,16 @@ public static class GameCommands
+             }
+         }
+     }
++
++    internal static void RegisterCommand(string command, Func<string, bool> callback)
++    {
++        var driver = SdkEvents.BeginLifecycleSetup();
++        if (driver != null)
++        {
++            driver.RegisterCommand(command, callback);
++            return;
++        }
++
++        DebugConsole.RegisterCommand(command, callback, DebugConsole.Instance);
++    }
+ }
+diff --git a/SonsSdk/SonsMod.cs b/SonsSdk/SonsMod.cs
+index 7af8809..e50ea2c 100644
+--- a/SonsSdk/SonsMod.cs
++++ b/SonsSdk/SonsMod.cs
+@@ -201,7 +201,7 @@ public abstract class SonsMod : ModTypeBase<SonsMod>
+ 
+     protected void RegisterCommand(string command, Func<string, bool> callback)
+     {
+-        DebugConsole.RegisterCommand(command, callback, DebugConsole.Instance);
++        GameCommands.RegisterCommand(command, callback);
+     }
+ 
+     protected void StartPropDebugging()
+@@ -216,7 +216,7 @@ public abstract class SonsMod : ModTypeBase<SonsMod>
+ 
+     private void RegisterCommands()
+     {
+-        GameCommands.RegisterFromType(GetType());
++        GameCommands.RegisterFromType(GetType(), this);
+         OnCommandsRegisteredCallback?.Invoke();
+     }
+ 
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index f5d3394..7f94625 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -44,6 +44,8 @@ internal interface ISdkLifecycleDriver
+     void OnSdkInitialized(bool createModManagerUi);
+     void OnSdkGameStart();
+     void OnCheatsEnabledChanged(bool isEnabled);
++    void RegisterCommands(Type targetType, object instance);
++    void RegisterCommand(string command, Func<string, bool> callback);
+     void RegisterGameEvents();
+     void PatchGameplayEvents();
+     void OnSceneInitialized(int sceneIndex, string sceneName);
+@@ -171,7 +173,7 @@ public static class SdkEvents
+         if (ReferenceEquals(_lifecycleDriver, driver))
+             return;
+         if (_lifecycleDriver != null || _lifecycleSetupStarted)
+-            throw new InvalidOperationException("SDK lifecycle ownership must be selected before entrypoint, bootstrap or event setup.");
++            throw new InvalidOperationException("SDK lifecycle ownership must be selected before SDK setup or command registration.");
+ 
+         _lifecycleDriver = driver;
+     }

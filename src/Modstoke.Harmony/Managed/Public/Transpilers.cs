@@ -1,0 +1,195 @@
+using HarmonyLib.Tools;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
+using MonoMod.Utils;
+using MonoMod.Utils.Cil;
+
+namespace HarmonyLib
+{
+	/// <summary>A collection of commonly used transpilers</summary>
+	///
+	public static class Transpilers
+	{
+		// ReSharper disable once CollectionNeverQueried.Local => used by generated DMDs
+		internal static readonly Dictionary<int, Delegate> DelegateCache = new Dictionary<int, Delegate>();
+		internal static int delegateCounter;
+
+		/// <summary>Returns an instruction to call the specified delegate</summary>
+		/// <typeparam name="T">The delegate type to emit</typeparam>
+		/// <param name="action">The delegate to emit</param>
+		/// <returns>The instruction to call the specified action</returns>
+		///
+		public static CodeInstruction EmitDelegate<T>(T action) where T : Delegate
+		{
+			if (action.Method.IsStatic && action.Target == null)
+				return new CodeInstruction(OpCodes.Call, action.Method);
+
+			var paramTypes = action.Method.GetParameters().Select(x => x.ParameterType).ToArray();
+
+			var dynamicMethod = new DynamicMethodDefinition(action.Method.Name,
+				action.Method.ReturnType,
+				paramTypes);
+
+			var il = dynamicMethod.GetILGenerator();
+
+			var targetType = action.Target.GetType();
+
+			var preserveContext = action.Target != null && targetType.GetFields().Any(x => !x.IsStatic);
+			var recipeCount = checked(paramTypes.Length + 5);
+			Span<RustKernel.TranspilerInstruction> recipe = recipeCount <= 64
+				? stackalloc RustKernel.TranspilerInstruction[recipeCount] : new RustKernel.TranspilerInstruction[recipeCount];
+			RustKernel.PlanDelegateInstructions(preserveContext, action.Target != null, paramTypes.Length, recipe);
+			var currentDelegateCounter = 0;
+			FieldInfo cacheField = null;
+			MethodInfo getMethod = null;
+
+			if (preserveContext)
+			{
+				currentDelegateCounter = delegateCounter++;
+
+				DelegateCache[currentDelegateCounter] = action;
+
+				cacheField = AccessTools.Field(typeof(Transpilers), nameof(DelegateCache));
+
+				getMethod = AccessTools.Method(typeof(Dictionary<int, Delegate>), "get_Item");
+			}
+
+			// Rust supplies the complete sequence in one batch. Resolve reflection
+			// operands at emission time so their ordering and exceptions stay managed.
+			foreach (var instruction in recipe)
+			{
+				switch (instruction.Operand)
+				{
+					case RustKernel.TranspilerOperand.None:
+						il.Emit(instruction.OpCode);
+						break;
+					case RustKernel.TranspilerOperand.CacheField:
+						il.Emit(instruction.OpCode, cacheField);
+						break;
+					case RustKernel.TranspilerOperand.CacheIndex:
+						il.Emit(instruction.OpCode, currentDelegateCounter);
+						break;
+					case RustKernel.TranspilerOperand.CacheGetter:
+						il.Emit(instruction.OpCode, getMethod);
+						break;
+					case RustKernel.TranspilerOperand.TargetConstructor:
+						il.Emit(instruction.OpCode,
+							AccessTools.FirstConstructor(targetType, x => x.GetParameters().Length == 0 && !x.IsStatic));
+						break;
+					case RustKernel.TranspilerOperand.DelegateMethod:
+						il.Emit(instruction.OpCode, action.Method);
+						break;
+					case RustKernel.TranspilerOperand.DelegateConstructor:
+						il.Emit(instruction.OpCode, AccessTools.Constructor(typeof(T), [typeof(object), typeof(IntPtr)]));
+						break;
+					case RustKernel.TranspilerOperand.Argument:
+						il.Emit(instruction.OpCode, (short)instruction.Argument);
+						break;
+					case RustKernel.TranspilerOperand.Invoke:
+						il.Emit(instruction.OpCode, AccessTools.Method(typeof(T), nameof(Action.Invoke)));
+						break;
+					default:
+						throw new RustBackendException("Modstoke Harmony received an invalid delegate instruction recipe.");
+				}
+			}
+
+			return new CodeInstruction(OpCodes.Call, dynamicMethod.Generate());
+		}
+
+		/// <summary>A transpiler that replaces all occurrences of a given method with another one using the same signature</summary>
+		/// <param name="instructions">The enumeration of <see cref="CodeInstruction"/> to act on</param>
+		/// <param name="from">Method or constructor to search for</param>
+		/// <param name="to">Method or constructor to replace with</param>
+		/// <returns>Modified enumeration of <see cref="CodeInstruction"/></returns>
+		///
+		public static IEnumerable<CodeInstruction> MethodReplacer(this IEnumerable<CodeInstruction> instructions,
+			MethodBase from, MethodBase to)
+		{
+			if (from is null)
+				throw new ArgumentException("Unexpected null argument", nameof(from));
+			if (to is null)
+				throw new ArgumentException("Unexpected null argument", nameof(to));
+
+			foreach (var instruction in instructions)
+			{
+				var method = instruction.operand as MethodBase;
+				if (method == from)
+				{
+					instruction.opcode = RustKernel.ReplacementCallOpcode(to.IsConstructor);
+					instruction.operand = to;
+				}
+
+				yield return instruction;
+			}
+		}
+
+		/// <summary>A transpiler that alters instructions that match a predicate by calling an action</summary>
+		/// <param name="instructions">The enumeration of <see cref="CodeInstruction"/> to act on</param>
+		/// <param name="predicate">A predicate selecting the instructions to change</param>
+		/// <param name="action">An action to apply to matching instructions</param>
+		/// <returns>Modified enumeration of <see cref="CodeInstruction"/></returns>
+		///
+		public static IEnumerable<CodeInstruction> Manipulator(this IEnumerable<CodeInstruction> instructions,
+			Func<CodeInstruction, bool> predicate, Action<CodeInstruction> action)
+		{
+			if (predicate is null)
+				throw new ArgumentNullException(nameof(predicate));
+			if (action is null)
+				throw new ArgumentNullException(nameof(action));
+
+			return instructions.Select(instruction =>
+			{
+				if (predicate(instruction))
+					action(instruction);
+				return instruction;
+			}).AsEnumerable();
+		}
+
+		/// <summary>A transpiler that logs a text at the beginning of the method</summary>
+		/// <param name="instructions">The instructions to act on</param>
+		/// <param name="text">The log text</param>
+		/// <returns>Modified enumeration of <see cref="CodeInstruction"/></returns>
+		///
+		public static IEnumerable<CodeInstruction> DebugLogger(this IEnumerable<CodeInstruction> instructions, string text)
+		{
+			foreach (var instruction in RustKernel.DebugLoggerInstructions)
+			{
+				object operand = instruction.Operand switch
+				{
+					RustKernel.TranspilerOperand.None => null,
+					RustKernel.TranspilerOperand.DebugChannel => Logger.LogChannel.Debug,
+					RustKernel.TranspilerOperand.Text => text,
+					RustKernel.TranspilerOperand.LogText => AccessTools.Method(typeof(Logger), nameof(Logger.LogText)),
+					_ => throw new RustBackendException("Modstoke Harmony received an invalid logger instruction recipe.")
+				};
+				yield return new CodeInstruction(instruction.OpCode, operand);
+			}
+			foreach (var instruction in instructions) yield return instruction;
+		}
+
+		/// <summary>A transpiler that replaces the entire body of the method with another one</summary>
+		/// <param name="replacement">The replacement method. It's up to the caller of this transpiler to make sure that the signatures match.</param>
+		/// <param name="ilGenerator"><see cref="ILGenerator"/> of the patch. This is passed via transpiler.</param>
+		/// <returns>A collection of <see cref="CodeInstruction"/> that contains instructions of replacement method.</returns>
+		/// <exception cref="ArgumentException">The replacement method is not a managed method that contains any IL.</exception>
+		/// <remarks>This transpiler has a side effect of clearing up all previous locals and previous transpilers.
+		/// Use <see cref="HarmonyPriority"/> to run this transpiler as early as possible.</remarks>
+		public static IEnumerable<CodeInstruction> ReplaceWith(MethodBase replacement, ILGenerator ilGenerator)
+		{
+			var body = replacement.GetMethodBody();
+			if (body == null)
+				throw new ArgumentException("Replacement method must be a managed method", nameof(replacement));
+
+			// Currently HarmonyX is based on DMD which always uses a special ILGenerator wrapper for CecilILGenerator
+			var gen = Traverse.Create(ilGenerator).Field("Target").GetValue<CecilILGenerator>();
+			// Clear all existing vars; this is fine for HarmonyX because of how it works
+			gen.IL.Body.Variables.Clear();
+
+			// Create a copy of replacement and reinsert back the locals correctly
+			return PatchProcessor.GetOriginalInstructions(replacement, ilGenerator);
+		}
+	}
+}

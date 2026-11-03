@@ -1,0 +1,767 @@
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -1,3 +1,6 @@
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (c) RedLoader contributors. Copyright (C) 2026 Alex Cooper.
++
+ using System.Collections;
+ using System.Drawing;
+ using System.Reflection;
+@@ -75,6 +78,28 @@
+     void AfterSave(string directory, string gameName, bool savePlayerOnly);
+ }
+ 
++internal interface ISdkEventFallbackDriver
++{
++    void Initialize();
++    System.Collections.IEnumerator WaitForPauseMenu();
++    void OnSceneInitialized(int sceneIndex, string sceneName);
++    void OnUpdate();
++    void OnItemPickedUp(Il2CppSystem.Object value);
++    void OnItemConsumed(Il2CppSystem.Object value);
++    void OnArmorEquipped(object value);
++    void OnItemCrafted(Il2CppSystem.Object value);
++    void OnGameStart(object value);
++    void OnGameActivation();
++    void PatchGameplayEvents();
++    void OnCheatsSceneInitialized(ESonsScene scene);
++    void OnWorldSimActorAdded(WorldSimActor actor, bool onLoad);
++    void OnWorldSimActorRemoved(WorldSimActor actor);
++    void OnPauseMenuOpened(PauseMenu menu);
++    void OnPauseMenuClosed(PauseMenu menu);
++    void OnWorldExited();
++    void OnMultiplayerCheatsSetting(ref bool result);
++}
++
+ public static class SdkEvents
+ {
+     /// <summary>
+@@ -204,50 +229,15 @@
+ 
+     internal static void Init()
+     {
+-        if (_isInitialized)
+-        {
+-            return;
+-        }
+-        var driver = BeginLifecycleSetup();
+-        
+-        GlobalEvents.OnSceneWasInitialized.Subscribe(OnSceneWasInitialized, Priority.First);
+-        GlobalEvents.OnUpdate.Subscribe(OnUpdateInternal, Priority.First);
+-        
+-        if (driver != null)
+-        {
+-            driver.RegisterGameEvents();
+-        }
+-        else
+-        {
+-            EventRegistry.Register(GameEvent.ItemPickedUp, (EventRegistry.SubscriberCallback)SonsEventsOnItemPickedUp);
+-            EventRegistry.Register(GameEvent.LoadedMainScene, (EventRegistry.SubscriberCallback)SonsEventsOnGameStart);
+-            EventRegistry.Register(GameEvent.ItemCrafted, (EventRegistry.SubscriberCallback)SonsEventOnItemCrafted);
+-            EventRegistry.Register(GameEvent.ItemConsumed, (EventRegistry.SubscriberCallback)SonsEventOnItemConsumed);
+-            EventRegistry.Register(GameEvent.ArmorEquipped, (EventRegistry.SubscriberCallback)SonsEventOnArmorEquipped);
+-        }
+-
+-        if (driver != null)
+-            driver.PatchGameplayEvents();
+-        else
+-            Patches.Patch();
+-
+-        SavingCallbackPatches.Patch();
+-
+-        _isInitialized = true;
+-    }
+-
+-    private static IEnumerator WaitForPauseMenu()
+-    {
+-        while (!PauseMenu._instance)
+-        {
+-            yield return null;
+-        }
+-        
+-        SUI.SUI.OnPauseMenuCreated(PauseMenu._instance);
+-        OnPauseMenuAvailable.Invoke(PauseMenu._instance);
+-    }
+-
+-    private static void OnSceneWasInitialized(int sceneIdx, string sceneName)
++        Fallback.Initialize();
++    }
++
++    internal static IEnumerator WaitForPauseMenu()
++    {
++        return Fallback.WaitForPauseMenu();
++    }
++
++    internal static void OnSceneWasInitialized(int sceneIdx, string sceneName)
+     {
+         if (_lifecycleDriver != null)
+         {
+@@ -255,26 +245,10 @@
+             return;
+         }
+ 
+-        switch (sceneName)
+-        {
+-            case TitleSceneName:
+-                MainInitializer.InitTitleScene();
+-                _onAfterSpawnCalled = false;
+-                OnSonsSceneInitialized.Invoke(ESonsScene.Title);
+-                break;
+-            case LoadingSceneName:
+-                OnSonsSceneInitialized.Invoke(ESonsScene.Loading);
+-                break;
+-            case GameSceneName:
+-                RLog.Msg(System.Drawing.Color.DeepPink, $"=== Game Scene Initialized ===");
+-                LoadSave.OnGameStart += (Action)OnGameActivation;
+-                OnSonsSceneInitialized.Invoke(ESonsScene.Game);
+-                WaitForPauseMenu().RunCoro();
+-                break;
+-        }
+-    }
+-    
+-    private static void OnUpdateInternal()
++        Fallback.OnSceneInitialized(sceneIdx, sceneName);
++    }
++    
++    internal static void OnUpdateInternal()
+     {
+         if (_lifecycleDriver != null)
+         {
+@@ -282,58 +256,32 @@
+             return;
+         }
+ 
+-        ModInputCache.CheckAll();
+-        
+-        if (!LocalPlayer.IsInWorld)
+-        {
+-            return;
+-        }
+-    
+-        if (!_onAfterSpawnCalled)
+-        {
+-            _onAfterSpawnCalled = true;
+-            OnAfterSpawn.Invoke();
+-        }
+-        
+-        OnInWorldUpdate.Invoke();
++        Fallback.OnUpdate();
+     }
+     
+     #region Game Events
+     
+-    private static void SonsEventsOnItemPickedUp(Il2CppSystem.Object o)
+-    {
+-        var item = o.TryCast<ItemInstance.ItemInstanceAndCount>();
+-        if (item == null)
+-        {
+-            return;
+-        }
+-        
+-        OnItemPickup.Invoke(item);
+-    }
+-    
+-    private static void SonsEventOnItemConsumed(Il2CppSystem.Object o)
+-    {
+-        var item = o.TryCast<ItemInstance>();
+-        if (item == null)
+-        {
+-            return;
+-        }
+-        
+-        OnItemConsumed.Invoke(item);
+-    }
+-    
+-    private static void SonsEventOnArmorEquipped(object _)
+-    {
+-        OnArmorEquipped.Invoke();
+-    }
+-    
+-    private static void SonsEventOnItemCrafted(Il2CppSystem.Object o)
+-    {
+-        var id = o.Unbox<int>();
+-        OnItemCrafted.Invoke(id);
+-    }
+-    
+-    private static void SonsEventsOnGameStart(object o)
++    internal static void SonsEventsOnItemPickedUp(Il2CppSystem.Object o)
++    {
++        Fallback.OnItemPickedUp(o);
++    }
++    
++    internal static void SonsEventOnItemConsumed(Il2CppSystem.Object o)
++    {
++        Fallback.OnItemConsumed(o);
++    }
++    
++    internal static void SonsEventOnArmorEquipped(object _)
++    {
++        Fallback.OnArmorEquipped(_);
++    }
++    
++    internal static void SonsEventOnItemCrafted(Il2CppSystem.Object o)
++    {
++        Fallback.OnItemCrafted(o);
++    }
++    
++    internal static void SonsEventsOnGameStart(object o)
+     {
+         if (_lifecycleDriver != null)
+         {
+@@ -341,90 +289,85 @@
+             return;
+         }
+ 
+-        OnGameStart.Invoke();
+-        ItemTools.ItemHookAdder.Flush();
+-    }
+-    
+-    private static void OnGameActivation()
+-    {
+-        RLog.Msg(System.Drawing.Color.DeepPink, $"||| Game Activated |||");
+-        OnGameActivated.Invoke();
++        Fallback.OnGameStart(o);
++    }
++    
++    internal static void OnGameActivation()
++    {
++        Fallback.OnGameActivation();
+     }
+     
+     #endregion
+     
+-    private const string TitleSceneName = "SonsTitleScene";
+-    private const string LoadingSceneName = "SonsMainLoading";
+-    private const string GameSceneName = "SonsMain";
+-    
++    internal const string TitleSceneName = "SonsTitleScene";
++    internal const string LoadingSceneName = "SonsMainLoading";
++    internal const string GameSceneName = "SonsMain";
++    
++    private static readonly Lazy<ISdkEventFallbackDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsSdkEventFallback", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkEventFallbackDriver>)method.CreateDelegate(typeof(Func<ISdkEventFallbackDriver>)))();
++    });
++    internal static ISdkEventFallbackDriver Fallback => FallbackDriver.Value;
++
+     private static ISdkLifecycleDriver _lifecycleDriver;
+     private static bool _lifecycleSetupStarted;
+-    private static bool _isInitialized;
+-    private static bool _onAfterSpawnCalled;
+-    
+-    private class Patches
+-    {
+-        private static ConfiguredPatcher<Patches> _patcher;
+-
+-        private static bool? _prevCheatsEnabledState;
++    internal static bool _isInitialized;
++    internal static bool _onAfterSpawnCalled;
++    
++    internal class Patches
++    {
++        internal static ConfiguredPatcher<Patches> _patcher;
++
++        internal static bool? _prevCheatsEnabledState;
+     
+         public static void Patch()
+         {
+-            _patcher = new ConfiguredPatcher<Patches>(SdkEntryPoint.Harmony);
+-            _patcher.Patch(nameof(AddWorldSimActor));
+-            _patcher.Patch(nameof(RemoveWorldSimActor));
+-            _patcher.Patch(nameof(OpenPauseMenu));
+-            _patcher.Patch(nameof(ClosePauseMenu));
+-            _patcher.Patch(nameof(RunQuittingGameCallbacks));
+-            _patcher.Patch(nameof(GetMultiplayerCheatsSettingPatch));
++            Fallback.PatchGameplayEvents();
+             
+             OnSonsSceneInitialized.Subscribe(scene =>
+             {
+-                if (scene == ESonsScene.Title)
+-                {
+-                    _prevCheatsEnabledState = null;
+-                }
++                Fallback.OnCheatsSceneInitialized(scene);
+             });
+         }
+ 
+         [HarmonyPatch(typeof(VailWorldSimulation), nameof(VailWorldSimulation.AddActor))]
+-        private static void AddWorldSimActor(WorldSimActor actor, bool onLoad)
+-        {
+-            OnWorldSimActorAdded.Invoke(actor);
++        internal static void AddWorldSimActor(WorldSimActor actor, bool onLoad)
++        {
++            Fallback.OnWorldSimActorAdded(actor, onLoad);
+         }
+     
+         [HarmonyPatch(typeof(VailWorldSimulation), nameof(VailWorldSimulation.RemoveActor))]
+-        private static void RemoveWorldSimActor(WorldSimActor removeActor)
+-        {
+-            OnWorldSimActorRemoved.Invoke(removeActor);
++        internal static void RemoveWorldSimActor(WorldSimActor removeActor)
++        {
++            Fallback.OnWorldSimActorRemoved(removeActor);
+         }
+         
+         [HarmonyPatch(typeof(PauseMenu), nameof(PauseMenu.Open))]
+-        private static void OpenPauseMenu(PauseMenu __instance)
+-        {
+-            OnPauseMenuOpened.Invoke(__instance);
++        internal static void OpenPauseMenu(PauseMenu __instance)
++        {
++            Fallback.OnPauseMenuOpened(__instance);
+         }
+         
+         [HarmonyPatch(typeof(PauseMenu), nameof(PauseMenu.Close))]
+-        private static void ClosePauseMenu(PauseMenu __instance)
+-        {
+-            OnPauseMenuClosed.Invoke(__instance);
++        internal static void ClosePauseMenu(PauseMenu __instance)
++        {
++            Fallback.OnPauseMenuClosed(__instance);
+         }
+         
+         [HarmonyPatch(typeof(Sons.Save.GameState), nameof(Sons.Save.GameState.RunQuittingGameCallbacks))]
+-        private static void RunQuittingGameCallbacks()
+-        {
+-            OnWorldExited.Invoke();
++        internal static void RunQuittingGameCallbacks()
++        {
++            Fallback.OnWorldExited();
+         }
+         
+         [HarmonyPatch(typeof(GameSetupManager), nameof(GameSetupManager.GetMultiplayerCheatsSetting))]
+-        private static void GetMultiplayerCheatsSettingPatch(ref bool __result)
+-        {
+-            if (_prevCheatsEnabledState == null || _prevCheatsEnabledState.Value != __result)
+-            {
+-                OnCheatsEnabledChanged.Invoke(__result);
+-                _prevCheatsEnabledState = __result;
+-            }
++        internal static void GetMultiplayerCheatsSettingPatch(ref bool __result)
++        {
++            Fallback.OnMultiplayerCheatsSetting(ref __result);
+         }
+     }
+     
+diff --git a/SonsSdk/Private/MainInitializer.cs b/SonsSdk/Private/MainInitializer.cs
+--- a/SonsSdk/Private/MainInitializer.cs
++++ b/SonsSdk/Private/MainInitializer.cs
+@@ -1,24 +1,7 @@
+-﻿using System.Collections;
+-using System.Drawing;
+-using Il2CppInterop.Runtime;
+-using Il2CppInterop.Runtime.InteropTypes;
+-using Il2CppInterop.Runtime.Runtime;
+-using RedLoader;
+-using RedLoader.Utils;
+-using Sons.Events;
+-using Sons.Input;
+-using Sons.Loading;
+-using SonsSdk.AssetImporting;
+-using SonsSdk.Building;
+-using SonsSdk.Networking;
+-using SonsSdk.Private;
+-using TheForest.Utils;
+-using UnityEngine;
+-using UnityEngine.AddressableAssets;
+-using UnityEngine.AddressableAssets.ResourceLocators;
+-using UnityEngine.ResourceManagement.AsyncOperations;
+-using UnityEngine.SceneManagement;
+-using Color = System.Drawing.Color;
++﻿// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (c) RedLoader contributors. Copyright (C) 2026 Alex Cooper.
++
++using System.Reflection;
+ 
+ namespace SonsSdk;
+ 
+@@ -33,8 +16,17 @@
+ 
+ internal class MainInitializer
+ {
++    private static readonly Lazy<ISdkInitializationDriver> InitializationFallback = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsSdkInitializationFallback", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkInitializationDriver>)method.CreateDelegate(typeof(Func<ISdkInitializationDriver>)))();
++    });
++
+     private static ISdkInitializationDriver _initializationDriver;
+-    private static bool _initializationFailed;
++    internal static bool _initializationFailed;
+ 
+     internal static bool InitializationFailed => _initializationDriver?.InitializationFailed ?? _initializationFailed;
+ 
+@@ -58,20 +50,7 @@
+             return;
+         }
+ 
+-        if (_initializationStarted || SdkEvents.OnSdkInitializationCompleted.Disposed)
+-        {
+-            return;
+-        }
+-        _initializationStarted = true;
+-
+-        try
+-        {
+-            RunInitialization(InitCoro()).RunCoro();
+-        }
+-        catch (Exception exception)
+-        {
+-            ReportInitializationFailure(exception);
+-        }
++        InitializationFallback.Value.InitTitleScene();
+     }
+ 
+     internal static void InitDedicatedServer()
+@@ -82,34 +61,7 @@
+             return;
+         }
+ 
+-        if (_initializationStarted || SdkEvents.OnSdkInitializationCompleted.Disposed)
+-        {
+-            return;
+-        }
+-
+-        _initializationStarted = true;
+-        try
+-        {
+-            // Keep synchronous service setup inside the server bootstrap prefix.
+-            var services = InitSystems();
+-            if (!services.IsCompleted)
+-            {
+-                RunInitialization(WaitForServices(services)).RunCoro();
+-                return;
+-            }
+-
+-            services.GetAwaiter().GetResult();
+-            if (!_initializationFailed)
+-            {
+-                _initializationFinished = true;
+-                TryCompleteInitialization();
+-            }
+-        }
+-        catch (Exception exception)
+-        {
+-            ReportInitializationFailure(exception);
+-            throw;
+-        }
++        InitializationFallback.Value.InitDedicatedServer();
+     }
+ 
+     internal static void CompleteEventSetup()
+@@ -120,16 +72,7 @@
+             return;
+         }
+ 
+-        _eventSetupCompleted = true;
+-        TryCompleteInitialization();
+-    }
+-
+-    private static void TryCompleteInitialization()
+-    {
+-        if (_eventSetupCompleted && _initializationFinished)
+-        {
+-            SdkEvents.OnSdkInitializationCompleted.Invoke(null);
+-        }
++        InitializationFallback.Value.CompleteEventSetup();
+     }
+ 
+     internal static void ReportInitializationFailure(Exception exception)
+@@ -140,285 +83,10 @@
+             return;
+         }
+ 
+-        if (SdkEvents.OnSdkInitializationCompleted.Disposed)
+-        {
+-            return;
+-        }
+-
+-        _initializationFailed = true;
+-        SdkEvents.OnSdkInitializationCompleted.Invoke(exception);
+-        try
+-        {
+-            RLog.Error($"Shared SDK initialization failed: {exception}");
+-        }
+-        catch
+-        {
+-            // Diagnostic listeners cannot prevent startup failure cleanup.
+-        }
+-
+-        try
+-        {
+-            GlobalOverlays.ToggleOverlay(false);
+-        }
+-        catch
+-        {
+-            // The overlay may be only partially constructed; keep the original failure.
+-        }
++        InitializationFallback.Value.ReportInitializationFailure(exception);
+     }
+ 
+-    private static IEnumerator RunInitialization(IEnumerator initialization)
+-    {
+-        // Advance this SDK's managed child routines here so their failures reach the host.
+-        var routines = new Stack<IEnumerator>();
+-        routines.Push(initialization);
+-        try
+-        {
+-            while (routines.Count > 0)
+-            {
+-                if (_initializationFailed)
+-                    yield break;
+-
+-                object current;
+-                try
+-                {
+-                    var routine = routines.Peek();
+-                    if (!routine.MoveNext())
+-                    {
+-                        routines.Pop();
+-                        (routine as IDisposable)?.Dispose();
+-                        continue;
+-                    }
+-
+-                    current = routine.Current;
+-                    if (current is IEnumerator child)
+-                    {
+-                        routines.Push(child);
+-                        continue;
+-                    }
+-                }
+-                catch (Exception exception)
+-                {
+-                    ReportInitializationFailure(exception);
+-                    yield break;
+-                }
+-
+-                yield return current;
+-            }
+-
+-            if (!_initializationFailed)
+-            {
+-                _initializationFinished = true;
+-                TryCompleteInitialization();
+-            }
+-        }
+-        finally
+-        {
+-            while (routines.Count > 0)
+-            {
+-                var routine = routines.Pop();
+-                try
+-                {
+-                    (routine as IDisposable)?.Dispose();
+-                }
+-                catch (Exception exception)
+-                {
+-                    ReportInitializationFailure(exception);
+-                }
+-            }
+-
+-            if (!_initializationFinished && !SdkEvents.OnSdkInitializationCompleted.Disposed)
+-            {
+-                ReportInitializationFailure(new OperationCanceledException("Shared SDK initialization stopped before completion."));
+-            }
+-        }
+-    }
+-
+-    private static IEnumerator AddProgress(float amount)
+-    {
+-        GlobalOverlays.ProgressBar.AddProgress(amount);
+-        yield return null;
+-    }
+-
+-    private static IEnumerator LoadAllCatalogs()
+-    {
+-        foreach (var mod in SonsMod.RegisteredMods.ToArray())
+-        {
+-            if (!mod.Registered)
+-                continue;
+-
+-            if (mod.CatalogLoader != null)
+-            {
+-                yield return mod.CatalogLoader(mod);
+-                continue;
+-            }
+-
+-            string[] catalogs;
+-            try
+-            {
+-                var modDataFolder = LoaderEnvironment.GetModDataPath(mod);
+-                if (!modDataFolder.DirectoryExists())
+-                {
+-                    continue;
+-                }
+-
+-                catalogs = modDataFolder.GetFiles("catalog*.json").ToArray();
+-            }
+-            catch (Exception exception)
+-            {
+-                AssetLoaders.ReportAssetError($"Couldn't enumerate addressables catalogs for {mod.ModAssembly.FullName}.", exception);
+-                continue;
+-            }
+-
+-            foreach (var catalog in catalogs)
+-            {
+-                if (!mod.Registered)
+-                    break;
+-                yield return LoadCatalog(catalog);
+-            }
+-        }
+-    }
+-
+-    private static IEnumerator LoadCatalog(string catalog)
+-    {
+-        AsyncOperationHandle<IResourceLocator> operation;
+-        try
+-        {
+-            RLog.Msg(Color.Orange, "Loading addressables catalog " + catalog);
+-            operation = Addressables.LoadContentCatalogAsync(catalog, false);
+-        }
+-        catch (Exception exception)
+-        {
+-            AssetLoaders.ReportAssetError($"Couldn't start loading addressables catalog {catalog}.", exception);
+-            yield break;
+-        }
+-
+-        try
+-        {
+-            while (true)
+-            {
+-                yield return null;
+-                try
+-                {
+-                    if (!operation.IsValid())
+-                    {
+-                        AssetLoaders.ReportAssetError($"Addressables catalog {catalog} returned an invalid operation handle.");
+-                        break;
+-                    }
+-
+-                    if (!operation.IsDone)
+-                    {
+-                        continue;
+-                    }
+-
+-                    if (operation.Status != AsyncOperationStatus.Succeeded)
+-                    {
+-                        AssetLoaders.ReportAssetError($"Couldn't load addressables catalog {catalog}: {operation.OperationException}");
+-                    }
+-                }
+-                catch (Exception exception)
+-                {
+-                    AssetLoaders.ReportAssetError($"Couldn't observe addressables catalog {catalog}.", exception);
+-                }
+-
+-                break;
+-            }
+-        }
+-        finally
+-        {
+-            try
+-            {
+-                if (operation != null && operation.IsValid())
+-                {
+-                    Addressables.Release(operation);
+-                }
+-            }
+-            catch (Exception exception)
+-            {
+-                AssetLoaders.ReportAssetError($"Couldn't release the operation for addressables catalog {catalog}.", exception);
+-            }
+-        }
+-    }
+-
+-    private static IEnumerator InitCoro()
+-    {
+-        yield return LoadAllModBundles();
+-        var loadCatalogsTask = LoadAllCatalogs();
+-        
+-        GameResources.Load();
+-
+-        SceneManager.LoadScene(SonsSceneManager.OptionsMenuSceneName, LoadSceneMode.Additive);
+-        yield return null;
+-        SUI.SUI.InitPrefabs();
+-        SceneManager.UnloadScene(SonsSceneManager.OptionsMenuSceneName);
+-        
+-        yield return AddProgress(0.15f);
+-
+-        yield return loadCatalogsTask;
+-
+-        yield return WaitForServices(InitSystems());
+-        
+-        yield return AddProgress(0.15f);
+-
+-        var subs = SdkEvents.OnSdkInitialized.BeginInvocation();
+-        for (var i = 0; i < subs.Length; i++)
+-        {
+-            SdkEvents.OnSdkInitialized.InvokeSubscriber(subs[i], callback => callback());
+-            
+-            yield return AddProgress(0.4f / subs.Length);
+-        }
+-
+-        SdkEvents.OnSdkLateInitialized.Invoke();
+-        GlobalOverlays.ToggleOverlay(false);
+-    }
+-
+-    private static Task InitSystems()
+-    {
+-        if (!LoaderEnvironment.IsDedicatedServer)
+-        {
+-            GlobalInput.Init();
+-            GenericModalDialog.Setup();
+-            TooltipProvider.Setup();
+-            SonsUiTools.Init();
+-        }
+-
+-        SonsSaveTools.Init();
+-        GameManagers.Init();
+-        Packets.Init();
+-        EntityManager.Init();
+-        AssetImportingInitializer.Init();
+-        return CustomBlueprintManager.Init();
+-    }
+-
+-    private static IEnumerator WaitForServices(Task services)
+-    {
+-        while (!services.IsCompleted)
+-            yield return null;
+-
+-        services.GetAwaiter().GetResult();
+-    }
+-
+-    private static IEnumerator LoadAllModBundles()
+-    {
+-        var bundles = SonsMod.RegisteredMods.SelectMany(x => x.AssetBundleAttrs).ToArray();
+-
+-        for (var i = 0; i < bundles.Length; i++)
+-        {
+-            var bundle = bundles[i];
+-            try
+-            {
+-                if (bundle.Mod.Registered)
+-                    bundle.LoadBundle();
+-            }
+-            catch (Exception exception)
+-            {
+-                AssetLoaders.ReportAssetError($"Couldn't initialize asset bundle {bundle.AssetBundleName} for {bundle.Mod.ModAssembly.FullName}.", exception);
+-            }
+-
+-            yield return AddProgress(0.3f / bundles.Length);
+-        }
+-    }
+-
+-    private static bool _initializationStarted;
+-    private static bool _initializationFinished;
+-    private static bool _eventSetupCompleted;
++    internal static bool _initializationStarted;
++    internal static bool _initializationFinished;
++    internal static bool _eventSetupCompleted;
+ }

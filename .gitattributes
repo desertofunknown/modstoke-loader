@@ -1,0 +1,2 @@
+/.tools export-ignore
+**/__pycache__ export-ignore

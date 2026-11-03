@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>Modstoke.Bootstrap</AssemblyName>
+    <Title>Modstoke Loader Bootstrap</Title>
+    <Product>Modstoke Loader by OpenACAI</Product>
+    <Company>OpenACAI</Company>
+    <Description>Managed bootstrap for Modstoke Loader by OpenACAI.</Description>
+    <RootNamespace>Modstoke.Bootstrap</RootNamespace>
+    <ImplicitUsings>false</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GameRoot Condition="'$(GameRoot)' == ''">$(MSBuildProjectDirectory)\..\..\..\..</GameRoot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Entrypoint.cs" />
+    <Compile Include="BootstrapEnvironment.cs" />
+    <Compile Include="ChainloaderBoundary.cs" />
+    <Compile Include="CompatibilityPathInitializer.cs" />
+    <Compile Include="ConsoleManagerInitializer.cs" />
+    <Compile Include="ConsoleOutputRedirector.cs" />
+    <Compile Include="EnvironmentBannerWriter.cs" />
+    <Compile Include="HarmonyBackendInitializer.cs" />
+    <Compile Include="IL2CPPChainloaderAdapter.cs" />
+    <Compile Include="IL2CPPPreloaderRunner.cs" />
+    <Compile Include="JobTempTrace.cs" />
+    <Compile Include="PreloaderBoundary.cs" />
+    <Compile Include="RootLayout.cs" />
+    <Compile Include="StdErrRedirector.cs" />
+    <Compile Include="UnityInfoInitializer.cs" />
+    <Compile Include="BootstrapAssemblies.cs" />
+    <Compile Include="StateJson.cs" />
+  </ItemGroup>
+
+</Project>

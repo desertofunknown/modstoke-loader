@@ -1,0 +1,65 @@
+From b8ea6aae3438315db821981933d11f5399dec29e Mon Sep 17 00:00:00 2001
+From: Alex Cooper <alextcooper@openacai.com>
+Date: Thu, 4 Jun 2026 05:45:56 -0500
+Subject: [PATCH 01/13] Port BepInEx runtime projects to .NET 10
+
+---
+ Runtimes/NET/BepInEx.NET.CoreCLR/BepInEx.NET.CoreCLR.csproj | 2 +-
+ .../Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj  | 6 +++---
+ build/Program.cs                                            | 3 ++-
+ 3 files changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/Runtimes/NET/BepInEx.NET.CoreCLR/BepInEx.NET.CoreCLR.csproj b/Runtimes/NET/BepInEx.NET.CoreCLR/BepInEx.NET.CoreCLR.csproj
+index 5aafa90..dd3cd7e 100644
+--- a/Runtimes/NET/BepInEx.NET.CoreCLR/BepInEx.NET.CoreCLR.csproj
++++ b/Runtimes/NET/BepInEx.NET.CoreCLR/BepInEx.NET.CoreCLR.csproj
+@@ -2,7 +2,7 @@
+ 
+     <PropertyGroup>
+         <Description>BepInEx support library for CoreCLR games</Description>
+-        <TargetFrameworks>netcoreapp3.1;net6.0</TargetFrameworks>
++        <TargetFrameworks>netcoreapp3.1;net6.0;net10.0</TargetFrameworks>
+         <OutputPath>$(BuildDir)/NET.CoreCLR</OutputPath>
+         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+         <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+index 9c3ca31..dc65aaa 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj
+@@ -1,7 +1,7 @@
+ <Project Sdk="Microsoft.NET.Sdk">
+     <PropertyGroup>
+         <Description>BepInEx support library for Il2Cpp games</Description>
+-        <TargetFramework>net6.0</TargetFramework>
++        <TargetFramework>net10.0</TargetFramework>
+         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+         <OutputPath>$(BuildDir)/Unity.IL2CPP</OutputPath>
+@@ -19,8 +19,8 @@
+         <PackageReference Include="Il2CppInterop.HarmonySupport" Version="1.5.1-ci.829"/>
+         <PackageReference Include="Il2CppInterop.ReferenceLibs" Version="1.0.0" IncludeAssets="compile" PrivateAssets="all"/>
+         <PackageReference Include="Il2CppInterop.Runtime" Version="1.5.1-ci.829"/>
+-        <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" IncludeAssets="compile" PrivateAssets="all"/>
+-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.1" IncludeAssets="compile" PrivateAssets="all"/>
++        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" IncludeAssets="compile" PrivateAssets="all"/>
++        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" IncludeAssets="compile" PrivateAssets="all"/>
+         <PackageReference Include="MonoMod.RuntimeDetour" Version="22.7.31.1"/>
+         <PackageReference Include="Samboy063.Cpp2IL.Core" Version="2022.1.0-development.1452"/>
+     </ItemGroup>
+diff --git a/build/Program.cs b/build/Program.cs
+index ee498b1..7ae2d13 100644
+--- a/build/Program.cs
++++ b/build/Program.cs
+@@ -53,7 +53,8 @@ public class BuildContext : FrostingContext
+         new("NET.Framework", "win-x86", "net40"),
+         new("NET.Framework", "win-x86", "net452"),
+         new("NET.CoreCLR", "win-x64", "netcoreapp3.1"),
+-        new("NET.CoreCLR", "win-x64", "net6.0")
++        new("NET.CoreCLR", "win-x64", "net6.0"),
++        new("NET.CoreCLR", "win-x64", "net10.0")
+     };
+ 
+ 
+-- 
+2.54.0.windows.1
+

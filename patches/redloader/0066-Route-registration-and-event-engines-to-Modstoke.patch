@@ -1,0 +1,639 @@
+diff --git a/RedLoader/ModBase.cs b/RedLoader/ModBase.cs
+--- a/RedLoader/ModBase.cs
++++ b/RedLoader/ModBase.cs
+@@ -1,4 +1,8 @@
+-﻿using System;
++﻿// SPDX-License-Identifier: LGPL-2.1-only
++// RedLoader/MelonLoader mod contracts with Modstoke registration forwarding.
++// Copyright (c) RedLoader and MelonLoader contributors. Copyright (C) 2026 Alex Cooper.
++
++using System;
+ using System.Collections.Generic;
+ using System.Collections.ObjectModel;
+ using System.Diagnostics;
+@@ -6,12 +10,13 @@ using System.Drawing;
+ using System.IO;
+ using System.Linq;
+ using System.Reflection;
++using System.Threading;
+ 
+ #pragma warning disable 0618
+ 
+ namespace RedLoader
+ {
+-    public abstract class ModBase
++    public abstract class ModBase : IModRegistrationCallbacks
+     {
+         #region Static
+ 
+@@ -32,7 +37,6 @@ namespace RedLoader
+ 
+         public static ReadOnlyCollection<ModBase> RegisteredMelons => _registeredMelons.AsReadOnly();
+         internal static List<ModBase> _registeredMelons = new();
+-        private static readonly HashSet<Assembly> UnregisteringAssemblies = new(ReferenceEqualityComparer.Instance);
+ 
+         /// <summary>
+         /// Creates a new Melon instance for a Wrapper.
+@@ -131,9 +135,9 @@ namespace RedLoader
+         /// </summary>
+         public bool Registered { get; private set; }
+ 
+-        private List<Action> _registrationRollback;
+-        private List<Action> _registeredCallbacks;
+-        private bool _unregistering;
++        private IModRegistrationDriver _registration;
++        private IModRegistrationDriver Registration =>
++            LazyInitializer.EnsureInitialized(ref _registration, () => ModRegistrationDriverFactory.Create(this));
+ 
+         /// <summary>
+         /// Method that gets called on update (every frame). See <see href="https://docs.unity3d.com/ScriptReference/MonoBehaviour.Update.html">Update</see>
+@@ -260,134 +264,20 @@ namespace RedLoader
+         /// <summary>
+         /// Registers the Melon.
+         /// </summary>
+-        public bool Register()
+-        {
+-            if (Registered || _registrationRollback != null || _unregistering || UnregisteringAssemblies.Contains(ModAssembly))
+-                return false;
+-
+-            // if (FindMelon(Info.Name, Info.Author) != null)
+-            // {
+-            //     RLog.Warning($"Failed to register {MelonTypeName} '{ModAssembly.Location}': A Melon with the same Name and Author is already registered!");
+-            //     return false;
+-            // }
+-
+-            // TODO: Handle incompatibilites
+-            // var comp = FindIncompatiblitiesFromContext();
+-            // if (comp.Length != 0)
+-            // {
+-            //     PrintIncompatibilities(comp, this);
+-            //     return false;
+-            // }
+-
+-            var registered = false;
+-            _registrationRollback = new List<Action>();
+-            try
+-            {
+-                OnMelonInitializing.Invoke(this);
+-
+-                LoggerInstance ??= new RLog.Instance(string.IsNullOrEmpty(Info.Name) ? ID : Info.Name, ConsoleColor);
+-                HarmonyInstance ??= new HarmonyLib.Harmony($"{ModAssembly.FullName}:{Info.Name}");
+-
+-                Registered = true; // this has to be true before the melon can subscribe to any events
+-                _registeredCallbacks = _registrationRollback;
+-                RegisterCallbacks();
+-                if (!Registered)
+-                    return false;
+-                OnEarlyInitializeMelon();
+-                if (!Registered)
+-                    return false;
+-
+-                if (!RegisterInternal() || !Registered)
+-                    return false;
+-
+-                _registeredMelons.Add(this);
+-
+-                PrintLoadInfo();
+-                if (!Registered)
+-                    return false;
+-
+-                OnRegister.Invoke();
+-                if (!Registered)
+-                    return false;
+-                OnMelonRegistered.Invoke(this);
+-                if (!Registered)
+-                    return false;
+-
+-                if (GlobalEvents.OnApplicationStart.Disposed)
+-                    LoaderInitialized();
+-                else
+-                    RegisterCallback(GlobalEvents.OnApplicationStart, LoaderInitialized, true);
+-                if (!Registered)
+-                    return false;
+-
+-                if (GlobalEvents.OnApplicationLateStart.Disposed)
+-                    OnLateInitializeMod();
+-                else
+-                    RegisterCallback(GlobalEvents.OnApplicationLateStart, OnLateInitializeMod, true);
+-                if (!Registered)
+-                    return false;
+-
+-                registered = true;
+-                return true;
+-            }
+-            catch (Exception ex)
+-            {
+-                RLog.Error($"Failed to register {MelonTypeName} '{ModAssembly.Location}': Melon failed to initialize!");
+-                RLog.Error(ex.ToString());
+-                return false;
+-            }
+-            finally
+-            {
+-                if (!registered)
+-                    RollbackRegistration();
+-                _registrationRollback = null;
+-            }
+-        }
+-
+-        private void RollbackRegistration()
+-        {
+-            Registered = false;
+-            _registeredCallbacks = null;
+-            for (var i = _registrationRollback.Count - 1; i >= 0; i--)
+-                TryRegistrationCleanup("event subscription", _registrationRollback[i]);
+-
+-            TryRegistrationCleanup("typed registration", UnregisterInternal);
+-            _registeredMelons.RemoveAll(mod => ReferenceEquals(mod, this));
+-        }
+-
+-        private void TryRegistrationCleanup(string operation, Action cleanup)
+-        {
+-            try
+-            {
+-                cleanup();
+-            }
+-            catch (Exception ex)
+-            {
+-                try
+-                {
+-                    RLog.Error($"Registration rollback for '{ID}' could not remove {operation}: {ex}");
+-                }
+-                catch
+-                {
+-                    // A failing log listener must not prevent the remaining cleanup.
+-                }
+-            }
+-        }
++        public bool Register() => Registration.Register();
+ 
+         /// <summary>
+         /// Registers a loader callback for the lifetime of this registration.
+         /// </summary>
+         private protected void RegisterCallback<T>(MelonEventBase<T> evt, T callback, bool once = false) where T : Delegate
+         {
+-            var callbacks = _registeredCallbacks;
++            var registration = _registration;
++            var callbacks = registration?.Callbacks;
+             if (callbacks == null || !Registered)
+                 return;
+ 
+-            // A snapshot from an earlier registration must stay inactive even if
+-            // this instance registers again before that snapshot finishes dispatching.
+-            evt.Subscribe(callback, Priority, once, callbacks,
+-                () => Registered && ReferenceEquals(_registeredCallbacks, callbacks) &&
+-                      !UnregisteringAssemblies.Contains(ModAssembly));
++            // Eligibility follows this registration, not a later reuse of the mod instance.
++            evt.Subscribe(callback, Priority, once, callbacks, () => registration.IsActive(callbacks));
+         }
+ 
+         private void HarmonyInit()
+@@ -396,17 +286,22 @@ namespace RedLoader
+                 HarmonyInstance.PatchAll(ModAssembly);
+         }
+ 
+-        private void LoaderInitialized()
+-        {
+-            try
+-            {
+-                OnInitializeMod();
+-            }
+-            catch (Exception ex)
+-            {
+-                LoggerInstance.Error(ex);
+-            }
+-        }
++        void IModRegistrationCallbacks.SetRegistered(bool registered) => Registered = registered;
++        void IModRegistrationCallbacks.RegisterCallbacks() => RegisterCallbacks();
++        void IModRegistrationCallbacks.EarlyInitialize() => OnEarlyInitializeMelon();
++        bool IModRegistrationCallbacks.RegisterInternal() => RegisterInternal();
++        void IModRegistrationCallbacks.UnregisterInternal() => UnregisterInternal();
++        void IModRegistrationCallbacks.Initialize() => OnInitializeMod();
++        void IModRegistrationCallbacks.LateInitialize() => OnLateInitializeMod();
++        void IModRegistrationCallbacks.Deinitialize() => OnDeinitializeMod();
++        void IModRegistrationCallbacks.PrintLoadInfo() => PrintLoadInfo();
++        void IModRegistrationCallbacks.PrintUnloadInfo(string reason) => PrintUnloadInfo(reason);
++        void IModRegistrationCallbacks.SubscribeInitialization() =>
++            RegisterCallback(GlobalEvents.OnApplicationStart, LoaderInitialized, true);
++        void IModRegistrationCallbacks.SubscribeLateInitialization() =>
++            RegisterCallback(GlobalEvents.OnApplicationLateStart, OnLateInitializeMod, true);
++
++        private void LoaderInitialized() => Registration.InitializeMod();
+ 
+         protected private virtual bool RegisterInternal()
+         {
+@@ -452,9 +347,7 @@ namespace RedLoader
+         /// </summary>
+         public static ModBase FindMelon(string melonName, string melonAuthor)
+         {
+-            return _registeredMelons.Find(mod => mod.Registered && mod.Info != null &&
+-                !UnregisteringAssemblies.Contains(mod.ModAssembly) &&
+-                mod.Info.Name == melonName && mod.Info.Author == melonAuthor);
++            return ModRegistrationDriverFactory.Find(melonName, melonAuthor);
+         }
+ 
+         /// <summary>
+@@ -464,74 +357,14 @@ namespace RedLoader
+         /// </summary>
+         public void Unregister(string reason = null, bool silent = false)
+         {
+-            if (!Registered || _unregistering || !UnregisteringAssemblies.Add(ModAssembly))
+-                return;
+-
+-            try
+-            {
+-                var mods = _registeredMelons.FindAll(mod => ReferenceEquals(mod.ModAssembly, ModAssembly));
+-                // An initialization callback can unregister before base publication.
+-                if (!mods.Exists(mod => ReferenceEquals(mod, this)))
+-                    mods.Add(this);
+-
+-                foreach (var mod in mods)
+-                    mod.UnregisterInstance(reason, silent);
+-            }
+-            finally
+-            {
+-                UnregisteringAssemblies.Remove(ModAssembly);
+-            }
++            if (Registered)
++                Registration.Unregister(reason, silent);
+         }
+ 
+         internal void UnregisterInstance(string reason, bool silent)
+         {
+-            if (!Registered || _unregistering)
+-                return;
+-
+-            _unregistering = true;
+-            Registered = false;
+-            var callbacks = _registeredCallbacks;
+-            _registeredCallbacks = null;
+-            try
+-            {
+-                if (callbacks != null)
+-                    for (var i = callbacks.Count - 1; i >= 0; i--)
+-                        TryUnregisterCleanup("event subscription", callbacks[i]);
+-
+-                TryUnregisterCleanup("typed registration", UnregisterInternal);
+-                _registeredMelons.RemoveAll(mod => ReferenceEquals(mod, this));
+-                TryUnregisterCleanup("mod deinitialization", OnDeinitializeMod);
+-                TryUnregisterCleanup("Harmony patches", () => HarmonyInstance?.UnpatchSelf());
+-
+-                if (!silent)
+-                    TryUnregisterCleanup("unload message", () => PrintUnloadInfo(reason));
+-
+-                TryUnregisterCleanup("instance notification", OnUnregister.Invoke);
+-                TryUnregisterCleanup("global notification", () => OnMelonUnregistered.Invoke(this));
+-            }
+-            finally
+-            {
+-                _unregistering = false;
+-            }
+-        }
+-
+-        private void TryUnregisterCleanup(string operation, Action cleanup)
+-        {
+-            try
+-            {
+-                cleanup();
+-            }
+-            catch (Exception ex)
+-            {
+-                try
+-                {
+-                    RLog.Error($"Unregistration for '{ID}' failed during {operation}: {ex}");
+-                }
+-                catch
+-                {
+-                    // A failing log listener must not prevent the remaining cleanup.
+-                }
+-            }
++            if (Registered)
++                Registration.UnregisterInstance(reason, silent);
+         }
+ 
+         private void PrintLoadInfo()
+diff --git a/RedLoader/Utils/Events/MelonEvent.cs b/RedLoader/Utils/Events/MelonEvent.cs
+--- a/RedLoader/Utils/Events/MelonEvent.cs
++++ b/RedLoader/Utils/Events/MelonEvent.cs
+@@ -1,4 +1,8 @@
+-﻿using System;
++// SPDX-License-Identifier: LGPL-2.1-only
++// Event facade adapted from RedLoader/MelonLoader's MelonEvent implementation.
++// Original implementation: RedLoader and MelonLoader contributors.
++
++using System;
+ using System.Collections.Generic;
+ using System.Reflection;
+ 
+@@ -6,24 +10,20 @@ namespace RedLoader
+ {
+     public abstract class MelonEventBase<T> where T : Delegate
+     {
+-        private readonly List<MelonAction<T>> actions = new();
+-        private MelonAction<T>[] cachedActionsArray = new MelonAction<T>[0];
+-        private volatile bool disposed;
++        private readonly Lazy<IMelonEventDriver<T>> driver;
+         public readonly bool oneTimeUse;
+ 
+-        public bool Disposed => disposed;
++        public bool Disposed => driver.Value.Disposed;
+ 
+         public MelonEventBase(bool oneTimeUse = false)
+         {
+             this.oneTimeUse = oneTimeUse;
++            driver = new Lazy<IMelonEventDriver<T>>(() => MelonEventDriverFactory<T>.Create(oneTimeUse));
+         }
+ 
+         public bool CheckIfSubscribed(MethodInfo method, object obj = null)
+         {
+-            lock (actions)
+-            {
+-                return actions.Exists(x => x.del.Method == method && (obj == null || x.del.Target == obj));
+-            }
++            return driver.Value.CheckIfSubscribed(method, obj);
+         }
+ 
+         /// <summary>
+@@ -39,77 +39,22 @@ namespace RedLoader
+ 
+         internal void Subscribe(T action, int priority, bool unsubscribeOnFirstInvocation, List<Action> rollback, Func<bool> canInvoke = null)
+         {
+-            lock (actions)
+-            {
+-                if (Disposed)
+-                    return;
+-
+-                var acts = MelonAction<T>.Get(action, priority, unsubscribeOnFirstInvocation, canInvoke);
+-                foreach (var a in acts)
+-                {
+-                    if (CheckIfSubscribed(a.del.Method, a.del.Target))
+-                        continue;
+-
+-                    var index = 0;
+-                    while (index < actions.Count && actions[index].priority <= a.priority)
+-                        index++;
+-
+-                    actions.Insert(index, a);
+-                    // Capture this entry, not its delegate: a later replacement or a
+-                    // pre-existing subscription must survive registration rollback.
+-                    rollback?.Add(() => Unsubscribe(a));
+-                    UpdateEnumerator();
+-                }
+-            }
+-        }
+-
+-        private void Unsubscribe(MelonAction<T> action)
+-        {
+-            lock (actions)
+-            {
+-                if (actions.Remove(action))
+-                    UpdateEnumerator();
+-            }
++            driver.Value.Subscribe(action, priority, unsubscribeOnFirstInvocation, rollback, canInvoke);
+         }
+ 
+         public void Unsubscribe(T action)
+         {
+-            var delegates = action.GetInvocationList();
+-            lock (actions)
+-            {
+-                if (actions.RemoveAll(entry => Array.Exists(delegates,
+-                        del => entry.del.Method == del.Method && ReferenceEquals(entry.del.Target, del.Target))) > 0)
+-                    UpdateEnumerator();
+-            }
++            driver.Value.Unsubscribe(action);
+         }
+ 
+         public void UnsubscribeAll()
+         {
+-            lock (actions)
+-            {
+-                actions.Clear();
+-                UpdateEnumerator();
+-            }
++            driver.Value.UnsubscribeAll();
+         }
+ 
+         public void Unsubscribe(MethodInfo method, object obj = null)
+         {
+-            lock (actions)
+-            {
+-                if (Disposed)
+-                    return;
+-
+-                if (method.IsStatic)
+-                    obj = null;
+-
+-                if (actions.RemoveAll(entry => entry.del.Method == method && (obj == null || entry.del.Target == obj)) > 0)
+-                    UpdateEnumerator();
+-            }
+-        }
+-
+-        private void UpdateEnumerator()
+-        {
+-            cachedActionsArray = actions.ToArray();
++            driver.Value.Unsubscribe(method, obj);
+         }
+ 
+         public class MelonEventSubscriber
+@@ -121,76 +66,27 @@ namespace RedLoader
+         }
+         public MelonEventSubscriber[] GetSubscribers()
+         {
+-            MelonAction<T>[] snapshot;
+-            lock (actions)
+-                snapshot = cachedActionsArray;
+-
+-            return Array.ConvertAll(snapshot, entry => new MelonEventSubscriber
+-            {
+-                del = entry.del,
+-                unsubscribeOnFirstInvocation = entry.unsubscribeOnFirstInvocation,
+-                priority = entry.priority
+-            });
++            return driver.Value.GetSubscribers();
+         }
+ 
+         protected void Invoke(Action<T> delegateInvoker)
+         {
+-            foreach (var subscriber in BeginInvocation())
+-                InvokeSubscriber(subscriber, delegateInvoker);
++            driver.Value.Invoke(delegateInvoker);
+         }
+ 
+         internal MelonAction<T>[] BeginInvocation()
+         {
+-            lock (actions)
+-            {
+-                if (Disposed)
+-                    return Array.Empty<MelonAction<T>>();
+-
+-                var snapshot = cachedActionsArray;
+-                // Claim one-shot delivery before calling mod code, which may invoke
+-                // this event again or replace a subscription with the same delegate.
+-                if (oneTimeUse)
+-                {
+-                    disposed = true;
+-                    actions.Clear();
+-                    UpdateEnumerator();
+-                }
+-                else if (actions.RemoveAll(entry => entry.unsubscribeOnFirstInvocation) > 0)
+-                    UpdateEnumerator();
+-
+-                return snapshot;
+-            }
++            return driver.Value.BeginInvocation();
+         }
+ 
+         internal void InvokeSubscriber(MelonAction<T> subscriber, Action<T> delegateInvoker)
+         {
+-            try
+-            {
+-                if (subscriber.canInvoke != null && !subscriber.canInvoke())
+-                    return;
+-                delegateInvoker(subscriber.del);
+-            }
+-            catch (Exception ex)
+-            {
+-                try
+-                {
+-                    RLog.Error(ex);
+-                }
+-                catch
+-                {
+-                    // Diagnostic listeners must not stop delivery to the other mods.
+-                }
+-            }
++            driver.Value.InvokeSubscriber(subscriber, delegateInvoker);
+         }
+ 
+         public void Dispose()
+         {
+-            lock (actions)
+-            {
+-                disposed = true;
+-                actions.Clear();
+-                UpdateEnumerator();
+-            }
++            driver.Value.Dispose();
+         }
+     }
+ 
+diff --git a/RedLoader/ModRegistrationDriver.cs b/RedLoader/ModRegistrationDriver.cs
+new file mode 100644
+--- /dev/null
++++ b/RedLoader/ModRegistrationDriver.cs
+@@ -0,0 +1,65 @@
++// SPDX-License-Identifier: LGPL-2.1-only
++// Copyright (C) 2026 Alex Cooper
++
++using System;
++using System.Collections.Generic;
++using System.Linq;
++using System.Reflection;
++
++namespace RedLoader;
++
++internal interface IModRegistrationDriver
++{
++    List<Action> Callbacks { get; }
++    bool Register();
++    bool IsActive(List<Action> callbacks);
++    void InitializeMod();
++    void Unregister(string reason, bool silent);
++    void UnregisterInstance(string reason, bool silent);
++}
++
++internal interface IModRegistrationCallbacks
++{
++    void SetRegistered(bool registered);
++    void RegisterCallbacks();
++    void EarlyInitialize();
++    bool RegisterInternal();
++    void UnregisterInternal();
++    void Initialize();
++    void LateInitialize();
++    void Deinitialize();
++    void PrintLoadInfo();
++    void PrintUnloadInfo(string reason);
++    void SubscribeInitialization();
++    void SubscribeLateInitialization();
++}
++
++internal static class ModRegistrationDriverFactory
++{
++    private static readonly Lazy<Bindings> Owner = new(() => new Bindings());
++
++    internal static IModRegistrationDriver Create(ModBase mod) => Owner.Value.Create(mod);
++    internal static ModBase Find(string name, string author) => Owner.Value.Find(name, author);
++
++    private sealed class Bindings
++    {
++        internal readonly Func<ModBase, IModRegistrationDriver> Create;
++        internal readonly Func<string, string, ModBase> Find;
++
++        internal Bindings()
++        {
++            var owner = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++                .GetType("OpenACAI.Endnight.Loader.OpenACAIRedLoaderRegistration", true);
++            Create = Bind<Func<ModBase, IModRegistrationDriver>>(owner, "Create");
++            Find = Bind<Func<string, string, ModBase>>(owner, "Find");
++        }
++
++        private static T Bind<T>(Type owner, string name) where T : Delegate
++        {
++            var parameters = typeof(T).GetMethod("Invoke").GetParameters().Select(parameter => parameter.ParameterType).ToArray();
++            var method = owner.GetMethod(name, BindingFlags.Static | BindingFlags.NonPublic, null, parameters, null)
++                ?? throw new MissingMethodException(owner.FullName, name);
++            return (T)method.CreateDelegate(typeof(T));
++        }
++    }
++}
+diff --git a/RedLoader/Utils/Events/MelonEventDriver.cs b/RedLoader/Utils/Events/MelonEventDriver.cs
+new file mode 100644
+--- /dev/null
++++ b/RedLoader/Utils/Events/MelonEventDriver.cs
+@@ -0,0 +1,45 @@
++// SPDX-License-Identifier: LGPL-2.1-only
++// Event contract adapted from RedLoader/MelonLoader's MelonEvent implementation.
++// Original implementation: RedLoader and MelonLoader contributors.
++
++using System;
++using System.Collections.Generic;
++using System.Reflection;
++
++namespace RedLoader
++{
++    internal interface IMelonEventDriver<T> where T : Delegate
++    {
++        bool Disposed { get; }
++        bool CheckIfSubscribed(MethodInfo method, object obj = null);
++        void Subscribe(T action, int priority, bool unsubscribeOnFirstInvocation, List<Action> rollback, Func<bool> canInvoke = null);
++        void Unsubscribe(T action);
++        void Unsubscribe(MethodInfo method, object obj = null);
++        void UnsubscribeAll();
++        MelonEventBase<T>.MelonEventSubscriber[] GetSubscribers();
++        void Invoke(Action<T> delegateInvoker);
++        MelonAction<T>[] BeginInvocation();
++        void InvokeSubscriber(MelonAction<T> subscriber, Action<T> delegateInvoker);
++        void Dispose();
++    }
++
++    internal static class MelonEventDriverFactory<T> where T : Delegate
++    {
++        private static readonly Lazy<Func<bool, IMelonEventDriver<T>>> factory = new(BindFactory);
++
++        internal static IMelonEventDriver<T> Create(bool oneTimeUse)
++        {
++            return factory.Value(oneTimeUse);
++        }
++
++        private static Func<bool, IMelonEventDriver<T>> BindFactory()
++        {
++            var assembly = Assembly.Load("OpenACAI.Endnight.Loader.Core");
++            var type = assembly.GetType("OpenACAI.Loader.OpenACAIRedLoaderEventDispatcher", throwOnError: true);
++            var method = type.GetMethod("Create", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.DeclaredOnly,
++                binder: null, types: new[] { typeof(bool) }, modifiers: null)
++                ?? throw new MissingMethodException(type.FullName, "Create");
++            return method.MakeGenericMethod(typeof(T)).CreateDelegate<Func<bool, IMelonEventDriver<T>>>();
++        }
++    }
++}

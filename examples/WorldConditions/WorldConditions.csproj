@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <AssemblyName>Modstoke.Examples.WorldConditions</AssemblyName>
+    <Title>Modstoke SDK World Conditions Example</Title>
+    <Product>Modstoke SDK by OpenACAI</Product>
+    <Company>OpenACAI</Company>
+    <Description>World conditions example for Modstoke SDK by OpenACAI.</Description>
+    <Version>0.1.0</Version>
+    <RootNamespace>Modstoke.Examples.WorldConditions</RootNamespace>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LoaderAssemblyPath Condition="'$(LoaderAssemblyPath)' == ''">$(MSBuildProjectDirectory)\..\..\src\Modstoke.Loader\bin\Release\Modstoke.Loader.dll</LoaderAssemblyPath>
+  </PropertyGroup>
+
+  <Target Name="RequireLoaderAssembly" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(LoaderAssemblyPath)')"
+           Text="Build the loader first, or set LoaderAssemblyPath to the current Modstoke.Loader.dll." />
+  </Target>
+
+  <ItemGroup>
+    <Reference Include="Modstoke.Loader" HintPath="$(LoaderAssemblyPath)" Private="false" />
+    <None Update="openacai.mod.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

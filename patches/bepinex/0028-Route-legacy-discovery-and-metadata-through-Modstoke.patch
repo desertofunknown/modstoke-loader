@@ -1,0 +1,471 @@
+Subject: [PATCH] Route legacy discovery and metadata through Modstoke
+
+diff --git a/BepInEx.Core/Bootstrap/BaseChainloader.cs b/BepInEx.Core/Bootstrap/BaseChainloader.cs
+index f1ac237..bfbf641 100644
+--- a/BepInEx.Core/Bootstrap/BaseChainloader.cs
++++ b/BepInEx.Core/Bootstrap/BaseChainloader.cs
+@@ -4,7 +4,6 @@ using System.IO;
+ using System.Linq;
+ using System.Reflection;
+ using System.Text;
+-using System.Text.RegularExpressions;
+ using BepInEx.Configuration;
+ using BepInEx.Logging;
+ using Mono.Cecil;
+@@ -16,96 +15,53 @@ public abstract class BaseChainloader<TPlugin>
+     protected static readonly string CurrentAssemblyName = Assembly.GetExecutingAssembly().GetName().Name;
+     protected static readonly Version CurrentAssemblyVersion = Assembly.GetExecutingAssembly().GetName().Version;
+ 
+-    private static Regex allowedGuidRegex { get; } = new(@"^[a-zA-Z0-9\._\-]+$");
++    private static readonly Lazy<CompatibilityCatalog> Catalog = new(() => new CompatibilityCatalog());
+ 
+-    /// <summary>
+-    ///     Analyzes the given type definition and attempts to convert it to a valid <see cref="PluginInfo" />
+-    /// </summary>
+-    /// <param name="type">Type definition to analyze.</param>
+-    /// <param name="assemblyLocation">The filepath of the assembly, to keep as metadata.</param>
+-    /// <returns>If the type represent a valid plugin, returns a <see cref="PluginInfo" /> instance. Otherwise, return null.</returns>
+-    public static PluginInfo ToPluginInfo(TypeDefinition type, string assemblyLocation)
++    private sealed class CompatibilityCatalog
+     {
+-        if (type.IsInterface || type.IsAbstract)
+-            return null;
++        internal readonly Func<TypeDefinition, string, Type, PluginInfo> Read;
++        internal readonly Func<AssemblyDefinition, string, bool> HasPlugins;
++        internal readonly Func<PluginInfo, Version, bool> TargetsWrongVersion;
++        internal readonly Func<IList<PluginInfo>, Dictionary<string, PluginInfo>, List<string>, Version, IList<PluginInfo>> Order;
+ 
+-        try
+-        {
+-            if (!type.IsSubtypeOf(typeof(TPlugin)))
+-                return null;
+-        }
+-        catch (AssemblyResolutionException)
++        internal CompatibilityCatalog()
+         {
+-            // Can happen if this type inherits a type from an assembly that can't be found. Safe to assume it's not a plugin.
+-            return null;
++            var owner = Assembly.Load("OpenACAI.Endnight.Loader.Preloader")
++                .GetType("OpenACAI.Endnight.Loader.Preloader.OpenACAICompatibilityPluginCatalog", true);
++            Read = Bind<Func<TypeDefinition, string, Type, PluginInfo>>(owner, "Read");
++            HasPlugins = Bind<Func<AssemblyDefinition, string, bool>>(owner, "HasPlugins");
++            TargetsWrongVersion = Bind<Func<PluginInfo, Version, bool>>(owner, "TargetsWrongVersion");
++            Order = Bind<Func<IList<PluginInfo>, Dictionary<string, PluginInfo>, List<string>, Version, IList<PluginInfo>>>(owner, "Order");
+         }
+ 
+-        var metadata = BepInPlugin.FromCecilType(type);
+-
+-        // Perform checks that will prevent the plugin from being loaded in ALL cases
+-        if (metadata == null)
++        private static T Bind<T>(Type owner, string name) where T : Delegate
+         {
+-            Logger.Log(LogLevel.Warning, $"Skipping over type [{type.FullName}] as no metadata attribute is specified");
+-            return null;
++            var parameters = typeof(T).GetMethod("Invoke").GetParameters().Select(parameter => parameter.ParameterType).ToArray();
++            var method = owner.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static, null, parameters, null)
++                ?? throw new MissingMethodException(owner.FullName, name);
++            return (T)method.CreateDelegate(typeof(T));
+         }
++    }
+ 
+-        if (string.IsNullOrEmpty(metadata.GUID) || !allowedGuidRegex.IsMatch(metadata.GUID))
+-        {
+-            Logger.Log(LogLevel.Warning,
+-                       $"Skipping type [{type.FullName}] because its GUID [{metadata.GUID}] is of an illegal format.");
+-            return null;
+-        }
+-
+-        if (metadata.Version == null)
+-        {
+-            Logger.Log(LogLevel.Warning, $"Skipping type [{type.FullName}] because its version is invalid.");
+-            return null;
+-        }
+-
+-        if (metadata.Name == null)
+-        {
+-            Logger.Log(LogLevel.Warning, $"Skipping type [{type.FullName}] because its name is null.");
+-            return null;
+-        }
+-
+-        var filters = BepInProcess.FromCecilType(type);
+-        var dependencies = BepInDependency.FromCecilType(type);
+-        var incompatibilities = BepInIncompatibility.FromCecilType(type);
+-
+-        var bepinVersion =
+-            type.Module.AssemblyReferences.FirstOrDefault(reference => reference.Name == "BepInEx.Core")?.Version ??
+-            new Version();
+-
+-        return new PluginInfo
+-        {
+-            Metadata = metadata,
+-            Processes = filters,
+-            Dependencies = dependencies,
+-            Incompatibilities = incompatibilities,
+-            TypeName = type.FullName,
+-            TargettedBepInExVersion = bepinVersion,
+-            Location = assemblyLocation
+-        };
++    /// <summary>
++    ///     Analyzes the given type definition and attempts to convert it to a valid <see cref="PluginInfo" />
++    /// </summary>
++    /// <param name="type">Type definition to analyze.</param>
++    /// <param name="assemblyLocation">The filepath of the assembly, to keep as metadata.</param>
++    /// <returns>If the type represent a valid plugin, returns a <see cref="PluginInfo" /> instance. Otherwise, return null.</returns>
++    public static PluginInfo ToPluginInfo(TypeDefinition type, string assemblyLocation)
++    {
++        return Catalog.Value.Read(type, assemblyLocation, typeof(TPlugin));
+     }
+ 
+     protected static bool HasBepinPlugins(AssemblyDefinition ass)
+     {
+-        if (ass.MainModule.AssemblyReferences.All(r => r.Name != CurrentAssemblyName))
+-            return false;
+-        if (ass.MainModule.GetTypeReferences().All(r => r.FullName != typeof(BepInPlugin).FullName))
+-            return false;
+-
+-        return true;
++        return Catalog.Value.HasPlugins(ass, CurrentAssemblyName);
+     }
+ 
+     protected static bool PluginTargetsWrongBepin(PluginInfo pluginInfo)
+     {
+-        var pluginTarget = pluginInfo.TargettedBepInExVersion;
+-        // X.X.X.x - compare normally. x.x.x.X - nightly build number, ignore
+-        if (pluginTarget.Major != CurrentAssemblyVersion.Major) return true;
+-        if (pluginTarget.Minor > CurrentAssemblyVersion.Minor) return true;
+-        if (pluginTarget.Minor < CurrentAssemblyVersion.Minor) return false;
+-        return pluginTarget.Build > CurrentAssemblyVersion.Build;
++        return Catalog.Value.TargetsWrongVersion(pluginInfo, CurrentAssemblyVersion);
+     }
+ 
+     #region Contract
+@@ -228,91 +184,7 @@ public abstract class BaseChainloader<TPlugin>
+     /// <returns>List of plugins to load in the correct load order.</returns>
+     protected virtual IList<PluginInfo> ModifyLoadOrder(IList<PluginInfo> plugins)
+     {
+-        // We use a sorted dictionary to ensure consistent load order
+-        var dependencyDict =
+-            new SortedDictionary<string, IEnumerable<string>>(StringComparer.InvariantCultureIgnoreCase);
+-        var pluginsByGuid = new Dictionary<string, PluginInfo>();
+-
+-        foreach (var pluginInfoGroup in plugins.GroupBy(info => info.Metadata.GUID))
+-        {
+-            if (Plugins.TryGetValue(pluginInfoGroup.Key, out var loadedPlugin))
+-            {
+-                Logger.Log(LogLevel.Warning,
+-                           $"Skipping [{pluginInfoGroup.Key}] because a plugin with a similar GUID ([{loadedPlugin}]) has been already loaded.");
+-                continue;
+-            }
+-
+-            PluginInfo loadedVersion = null;
+-            foreach (var pluginInfo in pluginInfoGroup.OrderByDescending(x => x.Metadata.Version))
+-            {
+-                if (loadedVersion != null)
+-                {
+-                    Logger.Log(LogLevel.Warning,
+-                               $"Skipping [{pluginInfo}] because a newer version exists ({loadedVersion})");
+-                    continue;
+-                }
+-
+-                // Perform checks that will prevent loading plugins in this run
+-                var filters = pluginInfo.Processes.ToList();
+-                var invalidProcessName = filters.Count != 0 &&
+-                                         filters.All(x => !string.Equals(x.ProcessName.Replace(".exe", ""),
+-                                                                         Paths.ProcessName,
+-                                                                         StringComparison
+-                                                                             .InvariantCultureIgnoreCase));
+-
+-                if (invalidProcessName)
+-                {
+-                    Logger.Log(LogLevel.Warning,
+-                               $"Skipping [{pluginInfo}] because of process filters ({string.Join(", ", pluginInfo.Processes.Select(p => p.ProcessName).ToArray())})");
+-                    continue;
+-                }
+-
+-                loadedVersion = pluginInfo;
+-                dependencyDict[pluginInfo.Metadata.GUID] = pluginInfo.Dependencies.Select(d => d.DependencyGUID);
+-                pluginsByGuid[pluginInfo.Metadata.GUID] = pluginInfo;
+-            }
+-        }
+-
+-        foreach (var pluginInfo in pluginsByGuid.Values.ToList())
+-            if (pluginInfo.Incompatibilities.Any(incompatibility =>
+-                                                     pluginsByGuid.ContainsKey(incompatibility.IncompatibilityGUID)
+-                                                  || Plugins.ContainsKey(incompatibility.IncompatibilityGUID))
+-               )
+-            {
+-                pluginsByGuid.Remove(pluginInfo.Metadata.GUID);
+-                dependencyDict.Remove(pluginInfo.Metadata.GUID);
+-
+-                var incompatiblePluginsNew = pluginInfo.Incompatibilities.Select(x => x.IncompatibilityGUID)
+-                                                       .Where(x => pluginsByGuid.ContainsKey(x));
+-                var incompatiblePluginsExisting = pluginInfo.Incompatibilities.Select(x => x.IncompatibilityGUID)
+-                                                            .Where(x => Plugins.ContainsKey(x));
+-                var incompatiblePlugins = incompatiblePluginsNew.Concat(incompatiblePluginsExisting).ToArray();
+-                var message =
+-                    $@"Could not load [{pluginInfo}] because it is incompatible with: {string.Join(", ", incompatiblePlugins)}";
+-                DependencyErrors.Add(message);
+-                Logger.Log(LogLevel.Error, message);
+-            }
+-            else if (PluginTargetsWrongBepin(pluginInfo))
+-            {
+-                var message =
+-                    $@"Plugin [{pluginInfo}] targets a wrong version of BepInEx ({pluginInfo.TargettedBepInExVersion}) and might not work until you update";
+-                DependencyErrors.Add(message);
+-                Logger.Log(LogLevel.Warning, message);
+-            }
+-
+-        // We don't add already loaded plugins to the dependency graph as they are already loaded
+-
+-        var emptyDependencies = new string[0];
+-
+-        // Sort plugins by their dependencies.
+-        // Give missing dependencies no dependencies of its own, which will cause missing plugins to be first in the resulting list.
+-        var sortedPlugins = Utility.TopologicalSort(dependencyDict.Keys,
+-                                                    x =>
+-                                                        dependencyDict.TryGetValue(x, out var deps)
+-                                                            ? deps
+-                                                            : emptyDependencies).ToList();
+-
+-        return sortedPlugins.Where(pluginsByGuid.ContainsKey).Select(x => pluginsByGuid[x]).ToList();
++        return Catalog.Value.Order(plugins, Plugins, DependencyErrors, CurrentAssemblyVersion);
+     }
+ 
+     /// <summary>
+diff --git a/BepInEx.Core/Bootstrap/TypeLoader.cs b/BepInEx.Core/Bootstrap/TypeLoader.cs
+index 9ee5edc..ec5156f 100644
+--- a/BepInEx.Core/Bootstrap/TypeLoader.cs
++++ b/BepInEx.Core/Bootstrap/TypeLoader.cs
+@@ -1,11 +1,9 @@
+ using System;
+ using System.Collections.Generic;
+ using System.IO;
+-using System.Linq;
+ using System.Reflection;
+ using System.Text;
+ using BepInEx.Configuration;
+-using BepInEx.Logging;
+ using Mono.Cecil;
+ 
+ namespace BepInEx.Bootstrap;
+@@ -63,6 +61,48 @@ public static class TypeLoader
+ 
+     public static HashSet<string> SearchDirectories = new();
+ 
++    private delegate Dictionary<string, List<T>> FindTypes<T>(string directory,
++        Func<TypeDefinition, string, T> selector, Func<AssemblyDefinition, bool> filter,
++        string cacheName, ReaderParameters readerParameters, Func<bool> cacheEnabled) where T : ICacheable, new();
++
++    private delegate Dictionary<string, CachedAssembly<T>> ReadCache<T>(string cacheName,
++        Func<bool> cacheEnabled) where T : ICacheable, new();
++
++    private delegate void WriteCache<T>(string cacheName, Dictionary<string, List<T>> entries,
++        Dictionary<string, string> hashes, Func<bool> cacheEnabled) where T : ICacheable;
++
++    private delegate AssemblyDefinition ResolveFailure(object sender, AssemblyNameReference reference,
++        ReaderParameters readerParameters, IEnumerable<string> searchDirectories,
++        Func<object, AssemblyNameReference, AssemblyDefinition> fallback);
++
++    // Binding stays lazy so the public resolver fields are initialized before owned code is reached.
++    private static readonly Lazy<ResolveFailure> ResolveFailureHandler = new(() => Bind<ResolveFailure>("ResolveFailure"));
++
++    private static class ReaderBindings<T> where T : ICacheable, new()
++    {
++        internal static readonly Lazy<FindTypes<T>> Find = new(() => Bind<FindTypes<T>>("Find", typeof(T)));
++        internal static readonly Lazy<ReadCache<T>> Load = new(() => Bind<ReadCache<T>>("LoadCache", typeof(T)));
++    }
++
++    // Writing has no constructor constraint, unlike discovery and cache reads.
++    private static class WriterBindings<T> where T : ICacheable
++    {
++        internal static readonly Lazy<WriteCache<T>> Save = new(() => Bind<WriteCache<T>>("SaveCache", typeof(T)));
++    }
++
++    private static TDelegate Bind<TDelegate>(string name, Type itemType = null) where TDelegate : Delegate
++    {
++        var owner = Assembly.Load("OpenACAI.Endnight.Loader.Preloader")
++            .GetType("OpenACAI.Endnight.Loader.Preloader.OpenACAICompatibilityTypeDiscovery", true);
++        var method = owner.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static)
++            ?? throw new MissingMethodException(owner.FullName, name);
++        if (itemType != null)
++            method = method.MakeGenericMethod(itemType);
++        return (TDelegate)method.CreateDelegate(typeof(TDelegate));
++    }
++
++    private static bool IsCacheEnabled() => EnableAssemblyCache.Value;
++
+     #region Config
+ 
+     private static readonly ConfigEntry<bool> EnableAssemblyCache = ConfigFile.CoreConfig.Bind(
+@@ -82,30 +122,7 @@ public static class TypeLoader
+ 
+     public static AssemblyDefinition CecilResolveOnFailure(object sender, AssemblyNameReference reference)
+     {
+-        if (!Utility.TryParseAssemblyName(reference.FullName, out var name))
+-            return null;
+-
+-        var resolveDirs = new[]
+-        {
+-            Paths.BepInExAssemblyDirectory,
+-            Paths.PluginPath,
+-            Paths.PatcherPluginPath,
+-            Paths.ManagedPath
+-        }.Concat(SearchDirectories);
+-
+-        foreach (var dir in resolveDirs)
+-        {
+-            if (!Directory.Exists(dir))
+-            {
+-                Logger.Log(LogLevel.Debug, $"Unable to resolve cecil search directory '{dir}'");
+-                continue;
+-            }
+-
+-            if (Utility.TryResolveDllAssembly(name, dir, ReaderParameters, out var assembly))
+-                return assembly;
+-        }
+-
+-        return InvokeAssemblyResolve(sender, reference);
++        return ResolveFailureHandler.Value(sender, reference, ReaderParameters, SearchDirectories, InvokeAssemblyResolve);
+     }
+ 
+     internal static AssemblyDefinition InvokeAssemblyResolve(object sender, AssemblyNameReference reference) =>
+@@ -135,55 +152,7 @@ public static class TypeLoader
+                                                                  string cacheName = null)
+         where T : ICacheable, new()
+     {
+-        var result = new Dictionary<string, List<T>>();
+-        var hashes = new Dictionary<string, string>();
+-        Dictionary<string, CachedAssembly<T>> cache = null;
+-
+-        if (cacheName != null)
+-            cache = LoadAssemblyCache<T>(cacheName);
+-
+-        foreach (var dll in Directory.GetFiles(Path.GetFullPath(directory), "*.dll", SearchOption.AllDirectories))
+-            try
+-            {
+-                using var dllMs = new MemoryStream(File.ReadAllBytes(dll));
+-                var hash = Utility.HashStream(dllMs);
+-                hashes[dll] = hash;
+-                dllMs.Position = 0;
+-                if (cache != null && cache.TryGetValue(dll, out var cacheEntry))
+-                    if (hash == cacheEntry.Hash)
+-                    {
+-                        result[dll] = cacheEntry.CacheItems;
+-                        continue;
+-                    }
+-
+-                using var ass = AssemblyDefinition.ReadAssembly(dllMs, ReaderParameters);
+-                Logger.Log(LogLevel.Debug, $"Examining '{dll}'");
+-
+-                if (!assemblyFilter?.Invoke(ass) ?? false)
+-                {
+-                    result[dll] = new List<T>();
+-                    continue;
+-                }
+-
+-                var matches = ass.MainModule.Types
+-                                 .Select(t => typeSelector(t, dll))
+-                                 .Where(t => t != null).ToList();
+-                result[dll] = matches;
+-            }
+-            catch (BadImageFormatException e)
+-            {
+-                Logger.Log(LogLevel.Debug,
+-                           $"Skipping loading {dll} because it's not a valid .NET assembly. Full error: {e.Message}");
+-            }
+-            catch (Exception e)
+-            {
+-                Logger.Log(LogLevel.Error, e);
+-            }
+-
+-        if (cacheName != null)
+-            SaveAssemblyCache(cacheName, result, hashes);
+-
+-        return result;
++        return ReaderBindings<T>.Find.Value(directory, typeSelector, assemblyFilter, cacheName, ReaderParameters, IsCacheEnabled);
+     }
+ 
+     /// <summary>
+@@ -198,45 +167,7 @@ public static class TypeLoader
+     public static Dictionary<string, CachedAssembly<T>> LoadAssemblyCache<T>(string cacheName)
+         where T : ICacheable, new()
+     {
+-        if (!EnableAssemblyCache.Value)
+-            return null;
+-
+-        var result = new Dictionary<string, CachedAssembly<T>>();
+-        try
+-        {
+-            var path = Path.Combine(Paths.CachePath, $"{cacheName}_typeloader.dat");
+-            if (!File.Exists(path))
+-                return null;
+-
+-            using (var br = new BinaryReader(File.OpenRead(path)))
+-            {
+-                var entriesCount = br.ReadInt32();
+-
+-                for (var i = 0; i < entriesCount; i++)
+-                {
+-                    var entryIdentifier = br.ReadString();
+-                    var hash = br.ReadString();
+-                    var itemsCount = br.ReadInt32();
+-                    var items = new List<T>();
+-
+-                    for (var j = 0; j < itemsCount; j++)
+-                    {
+-                        var entry = new T();
+-                        entry.Load(br);
+-                        items.Add(entry);
+-                    }
+-
+-                    result[entryIdentifier] = new CachedAssembly<T> { Hash = hash, CacheItems = items };
+-                }
+-            }
+-        }
+-        catch (Exception e)
+-        {
+-            Logger.Log(LogLevel.Warning,
+-                       $"Failed to load cache \"{cacheName}\"; skipping loading cache. Reason: {e.Message}.");
+-        }
+-
+-        return result;
++        return ReaderBindings<T>.Load.Value(cacheName, IsCacheEnabled);
+     }
+ 
+     /// <summary>
+@@ -251,34 +182,7 @@ public static class TypeLoader
+                                             Dictionary<string, string> hashes)
+         where T : ICacheable
+     {
+-        if (!EnableAssemblyCache.Value)
+-            return;
+-
+-        try
+-        {
+-            if (!Directory.Exists(Paths.CachePath))
+-                Directory.CreateDirectory(Paths.CachePath);
+-
+-            var path = Path.Combine(Paths.CachePath, $"{cacheName}_typeloader.dat");
+-
+-            using var bw = new BinaryWriter(File.OpenWrite(path));
+-            bw.Write(entries.Count);
+-
+-            foreach (var kv in entries)
+-            {
+-                bw.Write(kv.Key);
+-                bw.Write(hashes.TryGetValue(kv.Key, out var hash) ? hash : "");
+-                bw.Write(kv.Value.Count);
+-
+-                foreach (var item in kv.Value)
+-                    item.Save(bw);
+-            }
+-        }
+-        catch (Exception e)
+-        {
+-            Logger.Log(LogLevel.Warning,
+-                       $"Failed to save cache \"{cacheName}\"; skipping saving cache. Reason: {e.Message}.");
+-        }
++        WriterBindings<T>.Save.Value(cacheName, entries, hashes, IsCacheEnabled);
+     }
+ 
+     /// <summary>

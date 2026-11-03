@@ -1,0 +1,16 @@
+dist/
+bin/
+obj/
+.tools/
+.vs/
+.vscode/
+__pycache__/
+*.user
+*.suo
+*.log
+
+# Private game/admin mod artifacts are intentionally excluded.
+OpenACAIAdminTool*/
+BepInEx/plugins/OpenACAIAdminTool*/
+Mods/OpenACAIAdminTool*/
+target/

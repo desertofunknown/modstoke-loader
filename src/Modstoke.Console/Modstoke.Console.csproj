@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <RuntimeFrameworkVersion>11.0.0-rc.3.26522.148</RuntimeFrameworkVersion>
+    <AssemblyName>Modstoke.Console</AssemblyName>
+    <RootNamespace>Modstoke.Diagnostics</RootNamespace>
+    <Title>Modstoke Console</Title>
+    <Product>Modstoke Loader by OpenACAI</Product>
+    <Company>OpenACAI</Company>
+    <Description>Shared diagnostics and desktop console for Modstoke Loader.</Description>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Console origins are assigned only by the Loader's own views. -->
+    <InternalsVisibleTo Include="Modstoke.Loader" />
+  </ItemGroup>
+</Project>

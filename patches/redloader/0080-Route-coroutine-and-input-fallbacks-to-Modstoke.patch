@@ -1,0 +1,754 @@
+diff --git a/RedLoader/UnityEngine/GlobalBehaviour.cs b/RedLoader/UnityEngine/GlobalBehaviour.cs
+--- a/RedLoader/UnityEngine/GlobalBehaviour.cs
++++ b/RedLoader/UnityEngine/GlobalBehaviour.cs
+@@ -1,5 +1,6 @@
+ using System;
+ using System.Diagnostics;
++using System.Reflection;
+ using Il2CppInterop.Runtime;
+ using Il2CppInterop.Runtime.Injection;
+ using RedLoader;
+@@ -15,6 +16,18 @@
+     void Initialize();
+     void Create();
+     void Maintain(GlobalBehaviour behaviour);
++}
++
++internal interface IGlobalBehaviourFallbackDriver : IGlobalBehaviourHost
++{
++    void OnStart(GlobalBehaviour behaviour);
++    void OnUpdate(GlobalBehaviour behaviour);
++    void OnDestroy(GlobalBehaviour behaviour);
++    void OnApplicationQuit(GlobalBehaviour behaviour);
++    void OnApplicationDefiniteQuit(GlobalBehaviour behaviour);
++    void OnFixedUpdate(GlobalBehaviour behaviour);
++    void OnLateUpdate(GlobalBehaviour behaviour);
++    void OnGui(GlobalBehaviour behaviour);
+ }
+ 
+ public class GlobalBehaviour : MonoBehaviour
+@@ -42,7 +55,17 @@
+         HasExternalLifecycle = true;
+     }
+     
+-    private bool isQuitting;
++    internal bool isQuitting;
++
++    private static readonly Lazy<IGlobalBehaviourFallbackDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAIRedGlobalBehaviourFallback", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<IGlobalBehaviourFallbackDriver>)method.CreateDelegate(typeof(Func<IGlobalBehaviourFallbackDriver>)))();
++    });
++    private static IGlobalBehaviourFallbackDriver Fallback => FallbackDriver.Value;
+     
+     public static void Init()
+     {
+@@ -53,16 +76,10 @@
+             return;
+         }
+ 
+-        ClassInjector.RegisterTypeInIl2Cpp<GlobalBehaviour>();
+-        SetAsLastSiblingDelegateField = Il2CppInterop.Runtime.IL2CPP.ResolveICall<SetAsLastSiblingDelegate>("UnityEngine.Transform::SetAsLastSibling");
+-        
+-        if (Instance != null)
+-            return;
+-
+-        Create();
++        Fallback.Initialize();
+     }
+ 
+-    private static void Create()
++    internal static void Create()
+     {
+         hostStarted = true;
+         if (host != null)
+@@ -71,14 +88,10 @@
+             return;
+         }
+ 
+-        var go = new GameObject();
+-        DontDestroyOnLoad(go);
+-        go.hideFlags = HideFlags.DontSave;
+-        Instance = go.AddComponent(Il2CppType.Of<GlobalBehaviour>()).TryCast<GlobalBehaviour>();
+-        Instance.SiblingFix();
++        Fallback.Create();
+     }
+ 
+-    private void SiblingFix()
++    internal void SiblingFix()
+     {
+         hostStarted = true;
+         if (host != null)
+@@ -87,8 +100,7 @@
+             return;
+         }
+ 
+-        SetAsLastSiblingDelegateField(Il2CppInterop.Runtime.IL2CPP.Il2CppObjectBaseToPtrNotNull(gameObject.transform));
+-        SetAsLastSiblingDelegateField(Il2CppInterop.Runtime.IL2CPP.Il2CppObjectBaseToPtrNotNull(transform));
++        Fallback.Maintain(this);
+     }
+     
+     internal void Destroy()
+@@ -98,12 +110,7 @@
+ 
+         void Start()
+         {
+-            if ((Instance!= null) && (Instance!= this))
+-                return;
+-
+-            SiblingFix();
+-            if (!HasExternalLifecycle)
+-                GlobalEvents.OnApplicationLateStart.Invoke();
++            Fallback.OnStart(this);
+         }
+ 
+         void Awake()
+@@ -118,91 +125,39 @@
+ 
+         void Update()
+         {
+-            if ((Instance!= null) && (Instance!= this))
+-                return;
+-
+-            isQuitting = false;
+-            SiblingFix();
+-
+-            if (!HasExternalLifecycle)
+-            {
+-                SceneHandler.OnUpdate();
+-                GlobalEvents.OnUpdate.Invoke();
+-            }
+-            
+-            if(CorePreferences.EnableScriptLoader.Value)
+-                RedScriptManager.Update();
++            Fallback.OnUpdate(this);
+         }
+ 
+         void OnDestroy()
+         {
+-            if ((Instance!= null) && (Instance!= this))
+-                return;
+-
+-            if (!isQuitting)
+-            {
+-                Create();
+-                return;
+-            }
+-
+-            OnApplicationDefiniteQuit();
++            Fallback.OnDestroy(this);
+         }
+ 
+         void OnApplicationQuit()
+         {
+-            if ((Instance!= null) && (Instance!= this))
+-                return;
+-
+-            isQuitting = true;
+-            if (!HasExternalLifecycle)
+-                GlobalEvents.OnApplicationQuit.Invoke();
++            Fallback.OnApplicationQuit(this);
+         }
+ 
+-        void OnApplicationDefiniteQuit()
++        internal void OnApplicationDefiniteQuit()
+         {
+-            if (HasExternalLifecycle)
+-                return;
+-
+-            ConfigSystem.Save();
+-            GlobalEvents.OnApplicationDefiniteQuit.Invoke();
+-            
+-            System.Threading.Thread.Sleep(200);
+-            Process.GetCurrentProcess().Kill();
++            Fallback.OnApplicationDefiniteQuit(this);
+         }
+ 
+         void FixedUpdate()
+         {
+-            if (HasExternalLifecycle)
+-                return;
+-
+-            if ((Instance!= null) && (Instance!= this))
+-                return;
+-
+-            GlobalEvents.OnFixedUpdate.Invoke();
++            Fallback.OnFixedUpdate(this);
+         }
+ 
+         void LateUpdate()
+         {
+-            if (HasExternalLifecycle)
+-                return;
+-
+-            if ((Instance!= null) && (Instance!= this))
+-                return;
+-
+-            GlobalEvents.OnLateUpdate.Invoke();
++            Fallback.OnLateUpdate(this);
+         }
+ 
+         void OnGUI()
+         {
+-            if (HasExternalLifecycle)
+-                return;
+-
+-            if ((Instance!= null) && (Instance!= this))
+-                return;
+-
+-            GlobalEvents.OnGUI.Invoke();
++            Fallback.OnGui(this);
+         }
+         
+-        private delegate bool SetAsLastSiblingDelegate(IntPtr transformptr);
+-        private static SetAsLastSiblingDelegate SetAsLastSiblingDelegateField;
++        internal delegate bool SetAsLastSiblingDelegate(IntPtr transformptr);
++        internal static SetAsLastSiblingDelegate SetAsLastSiblingDelegateField;
+ }
+diff --git a/RedLoader/UnityEngine/SceneHandler.cs b/RedLoader/UnityEngine/SceneHandler.cs
+--- a/RedLoader/UnityEngine/SceneHandler.cs
++++ b/RedLoader/UnityEngine/SceneHandler.cs
+@@ -1,4 +1,5 @@
+ ﻿using System;
++using System.Reflection;
+ using UnityEngine.SceneManagement;
+ using System.Collections.Generic;
+ using RedLoader.Unity.IL2CPP.UnityEngine;
+@@ -9,6 +10,14 @@
+ 
+ namespace RedLoader.Support
+ {
++    internal interface ISceneHandlerFallbackDriver
++    {
++        void Initialize();
++        void OnSceneLoad(Scene scene, LoadSceneMode mode);
++        void OnSceneUnload(Scene scene);
++        void OnUpdate();
++    }
++
+     internal static class SceneHandler
+     {
+         internal class SceneInitEvent
+@@ -18,55 +27,40 @@
+             internal bool wasLoadedThisTick;
+         }
+ 
+-        private static Queue<SceneInitEvent> scenesLoaded = new Queue<SceneInitEvent>();
++        internal static Queue<SceneInitEvent> scenesLoaded = new Queue<SceneInitEvent>();
++
++        private static readonly Lazy<ISceneHandlerFallbackDriver> FallbackDriver = new(() =>
++        {
++            var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++                .GetType("OpenACAI.Endnight.Loader.OpenACAIRedSceneFallback", true);
++            var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++                ?? throw new MissingMethodException(type.FullName, "Create");
++            return ((Func<ISceneHandlerFallbackDriver>)method.CreateDelegate(typeof(Func<ISceneHandlerFallbackDriver>)))();
++        });
++        private static ISceneHandlerFallbackDriver Fallback => FallbackDriver.Value;
+ 
+         internal static void Init()
+         {
+             if (GlobalBehaviour.HasExternalLifecycle)
+                 return;
+ 
+-            try
+-            {
+-                SceneManager.sceneLoaded = (
+-                                               (ReferenceEquals(SceneManager.sceneLoaded, null))
+-                                                   ? new Action<Scene, LoadSceneMode>(OnSceneLoad)
+-                                                   : Il2CppSystem.Delegate.Combine(SceneManager.sceneLoaded, (UnityAction<Scene, LoadSceneMode>)new Action<Scene, LoadSceneMode>(OnSceneLoad)).Cast<UnityAction<Scene, LoadSceneMode>>()
+-                                           );
+-            }
+-            catch (Exception ex) { RLog.Error($"SceneManager.sceneLoaded override failed: {ex}"); }
+-
+-            try
+-            {
+-                SceneManager.sceneUnloaded = (
+-                                                 (ReferenceEquals(SceneManager.sceneUnloaded, null))
+-                                                     ? new Action<Scene>(OnSceneUnload)
+-                                                     : Il2CppSystem.Delegate.Combine(SceneManager.sceneUnloaded, (UnityAction<Scene>)new Action<Scene>(OnSceneUnload)).Cast<UnityAction<Scene>>()
+-                                             );
+-            }
+-            catch (Exception ex) { RLog.Error($"SceneManager.sceneUnloaded override failed: {ex}"); }
++            Fallback.Initialize();
+         }
+ 
+-        private static void OnSceneLoad(Scene scene, LoadSceneMode mode)
++        internal static void OnSceneLoad(Scene scene, LoadSceneMode mode)
+         {
+             if (GlobalBehaviour.HasExternalLifecycle)
+                 return;
+ 
+-            if (ReferenceEquals(scene, null))
+-                return;
+-
+-            GlobalEvents.OnSceneWasLoaded.Invoke(scene.buildIndex, scene.name);
+-            scenesLoaded.Enqueue(new SceneInitEvent { buildIndex = scene.buildIndex, name = scene.name });
++            Fallback.OnSceneLoad(scene, mode);
+         }
+ 
+-        private static void OnSceneUnload(Scene scene)
++        internal static void OnSceneUnload(Scene scene)
+         {
+             if (GlobalBehaviour.HasExternalLifecycle)
+                 return;
+ 
+-            if (ReferenceEquals(scene, null))
+-                return;
+-
+-            GlobalEvents.OnSceneWasUnloaded.Invoke(scene.buildIndex, scene.name);
++            Fallback.OnSceneUnload(scene);
+         }
+ 
+         internal static void OnUpdate()
+@@ -74,23 +68,7 @@
+             if (GlobalBehaviour.HasExternalLifecycle)
+                 return;
+ 
+-            if (scenesLoaded.Count > 0)
+-            {
+-                Queue<SceneInitEvent> requeue = new Queue<SceneInitEvent>();
+-                SceneInitEvent evt = null;
+-                while ((scenesLoaded.Count > 0) && ((evt = scenesLoaded.Dequeue()) != null))
+-                {
+-                    if (evt.wasLoadedThisTick)
+-                        GlobalEvents.OnSceneWasInitialized.Invoke(evt.buildIndex, evt.name);
+-                    else
+-                    {
+-                        evt.wasLoadedThisTick = true;
+-                        requeue.Enqueue(evt);
+-                    }
+-                }
+-                while ((requeue.Count > 0) && ((evt = requeue.Dequeue()) != null))
+-                    scenesLoaded.Enqueue(evt);
+-            }
++            Fallback.OnUpdate();
+         }
+     }
+ }
+diff --git a/RedLoader/Utils/Coroutines.cs b/RedLoader/Utils/Coroutines.cs
+--- a/RedLoader/Utils/Coroutines.cs
++++ b/RedLoader/Utils/Coroutines.cs
+@@ -1,7 +1,6 @@
+ using System;
+ using System.Collections;
+-using RedLoader.Unity.IL2CPP.UnityEngine;
+-using RedLoader.Unity.IL2CPP.Utils.Collections;
++using System.Reflection;
+ using UnityEngine;
+ 
+ namespace RedLoader
+@@ -15,6 +14,15 @@
+     public class Coroutines
+     {
+         private static ICoroutineDriver driver;
++        private static readonly Lazy<ICoroutineDriver> fallback = new(() =>
++        {
++            var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++                .GetType("OpenACAI.Endnight.Loader.OpenACAIRedCoroutineFallback", throwOnError: true);
++            var method = type.GetMethod("Create", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.DeclaredOnly,
++                binder: null, types: Type.EmptyTypes, modifiers: null)
++                ?? throw new MissingMethodException(type.FullName, "Create");
++            return method.CreateDelegate<Func<ICoroutineDriver>>()();
++        });
+ 
+         internal static bool HasDriver => driver != null;
+ 
+@@ -40,9 +48,7 @@
+             if (driver != null)
+                 return driver.Start(routine);
+ 
+-            if (GlobalBehaviour.Instance == null)
+-                throw new NotSupportedException("Support module must be initialized before starting coroutines");
+-            return GlobalBehaviour.Instance.StartCoroutine(routine.WrapToIl2Cpp());
++            return fallback.Value.Start(routine);
+         }
+ 
+         /// <summary>
+@@ -57,9 +63,7 @@
+                 return;
+             }
+ 
+-            if (GlobalBehaviour.Instance == null)
+-                throw new NotSupportedException("Support module must be initialized before starting coroutines");
+-            GlobalBehaviour.Instance.StopCoroutine(coroutineToken);
++            fallback.Value.Stop(coroutineToken);
+         }
+         
+         public class CoroutineToken
+diff --git a/RedLoader/Utils/Collections/Il2CppManagedEnumerator.cs b/RedLoader/Utils/Collections/Il2CppManagedEnumerator.cs
+--- a/RedLoader/Utils/Collections/Il2CppManagedEnumerator.cs
++++ b/RedLoader/Utils/Collections/Il2CppManagedEnumerator.cs
+@@ -1,26 +1,41 @@
+ ﻿using System.Collections;
+ using System.Collections.Generic;
+-using System.Reflection.Emit;
+-using HarmonyLib;
+-using Il2CppInterop.Runtime;
++using System.Reflection;
+ using Il2CppInterop.Runtime.Injection;
+ using Il2CppSystem;
+ using ArgumentNullException = System.ArgumentNullException;
+ using Il2CppIEnumerator = Il2CppSystem.Collections.IEnumerator;
+ using IntPtr = System.IntPtr;
+-using NotSupportedException = System.NotSupportedException;
+ using Type = System.Type;
+ 
+ namespace RedLoader.Unity.IL2CPP.Utils.Collections;
+ 
++internal interface IManagedEnumeratorFallback
++{
++    Object Current(Il2CppManagedEnumerator wrapper);
++    bool MoveNext(Il2CppManagedEnumerator wrapper);
++    void Reset(Il2CppManagedEnumerator wrapper);
++    System.Func<object, Object> GetValueBoxer(Type t);
++    Object ManagedToIl2CppObject(object obj);
++}
++
+ public class Il2CppManagedEnumerator : Object
+ {
+-    private static readonly Dictionary<Type, System.Func<object, Object>> boxers = new();
++    internal static readonly Dictionary<Type, System.Func<object, Object>> boxers = new();
++    private static readonly System.Lazy<IManagedEnumeratorFallback> fallback = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAIRedManagedEnumeratorFallback", throwOnError: true);
++        var method = type.GetMethod("Create", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.DeclaredOnly,
++            binder: null, types: Type.EmptyTypes, modifiers: null)
++            ?? throw new System.MissingMethodException(type.FullName, "Create");
++        return method.CreateDelegate<System.Func<IManagedEnumeratorFallback>>()();
++    });
+ 
+-    private readonly IEnumerator enumerator;
++    internal readonly IEnumerator enumerator;
+     private readonly IManagedEnumeratorDriver driver;
+-    private Object current;
+-    private bool hasCurrent;
++    internal Object current;
++    internal bool hasCurrent;
+ 
+     static Il2CppManagedEnumerator()
+     {
+@@ -47,20 +62,7 @@
+             if (driver != null)
+                 return driver.Current;
+ 
+-            if (!hasCurrent)
+-            {
+-                current = enumerator.Current switch
+-                {
+-                    Il2CppIEnumerator i => i.Cast<Object>(),
+-                    IEnumerator e       => new Il2CppManagedEnumerator(e),
+-                    Object oo           => oo,
+-                    { } obj             => ManagedToIl2CppObject(obj),
+-                    null                => null
+-                };
+-                hasCurrent = true;
+-            }
+-
+-            return current;
++            return fallback.Value.Current(this);
+         }
+     }
+ 
+@@ -69,9 +71,7 @@
+         if (driver != null)
+             return driver.MoveNext();
+ 
+-        current = null;
+-        hasCurrent = false;
+-        return enumerator.MoveNext();
++        return fallback.Value.MoveNext(this);
+     }
+ 
+     public void Reset()
+@@ -82,45 +82,16 @@
+             return;
+         }
+ 
+-        current = null;
+-        hasCurrent = false;
+-        enumerator.Reset();
++        fallback.Value.Reset(this);
+     }
+ 
+-    private static System.Func<object, Object> GetValueBoxer(Type t)
++    internal static System.Func<object, Object> GetValueBoxer(Type t)
+     {
+-        if (boxers.TryGetValue(t, out var conv))
+-            return conv;
+-
+-        var dm = new DynamicMethod($"Il2CppUnbox_{t.FullDescription()}", typeof(Object),
+-                                   new[] { typeof(object) });
+-        var il = dm.GetILGenerator();
+-        var loc = il.DeclareLocal(t);
+-        var classField = typeof(Il2CppClassPointerStore<>).MakeGenericType(t)
+-                                                          .GetField(nameof(Il2CppClassPointerStore<int>
+-                                                                               .NativeClassPtr));
+-        il.Emit(OpCodes.Ldsfld, classField);
+-        il.Emit(OpCodes.Ldarg_0);
+-        il.Emit(OpCodes.Unbox_Any, t);
+-        il.Emit(OpCodes.Stloc, loc);
+-        il.Emit(OpCodes.Ldloca, loc);
+-        il.Emit(OpCodes.Call,
+-                typeof(Il2CppInterop.Runtime.IL2CPP).GetMethod(nameof(Il2CppInterop.Runtime.IL2CPP.il2cpp_value_box)));
+-        il.Emit(OpCodes.Newobj, typeof(Object).GetConstructor(new[] { typeof(IntPtr) }));
+-        il.Emit(OpCodes.Ret);
+-
+-        var converter = dm.CreateDelegate(typeof(System.Func<object, Object>)) as System.Func<object, Object>;
+-        boxers[t] = converter;
+-        return converter;
++        return fallback.Value.GetValueBoxer(t);
+     }
+ 
+-    private static Object ManagedToIl2CppObject(object obj)
++    internal static Object ManagedToIl2CppObject(object obj)
+     {
+-        var t = obj.GetType();
+-        if (obj is string s)
+-            return new Object(Il2CppInterop.Runtime.IL2CPP.ManagedStringToIl2Cpp(s));
+-        if (t.IsPrimitive)
+-            return GetValueBoxer(t)(obj);
+-        throw new NotSupportedException($"Type {t} cannot be converted directly to an Il2Cpp object");
++        return fallback.Value.ManagedToIl2CppObject(obj);
+     }
+ }
+diff --git a/SonsSdk/GlobalInput.cs b/SonsSdk/GlobalInput.cs
+--- a/SonsSdk/GlobalInput.cs
++++ b/SonsSdk/GlobalInput.cs
+@@ -1,5 +1,5 @@
+ ﻿using RedLoader;
+-using Sons.Input;
++using System.Reflection;
+ using UnityEngine;
+ using UnityEngine.InputSystem;
+ 
+@@ -25,6 +25,16 @@
+ 
+     internal static InputAction _useAction;
+ 
++    private static readonly Lazy<ISdkGlobalInputDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsGlobalInput", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkGlobalInputDriver>)method.CreateDelegate(typeof(Func<ISdkGlobalInputDriver>)))();
++    });
++    private static ISdkGlobalInputDriver Fallback => FallbackDriver.Value;
++
+     /// <summary>
+     /// Register a key that will be polled every frame. The action will be invoke if the key is pressed during that frame.
+     /// </summary>
+@@ -37,17 +47,7 @@
+         if (driver != null)
+             return driver.GlobalInput.RegisterKey(key, action);
+ 
+-        if(_keyRegistrations.Any(k => k.Key == key))
+-            return false;
+-        
+-        _keyRegistrations.Add(new KeyRegistration
+-        {
+-            Key = key,
+-            Action = action
+-        });
+-        _keySnapshot = null;
+-
+-        return true;
++        return Fallback.RegisterKey(key, action);
+     }
+     
+     public static void UnregisterKey(KeyCode key)
+@@ -59,8 +59,7 @@
+             return;
+         }
+ 
+-        if (_keyRegistrations.RemoveAll(k => k.Key == key) > 0)
+-            _keySnapshot = null;
++        Fallback.UnregisterKey(key);
+     }
+ 
+     internal static void UnregisterKey(KeyCode key, Action action)
+@@ -72,8 +71,7 @@
+             return;
+         }
+ 
+-        if (_keyRegistrations.RemoveAll(k => k.Key == key && ReferenceEquals(k.Action, action)) > 0)
+-            _keySnapshot = null;
++        Fallback.UnregisterKey(key, action);
+     }
+ 
+     internal static void Init()
+@@ -85,8 +83,7 @@
+             return;
+         }
+ 
+-        GlobalEvents.OnUpdate.Subscribe(OnUpdate);
+-        SdkEvents.OnGameActivated.Subscribe(OnGameActivated);
++        Fallback.Initialize();
+     }
+ 
+     internal static void OnGameActivated()
+@@ -98,7 +95,7 @@
+             return;
+         }
+ 
+-        _useAction = Sons.Input.InputSystem.InputMapping.@default.Use;
++        Fallback.OnGameActivated();
+     }
+ 
+     internal static void OnUpdate()
+@@ -110,30 +107,7 @@
+             return;
+         }
+ 
+-        // Callback mutations affect the next dispatch, not this snapshot.
+-        var registrations = _keySnapshot ??= _keyRegistrations.ToArray();
+-        foreach (var keyRegistration in registrations)
+-        {
+-            try
+-            {
+-                if (Input.GetKeyDown(keyRegistration.Key))
+-                    keyRegistration.Action();
+-            }
+-            catch (Exception exception)
+-            {
+-                ReportFailure("key " + keyRegistration.Key, exception);
+-            }
+-        }
+-
+-        try
+-        {
+-            if (_useAction != null && _useAction.WasPerformedThisFrame())
+-                OnUsePerformed.Invoke();
+-        }
+-        catch (Exception exception)
+-        {
+-            ReportFailure("Use action", exception);
+-        }
++        Fallback.OnUpdate();
+     }
+ 
+     internal static void ReportFailure(string operation, Exception exception)
+diff --git a/SonsSdk/ModInputCache.cs b/SonsSdk/ModInputCache.cs
+--- a/SonsSdk/ModInputCache.cs
++++ b/SonsSdk/ModInputCache.cs
+@@ -1,4 +1,5 @@
+-﻿using RedLoader;
++﻿using System.Reflection;
++using RedLoader;
+ using RedLoader.Preferences;
+ using UnityEngine.InputSystem;
+ 
+@@ -16,25 +17,23 @@
+     internal static readonly Dictionary<KeybindConfigEntry, ModKeybind> Keybinds = new();
+     internal static ModKeybind[] _keybindSnapshot;
+ 
++    private static readonly Lazy<ISdkKeybindDriver> FallbackDriver = new(() =>
++    {
++        var type = Assembly.Load("OpenACAI.Endnight.Loader.Core")
++            .GetType("OpenACAI.Endnight.Loader.OpenACAISonsInputFallback", true);
++        var method = type.GetMethod("Create", BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
++            ?? throw new MissingMethodException(type.FullName, "Create");
++        return ((Func<ISdkKeybindDriver>)method.CreateDelegate(typeof(Func<ISdkKeybindDriver>)))();
++    });
++    internal static ISdkKeybindDriver Fallback => FallbackDriver.Value;
++
+     public static ModKeybind GetKeybind(this KeybindConfigEntry config)
+     {
+         var driver = SdkEvents.BeginLifecycleSetup();
+         if (driver != null)
+             return driver.Keybinds.GetKeybind(config);
+ 
+-        if (Keybinds.TryGetValue(config, out var action))
+-        {
+-            return action;
+-        }
+-
+-        Keybinds[config] = action = new ModKeybind(config);
+-        // Refresh the action before ordinary config listeners read its binding.
+-        config.OnValueChanged.Subscribe(action.OnConfigValueChanged, priority: int.MinValue);
+-        _keybindSnapshot = null;
+-        try { RLog.Msg("Registered keybind: " + config.Identifier + "::" + config.FullPath); }
+-        catch { /* Logging must not prevent the registered action from being enabled. */ }
+-        action.Enable();
+-        return action;
++        return Fallback.GetKeybind(config);
+     }
+     
+     public static InputAction GetAction(this KeybindConfigEntry config)
+@@ -96,19 +95,7 @@
+             return;
+         }
+ 
+-        // Registrations made by callbacks join the next update, not this dispatch.
+-        var keybinds = _keybindSnapshot ??= Keybinds.Values.ToArray();
+-        foreach (var keybind in keybinds)
+-        {
+-            try
+-            {
+-                keybind.Check();
+-            }
+-            catch (Exception exception)
+-            {
+-                keybind.ReportFailure("poll", exception);
+-            }
+-        }
++        Fallback.CheckAll();
+     }
+ }
+ 
+@@ -277,49 +264,7 @@
+             return;
+         }
+ 
+-        if (CustomCheck != null && !CustomCheck())
+-        {
+-            return;
+-        }
+-        
+-        if(NeedsInGame && !GameState.IsInGame)
+-            return;
+-
+-        if (IgnoreInConsole && GameState.IsInConsole)
+-            return;
+-        
+-        if(NeedsPlayerControllable && !GameState.IsPlayerControllable)
+-            return;
+-        
+-        if (Action.triggered)
+-        {
+-            InvokeCallbacks(OnPerformed, "performed");
+-        }
+-
+-        if (Action.WasReleasedThisFrame())
+-        {
+-            InvokeCallbacks(OnReleased, "released");
+-        }
+-    }
+-
+-    private void InvokeCallbacks(Action callbacks, string phase)
+-    {
+-        if (callbacks == null)
+-        {
+-            return;
+-        }
+-
+-        foreach (Action callback in callbacks.GetInvocationList())
+-        {
+-            try
+-            {
+-                callback();
+-            }
+-            catch (Exception exception)
+-            {
+-                ReportFailure(phase, exception);
+-            }
+-        }
++        ModInputCache.Fallback.Check(this);
+     }
+ 
+     internal void ReportFailure(string phase, Exception exception)

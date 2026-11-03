@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Resolver adapted from Il2CppInterop Il2CppAssemblyResolver (LGPL-3.0).
+// Copyright (c) Il2CppInterop contributors. Copyright (C) 2026 Alex Cooper.
+
+using AsmResolver.DotNet;
+using AsmResolver.IO;
+
+namespace Modstoke.Preloader
+{
+    internal sealed class InteropAssemblyResolver : AssemblyResolverBase
+    {
+        internal InteropAssemblyResolver() : base(new ByteArrayFileService()) { }
+        // Target metadata must not fall back to the host runtime's installed assemblies.
+        protected override string ProbeRuntimeDirectories(AssemblyDescriptor assembly) => null;
+        internal void Register(AssemblyDefinition assembly) => AddToCache(assembly, assembly);
+    }
+}

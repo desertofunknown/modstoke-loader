@@ -1,0 +1,158 @@
+diff --git a/SonsSdk/SdkEvents.cs b/SonsSdk/SdkEvents.cs
+index 8f10a49..d1f44bb 100644
+--- a/SonsSdk/SdkEvents.cs
++++ b/SonsSdk/SdkEvents.cs
+@@ -41,6 +41,7 @@ internal interface ISdkLifecycleDriver
+ {
+     ISdkOverlayDriver Overlay { get; }
+     SUI.ISdkPanelBlurDriver Blur { get; }
++    SUI.ISdkUiPrefabDriver UiPrefabs { get; }
+     void InitializeBootstrapPatches();
+     void OnApplicationLateStart();
+     void OnSdkInitialized(bool createModManagerUi);
+diff --git a/SonsSdk/SUI/SUI.cs b/SonsSdk/SUI/SUI.cs
+index 925e158..91f86db 100644
+--- a/SonsSdk/SUI/SUI.cs
++++ b/SonsSdk/SUI/SUI.cs
+@@ -26,6 +26,11 @@ using Object = UnityEngine.Object;
+ 
+ namespace SUI;
+ 
++internal interface ISdkUiPrefabDriver
++{
++    void Initialize();
++}
++
+ public partial class SUI
+ {
+     public static readonly Color BG_CYAN = new(0, 0.5f, 0.5f, 0.2f);
+@@ -36,24 +41,24 @@ public partial class SUI
+     
+     public static Dictionary<string, SPanelOptions> _panels = new();
+ 
+-    private static GameObject _sliderPrefab;
+-    private static GameObject _optionsPrefab;
+-    private static GameObject _textPrefab;
+-    private static GameObject _labelDividerPrefab;
+-    private static GameObject _togglePrefab;
+-    private static GameObject _inputPrefab;
+-    private static GameObject _buttonPrefab;
+-    private static GameObject _bgButtonPrefab;
+-    private static GameObject _maskedImagePrefab;
+-    private static GameObject _menuButtonPrefab;
+-    private static GameObject _scrollContainerPrefab;
+-    private static GameObject _tabControllerPrefab;
+-    private static GameObject _keybindPrefab;
+-
+-    private static Transform _titleMenuButtonsContainer;
+-
+-    private static Sprite _sonsBackgroundSprite;
+-    private static Sprite _roundBackgroundSprite;
++    internal static GameObject _sliderPrefab;
++    internal static GameObject _optionsPrefab;
++    internal static GameObject _textPrefab;
++    internal static GameObject _labelDividerPrefab;
++    internal static GameObject _togglePrefab;
++    internal static GameObject _inputPrefab;
++    internal static GameObject _buttonPrefab;
++    internal static GameObject _bgButtonPrefab;
++    internal static GameObject _maskedImagePrefab;
++    internal static GameObject _menuButtonPrefab;
++    internal static GameObject _scrollContainerPrefab;
++    internal static GameObject _tabControllerPrefab;
++    internal static GameObject _keybindPrefab;
++
++    internal static Transform _titleMenuButtonsContainer;
++
++    internal static Sprite _sonsBackgroundSprite;
++    internal static Sprite _roundBackgroundSprite;
+ 
+     private static GameObject _eventSystemObject;
+     
+@@ -136,6 +141,7 @@ public partial class SUI
+     
+     internal static void InitPrefabs()
+     {
++        var driver = SdkEvents.BeginLifecycleSetup();
+         var sw = TimingLogger.StartNew("SUI.InitPrefabs");
+         
+         if (IsInitialized)
+@@ -143,9 +149,16 @@ public partial class SUI
+ 
+         InitBundleContent();
+         
+-        GetPrefabs(); // Gather all the prefabs
+-        BackupPrefabs(); // Create a copy of the prefabs
+-        PreparePrefabs(); // Modify the duplicated prefabs
++        if (driver != null)
++        {
++            driver.UiPrefabs.Initialize();
++        }
++        else
++        {
++            GetPrefabs(); // Gather all the prefabs
++            BackupPrefabs(); // Create a copy of the prefabs
++            PreparePrefabs(); // Modify the duplicated prefabs
++        }
+         
+         PrintSprites();
+         
+@@ -348,9 +361,9 @@ public partial class SUI
+         // === SSCROLLCONTAINER ===
+         var scrollContainer = _scrollContainerPrefab.transform.Find("Viewport/Content");
+ 
+-        for (int i = 0; i < scrollContainer.childCount; i++)
++        for (var i = scrollContainer.childCount - 1; i >= 0; i--)
+         {
+-            Object.DestroyImmediate(scrollContainer.GetChild(0).gameObject);
++            Object.DestroyImmediate(scrollContainer.GetChild(i).gameObject);
+         }
+ 
+         _scrollContainerPrefab.SetActive(false);
+@@ -693,7 +706,7 @@ public partial class SUI
+         return Object.Instantiate(go).DontDestroyOnLoad().HideAndDontSave();
+     }
+ 
+-    private static GameObject CreateMaskedImagePrefab()
++    internal static GameObject CreateMaskedImagePrefab()
+     {
+         var rootgo = new GameObject("MaskedImage");
+         rootgo.AddComponent<RectTransform>();
+@@ -710,7 +723,7 @@ public partial class SUI
+         return rootgo.DontDestroyOnLoad().HideAndDontSave();
+     }
+ 
+-    private static GameObject CreateTogglePrefab()
++    internal static GameObject CreateTogglePrefab()
+     {
+         var toggleGameObject = new GameObject("Toggle");
+ 
+@@ -749,7 +762,7 @@ public partial class SUI
+         return toggleGameObject.DontDestroyOnLoad().HideAndDontSave();
+     }
+ 
+-    private static GameObject CreateTabControllerPrefab()
++    internal static GameObject CreateTabControllerPrefab()
+     {
+         var tabPanel = SDiv.Name("TabController").Vertical(0, "EC");
+ 
+diff --git a/SonsSdk/SUI/SUI.AssetBundle.cs b/SonsSdk/SUI/SUI.AssetBundle.cs
+index cc419c4..9bf0a6e 100644
+--- a/SonsSdk/SUI/SUI.AssetBundle.cs
++++ b/SonsSdk/SUI/SUI.AssetBundle.cs
+@@ -20,7 +20,7 @@ public partial class SUI
+ {
+     private static AssetBundle _assetBundle;
+ 
+-    private static GameObject _colorWheelPrefab;
++    internal static GameObject _colorWheelPrefab;
+ 
+     public static AssetBundle AssetBundle
+     {
+@@ -85,4 +85,4 @@ public partial class SUI
+ 
+         RLog.DebugBig("Loaded bundle content");
+     }
+-}
+\ No newline at end of file
++}
