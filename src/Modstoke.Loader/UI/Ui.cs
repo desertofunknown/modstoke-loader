@@ -13,6 +13,7 @@ namespace Modstoke.Loader
         private static readonly object SyncRoot = new();
         private static readonly Dictionary<string, UiSurfaceSnapshot> Surfaces =
             new(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, SurfaceLease> Leases = new(StringComparer.OrdinalIgnoreCase);
 
         private static string _lastTooltip;
 
@@ -23,6 +24,7 @@ namespace Modstoke.Loader
             lock (SyncRoot)
             {
                 Surfaces.Clear();
+                Leases.Clear();
                 _lastTooltip = null;
                 SetSurfaceNoLock(UiSurfaceSnapshot.Create(
                     UiSurfaceIds.ModsMenu,
@@ -51,6 +53,62 @@ namespace Modstoke.Loader
             lock (SyncRoot)
             {
                 return new Dictionary<string, UiSurfaceSnapshot>(Surfaces, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+
+#nullable enable annotations
+        /// <summary>Marks a mod's own menu or screen visible in <see cref="Snapshot"/> until the lease is disposed.</summary>
+        /// <remarks>
+        /// Main-thread only. Returns false for an empty ID, the loader's own surface IDs, or an ID another lease
+        /// already shows. Other mods read the surface to keep world input closed while it is open.
+        /// </remarks>
+        public static bool TryShowSurface(string id, string displayName, string kind, out IDisposable? lease)
+        {
+            lease = null;
+            if (string.IsNullOrWhiteSpace(id)
+                || string.Equals(id, UiSurfaceIds.ModsMenu, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(id, UiSurfaceIds.ModConfig, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            SurfaceLease created;
+            lock (SyncRoot)
+            {
+                if (Leases.ContainsKey(id))
+                    return false;
+                created = new SurfaceLease(id, string.IsNullOrWhiteSpace(displayName) ? id : displayName, string.IsNullOrWhiteSpace(kind) ? "mod-menu" : kind);
+                Leases[id] = created;
+            }
+
+            MarkVisible(created.Id, created.DisplayName, created.Kind, "open", created.DisplayName + " is open.");
+            lease = created;
+            return true;
+        }
+#nullable restore annotations
+
+        private sealed class SurfaceLease : IDisposable
+        {
+            internal readonly string Id;
+            internal readonly string DisplayName;
+            internal readonly string Kind;
+
+            internal SurfaceLease(string id, string displayName, string kind)
+            {
+                Id = id;
+                DisplayName = displayName;
+                Kind = kind;
+            }
+
+            public void Dispose()
+            {
+                lock (SyncRoot)
+                {
+                    // A stale lease cannot hide a surface a newer lease shows.
+                    if (!Leases.TryGetValue(Id, out var current) || !ReferenceEquals(current, this))
+                        return;
+                    Leases.Remove(Id);
+                }
+
+                MarkHidden(Id, DisplayName, Kind, "closed", DisplayName + " is closed.");
             }
         }
 
