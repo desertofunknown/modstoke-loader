@@ -33,6 +33,19 @@ namespace Modstoke.Loader
         }
 
 #nullable enable annotations
+        /// <summary>The owner ID passed to <see cref="TryAcquireFocus"/> for the current focus, or null. Main-thread only.</summary>
+        /// <remarks>Lets a mod wait for specific owners (the mods menu, the console) and not others.</remarks>
+        public static string? FocusOwnerId
+        {
+            get
+            {
+                lock (SyncRoot)
+                {
+                    return _currentFocus?.OwnerId;
+                }
+            }
+        }
+
         /// <summary>Captures SDK input for one owner; returns false if already owned.</summary>
         /// <remarks>
         /// Acquire, poll and dispose on Unity's main thread; dispose when the UI closes or unloads.
@@ -101,11 +114,13 @@ namespace Modstoke.Loader
 
         private sealed class FocusLease : IDisposable
         {
+            internal readonly string OwnerId;
             internal readonly string BlockedReason;
             internal readonly HashSet<string> AllowedKeybindIds;
 
             internal FocusLease(string ownerId, HashSet<string> allowedKeybindIds)
             {
+                OwnerId = ownerId;
                 BlockedReason = "Input is captured by '" + ownerId + "'.";
                 AllowedKeybindIds = allowedKeybindIds;
             }
