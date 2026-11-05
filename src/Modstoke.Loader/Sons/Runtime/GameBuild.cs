@@ -28,6 +28,8 @@ namespace Modstoke.Loader
         internal static bool IsDedicatedServer => DedicatedServer.Value;
         // Server-core hooks rely on managed signatures and runtime layout checks, not pinned client bodies.
         internal static bool SupportsServerCore => IsRecognized || IsDedicatedServer;
+        // Hashed on first use; read it off the main thread.
+        internal static string AssemblySha256 => AssemblyHash.Value;
 
         private static string MetadataPath(string dataFolder) =>
             Path.Combine(Paths.GameRootPath, dataFolder, "il2cpp_data", "Metadata", "global-metadata.dat");

@@ -362,6 +362,11 @@ namespace RedLoader
         {
             if (CorePreferences.DisableNotifications.Value)
                 return;
+            if (LoaderEnvironment.IsDedicatedServer)
+            {
+                RLog.Warning($"{title}: {message}");
+                return;
+            }
             
             MessageBox(0, message, title, type);
         }

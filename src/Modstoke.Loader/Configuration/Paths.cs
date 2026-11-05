@@ -6,6 +6,7 @@
 // BepInEx plugin folder keeps compatibility mirrors of the state and manifest files.
 
 using System;
+using System.Globalization;
 using System.IO;
 using BepInEx;
 
@@ -27,6 +28,10 @@ namespace Modstoke.Loader
         internal const string Il2CppChainloaderStateFileName = "openacai-il2cpp-chainloader-state.json";
         internal const string LoaderManifestFileName = "openacai-loader.manifest.json";
         internal const string FileManifestFileName = "openacai-loader-files.json";
+        internal const string HostStatusFileName = "host-status.json";
+        internal const string HostEventsFileName = "events.ndjson";
+        internal const string HostEventsPreviousFileName = "events.previous.ndjson";
+        internal const string GeneratedRequirementsFileName = "server-requirements.json";
 
         private static string _runtimeDirectory;
         private static string _modsDirectory;
@@ -47,9 +52,16 @@ namespace Modstoke.Loader
         internal static string Il2CppChainloaderStatePath => Path.Combine(RuntimeDirectory, Il2CppChainloaderStateFileName);
         internal static string LoaderManifestPath => Path.Combine(RuntimeDirectory, LoaderManifestFileName);
         internal static string FileManifestPath => Path.Combine(RuntimeDirectory, FileManifestFileName);
+        internal static string HostStatusPath => Path.Combine(RuntimeDirectory, HostStatusFileName);
+        internal static string HostEventsPath => Path.Combine(RuntimeDirectory, HostEventsFileName);
+        internal static string HostEventsPreviousPath => Path.Combine(RuntimeDirectory, HostEventsPreviousFileName);
+        internal static string GeneratedRequirementsPath => Path.Combine(RuntimeDirectory, GeneratedRequirementsFileName);
         internal static string LegacyBootstrapStatePath => Path.Combine(BootstrapMirrorDirectory, LoaderStateFileName);
         internal static string LegacyBootstrapManifestPath => Path.Combine(BootstrapMirrorDirectory, LoaderManifestFileName);
         internal static string LegacyBootstrapFileManifestPath => Path.Combine(BootstrapMirrorDirectory, FileManifestFileName);
+
+        internal static string CrashReportPath(DateTimeOffset utc) => Path.Combine(RuntimeDirectory,
+            "crash-" + utc.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture) + ".json");
 
         // Resolved once per process so that later folder creation cannot flip the choice.
         private static string Resolve(string name)

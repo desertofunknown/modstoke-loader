@@ -141,20 +141,24 @@ namespace Modstoke.Loader
                     .ToArray();
                 if (missingDependencies.Length > 0)
                 {
-                    Reject(candidate, "Hard dependencies did not load or have incompatible versions: "
-                        + string.Join(", ", missingDependencies), reports, addStartupWarning);
+                    var dependencyError = "Hard dependencies did not load or have incompatible versions: "
+                        + string.Join(", ", missingDependencies);
+                    Reject(candidate, dependencyError, reports, addStartupWarning);
+                    RecordHostLoad(selected, "failed", 0, dependencyError);
                     continue;
                 }
 
                 var identity = new PluginIdentity(metadata);
                 BasePlugin plugin = null;
                 var activated = false;
+                var timer = new System.Diagnostics.Stopwatch();
                 ActivatingGuids.Add(identity.Guid);
                 try
                 {
                     RequireActiveRegistry(registry);
                     AttemptedGuids.Add(identity.Guid);
                     TryReport(() => RuntimeEntryPoint.TraceCompat("Modstoke BepInEx host loading " + candidate.AssemblyPath + " :: " + candidate.PluginTypeName));
+                    timer.Start();
                     var assembly = Assembly.LoadFrom(candidate.AssemblyPath);
                     var pluginType = ResolvePluginType(selected.Info, assembly);
                     var observationIdentity = TryCaptureActivationIdentity(
@@ -171,6 +175,7 @@ namespace Modstoke.Loader
                     BepInExPluginCompatibility.MarkLoadedByOpenAcai(candidate);
                     loaded.Add(selected.Info);
                     reports.Add(CreateReport(candidate, "loaded", "BepInEx BasePlugin.Load completed through the Modstoke compatibility host.", pluginType.FullName));
+                    RecordHostLoad(selected, "loaded", timer.Elapsed.TotalMilliseconds, null);
                     activated = true;
                 }
                 catch (Exception ex)
@@ -181,6 +186,7 @@ namespace Modstoke.Loader
                             .Where(item => item != null).Select(GetFailureMessage))
                         : GetFailureMessage(ex);
                     reports.Add(CreateReport(candidate, "failed", message, candidate.PluginTypeName));
+                    RecordHostLoad(selected, "failed", timer.Elapsed.TotalMilliseconds, message);
                     TryReport(() => addStartupWarning?.Invoke("BepInEx plugin skipped: " + candidate.DisplayName + " - " + message));
                     TryReport(() => RuntimeEntryPoint.TraceCompat(ex is ReflectionTypeLoadException
                         ? "Modstoke BepInEx host type-load failure for " + candidate.AssemblyPath + ": " + message
@@ -205,6 +211,18 @@ namespace Modstoke.Loader
                 CaptureRetainedPlugins(),
                 invocationKind,
                 reports);
+        }
+
+        private static void RecordHostLoad(PluginCandidate selected, string status, double loadMs, string error)
+        {
+            var candidate = selected.Candidate;
+            var metadata = selected.Info?.Metadata;
+            var id = metadata?.GUID ?? candidate.PluginGuid;
+            if (string.IsNullOrWhiteSpace(id))
+                id = candidate.CandidateId ?? candidate.ModId;
+            HostMods.RecordLoad(id, metadata?.Name ?? candidate.PluginName ?? candidate.DisplayName,
+                metadata?.Version?.ToString() ?? candidate.PluginVersion, "bepinex",
+                candidate.AssemblyPath, status, loadMs, error);
         }
 
         private static Type ResolvePluginType(PluginInfo info, Assembly assembly)

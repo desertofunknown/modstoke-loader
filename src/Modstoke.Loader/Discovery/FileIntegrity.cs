@@ -11,6 +11,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 using BepInEx;
 
 namespace Modstoke.Loader
@@ -21,6 +22,9 @@ namespace Modstoke.Loader
 
         private static readonly object SyncRoot = new object();
         private static FileIntegritySnapshot _snapshot;
+        private static FileIntegritySnapshot _pending;
+        private static Task<FileIntegritySnapshot> _startupRefresh;
+        private static int _startupClaimed;
         private static long _refreshSequence;
         private static long _publishedSequence;
 
@@ -44,13 +48,75 @@ namespace Modstoke.Loader
 
         public static FileIntegritySnapshot Refresh()
         {
+            // A server's startup check stands in for the first refresh, so startup never hashes twice.
+            // Nothing waits for it: until it finishes, callers get the pending snapshot, and a refresh
+            // asked for while it runs counts as that first one, so a later refresh always hashes again.
+            var startup = Volatile.Read(ref _startupRefresh);
+            if (startup != null && !startup.IsFaulted)
+            {
+                if (!startup.IsCompleted)
+                {
+                    Volatile.Write(ref _startupClaimed, 1);
+                    return Snapshot;
+                }
+                if (Interlocked.Exchange(ref _startupClaimed, 1) == 0)
+                    return startup.Result;
+            }
+            return Publish(out _);
+        }
+
+        internal static void InitializeDefaults()
+        {
+            if (!IsDedicatedServer())
+            {
+                Refresh();
+                return;
+            }
+
+            // A dedicated server must not stall startup on hashing; readers see a pending snapshot meanwhile.
+            Volatile.Write(ref _startupRefresh, RefreshInBackground());
+        }
+
+        internal static Task<FileIntegritySnapshot> RefreshInBackground()
+        {
+            return Task.Run(() =>
+            {
+                var snapshot = Publish(out var published);
+                if (published)
+                    Host.Post(() => OnPublishedInBackground(snapshot));
+                return snapshot;
+            });
+        }
+
+        private static void OnPublishedInBackground(FileIntegritySnapshot snapshot)
+        {
+            RuntimeAttestation.Refresh();
+            ServerPolicy.Refresh();
+            LoaderState.RequestRefresh("file-integrity");
+            HostStatus.MarkChanged();
+            if (!snapshot.Ready)
+                HostEvents.Emit("integrity", new { status = snapshot.Status, mismatches = snapshot.IssueEntries.Count });
+        }
+
+        private static bool IsDedicatedServer()
+        {
+            if (RedLoader.Utils.LoaderEnvironment.IsDedicatedServer)
+                return true;
+            // The RedLoader environment is filled in after runtime services start, so check the executable too.
+            var executable = SafeReadPath(() => Paths.ExecutablePath);
+            return executable != null && executable.EndsWith("DS.exe", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static FileIntegritySnapshot Publish(out bool published)
+        {
             // Hash outside the lock so Snapshot readers never wait on disk I/O; a slower,
             // older refresh must not replace a newer one.
             var sequence = Interlocked.Increment(ref _refreshSequence);
             var snapshot = CreateSnapshot();
             lock (SyncRoot)
             {
-                if (sequence > _publishedSequence)
+                published = sequence > _publishedSequence;
+                if (published)
                 {
                     _publishedSequence = sequence;
                     _snapshot = snapshot;
@@ -59,11 +125,6 @@ namespace Modstoke.Loader
 
                 return _snapshot;
             }
-        }
-
-        internal static void InitializeDefaults()
-        {
-            Refresh();
         }
 
         internal static object CreateState()
@@ -77,6 +138,14 @@ namespace Modstoke.Loader
             {
                 if (_snapshot == null)
                 {
+                    var startup = Volatile.Read(ref _startupRefresh);
+                    if (startup != null && !startup.IsCompleted)
+                    {
+                        return _pending ??= FileIntegritySnapshot.CreatePending(
+                            SafeReadPath(() => global::Modstoke.Loader.LoaderPaths.FileManifestPath),
+                            SafeReadPath(() => global::Modstoke.Loader.LoaderPaths.LegacyBootstrapFileManifestPath));
+                    }
+
                     _snapshot = CreateSnapshot();
                     Modding.SetService(ServiceKey, _snapshot);
                 }
@@ -596,6 +665,26 @@ namespace Modstoke.Loader
                 status,
                 detail,
                 updatedUtc);
+        }
+
+        internal static FileIntegritySnapshot CreatePending(string manifestPath, string compatibilityManifestPath)
+        {
+            return new FileIntegritySnapshot(
+                manifestPath,
+                compatibilityManifestPath,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                null,
+                null,
+                false,
+                Array.Empty<FileIntegrityEntrySnapshot>(),
+                "PENDING",
+                "Verifying installed files in the background.",
+                null);
         }
 
         internal static FileIntegritySnapshot CreateUnavailable(

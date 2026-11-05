@@ -19,6 +19,7 @@ namespace Modstoke.Sons
         private static int _installationAttempted;
         private static int _ownerThreadId;
         private static int _reportedDispatchFailure;
+        private static int _reportedForwardFailure;
 
         /// <summary>
         /// Runs synchronously before the owned SDK command handler. When routing is installed,
@@ -26,6 +27,9 @@ namespace Modstoke.Sons
         /// Rejecting a request or throwing stops the remaining handlers and the intercepted operation.
         /// </summary>
         public static event Action<ChatRequest> Receiving;
+
+        // Host event observer: sees game chat that passed policy and is being forwarded.
+        internal static Action<ChatRequest> Forwarded;
 
         public static ServerChatState State => Volatile.Read(ref _state);
 
@@ -109,7 +113,7 @@ namespace Modstoke.Sons
         internal static DispatchVerdict RouteDispatch(Bolt.Event source)
         {
             if (State.RoutingStatus != ServerChatHookStatus.Installed
-                || Receiving == null && !Commands.HasRegistrations)
+                || Receiving == null && !Commands.HasRegistrations && Forwarded == null)
                 return DispatchVerdict.Forward;
 
             var chat = source.TryCast<ChatEvent>();
@@ -130,6 +134,9 @@ namespace Modstoke.Sons
             }
             catch (Exception error)
             {
+                // With only the host observer listening, chat is delivered as it was without one.
+                if (Receiving == null && !Commands.HasRegistrations)
+                    return DispatchVerdict.Forward;
                 ReportDispatchFailure("Reading incoming chat routing context failed (" + error.GetType().FullName + ").");
                 return DispatchVerdict.Reject;
             }
@@ -141,8 +148,12 @@ namespace Modstoke.Sons
         private static bool ApplyGameChat(ChatEvent source)
         {
             var handlers = Receiving;
+            var forwarded = Forwarded;
             if (handlers == null && !Commands.HasRegistrations)
+            {
+                ObserveOnly(source, forwarded);
                 return true;
+            }
 
             if (Environment.CurrentManagedThreadId != _ownerThreadId)
             {
@@ -159,19 +170,12 @@ namespace Modstoke.Sons
                 var message = source.Message;
                 var command = Commands.FindRegistration(message);
                 if (handlers == null && command == null)
-                    return true;
-
-                var connection = source.RaisedBy;
-                uint? connectionId = connection == null ? null : connection.ConnectionId;
-                ulong? registeredSteamId = null;
-                if (connection != null && GameServerManager.GetRegisteredClient(connection, out var steamId))
                 {
-                    if (steamId.m_SteamID != 0)
-                        registeredSteamId = steamId.m_SteamID;
+                    ObserveOnly(source, forwarded);
+                    return true;
                 }
 
-                request = new ChatRequest(message, source.Sender.PackedValue,
-                    connectionId, registeredSteamId, ServerSessions.ResolveSource(connection));
+                request = ReadRequest(source, message);
                 if (command != null && !Commands.TryReserveCommand(request.SourceSession))
                     return false;
                 if (!ApplyPolicy(request, handlers))
@@ -183,6 +187,7 @@ namespace Modstoke.Sons
                     return false;
                 }
 
+                NotifyForwarded(forwarded, request);
                 return true;
             }
             catch (Exception error)
@@ -264,6 +269,70 @@ namespace Modstoke.Sons
                 }
             }
             return true;
+        }
+
+        private static ChatRequest ReadRequest(ChatEvent source, string message)
+        {
+            var connection = source.RaisedBy;
+            uint? connectionId = connection == null ? null : connection.ConnectionId;
+            ulong? registeredSteamId = null;
+            if (connection != null && GameServerManager.GetRegisteredClient(connection, out var steamId))
+            {
+                if (steamId.m_SteamID != 0)
+                    registeredSteamId = steamId.m_SteamID;
+            }
+
+            return new ChatRequest(message, source.Sender.PackedValue,
+                connectionId, registeredSteamId, ServerSessions.ResolveSource(connection));
+        }
+
+        // Only the host observer is listening, so nothing here may change whether the message is delivered.
+        private static void ObserveOnly(ChatEvent source, Action<ChatRequest> forwarded)
+        {
+            if (forwarded == null || Environment.CurrentManagedThreadId != _ownerThreadId)
+                return;
+            ChatRequest request = null;
+            try
+            {
+                if (!BoltNetwork.isServer)
+                    return;
+                request = ReadRequest(source, source.Message);
+                NotifyForwarded(forwarded, request);
+            }
+            catch (Exception error)
+            {
+                ReportForwardFailure(error);
+            }
+            finally
+            {
+                request?.Close();
+            }
+        }
+
+        private static void NotifyForwarded(Action<ChatRequest> forwarded, ChatRequest request)
+        {
+            if (forwarded == null)
+                return;
+            try
+            {
+                forwarded(request);
+            }
+            catch (Exception error)
+            {
+                ReportForwardFailure(error);
+            }
+        }
+
+        private static void ReportForwardFailure(Exception error)
+        {
+            if (Interlocked.Exchange(ref _reportedForwardFailure, 1) != 0)
+                return;
+            try
+            {
+                RuntimeEntryPoint.LogSource?.LogWarning("Observing forwarded chat failed; the message was still delivered: "
+                    + error.GetType().FullName + ": " + error.Message);
+            }
+            catch (Exception) { }
         }
 
         private static void PublishState(ServerChatHookStatus status, string detail)

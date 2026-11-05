@@ -21,7 +21,15 @@ public sealed record ConsoleSnapshot(string SessionId, string Phase, string Summ
 public sealed record ConsoleEndpoint(int Schema, string Pipe, int ProcessId, DateTimeOffset StartedUtc);
 
 public sealed record ConsoleSubmission(string Command, bool Confirmed, string Arguments = "",
-    ConsoleOrigin Origin = ConsoleOrigin.Other);
+    ConsoleOrigin Origin = ConsoleOrigin.Other)
+{
+    /// <summary>The hosting agent's id from <c>#id</c> or <c>--id</c>, echoed in the machine reply.</summary>
+    public string? RequestId { get; init; }
+    /// <summary>True when the sender asked for a machine reply with <c>--json</c> or over TCP.</summary>
+    public bool Json { get; init; }
+    /// <summary>Where the machine reply goes: 0 for the server's stdout, otherwise a host TCP client id.</summary>
+    public int ReplyChannel { get; init; }
+}
 
 /// <summary>Which view queued a submission. A label for authorization policy, not a security boundary.</summary>
 public enum ConsoleOrigin

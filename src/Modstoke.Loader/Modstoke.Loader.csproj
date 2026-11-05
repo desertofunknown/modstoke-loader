@@ -32,6 +32,7 @@
     <Compile Include="Sons/Runtime/GameLifecycleFixes.cs" />
     <Compile Include="Sons/Runtime/GatheringLifecycleFix.cs" />
     <Compile Include="Sons/Server/ServerEvents.cs" />
+    <Compile Include="Sons/Server/ServerHosting.cs" />
     <Compile Include="Sons/Server/ServerDispatchGate.cs" />
     <Compile Include="Sons/Networking/Bolt/BoltEventSchema.cs" />
     <Compile Include="Sons/Networking/Bolt/BoltPackets.cs" />
@@ -802,6 +803,18 @@
     <Compile Include="Hosting/Runtime.cs" />
     <Compile Include="Hosting/RuntimeCommands.cs" />
     <Compile Include="Hosting/RuntimeDriver.cs" />
+    <Compile Include="Hosting/Host.cs" />
+    <Compile Include="Hosting/HostOutput.cs" />
+    <Compile Include="Hosting/HostLine.cs" />
+    <Compile Include="Hosting/HostCommands.cs" />
+    <Compile Include="Hosting/HostStatus.cs" />
+    <Compile Include="Hosting/HostEvents.cs" />
+    <Compile Include="Hosting/HostPlayers.cs" />
+    <Compile Include="Hosting/HostMods.cs" />
+    <Compile Include="Hosting/HostSave.cs" />
+    <Compile Include="Hosting/HostCrash.cs" />
+    <Compile Include="Hosting/HostConfig.cs" />
+    <Compile Include="Hosting/HostTcp.cs" />
     <Compile Include="Configuration/RuntimePreferences.cs" />
     <Compile Include="Sons/Runtime/Sons.cs" />
     <Compile Include="Sons/Runtime/Assets.cs" />

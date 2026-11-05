@@ -27,7 +27,7 @@ namespace Modstoke.Loader
         {
             _ownerThread = Environment.CurrentManagedThreadId;
             RefreshCatalog();
-            if (GameBuild.IsDedicatedServer)
+            if (Host.IsServer)
                 ServerConsoleInput.Start();
         }
 
@@ -97,6 +97,7 @@ namespace Modstoke.Loader
                 new("mods", "List the currently discovered mods and their status.", true, false),
                 new("desktop", "Open the desktop console window.", true, false)
             };
+            commands.AddRange(HostCommands.Catalog());
             Routes.Clear();
             // A short prefix is listed only while exactly one provider claims it and no provider has it as its id.
             var prefixes = providers.Select(provider => (provider.Id, Prefix: MenuRegistry.GetConsolePrefix(provider.Id)))
@@ -145,6 +146,7 @@ namespace Modstoke.Loader
         {
             try
             {
+                if (HostCommands.TryExecute(submission)) return;
                 var text = submission.Command;
                 if (text == "desktop")
                 {
@@ -167,7 +169,8 @@ namespace Modstoke.Loader
                 if (!Routes.TryGetValue(text, out var route)
                     || !MenuRegistry.TryGetProviderCommands(route.Provider, out var current))
                 {
-                    Report(submission, "Warning", "Unknown or unavailable command. Select an exact name from Commands.");
+                    Report(submission, "Warning", "Unknown or unavailable command. Select an exact name from Commands.",
+                        unknown: true);
                     return;
                 }
                 var command = current.Commands.FirstOrDefault(value => string.Equals(value.Id, route.Command, StringComparison.Ordinal));
@@ -214,12 +217,25 @@ namespace Modstoke.Loader
 
         private static string ServerHelp(ConsoleCommandInfo[] commands) =>
             "Type a command name, optionally followed by arguments. Prefix \"confirm \" to run a command that asks"
-            + " for confirmation." + Environment.NewLine + string.Join(Environment.NewLine, commands.Select(command =>
+            + " for confirmation. Start a line with \"#<id> \" or add --json for a one-line \"@modstoke\" JSON reply."
+            + Environment.NewLine + string.Join(Environment.NewLine, commands.Select(command =>
                 command.Name + (command.Enabled ? "" : " (unavailable)") + " — " + command.Description));
+
+        internal static void Report(ConsoleSubmission submission, string level, string text, bool unknown = false)
+        {
+            ReportHuman(submission, level, text);
+            if (!HostOutput.WantsReply(submission))
+                return;
+            if (level == "Info")
+                HostOutput.Reply(submission, true, new { text, level });
+            else
+                HostOutput.Reply(submission, false,
+                    new { error = unknown ? "unknown-command" : "failed", detail = text, level });
+        }
 
         // Server console results go through the log so they print in the server's own window; the console
         // listener copies log lines into the hub for the other views.
-        private static void Report(ConsoleSubmission submission, string level, string text)
+        internal static void ReportHuman(ConsoleSubmission submission, string level, string text)
         {
             var log = RuntimeEntryPoint.LogSource;
             if (submission.Origin != ConsoleOrigin.ServerConsole || log == null)

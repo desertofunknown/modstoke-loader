@@ -18,6 +18,7 @@ namespace Modstoke.Preloader
         private const ushort SwShowNoActivate = 4;
         private const uint EnableExtendedFlags = 0x80;
         private const uint EnableQuickEditMode = 0x40;
+        private const string OriginalOutputKey = "Modstoke.OriginalStandardOutput";
         private static readonly int[] StandardHandleIds = { -10, -11, -12 };
         private readonly IntPtr[] _originalHandles = new IntPtr[3];
         private readonly IntPtr[] _installedHandles = new IntPtr[3];
@@ -40,7 +41,12 @@ namespace Modstoke.Preloader
 
             var output = _originalHandles[1];
             if (output != IntPtr.Zero && output != new IntPtr(-1))
+            {
                 OriginalOutput = new SafeFileHandle(output, ownsHandle: false);
+                // Host machine lines must reach the stdout the hosting agent reads, not this console.
+                if (AppDomain.CurrentDomain.GetData(OriginalOutputKey) == null)
+                    AppDomain.CurrentDomain.SetData(OriginalOutputKey, output);
+            }
         }
 
         internal void Attach()

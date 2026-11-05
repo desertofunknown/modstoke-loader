@@ -151,6 +151,11 @@ public static partial class SonsTools
 
     public static void ShowMessageBox(string title, string message)
     {
+        if (RedLoader.Utils.LoaderEnvironment.IsDedicatedServer)
+        {
+            RLog.Warning($"{title}: {message}");
+            return;
+        }
         GenericModalDialog.ShowDialog(title, message);
     }
     

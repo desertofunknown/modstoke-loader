@@ -99,18 +99,28 @@ public static class ConsoleHub
     /// authorization; providers decide what an origin may do.
     /// </summary>
     internal static bool TrySubmit(string command, string arguments, bool confirmed, ConsoleOrigin origin,
-        out string detail)
+        out string detail) =>
+        TrySubmit(new ConsoleSubmission(command, confirmed, arguments ?? "", origin), out detail, out _);
+
+    /// <summary>
+    /// Queues a prepared submission. <paramref name="reason"/> is <c>invalid-arguments</c>, <c>not-ready</c> or
+    /// <c>busy</c> when it is refused.
+    /// </summary>
+    internal static bool TrySubmit(ConsoleSubmission submission, out string detail, out string reason)
     {
-        arguments ??= "";
+        var command = submission.Command;
+        var arguments = submission.Arguments ?? "";
         if (string.IsNullOrWhiteSpace(command) || command.Length > 256 || HasLineBreak(command)
             || command.Trim().IndexOfAny(new[] { ' ', '\t' }) >= 0)
         {
             detail = "Enter one command name of at most 256 characters.";
+            reason = "invalid-arguments";
             return false;
         }
         if (arguments.Length > ArgumentLimit || HasLineBreak(arguments))
         {
             detail = "Command arguments are limited to one line of " + ArgumentLimit + " characters.";
+            reason = "invalid-arguments";
             return false;
         }
         lock (Sync)
@@ -118,26 +128,41 @@ public static class ConsoleHub
             if (!_ready)
             {
                 detail = "Commands are unavailable until the Loader is ready.";
+                reason = "not-ready";
                 return false;
             }
-            if (Pending.Count >= 32)
+            // A panel's save or stop must not be lost behind a full queue, or the server is killed unsaved.
+            var urgent = submission.Origin == ConsoleOrigin.ServerConsole && command.Trim() is "save" or "stop";
+            if (Pending.Count >= (urgent ? 64 : 32))
             {
                 detail = "The command queue is full. Wait for the existing results.";
+                reason = "busy";
                 return false;
             }
-            Pending.Enqueue(new ConsoleSubmission(command.Trim(), confirmed, arguments.Trim(), origin));
+            Pending.Enqueue(submission with { Command = command.Trim(), Arguments = arguments.Trim() });
             detail = "Queued for the game thread; execution has not yet been confirmed.";
+            reason = "";
             return true;
         }
     }
 
     /// <summary>Splits one typed line at its first space or tab into a command name and arguments.</summary>
-    internal static bool TrySubmitLine(string line, bool confirmed, ConsoleOrigin origin, out string detail)
+    internal static bool TrySubmitLine(string line, bool confirmed, ConsoleOrigin origin, out string detail) =>
+        TrySubmitLine(line, confirmed, origin, null, false, 0, out detail, out _);
+
+    internal static bool TrySubmitLine(string line, bool confirmed, ConsoleOrigin origin, string? requestId,
+        bool json, int replyChannel, out string detail, out string reason)
     {
         var text = line?.Trim() ?? "";
         var split = text.IndexOfAny(new[] { ' ', '\t' });
-        return split < 0 ? TrySubmit(text, "", confirmed, origin, out detail)
-            : TrySubmit(text[..split], text[(split + 1)..], confirmed, origin, out detail);
+        var submission = new ConsoleSubmission(split < 0 ? text : text[..split], confirmed,
+            split < 0 ? "" : text[(split + 1)..], origin)
+        {
+            RequestId = requestId,
+            Json = json,
+            ReplyChannel = replyChannel
+        };
+        return TrySubmit(submission, out detail, out reason);
     }
 
     private static bool HasLineBreak(string value) => value.IndexOfAny(new[] { '\r', '\n', '\0' }) >= 0;

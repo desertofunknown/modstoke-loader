@@ -308,7 +308,10 @@ namespace Modstoke.Preloader
                 string text;
                 try
                 {
-                    text = eventArgs.ToStringLine();
+                    // Log text can repeat chat or other remote input, so it must never start a host machine line.
+                    text = eventArgs.ToStringLine()
+                        .Replace("\n@modstoke ", "\n @modstoke ", StringComparison.Ordinal)
+                        .Replace("\r@modstoke ", "\r @modstoke ", StringComparison.Ordinal);
                 }
                 catch (Exception error)
                 {

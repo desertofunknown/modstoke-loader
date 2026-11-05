@@ -203,6 +203,10 @@ namespace Modstoke.Sons
                 var climbSpeed = state.climbSpeed;
                 var inWaterBlend = state.inWaterBlend;
                 var inWater = state.inWater;
+                var caveMask = state.caveMask;
+                var drivingGolfCart = state.DrivingGolfCart;
+                var passengerGolfCart = state.PassengerGolfCart;
+                var onRaft = state.onRaft;
                 var zipLineAttached = state.zipLineAttach;
                 var inMidAction = state.IsInMidAction;
                 var inMenus = state.InMenus;
@@ -234,7 +238,8 @@ namespace Modstoke.Sons
 
                 snapshot = new PlayerMovementSnapshot(binding, world, frame,
                     horizontalSpeed, verticalSpeed, overallSpeed, crouch, climbSpeed, inWaterBlend,
-                    inWater, zipLineAttached, inMidAction, inMenus);
+                    inWater, zipLineAttached, inMidAction, inMenus,
+                    caveMask, drivingGolfCart, passengerGolfCart, onRaft);
                 status = PlayerMovementReadStatus.Success;
                 return true;
             }
@@ -293,7 +298,8 @@ namespace Modstoke.Sons
         internal PlayerMovementSnapshot(PlayerHandle binding,
             WorldRecordContext world, int frame, float horizontalSpeed, float verticalSpeed,
             float overallSpeed, float crouch, float climbSpeed, float inWaterBlend,
-            bool inWater, bool zipLineAttached, bool inMidAction, bool inMenus)
+            bool inWater, bool zipLineAttached, bool inMidAction, bool inMenus,
+            int caveMask, bool drivingGolfCart, bool passengerGolfCart, bool onRaft)
         {
             Binding = binding;
             World = world;
@@ -308,6 +314,10 @@ namespace Modstoke.Sons
             ZipLineAttached = zipLineAttached;
             IsInMidAction = inMidAction;
             InMenus = inMenus;
+            RawCaveMask = caveMask;
+            DrivingGolfCart = drivingGolfCart;
+            PassengerGolfCart = passengerGolfCart;
+            OnRaft = onRaft;
             ObservedAt = DateTimeOffset.UtcNow;
         }
 
@@ -337,6 +347,14 @@ namespace Modstoke.Sons
         public bool IsInMidAction { get; }
         /// <summary>Raw IPlayerState.InMenus. False does not establish input availability.</summary>
         public bool InMenus { get; }
+        /// <summary>Raw IPlayerState.caveMask. Nonzero is the game's in-cave marker; the bit layout is not decoded.</summary>
+        public int RawCaveMask { get; }
+        /// <summary>Raw IPlayerState.DrivingGolfCart, not proof of a live vehicle seat.</summary>
+        public bool DrivingGolfCart { get; }
+        /// <summary>Raw IPlayerState.PassengerGolfCart, not proof of a live vehicle seat.</summary>
+        public bool PassengerGolfCart { get; }
+        /// <summary>Raw IPlayerState.onRaft, not proof that the raft is afloat.</summary>
+        public bool OnRaft { get; }
         /// <summary>UTC read completion time, not a simulation, replication or last-change timestamp.</summary>
         public DateTimeOffset ObservedAt { get; }
     }

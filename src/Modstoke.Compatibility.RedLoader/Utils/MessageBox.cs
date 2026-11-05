@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using MonoMod.Utils;
+using RedLoader.Utils;
 
 namespace RedLoader.Unity.IL2CPP.Utils;
 
@@ -13,6 +14,13 @@ internal static class MessageBox
     public static void Show(string text, string caption)
     {
         if (!PlatformHelper.Is(Platform.Windows)) throw new PlatformNotSupportedException();
+        // Startup can fail before the executable path is known, so check the process name too.
+        if (LoaderEnvironment.IsDedicatedServer
+            || (Environment.ProcessPath ?? "").EndsWith("DS.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            RLog.Error($"{caption}: {text}");
+            return;
+        }
         if (MessageBoxA(IntPtr.Zero, text, caption, 0) == 0)
             throw new Win32Exception();
     }

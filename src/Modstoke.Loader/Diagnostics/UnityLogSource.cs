@@ -145,6 +145,7 @@ namespace Modstoke.Loader
             {
                 Interlocked.Increment(ref _messageCount);
                 WarningCapture.Record(message, stackTrace, type);
+                HostCrash.ObserveUnityLog(message, stackTrace, type);
                 var endpoint = Volatile.Read(ref _compatibilityEndpoint);
                 if (endpoint != null)
                 {

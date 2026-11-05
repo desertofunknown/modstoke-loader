@@ -28,36 +28,11 @@ namespace Modstoke.Sons
         /// </summary>
         public static ServerSaveRequestStatus RequestConfiguredAutosave()
         {
-            var ownerThread = Volatile.Read(ref _ownerThreadId);
-            if (ownerThread == 0)
-                return ServerSaveRequestStatus.Unavailable;
-            if (Environment.CurrentManagedThreadId != ownerThread)
-                return ServerSaveRequestStatus.WrongThread;
-
             var requestAttempted = false;
             try
             {
-                if (!BoltNetwork.isRunning || !BoltNetwork.isServer
-                    || !GameServerManager.HasDedicatedState || !GameServerManager.IsDedicatedServer)
-                    return ServerSaveRequestStatus.NotDedicatedServer;
-
-                if (!SaveGameManager.TryGetInstance(out var manager)
-                    || manager is null || manager.WasCollected || !manager)
-                    return ServerSaveRequestStatus.SaveManagerUnavailable;
-                if (manager._loadingInProgress || !SaveGameManager._setupSavePaths
-                    || SaveGameManager._activeSaveGameType != SaveGameType.Multiplayer)
-                    return ServerSaveRequestStatus.NotReady;
-
-                if (!DedicatedServerAutosave.TryGetInstance(out var autosave)
-                    || autosave is null || autosave.WasCollected || !autosave || !autosave.isActiveAndEnabled)
-                    return ServerSaveRequestStatus.AutosaveUnavailable;
-                var timer = autosave._timer;
-                if (timer is null || timer.WasCollected)
-                    return ServerSaveRequestStatus.AutosaveUnavailable;
-
-                // QueueAutosave also sets the initial-save flag; do not use it to bypass native readiness.
-                if (!autosave.IsReadyToSave())
-                    return ServerSaveRequestStatus.NotReady;
+                if (Refusal(out var autosave) is { } refused)
+                    return refused;
                 if (autosave._autosaveQueued)
                     return ServerSaveRequestStatus.AlreadyQueued;
 
@@ -82,6 +57,64 @@ namespace Modstoke.Sons
             }
         }
 
+        /// <summary>
+        /// Saves the world now through the dedicated server's immediate save, under the same readiness rules
+        /// as <see cref="RequestConfiguredAutosave"/> but regardless of a queued autosave.
+        /// Queued means the native call returned, not that the save reached disk.
+        /// </summary>
+        internal static ServerSaveRequestStatus SaveNow()
+        {
+            var requestAttempted = false;
+            try
+            {
+                if (Refusal(out _) is { } refused)
+                    return refused;
+
+                requestAttempted = true;
+                DedicatedServerAutosave.SaveImmediate();
+                return ServerSaveRequestStatus.Queued;
+            }
+            catch (Exception error)
+            {
+                ReportFailure(error);
+                return requestAttempted
+                    ? ServerSaveRequestStatus.RequestUncertain
+                    : ServerSaveRequestStatus.Failed;
+            }
+        }
+
+        // Null when a save may be requested. Exceptions are left to the caller.
+        private static ServerSaveRequestStatus? Refusal(out DedicatedServerAutosave autosave)
+        {
+            autosave = null;
+            var ownerThread = Volatile.Read(ref _ownerThreadId);
+            if (ownerThread == 0)
+                return ServerSaveRequestStatus.Unavailable;
+            if (Environment.CurrentManagedThreadId != ownerThread)
+                return ServerSaveRequestStatus.WrongThread;
+
+            if (!BoltNetwork.isRunning || !BoltNetwork.isServer
+                || !GameServerManager.HasDedicatedState || !GameServerManager.IsDedicatedServer)
+                return ServerSaveRequestStatus.NotDedicatedServer;
+
+            if (!SaveGameManager.TryGetInstance(out var manager)
+                || manager is null || manager.WasCollected || !manager)
+                return ServerSaveRequestStatus.SaveManagerUnavailable;
+            if (manager._loadingInProgress || !SaveGameManager._setupSavePaths
+                || SaveGameManager._activeSaveGameType != SaveGameType.Multiplayer)
+                return ServerSaveRequestStatus.NotReady;
+
+            if (!DedicatedServerAutosave.TryGetInstance(out autosave)
+                || autosave is null || autosave.WasCollected || !autosave || !autosave.isActiveAndEnabled)
+                return ServerSaveRequestStatus.AutosaveUnavailable;
+            var timer = autosave._timer;
+            if (timer is null || timer.WasCollected)
+                return ServerSaveRequestStatus.AutosaveUnavailable;
+
+            // QueueAutosave also sets the initial-save flag; do not use it to bypass native readiness.
+            return autosave.IsReadyToSave() ? null : ServerSaveRequestStatus.NotReady;
+        }
+
         private static void ReportFailure(Exception error)
         {
             if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
@@ -97,7 +130,10 @@ namespace Modstoke.Sons
 
     public enum ServerSaveRequestStatus
     {
-        /// <summary>The same live controller reported a queued request after the native call returned.</summary>
+        /// <summary>
+        /// The same live controller reported a queued request after the native call returned.
+        /// From SaveNow: the immediate save returned without an exception.
+        /// </summary>
         Queued,
         /// <summary>The controller already had a queued request; no additional request was made.</summary>
         AlreadyQueued,

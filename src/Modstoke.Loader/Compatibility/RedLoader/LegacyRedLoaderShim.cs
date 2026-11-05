@@ -782,6 +782,7 @@ namespace Modstoke.Loader
                 if (skipReason != null)
                 {
                     loadReports.Add(candidate.CreateLoadReport("skipped", skipReason, 0));
+                    RecordHostLoad(candidate, "skipped", 0, skipReason);
                     continue;
                 }
 
@@ -792,23 +793,34 @@ namespace Modstoke.Loader
 
                 TryReport(() => RuntimeEntryPoint.TraceCompat("Modstoke RedLoader host loading " + candidate.AssemblyPath));
                 SonsMod loaded;
+                var timer = System.Diagnostics.Stopwatch.StartNew();
                 try
                 {
                     loaded = RedLoaderModActivation.Activate(candidate.AssemblyPath, candidate.ManifestPath);
                 }
                 catch (Exception ex)
                 {
-                    RecordLoadFailure(candidate, DescribeLoadFailure(ex), loadReports);
+                    var reason = DescribeLoadFailure(ex);
+                    RecordLoadFailure(candidate, reason, loadReports);
+                    RecordHostLoad(candidate, "failed", timer.Elapsed.TotalMilliseconds, reason);
                     TryReport(() => RuntimeEntryPoint.TraceCompat("Modstoke RedLoader host exception for " + candidate.AssemblyPath + ": " + ex));
                     continue;
                 }
 
                 hostedMods.Add(loaded);
                 loadReports.Add(candidate.CreateLoadReport("loaded", null, 1));
+                RecordHostLoad(candidate, "loaded", timer.Elapsed.TotalMilliseconds, null);
                 TryReport(() => RuntimeEntryPoint.TraceCompat("Modstoke RedLoader host loaded 1 mod type from " + candidate.AssemblyPath));
             }
 
             return RedLoaderHostResult.OpenAcai(hostedMods, candidates, loadReports);
+        }
+
+        private static void RecordHostLoad(RedLoaderCandidate candidate, string status, double loadMs, string error)
+        {
+            var id = !string.IsNullOrWhiteSpace(candidate.Id) ? candidate.Id : candidate.DisplayName;
+            HostMods.RecordLoad(id, candidate.DisplayName, candidate.Version, "redloader",
+                candidate.AssemblyPath, status, loadMs, error);
         }
 
         private static void RecordLoadFailure(RedLoaderCandidate candidate, string reason, List<object> reports)

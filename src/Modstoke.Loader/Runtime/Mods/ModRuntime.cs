@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -62,6 +63,7 @@ namespace Modstoke.Loader
                 {
                     mod.Status = "Skipped";
                     mod.Detail = candidate.Detail;
+                    RecordLoad(mod, "skipped", 0, mod.Detail);
                     continue;
                 }
 
@@ -69,9 +71,12 @@ namespace Modstoke.Loader
                 {
                     mod.Status = "Deferred";
                     mod.Detail = "Native mods require the Modstoke Unity driver; legacy native Unity support is active.";
+                    RecordLoad(mod, "deferred", 0, mod.Detail);
                     continue;
                 }
 
+                var timer = Stopwatch.StartNew();
+                string failure = null;
                 var phase = "startup validation";
                 try
                 {
@@ -110,9 +115,12 @@ namespace Modstoke.Loader
                 }
                 catch (Exception error)
                 {
+                    failure = phase + ": " + FailureMessage(error);
                     Fail(mod, phase, error);
                     Cleanup(mod);
                 }
+                timer.Stop();
+                RecordLoad(mod, failure == null ? "loaded" : "failed", timer.Elapsed.TotalMilliseconds, failure);
             }
 
             _loadCompleted = true;
@@ -303,6 +311,21 @@ namespace Modstoke.Loader
             // Plugin exceptions can override ToString or Message; reporting must not stop the next callback.
             try { return error.ToString() ?? error.GetType().FullName; }
             catch { return error.GetType().FullName; }
+        }
+
+        private static string FailureMessage(Exception error)
+        {
+            if (error is TargetInvocationException invocation && invocation.InnerException != null)
+                error = invocation.InnerException;
+            try { return error.Message ?? error.GetType().FullName; }
+            catch { return error.GetType().FullName; }
+        }
+
+        private static void RecordLoad(LoadedMod mod, string status, double loadMs, string error)
+        {
+            var candidate = mod.Candidate;
+            HostMods.RecordLoad(candidate.ModId, candidate.DisplayName, candidate.Version, "modstoke",
+                candidate.AssemblyPath, status, loadMs, error);
         }
 
         private static void Publish()

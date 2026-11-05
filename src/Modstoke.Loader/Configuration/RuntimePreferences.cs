@@ -30,11 +30,28 @@ namespace Modstoke.Loader
         {
             lock (SyncRoot)
             {
-                LoadNoLock();
+                LoadNoLock(out _);
                 ApplyNoLock();
             }
 
             LoaderConfig.RegisterOrUpdateProvider(new RuntimePreferencesProvider());
+        }
+
+        internal static bool Reload(out string detail)
+        {
+            lock (SyncRoot)
+            {
+                if (!LoadNoLock(out var error))
+                {
+                    detail = "Runtime preferences were not reloaded: " + error;
+                    return false;
+                }
+
+                ApplyNoLock();
+            }
+
+            detail = "Runtime preferences reloaded from " + SettingsPath + ".";
+            return true;
         }
 
         private static IReadOnlyList<ConfigValueSnapshot> SnapshotSettings()
@@ -152,7 +169,7 @@ namespace Modstoke.Loader
             return true;
         }
 
-        private static void LoadNoLock()
+        private static bool LoadNoLock(out string error)
         {
             try
             {
@@ -160,10 +177,14 @@ namespace Modstoke.Loader
                     out var modsMenuEnabled, out var backEnabled);
                 _modsMenuHotkeyEnabled = modsMenuEnabled;
                 _backHotkeyEnabled = backEnabled;
+                error = null;
+                return true;
             }
             catch (Exception ex)
             {
+                error = ex.Message;
                 Warn("Modstoke runtime preferences load failed; the file was left unchanged: " + ex.Message);
+                return false;
             }
         }
 

@@ -21,6 +21,11 @@ namespace RedLoader.Utils
                 var timestamp = LoggerUtils.GetTimeStamp();
                 RLog.LogWriter.WriteLine($"[{timestamp}] [INTERNAL FAILURE] {msg}");
                 string caption = "INTERNAL FAILURE!";
+                if (LoaderEnvironment.IsDedicatedServer)
+                {
+                    RLog.Error($"[INTERNAL FAILURE] {msg}");
+                    return;
+                }
 
                 var result = MessageBox(0, msg, caption, 0);
 
