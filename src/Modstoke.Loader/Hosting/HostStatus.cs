@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Alex Cooper
 
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -443,6 +444,7 @@ namespace Modstoke.Loader
                 ["lastSaveDetail"] = save?.Detail,
                 ["pendingChanges"] = Read(() => JsonSerializer.SerializeToNode(HostConfig.PendingChanges(), HostOutput.Json))
                     ?? new JsonArray(),
+                ["pendingMods"] = Read(PendingMods) ?? new JsonArray(),
                 ["integrity"] = Read(Integrity),
                 ["configs"] = Read(Configs) ?? new JsonArray(),
                 ["files"] = new JsonObject
@@ -533,6 +535,47 @@ namespace Modstoke.Loader
                 });
             return configs;
         }
+
+        // Mod installs and removals the native installer queued while the server ran; it applies them before the next
+        // start. The Loader only reports them and never installs anything itself.
+        private static JsonNode PendingMods()
+        {
+            var pending = new JsonArray();
+            var directory = Path.Combine(LoaderPaths.RuntimeDirectory, "pending");
+            if (!Directory.Exists(directory))
+                return pending;
+            var files = Directory.GetFiles(directory, "*.json");
+            Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+            foreach (var file in files)
+            {
+                if (pending.Count >= 64)
+                    break;
+                try
+                {
+                    if (new FileInfo(file).Length > 64 * 1024)
+                        continue;
+                    if (JsonNode.Parse(File.ReadAllBytes(file)) is not JsonObject request
+                        || request["kind"]?.GetValue<string>() != "modstoke.pending-native-change")
+                        continue;
+                    var entry = new JsonObject();
+                    foreach (var key in PendingModFields)
+                    {
+                        if (request[key] is JsonValue value)
+                            entry[key] = value.DeepClone();
+                    }
+                    pending.Add((JsonNode)entry);
+                }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException
+                    or JsonException or InvalidOperationException or FormatException)
+                {
+                    // A request still being written, or one that is not ours; the next write tries again.
+                }
+            }
+            return pending;
+        }
+
+        private static readonly string[] PendingModFields =
+            { "id", "action", "modId", "version", "archiveSha256", "queuedUtc", "requestedBy" };
 
         private static JsonNode Read(Func<JsonNode> read)
         {

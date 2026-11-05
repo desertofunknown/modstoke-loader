@@ -122,6 +122,17 @@ prints:
 @modstoke {"event":"ready","ts":"...","protocol":1,"loader":"...","game":"...","pid":1234,"players":0,"maxPlayers":8}
 ```
 
+The status file stops being rewritten once the server quits, so treat the
+server as running while `updatedAt` is less than 15 s old, and as stopped
+after that. The host agent's own view of the process wins when it has one.
+`pid` is the Windows process id inside Wine, not a Linux pid.
+
+`pendingMods` lists the mod installs and removals the native installer
+queued in `Modstoke/Runtime/pending/` while the server ran: `id`, `action`
+(`install` or `remove`), `modId`, `version`, `archiveSha256`, `queuedUtc` and
+`requestedBy`. The installer applies them before the next start; the Loader
+only reports them.
+
 ## Events
 
 | Event | Fields |
