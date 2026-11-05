@@ -125,6 +125,8 @@ namespace Modstoke.Loader
                     players = capture.Players,
                     maxPlayers = capture.MaxPlayers
                 });
+                if (Host.IsServer)
+                    HostMods.GenerateOnReady();
                 MarkChanged();
             }
         }

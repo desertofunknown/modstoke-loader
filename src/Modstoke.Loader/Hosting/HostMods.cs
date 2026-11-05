@@ -98,6 +98,10 @@ namespace Modstoke.Loader
             });
         }
 
+        // Hosting applies mod changes between stop and start, so the file is current once the server is ready.
+        internal static void GenerateOnReady() =>
+            RunRequirements(new ConsoleSubmission("requirements", false, "generate", ConsoleOrigin.Other));
+
         internal static void RunRequirements(ConsoleSubmission request)
         {
             if (!TryReadName(request.Arguments, out var name))

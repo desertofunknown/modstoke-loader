@@ -112,7 +112,7 @@ All paths are under the game folder.
 | `Modstoke/Runtime/host-status.json` | Current state, versions, uptime, performance, players, memory, mod load results, last save, pending config changes, file integrity and TCP state. Rewritten atomically every 2 s and soon after any change, and at least every 5 s while the game thread is busy loading or saving. |
 | `Modstoke/Runtime/events.ndjson` | The event stream, one JSON object per line without the prefix. Rotates once to `events.previous.ndjson` at 4 MiB. |
 | `Modstoke/Runtime/crash-yyyyMMddTHHmmssZ.json` | Written when an unhandled exception takes the server down: the exception, the mod it came from if known, recent Unity errors and the last 200 log lines. The newest 10 are kept. |
-| `Modstoke/Runtime/server-requirements.json` | Written by `requirements generate`. |
+| `Modstoke/Runtime/server-requirements.json` | The required-mods list built from the installed mods, rewritten each time a dedicated server becomes ready and by `requirements generate`. Admin enforces its own copy (`RequiredModsFile`); this one is for listings and the join flow. |
 
 `state` in the status file is one of `starting`, `loading`, `ready`, `saving`,
 `stopping` or `crashed`. The first time it reaches `ready` the server also
