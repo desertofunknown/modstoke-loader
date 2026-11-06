@@ -94,6 +94,7 @@ namespace Modstoke.Loader
             else
                 CheckAbandoned();
 
+            TrackPlayers();
             var stop = _stop;
             if (stop != null && stop.ExitCode < 0)
                 BeginWaitingStopSave(stop);
@@ -159,10 +160,16 @@ namespace Modstoke.Loader
             stop.Save = running ?? new Save(null, "stop");
             if (running != null)
                 return;
-            // A stop right after start can reach the world before the game allows saving; wait for it rather than
-            // quit unsaved. The wait plus the save timeout stays inside the stop watchdog.
+            // The game refuses saves for a while after a world loads. With nobody having joined since then, the
+            // world is the one on disk, so the stop needs no save. Otherwise wait for the gate rather than quit
+            // unsaved; the wait plus the save timeout stays inside the stop watchdog.
             if (ServerSaves.SaveNotReadyYet())
             {
+                if (!_playersSinceLoad)
+                {
+                    EndUnchanged(stop);
+                    return;
+                }
                 stop.SaveWaitUntil = Environment.TickCount64 + StopSaveWaitMs;
                 RuntimeEntryPoint.LogSource?.LogMessage("Waiting for the world to be ready to save before stopping.");
                 return;
@@ -171,6 +178,8 @@ namespace Modstoke.Loader
         }
 
         private const long StopSaveWaitMs = 15_000;
+        private static bool _playersSinceLoad;
+        private static long _nextPlayerCheck;
 
         private static void BeginWaitingStopSave(Stop stop)
         {
@@ -180,6 +189,25 @@ namespace Modstoke.Loader
                 return;
             stop.SaveWaitUntil = 0;
             Begin(stop.Save);
+        }
+
+        private static void EndUnchanged(Stop stop)
+        {
+            stop.Save = null;
+            EndStop(stop, null, "No player has joined since the world loaded, so there is nothing to save.", "unchanged");
+        }
+
+        // Once a second: has anyone joined since the current world loaded?
+        private static void TrackPlayers()
+        {
+            var now = Environment.TickCount64;
+            if (now < _nextPlayerCheck)
+                return;
+            _nextPlayerCheck = now + 1000;
+            if (!WorldActive())
+                _playersSinceLoad = false;
+            else if (!_playersSinceLoad && ServerSessions.Sessions.Count > 0)
+                _playersSinceLoad = true;
         }
 
         private static void Begin(Save save)
@@ -448,7 +476,7 @@ namespace Modstoke.Loader
                 EndStop(stop, outcome.Ok, outcome.Detail);
         }
 
-        private static void EndStop(Stop stop, bool? saved, string detail)
+        private static void EndStop(Stop stop, bool? saved, string detail, string reason = null)
         {
             stop.ExitCode = saved == false ? SaveFailedExitCode : SavedExitCode;
             stop.FinishedTicks = Environment.TickCount64;
@@ -459,13 +487,20 @@ namespace Modstoke.Loader
                 _ => detail + " Stopping the server."
             };
             // JsonObject keeps "saved": null, which the serializer options would drop.
-            HostCommands.Respond(stop.Request, true, human, new JsonObject
+            var body = new JsonObject
             {
                 ["saved"] = saved,
                 ["exitCode"] = stop.ExitCode,
                 ["saveDetail"] = detail
-            });
-            HostEvents.Emit("stop", new JsonObject { ["exitCode"] = stop.ExitCode, ["saved"] = saved });
+            };
+            var stopped = new JsonObject { ["exitCode"] = stop.ExitCode, ["saved"] = saved };
+            if (reason != null)
+            {
+                body["reason"] = reason;
+                stopped["reason"] = reason;
+            }
+            HostCommands.Respond(stop.Request, true, human, body);
+            HostEvents.Emit("stop", stopped);
         }
 
         // Gives the writers a moment to put the reply and events out before Unity starts tearing down.

@@ -109,6 +109,11 @@ replies, emits `stop`, and quits with:
 | 3 | The stop watchdog had to end the process. It emits a last `stop` event with `"watchdog":true` first. |
 | 70 | An unhandled exception while the process was already going down. |
 
+The game refuses saves for a while after a world loads. A `stop` in that window
+exits 0 with `"saved":null,"reason":"unchanged"` when nobody has joined since the
+load, because the world is still the one on disk; otherwise it waits up to 15 s
+for the game to allow the save.
+
 The save times out after 30 s. A watchdog ends the process 50 s after `stop`
 or 15 s after the game starts quitting, whichever is first, so a stop always
 finishes inside Pelican's 60 s grace period.
