@@ -41,6 +41,9 @@ namespace Modstoke.Loader
             {
                 if (ServerWorld.TryReadPopulation(out var population, out _))
                     max = population.RuntimeMaximumPlayers > 0 ? population.RuntimeMaximumPlayers : population.ReplicatedMaximumPlayers;
+                // Before the game applies its limit, report the configured one, as host-status.json does.
+                if (max is null or <= 0 && HostWorld.ConfiguredMaxPlayers() is var configured && configured > 0)
+                    max = configured;
 
                 foreach (var session in ServerSessions.Sessions)
                 {
