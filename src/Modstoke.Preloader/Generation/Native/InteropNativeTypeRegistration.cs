@@ -92,8 +92,12 @@ namespace Modstoke.Preloader
             {
                 if (error is TargetInvocationException invocation && invocation.InnerException != null)
                     error = invocation.InnerException;
-                InteropGenerationDiagnostics.Log(LogLevel.Warning,
-                    $"Early {label} publication did not complete; no late engine-cache repair was attempted.", error);
+                if (error is NotSupportedException)
+                    InteropGenerationDiagnostics.Log(LogLevel.Info,
+                        $"Early {label} publication is not available for this player build ({error.Message}); the engine cache is left as it is.");
+                else
+                    InteropGenerationDiagnostics.Log(LogLevel.Warning,
+                        $"Early {label} publication did not complete; no late engine-cache repair was attempted.", error);
                 return new Publication("failed", InteropGenerationDiagnostics.Message(error));
             }
         }

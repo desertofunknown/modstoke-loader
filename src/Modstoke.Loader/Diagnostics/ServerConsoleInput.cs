@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using Modstoke.Diagnostics;
@@ -32,8 +33,11 @@ namespace Modstoke.Loader
         {
             try
             {
-                // Hosting panels write UTF-8 regardless of the Windows console code page.
-                var input = Console.IsInputRedirected
+                // Hosting panels write UTF-8 regardless of the Windows console code page. Under Wine a panel's TTY
+                // reaches us as a console in line mode, which only ends a line on CR; panels send LF, so the
+                // console is switched to raw input and read as a byte stream.
+                var raw = !Console.IsInputRedirected && RunningUnderWine() && TryUseRawConsoleInput();
+                var input = Console.IsInputRedirected || raw
                     ? new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false))
                     : Console.In;
                 RuntimeEntryPoint.LogSource?.LogMessage("Server console ready. Type help for Modstoke commands.");
@@ -102,6 +106,41 @@ namespace Modstoke.Loader
                     tooLong = true;
             }
         }
+
+        private static bool RunningUnderWine()
+        {
+            try
+            {
+                return NativeLibrary.TryLoad("ntdll.dll", out var ntdll) && NativeLibrary.TryGetExport(ntdll, "wine_get_version", out _);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private static bool TryUseRawConsoleInput()
+        {
+            const uint EnableLineInput = 0x0002, EnableEchoInput = 0x0004;
+            var handle = GetStdHandle(StdInputHandle);
+            if (handle == IntPtr.Zero || handle == new IntPtr(-1) || !GetConsoleMode(handle, out var mode))
+                return false;
+            if (!SetConsoleMode(handle, mode & ~(EnableLineInput | EnableEchoInput)))
+                return false;
+            RuntimeEntryPoint.LogSource?.LogInfo("Running under Wine: server console input reads LF-terminated lines.");
+            return true;
+        }
+
+        private const int StdInputHandle = -10;
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr GetStdHandle(int handle);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GetConsoleMode(IntPtr handle, out uint mode);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetConsoleMode(IntPtr handle, uint mode);
 
         private static string FirstWord(string text)
         {

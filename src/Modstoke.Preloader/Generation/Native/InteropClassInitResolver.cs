@@ -275,6 +275,13 @@ namespace Modstoke.Preloader
                 InteropGenerationDiagnostics.Log(LogLevel.Info,
                     "Resolved Class::Init at GameAssembly+0x508B80 using the matched native export call and code hashes.");
             }
+            catch (NotSupportedException error)
+            {
+                // An expected mismatch, for example on the dedicated server's player build; the fallback is safe.
+                InteropGenerationDiagnostics.Log(LogLevel.Info,
+                    "Direct Class::Init resolution is not available for this build (" + error.Message
+                    + "); using Il2CppInterop's original resolver.");
+            }
             catch (Exception error)
             {
                 InteropGenerationDiagnostics.Log(LogLevel.Warning,
