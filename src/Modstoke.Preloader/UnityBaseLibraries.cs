@@ -198,7 +198,8 @@ namespace Modstoke.Preloader
 
         private static void RejectReparsePointAncestors(string path)
         {
-            if (string.IsNullOrEmpty(path))
+            // A volume root is trusted: Wine maps every drive letter through a symlink in dosdevices.
+            if (string.IsNullOrEmpty(path) || IsVolumeRoot(path))
                 return;
 
             RejectReparsePointAncestors(Path.GetDirectoryName(path));
@@ -208,6 +209,13 @@ namespace Modstoke.Preloader
             }
             catch (FileNotFoundException) { }
             catch (DirectoryNotFoundException) { }
+        }
+
+        private static bool IsVolumeRoot(string path)
+        {
+            var root = Path.GetPathRoot(path);
+            return !string.IsNullOrEmpty(root) && string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)),
+                Path.TrimEndingDirectorySeparator(root), StringComparison.OrdinalIgnoreCase);
         }
 
         private static void RejectReparsePoint(string path, FileAttributes attributes)
