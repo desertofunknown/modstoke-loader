@@ -34,9 +34,13 @@ namespace Modstoke.Bootstrap
                     !string.Equals(Path.GetDirectoryName(candidate), captureRoot, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException("Trace session must be an existing direct child of NativeAllocationCaptures.");
 
-                // Do not let junctions or symbolic links redirect the validated capture path. The volume root is
-                // trusted, since Wine maps every drive letter through a symlink.
-                for (var directory = new DirectoryInfo(candidate); directory?.Parent != null; directory = directory.Parent)
+                // Do not let junctions or symbolic links redirect the validated capture path below the game folder.
+                // The host owns everything above it; under Wine, drive letters and volume mounts report as links.
+                var trustedRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(gameRoot));
+                for (var directory = new DirectoryInfo(candidate);
+                     directory?.Parent != null && !string.Equals(Path.TrimEndingDirectorySeparator(directory.FullName), trustedRoot,
+                         StringComparison.OrdinalIgnoreCase);
+                     directory = directory.Parent)
                 {
                     if ((directory.Attributes & FileAttributes.ReparsePoint) != 0)
                         throw new InvalidOperationException("Trace session path must not contain reparse points.");

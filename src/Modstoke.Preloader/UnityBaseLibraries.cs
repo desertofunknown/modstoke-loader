@@ -196,27 +196,41 @@ namespace Modstoke.Preloader
             return string.Equals(Path.GetExtension(path), ".dll", StringComparison.OrdinalIgnoreCase);
         }
 
+        // Links are refused only below the game folder or the temp folder. Everything above them is the host's
+        // layout, which a mod cannot plant: under Wine, drive letters and container volume mounts both report as
+        // reparse points.
         private static void RejectReparsePointAncestors(string path)
         {
-            // A volume root is trusted: Wine maps every drive letter through a symlink in dosdevices.
-            if (string.IsNullOrEmpty(path) || IsVolumeRoot(path))
+            if (string.IsNullOrEmpty(path))
                 return;
-
-            RejectReparsePointAncestors(Path.GetDirectoryName(path));
-            try
+            var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+            var trusted = TrustedAncestor(full);
+            for (var current = full; current != null && !SamePath(current, trusted); current = Path.GetDirectoryName(current))
             {
-                RejectReparsePoint(path, File.GetAttributes(path));
+                try
+                {
+                    RejectReparsePoint(current, File.GetAttributes(current));
+                }
+                catch (FileNotFoundException) { }
+                catch (DirectoryNotFoundException) { }
             }
-            catch (FileNotFoundException) { }
-            catch (DirectoryNotFoundException) { }
         }
 
-        private static bool IsVolumeRoot(string path)
+        private static string TrustedAncestor(string path)
         {
-            var root = Path.GetPathRoot(path);
-            return !string.IsNullOrEmpty(root) && string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)),
-                Path.TrimEndingDirectorySeparator(root), StringComparison.OrdinalIgnoreCase);
+            foreach (var root in new[] { BepInEx.Paths.GameRootPath, Path.GetTempPath() })
+            {
+                if (string.IsNullOrEmpty(root))
+                    continue;
+                var trusted = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+                if (SamePath(path, trusted) || path.StartsWith(trusted + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    return trusted;
+            }
+            return Path.TrimEndingDirectorySeparator(Path.GetPathRoot(path) ?? "");
         }
+
+        private static bool SamePath(string left, string right) =>
+            string.Equals(Path.TrimEndingDirectorySeparator(left), right, StringComparison.OrdinalIgnoreCase);
 
         private static void RejectReparsePoint(string path, FileAttributes attributes)
         {
