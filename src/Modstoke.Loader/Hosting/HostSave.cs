@@ -95,6 +95,8 @@ namespace Modstoke.Loader
                 CheckAbandoned();
 
             var stop = _stop;
+            if (stop != null && stop.ExitCode < 0)
+                BeginWaitingStopSave(stop);
             if (stop != null && stop.ExitCode >= 0 && !stop.Quit)
                 TryQuit(stop);
         }
@@ -155,8 +157,29 @@ namespace Modstoke.Loader
                 running = _save;
             // A save already in flight finishes the stop too.
             stop.Save = running ?? new Save(null, "stop");
-            if (running == null)
-                Begin(stop.Save);
+            if (running != null)
+                return;
+            // A stop right after start can reach the world before the game allows saving; wait for it rather than
+            // quit unsaved. The wait plus the save timeout stays inside the stop watchdog.
+            if (ServerSaves.SaveNotReadyYet())
+            {
+                stop.SaveWaitUntil = Environment.TickCount64 + StopSaveWaitMs;
+                RuntimeEntryPoint.LogSource?.LogMessage("Waiting for the world to be ready to save before stopping.");
+                return;
+            }
+            Begin(stop.Save);
+        }
+
+        private const long StopSaveWaitMs = 15_000;
+
+        private static void BeginWaitingStopSave(Stop stop)
+        {
+            if (stop.SaveWaitUntil == 0 || stop.Save == null)
+                return;
+            if (ServerSaves.SaveNotReadyYet() && Environment.TickCount64 < stop.SaveWaitUntil)
+                return;
+            stop.SaveWaitUntil = 0;
+            Begin(stop.Save);
         }
 
         private static void Begin(Save save)
@@ -560,6 +583,8 @@ namespace Modstoke.Loader
             internal int ExitCode { get; set; } = -1;
             internal long FinishedTicks { get; set; }
             internal bool Quit { get; set; }
+            // Set while the stop waits for a just-started world to become saveable.
+            internal long SaveWaitUntil { get; set; }
         }
     }
 }

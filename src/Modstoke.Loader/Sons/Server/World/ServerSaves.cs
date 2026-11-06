@@ -83,6 +83,19 @@ namespace Modstoke.Sons
             }
         }
 
+        /// <summary>True when <see cref="SaveNow"/> would only be refused because the world is still settling.</summary>
+        internal static bool SaveNotReadyYet()
+        {
+            try
+            {
+                return Refusal(out _) is ServerSaveRequestStatus.NotReady or ServerSaveRequestStatus.AutosaveUnavailable;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         // Null when a save may be requested. Exceptions are left to the caller.
         private static ServerSaveRequestStatus? Refusal(out DedicatedServerAutosave autosave)
         {
