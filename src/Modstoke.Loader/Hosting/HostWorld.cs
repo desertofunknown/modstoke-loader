@@ -321,6 +321,20 @@ namespace Modstoke.Loader
             return double.IsFinite(speed) ? Math.Round(speed, 4) : null;
         }
 
+        /// <summary>MaxPlayers from the parsed dedicatedserver.cfg, or 0. Game thread only.</summary>
+        internal static int ConfiguredMaxPlayers()
+        {
+            try
+            {
+                var config = Config();
+                return config == null ? 0 : Math.Max(0, config.MaxPlayers);
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
+        }
+
         // The game's parsed dedicatedserver.cfg. The cached instance is read so a missing one is never loaded here.
         private static ServerDedicatedConfig Config()
         {

@@ -323,6 +323,9 @@ namespace Modstoke.Loader
                     _maxPlayers = population.RuntimeMaximumPlayers;
             }
             catch (Exception) { }
+            // The runtime limit reads 0 until the game applies it; the config's value is what the server lists.
+            if (_maxPlayers <= 0 && Host.IsServer)
+                _maxPlayers = HostWorld.ConfiguredMaxPlayers();
             try
             {
                 if (BoltNetwork.isRunning)
