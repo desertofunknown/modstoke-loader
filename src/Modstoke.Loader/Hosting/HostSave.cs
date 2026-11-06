@@ -12,9 +12,9 @@ using Modstoke.Sons;
 namespace Modstoke.Loader
 {
     /// <summary>
-    /// The host "save" and "stop" commands. A save is answered once the game's save has finished and
-    /// SaveData.zip was rewritten. Stop saves, waits for its replies to be written and quits, and a
-    /// watchdog ends the process if the quit hangs.
+    /// The host "save" and "stop" commands, and the "saved" and "save-failed" events for every world save.
+    /// A save is answered once the game's save has finished and SaveData.zip was rewritten. Stop saves,
+    /// waits for its replies to be written and quits, and a watchdog ends the process if the quit hangs.
     /// </summary>
     internal static class HostSave
     {
@@ -39,13 +39,38 @@ namespace Modstoke.Loader
         private static bool _subscribed;
         private static long _stopDeadline;
         private static long _deadline;
+        private static LastRecord _last;
 
         internal static bool InProgress
         {
             get { lock (Sync) return _save != null; }
         }
 
+        /// <summary>True while a host save waits for its result or the game is inside a save.</summary>
+        internal static bool Saving
+        {
+            get
+            {
+                lock (Sync)
+                    return _save != null || (_beforeTicks != 0 && Environment.TickCount64 - _beforeTicks < SaveTimeoutMs);
+            }
+        }
+
         internal static bool Stopping => Volatile.Read(ref _stop) != null;
+
+        /// <summary>The last finished or failed world save: at (UTC ms), slot, ok, durationMs, sizeBytes. Safe from any thread.</summary>
+        internal static JsonObject LastSave()
+        {
+            var last = Volatile.Read(ref _last);
+            return last == null ? null : new JsonObject
+            {
+                ["at"] = last.At.ToUnixTimeMilliseconds(),
+                ["slot"] = last.Slot,
+                ["ok"] = last.Ok,
+                ["durationMs"] = last.DurationMs,
+                ["sizeBytes"] = last.SizeBytes
+            };
+        }
 
         internal static void Initialize()
         {
@@ -66,6 +91,8 @@ namespace Modstoke.Loader
             }
             if (save != null)
                 Progress(save, outcome);
+            else
+                CheckAbandoned();
 
             var stop = _stop;
             if (stop != null && stop.ExitCode >= 0 && !stop.Quit)
@@ -173,7 +200,11 @@ namespace Modstoke.Loader
                 HostStatus.SetSaving(false);
                 string last;
                 lock (Sync)
+                {
                     last = save.LastDetail;
+                    // A game save left open belongs to this one, which reports it.
+                    _beforeTicks = 0;
+                }
                 Fail(save, "timeout", "The save did not finish within " + SaveTimeoutMs / 1000 + " seconds."
                     + (last == null ? "" : " " + last), true);
                 return;
@@ -191,7 +222,26 @@ namespace Modstoke.Loader
             }
             var directory = KnownDirectory();
             var at = DateTimeOffset.UtcNow;
-            Task.Run(() => Verify(save, save.Source, directory, save.StartedAt, at, elapsed));
+            var day = HostWorld.Day;
+            Task.Run(() => Verify(save, save.Source, directory, save.StartedAt, at, elapsed, day));
+        }
+
+        // The game's save runs inside one call, so a Before still open after the save timeout means it threw.
+        private static void CheckAbandoned()
+        {
+            string directory;
+            long elapsed;
+            lock (Sync)
+            {
+                elapsed = Environment.TickCount64 - _beforeTicks;
+                if (_beforeTicks == 0 || elapsed < SaveTimeoutMs)
+                    return;
+                _beforeTicks = 0;
+                directory = _directory;
+            }
+            HostStatus.SetSaving(false);
+            Record("autosave", new Outcome(false, DateTimeOffset.UtcNow, directory, elapsed,
+                "The game's save did not finish. See the log."), "failed");
         }
 
         // Runs inside the game's save, so it only copies values and queues the archive check.
@@ -228,15 +278,16 @@ namespace Modstoke.Loader
                 durationMs = _beforeTicks != 0 ? Environment.TickCount64 - _beforeTicks : 0;
                 _beforeTicks = 0;
             }
-            var source = save?.Source ?? "auto";
+            var source = save?.Source ?? "autosave";
             var at = evt.TimestampUtc;
-            Task.Run(() => Verify(save, source, directory, since, at, durationMs));
+            var day = HostWorld.Day;
+            Task.Run(() => Verify(save, source, directory, since, at, durationMs, day));
         }
 
         private static void Verify(Save save, string source, string directory, DateTimeOffset since,
-            DateTimeOffset at, long durationMs)
+            DateTimeOffset at, long durationMs, int? day)
         {
-            var outcome = Check(directory, since, at, durationMs);
+            var outcome = Check(directory, since, at, durationMs) with { Day = day };
             if (save != null && !SaveLifecycle.State.HarmonyPatchesInstalled)
             {
                 // Without the hooks the game may still be writing the archive, so it has to pass twice
@@ -254,7 +305,9 @@ namespace Modstoke.Loader
                     }
                 }
             }
-            Record(source, outcome);
+            if (outcome.Ok)
+                outcome = outcome with { Slot = HostWorld.SlotOf(directory), SizeBytes = HostWorld.DirectorySize(directory) };
+            Record(source, outcome, "failed");
             if (save != null)
                 lock (Sync)
                     save.Outcome = outcome;
@@ -301,17 +354,31 @@ namespace Modstoke.Loader
             return new Outcome(ok, at, directory, durationMs, detail);
         }
 
-        private static void Record(string source, Outcome outcome)
+        // source is the event's reason: autosave, command or stop. Safe from any thread.
+        private static void Record(string source, Outcome outcome, string error)
         {
+            var slot = outcome.Slot ?? HostWorld.SlotOf(outcome.Directory ?? KnownDirectory()) ?? HostWorld.ActiveSlot;
             HostStatus.RecordSave(outcome.At, outcome.Ok, outcome.Detail);
-            HostEvents.Emit("save", new
-            {
-                ok = outcome.Ok,
-                source,
-                directory = outcome.Directory,
-                durationMs = outcome.DurationMs,
-                detail = outcome.Detail
-            });
+            Volatile.Write(ref _last, new LastRecord(outcome.At, slot, outcome.Ok, outcome.DurationMs, outcome.SizeBytes));
+            // JsonObject keeps the nulls, so every field is always present.
+            if (outcome.Ok)
+                HostEvents.Emit("saved", new JsonObject
+                {
+                    ["slot"] = slot,
+                    ["day"] = outcome.Day,
+                    ["sizeBytes"] = outcome.SizeBytes,
+                    ["durationMs"] = outcome.DurationMs,
+                    ["reason"] = source,
+                    ["path"] = HostWorld.GamePath(outcome.Directory)
+                });
+            else
+                HostEvents.Emit("save-failed", new JsonObject
+                {
+                    ["slot"] = slot,
+                    ["reason"] = source,
+                    ["error"] = error ?? "failed",
+                    ["detail"] = outcome.Detail
+                });
         }
 
         private static void Fail(Save save, string error, string detail, bool record)
@@ -319,7 +386,7 @@ namespace Modstoke.Loader
             var outcome = new Outcome(false, DateTimeOffset.UtcNow, null,
                 Environment.TickCount64 - save.StartedTicks, detail);
             if (record)
-                Record(save.Source, outcome);
+                Record(save.Source, outcome, error);
             Finish(save, outcome, error);
         }
 
@@ -334,15 +401,22 @@ namespace Modstoke.Loader
             if (save.Request != null)
             {
                 if (outcome.Ok)
+                {
+                    var path = HostWorld.GamePath(outcome.Directory);
                     HostCommands.Respond(save.Request, true,
-                        "World saved to " + outcome.Directory + " in " + outcome.DurationMs + " ms.",
-                        new
+                        "World saved to " + path + " in " + outcome.DurationMs + " ms.",
+                        new JsonObject
                         {
-                            saved = true,
-                            at = HostOutput.Utc(outcome.At),
-                            directory = outcome.Directory,
-                            durationMs = outcome.DurationMs
+                            ["saved"] = true,
+                            ["at"] = HostOutput.Utc(outcome.At),
+                            ["slot"] = outcome.Slot,
+                            ["day"] = outcome.Day,
+                            ["path"] = path,
+                            ["directory"] = outcome.Directory,
+                            ["sizeBytes"] = outcome.SizeBytes,
+                            ["durationMs"] = outcome.DurationMs
                         });
+                }
                 else
                     HostCommands.Respond(save.Request, false, outcome.Detail, error: error);
             }
@@ -471,7 +545,11 @@ namespace Modstoke.Loader
             internal Outcome Outcome { get; set; }
         }
 
-        private sealed record Outcome(bool Ok, DateTimeOffset At, string Directory, long DurationMs, string Detail);
+        // Slot and SizeBytes are filled in for a verified save, Day where the clock was read.
+        private sealed record Outcome(bool Ok, DateTimeOffset At, string Directory, long DurationMs, string Detail,
+            string Slot = null, int? Day = null, long? SizeBytes = null);
+
+        private sealed record LastRecord(DateTimeOffset At, string Slot, bool Ok, long DurationMs, long? SizeBytes);
 
         private sealed class Stop
         {

@@ -72,18 +72,28 @@ should be passed through to the operator as is.
 | --- | --- |
 | `status` | The host status object, the same as `host-status.json`. |
 | `version` | `protocol`, `loader`, `game`, `runtime`. |
-| `players` | `count`, `max` and `players` with name, steamId, ping, position, life state and movement flags. Mods can add fields. |
-| `mods` | One row per mod: id, name, version, loader (`modstoke`, `redloader`, `bepinex`), status, load time, error, SHA-256 and client requirement. |
+| `players` | `count`, `max` and `players`, each with `sessionId`, `steamId`, `name`, `clientKind` (`modstoke`, `vanilla` or `unknown`), `life` (`alive`, `downed`, `dead`), `pos` {x,y,z}, `area` (always null for now), `joinedAt` (UTC ms), `pingMs`, `role`, `flags` {gliding, inCave, inWater, inVehicle, onZipline} and the raw `lifeState`. Mods can add fields. |
+| `mods` | One row per mod: id, name, version, author, description, minLoaderVersion, loader (`modstoke`, `redloader`, `bepinex`), status, load time, error, SHA-256 and client requirement. |
 | `requirements generate [--name <text>]` | Writes `Modstoke/Runtime/server-requirements.json` and returns it. |
-| `save` | `saved`, `at`, `directory`, `durationMs`. |
+| `save` | `saved`, `at`, `slot`, `day`, `path` (relative to the game folder when the save is inside it), `directory`, `sizeBytes`, `durationMs`. |
 | `stop [--no-save]` | `saved`, `exitCode`, `saveDetail`. Sent before the game quits. |
+| `saves` | `saves` with `id`, `kind` (`multiplayer` or `singleplayer`), `inGameDay`, `lastModified` (UTC ms), `sizeBytes` and `isActive`, newest first; `skipped` slots with a reason. Read-only. |
+| `broadcast <text>` | Sends one line of chat from the server to every player: `recipients`, `failed`. At most 512 characters, no `<` or `>`. |
+| `perf [--seconds N]` | Times each mod's per-frame work for N seconds (default 10, at most 60) and replies when done: `frames`, `frameMs`, and per mod `msPerFrame`, `maxFrameMs`, `calls`, `share`, `hooks` (game methods it patches) and its top methods. `notCovered` says what is not measured. One session at a time. |
 | `config check` | Each known config file with its path, format, reload mode and whether it parses. |
+| `config get` | The parsed `dedicatedserver.cfg` as `settings`, with the password masked and `passwordSet`; `restartRequired` lists every key, since the server reads it only at startup. |
 | `reload` | `applied` and `restartRequired` config ids. |
 
 `status` and `mods` without `#<id>` or `--json` print the usual human
-summary. `players`, `save` and `stop` exist only on a dedicated server.
-`save`, `stop` and `reload` are accepted from the server console, the TCP port
-and the desktop console, not from the in-game console.
+summary. `players`, `save`, `stop`, `saves` and `broadcast` exist only on a
+dedicated server. `save`, `stop`, `reload` and `broadcast` are accepted from
+the server console, the TCP port and the desktop console, not from the in-game
+console.
+
+A native mod may set `description` and `minLoaderVersion` in its manifest. A
+mod whose `minLoaderVersion` is newer than the Loader is not loaded
+(`loader-too-old`). A minimum without a prerelease tag ignores the Loader's own
+tag, so `0.4.2` accepts `0.4.2-net11-preview`.
 
 `help` lists every command, including those added by mods.
 
@@ -109,7 +119,7 @@ All paths are under the game folder.
 
 | Path | Contents |
 | --- | --- |
-| `Modstoke/Runtime/host-status.json` | Current state, versions, uptime, performance, players, memory, mod load results, last save, pending config changes, file integrity and TCP state. Rewritten atomically every 2 s and soon after any change, and at least every 5 s while the game thread is busy loading or saving. |
+| `Modstoke/Runtime/host-status.json` | Current state, versions, uptime, performance, players, memory, mod load results, last save, pending config changes, file integrity and TCP state. On a dedicated server, `world` holds `activeSlot`, `inGameDay` (0 on the first day), `timeOfDay` (game minutes 0-1439), `dayStartedAt` (UTC ms), `dayCycleWhenEmpty`, `clockRunning` and `saving`; `lastSave` holds `at` (UTC ms), `slot`, `ok`, `durationMs` and `sizeBytes`. `frames` covers the last 10 s: `fps`, `frameMs` {avg, p95, max}, `tickLag` (frames over twice the median or 100 ms) and `gc` for the managed runtime. `modImpact` is the last `perf` result. Rewritten atomically every 2 s and soon after any change, and at least every 5 s while the game thread is busy loading or saving. |
 | `Modstoke/Runtime/events.ndjson` | The event stream, one JSON object per line without the prefix. Rotates once to `events.previous.ndjson` at 4 MiB. |
 | `Modstoke/Runtime/crash-yyyyMMddTHHmmssZ.json` | Written when an unhandled exception takes the server down: the exception, the mod it came from if known, recent Unity errors and the last 200 log lines. The newest 10 are kept. |
 | `Modstoke/Runtime/server-requirements.json` | The required-mods list built from the installed mods, rewritten each time a dedicated server becomes ready and by `requirements generate`. Admin enforces its own copy (`RequiredModsFile`); this one is for listings and the join flow. |
@@ -140,9 +150,12 @@ only reports them.
 | `ready` | `protocol`, `loader`, `game`, `pid`, `players`, `maxPlayers` |
 | `stopping` | `reason` |
 | `stop` | `exitCode`, `saved` |
-| `join`, `leave` | `sessionId`, `name`, `steamId` |
-| `chat` | `channel` (`game` or `command`), `sessionId`, `name`, `steamId`, `text` |
-| `save` | `ok`, `source` (`command`, `stop` or `auto`), `directory`, `durationMs`, `detail` |
+| `join` | `sessionId`, `name`, `steamId`, `clientKind`, `joinedAt` (UTC ms). Sent once the client kind is known, at most 20 s after connecting, and always before that player's chat or leave. |
+| `leave` | `sessionId`, `name`, `steamId`, `reason` (`quit`, `timeout`, `kick`, `ban` or `unknown`; a client crash shows as `timeout`), `sessionMs` |
+| `chat` | `channel` (`game`, `command`, or `server` for `broadcast`), `sessionId`, `name`, `steamId`, `text` |
+| `saved` | `slot`, `day`, `sizeBytes`, `durationMs`, `reason` (`autosave`, `command` or `stop`), `path` |
+| `save-failed` | `slot`, `reason`, `error` (`failed`, `timeout`, `refused`), `detail`. Also sent when a game save starts and has not finished after 30 s. |
+| `day` | `slot`, `day`, `at` (UTC ms), when the in-game day advances |
 | `mod-error` | `id`, `name`, `loader`, `error` |
 | `integrity` | `status`, `mismatches` |
 | `crash` | `file`, `exceptionType`, `message`, `mod` |

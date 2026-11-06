@@ -338,6 +338,8 @@ namespace Modstoke.Loader
                 ?? ReadManifestValue(manifest, "lifecycle_hooks")
                 ?? ReadManifestValue(manifest, "hooks"));
             var lifecycleHookMethods = ParseLifecycleHookMethods(manifest, lifecycleHooks);
+            var loaderVersionOk = LoaderVersionRequirement.TryCheck(ReadManifestValue(manifest, "minLoaderVersion"),
+                RuntimeEntryPoint.Version, out var loaderVersionCode, out var loaderVersionIssue);
             var entryKind = DetermineEntrypointKind(typeName, methodName, entry.AssemblyPath);
             var metadataOnly = string.IsNullOrWhiteSpace(typeName);
             var assemblyMetadata = InspectAssemblyMetadata(entry.AssemblyPath, typeName, methodName);
@@ -349,7 +351,8 @@ namespace Modstoke.Loader
                 && !metadataOnly
                 && assemblyMetadata.EntrypointTypeFound
                 && executionPlan.Ready
-                && string.IsNullOrEmpty(dependencies.Issue);
+                && string.IsNullOrEmpty(dependencies.Issue)
+                && loaderVersionOk;
             var status = hostable
                 ? RuntimeExecutionEnabled ? "READY" : "DEFERRED"
                 : metadataOnly && entry.HasAssembly && entry.Enabled && assemblyMetadata.Readable ? "INFO" : "CHECK";
@@ -367,6 +370,12 @@ namespace Modstoke.Loader
                 status = "CHECK";
                 issueCode = "native-dependencies-invalid";
                 detail = dependencies.Issue;
+            }
+            else if (!loaderVersionOk)
+            {
+                status = "CHECK";
+                issueCode = loaderVersionCode;
+                detail = loaderVersionIssue;
             }
             else if (!entry.HasAssembly)
             {

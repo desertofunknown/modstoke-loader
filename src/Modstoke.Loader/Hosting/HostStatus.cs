@@ -441,6 +441,10 @@ namespace Modstoke.Loader
                     ["workingSetBytes"] = Environment.WorkingSet
                 },
                 ["mods"] = Read(Mods) ?? new JsonArray(),
+                ["world"] = Host.IsServer ? Read(HostWorld.Snapshot) : null,
+                ["frames"] = Read(HostPerf.FrameStats),
+                ["modImpact"] = Read(HostPerf.LastImpact),
+                ["lastSave"] = Read(HostSave.LastSave),
                 ["lastSaveAt"] = save == null ? null : HostOutput.Utc(save.At),
                 ["lastSaveOk"] = save?.Ok,
                 ["lastSaveDetail"] = save?.Detail,
@@ -577,7 +581,7 @@ namespace Modstoke.Loader
         }
 
         private static readonly string[] PendingModFields =
-            { "id", "action", "modId", "version", "archiveSha256", "queuedUtc", "requestedBy" };
+            { "id", "requestId", "action", "packageKind", "modId", "version", "archiveSha256", "queuedUtc", "requestedBy" };
 
         private static JsonNode Read(Func<JsonNode> read)
         {

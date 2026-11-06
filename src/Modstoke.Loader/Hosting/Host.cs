@@ -81,8 +81,11 @@ namespace Modstoke.Loader
             }
             if (!Enabled)
                 return;
+            Run("HostPerf.Frame", HostPerf.Frame);
             Run("HostStatus.Tick", HostStatus.Tick);
             Run("HostSave.Tick", HostSave.Tick);
+            if (IsServer)
+                Run("HostWorld.Tick", HostWorld.Tick);
         }
 
         internal static void Shutdown()
@@ -93,6 +96,7 @@ namespace Modstoke.Loader
             Run("HostStatus.Shutdown", HostStatus.Shutdown);
             Run("HostEvents.Shutdown", HostEvents.Shutdown);
             Run("HostTcp.Stop", HostTcp.Stop);
+            Run("HostPerf.Shutdown", HostPerf.Shutdown);
             Run("HostOutput.Flush", () => HostOutput.Flush(1000));
         }
 

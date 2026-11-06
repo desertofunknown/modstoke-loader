@@ -396,12 +396,22 @@ namespace Modstoke.Loader
             }
 
             string reservedReason = null;
+            string previous = null;
             foreach (var segment in path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
             {
                 if (string.Equals(segment, "_Disabled", StringComparison.OrdinalIgnoreCase))
                 {
                     return "Disabled mod/plugin directory.";
                 }
+
+                // The native installer keeps replaced files and queued archives here; none of them may load.
+                if (string.Equals(segment, "native-history", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(segment, "pending", StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(previous, "Runtime", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "Native installer history or queued change.";
+                }
+                previous = segment;
 
                 if (string.Equals(segment, ".vs", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(segment, ".git", StringComparison.OrdinalIgnoreCase)

@@ -794,6 +794,7 @@
     <Compile Include="Runtime/Mods/LifecyclePlanners.Snapshots.cs" />
     <Compile Include="Runtime/Mods/ModHost.cs" />
     <Compile Include="Runtime/Mods/ModDependencies.cs" />
+    <Compile Include="Runtime/Mods/ModManifestRules.cs" />
     <Compile Include="Runtime/Mods/ModRuntime.cs" />
     <Compile Include="Configuration/Paths.cs" />
     <Compile Include="Diagnostics/LibraryInventoryStatus.cs" />
@@ -815,6 +816,8 @@
     <Compile Include="Hosting/HostCrash.cs" />
     <Compile Include="Hosting/HostConfig.cs" />
     <Compile Include="Hosting/HostTcp.cs" />
+    <Compile Include="Hosting/HostWorld.cs" />
+    <Compile Include="Hosting/HostPerf.cs" />
     <Compile Include="Configuration/RuntimePreferences.cs" />
     <Compile Include="Sons/Runtime/Sons.cs" />
     <Compile Include="Sons/Runtime/Assets.cs" />

@@ -398,12 +398,40 @@ namespace Modstoke.Sons
                 if (__0 == null || __0.WasCollected)
                     return;
                 var pointer = __0.Pointer;
+                if (Current.TryGetValue(pointer, out var leaving) && leaving.ConnectionId == __0.ConnectionId)
+                    leaving.Departure = ReadDeparture(leaving, __0);
                 // Native callbacks run while this connection is still in BoltNetwork.clients.
                 Tombstones.Add(pointer);
                 Retire(pointer);
                 Publish();
             }
             catch (Exception error) { Disable(error); }
+        }
+
+        // The token is whatever the disconnect carried, so a modified client could send a kick token itself.
+        // Requested covers only disconnects made through this class.
+        private static SessionDeparture ReadDeparture(ServerSession session, BoltConnection connection)
+        {
+            var requested = DisconnectAttempts.Contains(session);
+            try
+            {
+                var kick = connection.DisconnectToken?.TryCast<CoopKickToken>();
+                long? quiet = null, timeout = null;
+                var transport = connection._udp;
+                var socket = transport is null || transport.WasCollected ? null : transport.Socket;
+                var config = socket is null || socket.WasCollected ? null : socket.Config;
+                if (config is not null && !config.WasCollected)
+                {
+                    // Both are the transport's own millisecond clock, which wraps.
+                    quiet = unchecked(socket.GetCurrentTime() - transport.RecvTime);
+                    timeout = config.ConnectionTimeout;
+                }
+                return new SessionDeparture(requested, kick != null, kick != null && kick.Banned, quiet, timeout);
+            }
+            catch (Exception)
+            {
+                return new SessionDeparture(requested, false, false, null, null);
+            }
         }
 
         private static void BeforeStart()
@@ -783,6 +811,9 @@ namespace Modstoke.Sons
         /// <summary>Observed retirement time, or null if no retirement was observed before tracking became unavailable.</summary>
         public DateTimeOffset? ClosedAt => Volatile.Read(ref _metadata).ClosedAt;
 
+        // Game thread. Set only when the native disconnect callback retired this handle.
+        internal SessionDeparture Departure { get; set; }
+
         internal bool RefreshRegistration(ulong? registeredSteamId)
         {
             var previous = Volatile.Read(ref _metadata);
@@ -801,4 +832,11 @@ namespace Modstoke.Sons
 
         private sealed record Metadata(ulong? RegisteredSteamId, DateTimeOffset? ClosedAt);
     }
+
+    /// <summary>
+    /// Transport state read in the native disconnect callback. QuietMs is the time since the last packet
+    /// from the client and TimeoutMs the transport's limit for that; both are null when unreadable.
+    /// </summary>
+    internal sealed record SessionDeparture(bool Requested, bool KickToken, bool KickTokenBanned,
+        long? QuietMs, long? TimeoutMs);
 }

@@ -246,11 +246,15 @@ namespace Modstoke.Loader
                     string.Equals(item.Id, mod.Id, StringComparison.OrdinalIgnoreCase)
                     && (item.Loader == null || item.Loader == loader)));
             var status = load?.Status ?? (mod.Enabled ? null : "skipped");
+            var manifest = ReadManifest(mod.ManifestPath);
             return new
             {
                 id = mod.Id,
                 name = mod.Name,
                 version = mod.Version,
+                author = mod.Author,
+                description = manifest.Description,
+                minLoaderVersion = manifest.MinLoaderVersion,
                 loader,
                 kind = KindName(mod.LoaderType),
                 enabled = mod.Enabled,
@@ -260,7 +264,7 @@ namespace Modstoke.Loader
                 error = load?.Error,
                 sha256 = HashAssembly(mod.AssemblyPath),
                 assemblyPath = Relative(mod.AssemblyPath, root),
-                clientRequirement = ClientRequirement(mod),
+                clientRequirement = ClientRequirement(mod, manifest),
                 source = mod.InstallSource
             };
         }
@@ -276,34 +280,34 @@ namespace Modstoke.Loader
             : ModLoaderTypes.IsLegacyBepInEx(loaderType) ? "plugin"
             : "mod";
 
-        private static string ClientRequirement(ModFacts mod)
+        private static string ClientRequirement(ModFacts mod) => ClientRequirement(mod, ReadManifest(mod.ManifestPath));
+
+        private static string ClientRequirement(ModFacts mod, ManifestFacts manifest)
         {
-            ReadManifest(mod.ManifestPath, out var client, out var platform);
-            if (client != null)
-                return client;
+            if (manifest.Client != null)
+                return manifest.Client;
             if (ModLoaderTypes.IsLegacyRedLoader(mod.LoaderType)
-                && string.Equals(platform, "Server", StringComparison.OrdinalIgnoreCase))
+                && string.Equals(manifest.Platform, "Server", StringComparison.OrdinalIgnoreCase))
                 return "server";
             if (ModLoaderTypes.IsLibrary(mod.LoaderType))
                 return "server";
             return ModLoaderTypes.IsOpenAcai(mod.LoaderType) ? "required" : "unknown";
         }
 
-        private static void ReadManifest(string manifestPath, out string client, out string platform)
+        private static ManifestFacts ReadManifest(string manifestPath)
         {
-            client = null;
-            platform = null;
+            string client = null, platform = null, description = null, minLoaderVersion = null;
             try
             {
                 if (string.IsNullOrWhiteSpace(manifestPath))
-                    return;
+                    return ManifestFacts.None;
                 var file = new FileInfo(manifestPath);
                 if (!file.Exists || file.Length > MaxManifestBytes)
-                    return;
+                    return ManifestFacts.None;
                 using var document = JsonDocument.Parse(File.ReadAllBytes(file.FullName), new JsonDocumentOptions
                     { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
                 if (document.RootElement.ValueKind != JsonValueKind.Object)
-                    return;
+                    return ManifestFacts.None;
                 foreach (var property in document.RootElement.EnumerateObject())
                 {
                     if (property.Value.ValueKind != JsonValueKind.String)
@@ -313,12 +317,22 @@ namespace Modstoke.Loader
                         client = value;
                     else if (string.Equals(property.Name, "platform", StringComparison.OrdinalIgnoreCase))
                         platform = value;
+                    else if (string.Equals(property.Name, "description", StringComparison.OrdinalIgnoreCase))
+                        description = ModManifestText.Description(value);
+                    else if (string.Equals(property.Name, "minLoaderVersion", StringComparison.OrdinalIgnoreCase))
+                        minLoaderVersion = value.Trim();
                 }
             }
             catch
             {
                 // A manifest that cannot be read keeps the loader's default.
             }
+            return new ManifestFacts(client, platform, description, minLoaderVersion);
+        }
+
+        private sealed record ManifestFacts(string Client, string Platform, string Description, string MinLoaderVersion)
+        {
+            internal static readonly ManifestFacts None = new(null, null, null, null);
         }
 
         private static string HashAssembly(string assemblyPath)
@@ -345,8 +359,8 @@ namespace Modstoke.Loader
         private static ModFacts[] Snapshot() =>
             (LoaderState.CurrentInventory?.Entries ?? Array.Empty<ModInventoryEntry>())
                 .Where(entry => entry != null)
-                .Select(entry => new ModFacts(entry.Id, entry.DisplayName, entry.Version, entry.LoaderType, entry.Enabled,
-                    entry.AssemblyPath, entry.ManifestPath, entry.InstallSource))
+                .Select(entry => new ModFacts(entry.Id, entry.DisplayName, entry.Version, entry.Author, entry.LoaderType,
+                    entry.Enabled, entry.AssemblyPath, entry.ManifestPath, entry.InstallSource))
                 .ToArray();
 
         private static string GameRoot()
@@ -385,7 +399,7 @@ namespace Modstoke.Loader
             return text.Length > MaxErrorLength ? text.Substring(0, MaxErrorLength) : text;
         }
 
-        private sealed record ModFacts(string Id, string Name, string Version, string LoaderType, bool Enabled,
-            string AssemblyPath, string ManifestPath, string InstallSource);
+        private sealed record ModFacts(string Id, string Name, string Version, string Author, string LoaderType,
+            bool Enabled, string AssemblyPath, string ManifestPath, string InstallSource);
     }
 }

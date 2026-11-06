@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -75,6 +76,73 @@ namespace Modstoke.Loader
                     HostCommands.Respond(request, false, "Config check failed: " + error.Message);
                 }
             });
+        }
+
+        // The dedicated server reads its config only at startup, so every key needs a restart. The password is
+        // masked because replies are copied into panel logs.
+        internal static void RunGet(ConsoleSubmission request)
+        {
+            var config = Find("game.dedicatedserver");
+            Task.Run(() =>
+            {
+                try
+                {
+                    if (config == null)
+                    {
+                        HostCommands.Respond(request, false, "This process has no dedicated server config.",
+                            error: "unavailable");
+                        return;
+                    }
+                    var exists = File.Exists(config.Path);
+                    var error = Validate(config, out _);
+                    JsonObject settings = null;
+                    var passwordSet = false;
+                    if (exists && error == null)
+                    {
+                        settings = JsonNode.Parse(File.ReadAllText(config.Path, StrictUtf8), documentOptions: new JsonDocumentOptions
+                            { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip }) as JsonObject;
+                        if (settings != null)
+                        {
+                            foreach (var key in new List<string>(settings.Select(pair => pair.Key)))
+                            {
+                                if (!key.Equals("Password", StringComparison.OrdinalIgnoreCase))
+                                    continue;
+                                passwordSet = settings[key] is JsonValue value && value.TryGetValue<string>(out var text)
+                                    && text.Length > 0;
+                                settings[key] = passwordSet ? "********" : "";
+                            }
+                        }
+                    }
+                    var restartRequired = new JsonArray();
+                    if (settings != null)
+                        foreach (var pair in settings)
+                            restartRequired.Add((JsonNode)JsonValue.Create(pair.Key));
+                    HostCommands.Respond(request, error == null,
+                        error ?? (exists ? "dedicatedserver.cfg · " + config.Path : "dedicatedserver.cfg has not been created yet."),
+                        new JsonObject
+                        {
+                            ["path"] = config.Path,
+                            ["exists"] = exists,
+                            ["changedSinceStart"] = ChangedSinceStart(config.Path),
+                            ["passwordSet"] = passwordSet,
+                            ["settings"] = settings,
+                            ["restartRequired"] = restartRequired
+                        },
+                        error == null ? null : "invalid-arguments");
+                }
+                catch (Exception failure)
+                {
+                    HostCommands.Respond(request, false, "Could not read dedicatedserver.cfg: " + failure.Message);
+                }
+            });
+        }
+
+        private static HostConfigInfo Find(string id)
+        {
+            foreach (var config in Known)
+                if (string.Equals(config.Id, id, StringComparison.OrdinalIgnoreCase))
+                    return config;
+            return null;
         }
 
         internal static void RunReload(ConsoleSubmission request)

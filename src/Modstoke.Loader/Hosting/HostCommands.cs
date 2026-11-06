@@ -14,7 +14,8 @@ namespace Modstoke.Loader
         private static readonly char[] Spaces = { ' ', '\t' };
 
         internal static bool IsHostCommand(string name) => name is "status" or "version" or "players" or "mods"
-            or "requirements" or "save" or "stop" or "config" or "reload" || ServerHosting.HasCommand(name);
+            or "requirements" or "save" or "stop" or "config" or "reload" or "broadcast" or "saves" or "perf"
+            || ServerHosting.HasCommand(name);
 
         // status and mods are already listed as built-ins.
         internal static IEnumerable<ConsoleCommandInfo> Catalog()
@@ -27,9 +28,12 @@ namespace Modstoke.Loader
             {
                 yield return Listed("save", "Save the world now.");
                 yield return Listed("stop", "Save the world and shut the server down. stop --no-save skips the save.");
+                yield return Listed("broadcast", "broadcast <text>: send a chat message from the server to every player.");
+                yield return Listed("saves", "List the save slots, their in-game day, size and which one is running.");
             }
-            yield return Listed("config", "config check: check the config files the Loader knows about.");
+            yield return Listed("config", "config check | config get: check the known config files, or show dedicatedserver.cfg.");
             yield return Listed("reload", "Apply config changes that do not need a restart.");
+            yield return Listed("perf", "perf [--seconds N]: time each mod's per-frame work for N seconds (default 10).");
             foreach (var (name, description) in ServerHosting.CommandCatalog())
                 yield return Listed(name, description);
         }
@@ -68,12 +72,12 @@ namespace Modstoke.Loader
         private static void Run(ConsoleSubmission request)
         {
             var command = request.Command;
-            if (command is "save" or "stop" or "players" && !Host.IsServer)
+            if (command is "save" or "stop" or "players" or "broadcast" && !Host.IsServer)
             {
                 Respond(request, false, "\"" + command + "\" is only available on a dedicated server.", error: "unavailable");
                 return;
             }
-            if (command is "save" or "stop" or "reload"
+            if (command is "save" or "stop" or "reload" or "broadcast"
                 && request.Origin is not (ConsoleOrigin.ServerConsole or ConsoleOrigin.DesktopConsole))
             {
                 Respond(request, false, "\"" + command + "\" can only be run from the server or desktop console.",
@@ -113,13 +117,64 @@ namespace Modstoke.Loader
                 case "config" when first == "check":
                     HostConfig.RunConfig(request);
                     break;
+                case "config" when first == "get":
+                    HostConfig.RunGet(request);
+                    break;
                 case "config":
-                    Usage(request, "config check");
+                    Usage(request, "config check | config get");
+                    break;
+                case "broadcast":
+                    RunBroadcast(request);
+                    break;
+                case "saves":
+                    HostWorld.RunSaves(request);
+                    break;
+                case "perf":
+                    HostPerf.RunPerf(request);
                     break;
                 case "reload":
                     HostConfig.RunReload(request);
                     break;
             }
+        }
+
+        // For restart countdowns and scheduled messages when no moderation mod is loaded. Runs on the game thread.
+        private static void RunBroadcast(ConsoleSubmission request)
+        {
+            var text = request.Arguments.Trim();
+            if (text.Length == 0)
+            {
+                Usage(request, "broadcast <text>");
+                return;
+            }
+            if (!ServerChat.IsPlainTextValid(text))
+            {
+                Respond(request, false, "Chat text must be one line of at most " + ServerChat.MaxMessageLength
+                    + " characters, without < or >.", error: "invalid-arguments");
+                return;
+            }
+
+            int queued = 0, failed = 0;
+            var unavailable = false;
+            foreach (var session in ServerSessions.Sessions)
+            {
+                var result = ServerChat.SendToSession(session, text);
+                if (result == ChatSendResult.Queued)
+                    queued++;
+                else
+                {
+                    failed++;
+                    unavailable |= result is ChatSendResult.Unavailable or ChatSendResult.NotServer;
+                }
+            }
+            if (queued == 0 && unavailable)
+            {
+                Respond(request, false, "Server chat is not available right now.", new { recipients = 0, failed }, "not-ready");
+                return;
+            }
+            HostEvents.Emit("chat", new { channel = "server", name = "Server", text, recipients = queued });
+            Respond(request, true, "Sent to " + queued + (queued == 1 ? " player." : " players."),
+                new { recipients = queued, failed });
         }
 
         private static void RunModCommand(ConsoleSubmission request, string actor, string actorSteam)

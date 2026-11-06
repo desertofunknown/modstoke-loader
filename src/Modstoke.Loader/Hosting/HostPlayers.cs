@@ -17,6 +17,10 @@ namespace Modstoke.Loader
     {
         private const int HangGliderItemId = 626;
 
+        // A Modstoke client sends its handshake as soon as it connects and repeats it after 3 and 9 s while
+        // unanswered. Admin waits the same 20 s before it shows a client as having none.
+        internal static readonly TimeSpan ClientKindSettle = TimeSpan.FromSeconds(20);
+
         internal static void Run(ConsoleSubmission request)
         {
             if (!Host.IsServer)
@@ -105,10 +109,12 @@ namespace Modstoke.Loader
             }
 
             string lifeState = null;
+            string life = null;
             bool? gliding = null;
             if (ServerWorld.TryReadPlayerState(session, out var state, out _))
             {
                 lifeState = state.LifeState?.ToString();
+                life = DescribeLife(state.LifeState);
                 gliding = state.HeldOnlyItemId == HangGliderItemId || state.HeldItemIds.Contains(HangGliderItemId);
             }
 
@@ -118,9 +124,17 @@ namespace Modstoke.Loader
                 ["connectionId"] = session.ConnectionId,
                 ["name"] = name,
                 ["steamId"] = steamId,
+                ["clientKind"] = ReadClientKind(session, out _),
                 ["role"] = role,
+                ["joinedAt"] = session.FirstObservedAt.ToUnixTimeMilliseconds(),
                 ["pingMs"] = pingMs,
+                ["pos"] = position,
+                // Earlier name for pos, kept for existing readers.
                 ["position"] = position,
+                // The SDK names no map regions; flags.inCave is the only area it can tell.
+                ["area"] = null,
+                ["life"] = life,
+                // Raw PlayerLifeState name, which Admin reads.
                 ["lifeState"] = lifeState,
                 ["flags"] = new Dictionary<string, object>
                 {
@@ -132,6 +146,32 @@ namespace Modstoke.Loader
                 }
             };
         }
+
+        // "modstoke" once the client's handshake or capability enrollment arrived. "vanilla" means neither came
+        // within ClientKindSettle of connecting; a modded client that withholds its handshake looks the same.
+        // Settled is false only while waiting could still change the answer.
+        internal static string ReadClientKind(ServerSession session, out bool settled)
+        {
+            if (ServerSessions.TryReadClientSignals(session, out var signals, out _)
+                && (signals.Hello != null || signals.Enrollment?.State == EnrollmentState.Enrolled))
+            {
+                settled = true;
+                return "modstoke";
+            }
+            // Without the notice hooks no handshake can be received, so waiting tells nothing.
+            var listening = ServerNotices.HooksInstalled;
+            settled = !listening || DateTimeOffset.UtcNow - session.FirstObservedAt >= ClientKindSettle;
+            return settled && listening && signals != null ? "vanilla" : "unknown";
+        }
+
+        // Dying is the downed state another player can revive from.
+        private static string DescribeLife(PlayerLifeState? state) => state switch
+        {
+            PlayerLifeState.Alive => "alive",
+            PlayerLifeState.Dying => "downed",
+            PlayerLifeState.Dead => "dead",
+            _ => null
+        };
 
         private static JsonNode Serialize(Dictionary<string, object> fields, JsonNode builtIn)
         {
@@ -153,7 +193,7 @@ namespace Modstoke.Loader
             if (fields["steamId"] is string steamId)
                 line.Append(" (").Append(steamId).Append(')');
             line.Append(" · ").Append(fields["pingMs"] is int ping ? ping.ToString(CultureInfo.InvariantCulture) : "?").Append(" ms");
-            if (fields["position"] is Dictionary<string, object> position)
+            if (fields["pos"] is Dictionary<string, object> position)
             {
                 line.Append(" · ").Append(Coordinate(position["x"])).Append(", ")
                     .Append(Coordinate(position["y"])).Append(", ").Append(Coordinate(position["z"]));

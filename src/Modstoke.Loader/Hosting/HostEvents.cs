@@ -25,7 +25,8 @@ namespace Modstoke.Loader
         private static readonly byte[] NewLine = { (byte)'\n' };
         private static readonly object Gate = new();
         private static readonly Queue<string> Lines = new();
-        private static readonly Dictionary<Guid, (string Name, ulong SteamId)> Joined = new();
+        private static readonly Dictionary<Guid, Player> Joined = new();
+        private static Timer _settle;
         private static Thread _writer;
         private static int _writing;
         private static bool _stopping;
@@ -72,6 +73,8 @@ namespace Modstoke.Loader
                 ServerSessions.Closed -= OnSessionClosed;
                 ServerChat.Forwarded = null;
                 _subscribed = false;
+                _settle?.Dispose();
+                _settle = null;
             }
 
             Flush(1000);
@@ -277,26 +280,86 @@ namespace Modstoke.Loader
             if (!ServerSessions.TryReadIdentity(session, out var identity, out _) || identity.GameSteamId == 0)
                 return;
 
-            Joined[session.SessionId] = (identity.DisplayName, identity.GameSteamId);
-            Emit("join", new
-            {
-                sessionId = session.SessionId.ToString(),
-                name = identity.DisplayName,
-                steamId = identity.GameSteamId.ToString()
-            });
+            var player = new Player(session, identity.DisplayName, identity.GameSteamId);
+            Joined[session.SessionId] = player;
+            // The join waits until the client kind is known; joinedAt keeps the connect time.
+            if (!Announce(player, false))
+                ScheduleSettle();
         }
 
         private static void OnSessionClosed(ServerSession session)
         {
             if (session == null || !Joined.Remove(session.SessionId, out var player))
                 return;
+            Announce(player, true);
+            var closed = session.ClosedAt ?? DateTimeOffset.UtcNow;
             Emit("leave", new
             {
                 sessionId = session.SessionId.ToString(),
                 name = player.Name,
-                steamId = player.SteamId.ToString()
+                steamId = player.SteamId.ToString(),
+                reason = DescribeLeave(session, player.SteamId),
+                sessionMs = (long)Math.Max(0, (closed - session.FirstObservedAt).TotalMilliseconds)
             });
         }
+
+        private static bool Announce(Player player, bool force)
+        {
+            if (player.Announced)
+                return true;
+            var kind = HostPlayers.ReadClientKind(player.Session, out var settled);
+            if (!settled && !force)
+                return false;
+            player.Announced = true;
+            Emit("join", new
+            {
+                sessionId = player.Session.SessionId.ToString(),
+                name = player.Name,
+                steamId = player.SteamId.ToString(),
+                clientKind = kind,
+                joinedAt = player.Session.FirstObservedAt.ToUnixTimeMilliseconds()
+            });
+            return true;
+        }
+
+        // The timer only posts; the check runs on the game thread, which owns Joined.
+        private static void ScheduleSettle()
+        {
+            _settle ??= new Timer(_ => Host.Post(Settle));
+            _settle.Change(1000, Timeout.Infinite);
+        }
+
+        private static void Settle()
+        {
+            if (!_subscribed)
+                return;
+            var waiting = false;
+            foreach (var player in Joined.Values)
+                waiting |= !Announce(player, false);
+            if (waiting)
+                ScheduleSettle();
+        }
+
+        // Only what the server saw as the connection ended. A client that crashed or lost its network times
+        // out, so "crash" is never reported, and a disconnect nothing explains stays "unknown".
+        private static string DescribeLeave(ServerSession session, ulong steamId)
+        {
+            var departure = session.Departure;
+            if (departure == null)
+                return "unknown";
+            if (departure.Requested || departure.KickToken)
+                return departure.KickTokenBanned || HasBannedRole(steamId) ? "ban" : "kick";
+            // The game drops the connection itself when Steam rejects the player's ticket.
+            if (ServerAuthentication.TryReadLatest(steamId, out var ticket) && ticket.VanillaWillDisconnect
+                && ticket.VanillaTargetConnectionId == session.ConnectionId && ticket.ObservedAt >= session.FirstObservedAt)
+                return "kick";
+            if (departure.QuietMs is not long quiet || departure.TimeoutMs is not long timeout || timeout <= 0)
+                return "unknown";
+            return quiet >= timeout ? "timeout" : "quit";
+        }
+
+        private static bool HasBannedRole(ulong steamId) =>
+            ServerRoles.TryRead(steamId, out var role, out _) && role.StoredRole == GameRole.Banned;
 
         private static void OnChat(ChatRequest request)
         {
@@ -309,6 +372,7 @@ namespace Modstoke.Loader
             var steamId = request.RegisteredSteamId ?? 0;
             if (session != null && Joined.TryGetValue(session.SessionId, out var player))
             {
+                Announce(player, true);
                 name = player.Name;
                 steamId = player.SteamId;
             }
@@ -329,6 +393,21 @@ namespace Modstoke.Loader
                 return text;
             var length = char.IsHighSurrogate(text[limit - 1]) ? limit - 1 : limit;
             return text.Substring(0, length);
+        }
+
+        private sealed class Player
+        {
+            internal Player(ServerSession session, string name, ulong steamId)
+            {
+                Session = session;
+                Name = name;
+                SteamId = steamId;
+            }
+
+            internal ServerSession Session { get; }
+            internal string Name { get; }
+            internal ulong SteamId { get; }
+            internal bool Announced { get; set; }
         }
     }
 }
