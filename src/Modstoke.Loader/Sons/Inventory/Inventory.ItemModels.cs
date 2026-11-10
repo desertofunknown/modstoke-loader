@@ -106,7 +106,9 @@ namespace Modstoke.Sons
             {
                 if (!InventoryLayout.Published(_item)) return false;
                 InventoryLayoutItemGroup anchor = null;
-                foreach (var group in inventory.GetComponentsInChildren<InventoryLayoutItemGroup>(true))
+                var mat = MatContainer(inventory);
+                foreach (var group in (mat != null ? mat.gameObject : inventory.gameObject)
+                    .GetComponentsInChildren<InventoryLayoutItemGroup>(true))
                     if (InventoryLayout.Live(group) && group._itemId == _model.MatAnchorItemId)
                     {
                         anchor = group;

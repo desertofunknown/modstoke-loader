@@ -16,6 +16,9 @@ namespace Modstoke.Sons
     {
         private static readonly Dictionary<(IntPtr Inventory, int Item), InventoryLayout> LayoutOwners = new();
         private static readonly Dictionary<IntPtr, InventoryLayout> LayoutItemOwners = new();
+        // Opening the inventory detaches the mat from the player to lay it out in the world, so the
+        // container seen while attached stays the inventory's mat after it leaves the player's hierarchy.
+        private static readonly Dictionary<IntPtr, Transform> MatContainers = new();
         private static bool _layoutHookAttempted, _layoutHookInstalled, _layoutRestoreWarned;
         private static string _layoutHookFailure = "";
 
@@ -84,8 +87,12 @@ namespace Modstoke.Sons
         private static string AnchorProblem(InventoryLayoutItemGroup anchor, PlayerInventory inventory)
         {
             if (!InventoryLayout.Live(anchor)) return "The anchor group is not live.";
-            if (!anchor.transform.IsChildOf(inventory.transform)) return "The anchor group is not part of the current inventory.";
-            if (!InventoryLayout.Live(anchor.transform.parent)) return "The anchor group has no live parent.";
+            var container = anchor.transform.parent;
+            if (!InventoryLayout.Live(container)) return "The anchor group has no live parent.";
+            if (anchor.transform.IsChildOf(inventory.transform))
+                MatContainers[inventory.Pointer] = container;
+            else if (!InventoryLayout.Same(container, MatContainer(inventory)))
+                return "The anchor group is not part of the current inventory.";
             var rows = anchor._layoutItems;
             return rows is null || rows.WasCollected || rows.Count == 0 || !InventoryLayout.Live(rows[0])
                 ? "The anchor group has no live visual row." : null;
@@ -140,6 +147,11 @@ namespace Modstoke.Sons
 
         internal static bool LayoutInventoryCurrent(InventoryLayout layout)
             => TryGetCurrentInventory(out var inventory, out _) && layout.MatchesInventory(inventory);
+
+        /// <summary>The inventory's mat group container, once seen attached to the player; otherwise null.</summary>
+        internal static Transform MatContainer(PlayerInventory inventory)
+            => inventory is not null && MatContainers.TryGetValue(inventory.Pointer, out var container)
+                && InventoryLayout.Live(container) ? container : null;
 
         internal static string LayoutMismatch(InventoryLayout layout)
             => TryGetCurrentInventory(out var inventory, out var status) ? layout.MismatchReason(inventory) ?? "it matches again" : status;
@@ -253,7 +265,8 @@ namespace Modstoke.Sons
                 return "the item definition is no longer published";
             if (!Live(Root) || !Live(Group) || !Same(Group.gameObject, Root) || !OwnsItem(Item)) return "its objects were destroyed";
             if (!Same(Root.transform.parent, _parent)) return "it was moved to another parent";
-            if (!Root.transform.IsChildOf(inventory.transform)) return "its parent left the inventory";
+            if (!Root.transform.IsChildOf(inventory.transform) && !Same(_parent, Inventory.MatContainer(inventory)))
+                return "its parent left the inventory";
             if (!Same(Group._inventory, inventory) || !Same(Group._itemData, _definition) || Group._itemId != ItemId)
                 return "the game rebound its group";
             var items = Group._layoutItems;
