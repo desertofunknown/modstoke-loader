@@ -127,9 +127,13 @@ namespace Modstoke.Sons
             {
                 var sameScene = _state.BuildIndex == buildIndex
                     && string.Equals(_state.SceneName, sceneName, StringComparison.OrdinalIgnoreCase);
+                var loaded = string.Equals(phase, "Loaded", StringComparison.OrdinalIgnoreCase);
+                // Sub-scenes load alongside the live game scene; they are not a scene change until the game scene unloads.
+                var intoGameScene = loaded && !sameScene && kind == SceneKind.Other
+                    && string.Equals(_state.SceneKind, SceneKind.Game, StringComparison.Ordinal)
+                    && !IsUnloadPhase(_state.ScenePhase);
                 // Delayed initialization of an older scene must not replace a newer load.
-                var updateCurrentScene = string.Equals(phase, "Loaded", StringComparison.OrdinalIgnoreCase)
-                    || (sameScene && !IsUnloadPhase(_state.ScenePhase));
+                var updateCurrentScene = !intoGameScene && (loaded || (sameScene && !IsUnloadPhase(_state.ScenePhase)));
 
                 if (updateCurrentScene)
                 {
