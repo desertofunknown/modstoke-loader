@@ -69,7 +69,56 @@ namespace Modstoke.Sons
             private int _count = -1;
             private float _retryAt;
             private string _status;
-            private bool _placementLogged, _shownLogged;
+            private bool _placementLogged, _shownLogged, _dropRequested;
+            private InventoryPrimaryActionBinding _binding;
+            private int _clickFrame = -1;
+
+            private bool DropsFromMat => _model.DropFromMat && _item._canBeSpawned;
+
+            // The game only drops held items, and modeled items cannot be held, so a mat click closes the
+            // inventory and drops one once the player is back in the world view.
+            private void OnMatClick(InventoryLayoutItemGroup group)
+            {
+                if (_clickFrame == Time.frameCount || !TryGetCurrentInventory(out var inventory, out _)) return;
+                var highlighted = false;
+                foreach (var row in group._layoutItems)
+                    if (InventoryLayout.Live(row) && row.IsHighlighted)
+                    {
+                        highlighted = true;
+                        break;
+                    }
+                if (!highlighted || inventory._itemInstanceManager.GetItemCount(_item._id) < 1) return;
+                _clickFrame = Time.frameCount;
+                _dropRequested = true;
+                if (inventory._currentView == PlayerInventory.PlayerViews.Inventory) inventory.Close();
+            }
+
+            private void DropOne()
+            {
+                // The native drop keeps the game's own custody checks; fall back to remove-and-spawn only when it
+                // refused before touching the inventory.
+                if (TryDropCountedItem(_item._id, out _, out var drop)) return;
+                if (drop.DebitAttempted || drop.SpawnAttempted)
+                {
+                    RuntimeEntryPoint.LogSource?.LogWarning("Dropping item " + _item._id + " stopped partway: " + drop.Detail);
+                    return;
+                }
+                var camera = Camera.main;
+                if (camera == null || !camera) return;
+                var view = camera.transform;
+                var forward = Vector3.ProjectOnPlane(view.forward, Vector3.up);
+                if (forward.sqrMagnitude < 0.01f) forward = view.up;
+                var position = view.position + forward.normalized * 0.8f - Vector3.up * 0.4f;
+                if (!TryRemoveItem(_item._id, 1, out var removal))
+                {
+                    RuntimeEntryPoint.LogSource?.LogWarning("Item " + _item._id + " could not be dropped (" + drop.Detail
+                        + "), and removing it failed: " + removal.Detail);
+                    return;
+                }
+                if (TrySpawnItem(_item._id, 1, position, Quaternion.LookRotation(forward), out _, out var spawn, false)) return;
+                if (!spawn.InvocationAttempted && TryAddItem(_item._id, 1, out _)) return;
+                RuntimeEntryPoint.LogSource?.LogWarning("Item " + _item._id + " was removed but its pickup did not spawn: " + spawn.Detail);
+            }
 
             internal MatModel(ItemData item, ItemModel model)
             {
@@ -79,6 +128,11 @@ namespace Modstoke.Sons
 
             internal void Update(PlayerInventory inventory)
             {
+                if (_dropRequested && inventory._currentView == PlayerInventory.PlayerViews.World)
+                {
+                    _dropRequested = false;
+                    DropOne();
+                }
                 if (Time.unscaledTime < _retryAt || _layout == null && !TryCreate(inventory)) return;
                 var count = inventory._itemInstanceManager.GetItemCount(_item._id);
                 if (count == _count) return;
@@ -146,6 +200,9 @@ namespace Modstoke.Sons
                         // The new-item sheen swaps authored materials for a flat white until hover.
                         renderer.gameObject.AddComponent<ExcludeRenderableFrom>()._excludedFrom = ExcludeRenderableFrom.Type.Sheen;
                     }
+                    // Bound while the group is still inactive, as the binding requires.
+                    if (DropsFromMat && !TryBindPrimaryAction(_layout.Group, OnMatClick, out _binding, out var bindStatus))
+                        throw new InvalidOperationException(bindStatus);
                 }
                 catch (Exception error)
                 {
@@ -196,8 +253,17 @@ namespace Modstoke.Sons
             internal void Release()
             {
                 _count = -1;
+                _dropRequested = false;
                 if (_layout == null) return;
-                if (_layout.TryDispose(out var status)) _layout = null;
+                // A bound group must be inactive before its binding releases, and unbound before disposal.
+                if (!_layout.TryHide(out var status)
+                    || _binding != null && !_binding.TryUnbind(out status))
+                {
+                    Wait("Could not release the mat layout: " + status);
+                    return;
+                }
+                _binding = null;
+                if (_layout.TryDispose(out status)) _layout = null;
                 else Wait("Could not release the mat layout: " + status);
             }
         }

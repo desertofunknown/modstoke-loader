@@ -47,5 +47,11 @@ namespace Modstoke.Sons
 
         /// <summary>Most items one inventory slot holds.</summary>
         public int MaxAmount { get; init; } = 1;
+
+        /// <summary>
+        /// For spawnable items: clicking the item on the mat closes the inventory and drops one in front of the
+        /// player. The game has no drop action for plain items. Host and singleplayer only for now.
+        /// </summary>
+        public bool DropFromMat { get; init; } = true;
     }
 }

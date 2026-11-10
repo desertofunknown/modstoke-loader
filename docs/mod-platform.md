@@ -3805,6 +3805,11 @@ from a mod's model rather than from game data:
   pickup keeps the donor's Bolt entity under prefab id `33000 + itemId - 1000`,
   registered on every peer that registers the item, so hosted pickups reach
   clients that run the same mod. Client-local ids get local pickups.
+- The game only drops held items, and modeled items cannot be held. With
+  `DropFromMat` (the default) a spawnable item's left click on the mat reads
+  "Drop": it closes the inventory and drops one in front of the player, through
+  the native drop or, when that refuses, a removal and spawn. Combine is hidden
+  until modeled items can take part in recipes. Host and singleplayer only.
 - The definition must be a `CustomItem` without hotkeys or asset references. The
   item type defaults to `CraftingMaterial, Droppable`; equipment, weapon and
   ammunition types are refused until held models are supported.

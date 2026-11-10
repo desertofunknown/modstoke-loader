@@ -176,6 +176,14 @@ namespace Modstoke.Sons
             ui._description = model.Description ?? "";
             ui._hasDescription = ui._description.Length != 0;
             if (Live(model.Icon)) ui._icon = ui._outlineIcon = model.Icon;
+            // Combining needs a crafting-mat layout and recipes, which modeled items do not have yet, and they
+            // cannot be equipped, so left click is the SDK's drop when the item can exist in the world.
+            ui._rightClick = ItemUiData.RightClickCommands.None;
+            var drop = definition.CanBeSpawned && model.DropFromMat;
+            if (drop) ui._leftClick = ItemUiData.LeftClickCommands.use;
+            ui._applyCustomActionText = drop;
+            ui._leftActionCustomText = drop ? "Drop" : "";
+            ui._rightActionCustomText = "";
             item.hideFlags |= HideFlags.DontUnloadUnusedAsset;
 
             if (definition.CanBeSpawned)
