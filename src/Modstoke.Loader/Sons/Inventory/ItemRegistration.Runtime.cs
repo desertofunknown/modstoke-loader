@@ -114,6 +114,9 @@ namespace Modstoke.Sons
                 if (nativeModuleMask != 0 && (cloneBase || !Live(nativeItem) || !nativeItem._eachInstanceIsUnique))
                     return Result(false, false, false, "unique-authored-item-required",
                         "Module contracts require caller-authored ItemData already configured for native unique-instance storage. No existing definition is converted.");
+                // Last check before anything is allocated, so a refused registration never claims an id.
+                if (!ItemIds.TryClaimForRegistration(definition.ModId, definition.ItemId, out reason, out detail))
+                    return Result(false, false, false, reason, detail);
 
                 registration = new RuntimeRegistration
                 {
