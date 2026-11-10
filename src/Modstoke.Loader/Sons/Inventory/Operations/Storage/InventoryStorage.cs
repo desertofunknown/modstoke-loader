@@ -214,7 +214,8 @@ namespace Modstoke.Sons
                     return Uncertain("Exact escrow token is unavailable.", out detail);
                 request = PlayerAddItem.Create(connection, ReliabilityModes.ReliableOrdered);
                 request.Player = _actor;
-                request.ItemId = Action.ItemId;
+                if (!ItemIdCarrier.TrySetItemId(request, Action.ItemId))
+                    return Uncertain("Grant could not carry its item id.", out detail);
                 request.Amount = 1;
                 request.ItemInstance = token.Cast<IProtocolToken>();
                 if (!Current() || !ItemCurrent()) return Uncertain("Grant identity changed before send.", out detail);

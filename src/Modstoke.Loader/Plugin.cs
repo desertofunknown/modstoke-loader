@@ -461,6 +461,7 @@ namespace Modstoke.Loader
             AudioBanks.Initialize();
             ItemCatalog.Initialize();
             ItemRegistration.Initialize();
+            ItemIdCarrier.Install();
             Inventory.Initialize();
             Crafting.Initialize();
             Building.Initialize();

@@ -14,8 +14,8 @@ namespace Modstoke.Sons
     /// <summary>Server inventory requests and opt-in routing policy using the game's existing client protocol.</summary>
     public static partial class ServerInventory
     {
-        /// <summary>Largest item ID preserved by the native PlayerAddItem setter.</summary>
-        public const int MaxItemId = 2047;
+        /// <summary>Largest item ID that can be granted. Ids above the native setter's 2047 are carried for mod items.</summary>
+        public const int MaxItemId = ItemIds.NetworkedMaxItemId;
         /// <summary>Per-call SDK limit, not a wire-format or client inventory capacity.</summary>
         public const int MaxGrantAmount = 1024;
 
@@ -179,7 +179,8 @@ namespace Modstoke.Sons
 
                 request = PlayerAddItem.Create(connection, ReliabilityModes.ReliableOrdered);
                 request.Player = player;
-                request.ItemId = itemId;
+                if (!ItemIdCarrier.TrySetItemId(request, itemId))
+                    return ItemGrantStatus.InvalidItemId;
                 request.Amount = 1;
                 request.ItemInstance = token.Cast<IProtocolToken>();
 

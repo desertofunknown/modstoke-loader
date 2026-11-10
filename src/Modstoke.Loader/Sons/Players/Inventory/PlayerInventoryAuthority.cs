@@ -116,7 +116,7 @@ namespace Modstoke.Sons
                 if (connection == null || !Current(out var current) || current.Pointer != target.Pointer) return false;
                 request = PlayerAddItem.Create(connection, ReliabilityModes.ReliableOrdered);
                 request.Player = target;
-                request.ItemId = itemId;
+                if (!ItemIdCarrier.TrySetItemId(request, itemId)) return false;
                 request.Amount = 1;
                 request.ItemInstance = token.Cast<IProtocolToken>();
                 if (!Current(out current) || current.Pointer != target.Pointer || !record.IdentityCurrent()) return false;

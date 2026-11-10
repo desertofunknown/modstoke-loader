@@ -700,6 +700,7 @@
     <Compile Include="Sons/Server/Players/ServerPlayerSpawns.cs" />
     <Compile Include="Sons/Server/Players/ServerPlayerRevives.cs" />
     <Compile Include="Sons/Server/World/ServerSleep.cs" />
+    <Compile Include="Sons/Server/Items/ItemIdCarrier.cs" />
     <Compile Include="Sons/Server/Items/ServerInventory.cs" />
     <Compile Include="Sons/Server/Items/ServerInventory.Policy.cs" />
     <Compile Include="Sons/Server/Items/ServerItemDrops.cs" />

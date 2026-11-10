@@ -10,9 +10,9 @@ namespace Modstoke.Sons
     /// <summary>Where a mod item id can travel.</summary>
     public enum ItemIdBand
     {
-        /// <summary>1000-2047: fits the game's own item events, so other players and the server can see it.</summary>
+        /// <summary>1000-32767: carried by the game's own item events, so other players and the server can see it.</summary>
         Networked = 0,
-        /// <summary>2048 and above: the native events cannot carry it, so the item stays on the local machine.</summary>
+        /// <summary>32768 and above: the game's item token cannot carry it, so the item stays on the local machine.</summary>
         ClientLocal = 1
     }
 
@@ -58,10 +58,13 @@ namespace Modstoke.Sons
     /// </summary>
     public static class ItemIds
     {
-        /// <summary>Largest id the game's item events carry (PlayerAddItem and the item frames it checks against).</summary>
-        public const int NativeEventMaxItemId = ServerInventory.MaxItemId;
+        /// <summary>
+        /// Largest id that reaches other machines. Bolt sends item ids as 32-bit integers, but the item instance
+        /// token writes them as signed 16-bit values. The Loader carries mod ids past the setters that clamp lower.
+        /// </summary>
+        public const int NetworkedMaxItemId = short.MaxValue;
         public const int FirstModItemId = 1000;
-        public const int FirstClientLocalItemId = NativeEventMaxItemId + 1;
+        public const int FirstClientLocalItemId = NetworkedMaxItemId + 1;
         public const int MaxRangesPerMod = 16;
         public const int MaxRanges = 1024;
 
@@ -75,9 +78,9 @@ namespace Modstoke.Sons
             get { lock (SyncRoot) return _published; }
         }
 
-        public static bool FitsNativeEvent(int itemId) => itemId is > 0 and <= NativeEventMaxItemId;
+        public static bool IsNetworked(int itemId) => itemId is > 0 and <= NetworkedMaxItemId;
 
-        public static ItemIdBand BandOf(int itemId) => itemId > NativeEventMaxItemId ? ItemIdBand.ClientLocal : ItemIdBand.Networked;
+        public static ItemIdBand BandOf(int itemId) => itemId > NetworkedMaxItemId ? ItemIdBand.ClientLocal : ItemIdBand.Networked;
 
         /// <summary>
         /// Reserves first..last for a mod. Reserving the same range again is allowed; overlapping another range,
@@ -90,7 +93,7 @@ namespace Modstoke.Sons
                 return ItemIdReserveStatus.InvalidModId;
             if (first < FirstModItemId || last < first)
                 return ItemIdReserveStatus.InvalidRange;
-            if (band == ItemIdBand.Networked ? last > NativeEventMaxItemId : first < FirstClientLocalItemId)
+            if (band == ItemIdBand.Networked ? last > NetworkedMaxItemId : first < FirstClientLocalItemId)
                 return ItemIdReserveStatus.WrongBand;
 
             lock (SyncRoot)

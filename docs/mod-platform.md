@@ -1106,9 +1106,10 @@ attached player entity whose source matches that exact session. A disconnected
 handle cannot select a new player that reuses its connection ID. The local host
 player is not inferred from a missing remote session.
 
-Item IDs must be 1 through `MaxItemId` (2047) and resolve in the current server
-item database. Out-of-range IDs are rejected rather than silently clamped by the
-native setter. Amount must be 1 through `MaxGrantAmount` (1024), an SDK per-call
+Item IDs must be 1 through `MaxItemId` (32767) and resolve in the current server
+item database. The native PlayerAddItem setter clamps at 2047 and the storage
+events at 1023; the Loader carries reserved mod ids past those setters (Bolt
+sends the full integer), and 32767 is the limit of the item instance token. Amount must be 1 through `MaxGrantAmount` (1024), an SDK per-call
 limit, not a protocol limit or inventory-capacity claim. The server catalog does
 not prove that custom items exist on a recipient; this API installs no client
 code or assets. Callers own permissions, item eligibility and rate limits.

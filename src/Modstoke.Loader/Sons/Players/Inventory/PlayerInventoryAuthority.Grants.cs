@@ -94,7 +94,7 @@ namespace Modstoke.Sons
                         PlayerInventoryBaseline.CaptureModules(token.ItemInstance))) return false;
                 request = PlayerAddItem.Create(connection, ReliabilityModes.ReliableOrdered);
                 request.Player = target;
-                request.ItemId = pending.Frame.ItemId;
+                if (!ItemIdCarrier.TrySetItemId(request, pending.Frame.ItemId)) return false;
                 request.Amount = 1;
                 request.ItemInstance = token.Cast<IProtocolToken>();
                 if (!Current(out var current) || current.Pointer != target.Pointer || !GrantCurrent(pending, target)) return false;

@@ -234,7 +234,8 @@ namespace Modstoke.Sons
                     return Uncertain("Native token lost the reserved donor modules.", out detail);
                 request = PlayerAddItem.Create(connection, ReliabilityModes.ReliableOrdered);
                 request.Player = _actor;
-                request.ItemId = Action.ItemId;
+                if (!ItemIdCarrier.TrySetItemId(request, Action.ItemId))
+                    return Uncertain("World grant could not carry its item id.", out detail);
                 request.Amount = 1;
                 request.ItemInstance = token.Cast<IProtocolToken>();
                 if (!Current() || !WorldItemCurrent()) return Uncertain("World grant changed before send.", out detail);

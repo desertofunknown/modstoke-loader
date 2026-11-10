@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text;
 using Bolt;
 using Il2CppInterop.Runtime;
+using Modstoke.Sons;
 using Sons.Inventory;
 using UdpKit;
 
@@ -71,7 +72,7 @@ namespace Modstoke.Loader
                 report.AppendLine("  " + row);
 
             report.AppendLine();
-            report.AppendLine("Item events: value kept by the generated setter; then the id written into storage directly, read back and sent through Write/Read");
+            report.AppendLine("Item events (carrier " + (ItemIdCarrier.Active ? "active" : "inactive") + "): value kept by the setter; then the id written into storage directly, read back and sent through Write/Read");
             var events = typeof(PlayerAddItem).Assembly;
             foreach (var name in ProbeEvents)
                 report.AppendLine("  " + name + ": " + ProbeEvent(events.GetType(name)));
@@ -121,7 +122,10 @@ namespace Modstoke.Loader
                 var results = new List<string>();
                 foreach (var id in ProbeIds)
                 {
-                    property.SetValue(sent, id);
+                    // The carrier treats the probe id as a reserved mod id, so 'setter' shows what mod items get.
+                    ItemIdCarrier.ProbeItemId = id;
+                    try { property.SetValue(sent, id); }
+                    finally { ItemIdCarrier.ProbeItemId = 0; }
                     var kept = (int)property.GetValue(sent);
                     // SetDynamic leaves event storage unchanged, so the id goes straight into the storage slot.
                     property.SetValue(sent, 5);
