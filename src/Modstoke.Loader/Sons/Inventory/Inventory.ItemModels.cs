@@ -72,6 +72,7 @@ namespace Modstoke.Sons
             private bool _placementLogged, _shownLogged, _dropRequested;
             private InventoryPrimaryActionBinding _binding;
             private int _clickFrame = -1;
+            private float _attachDeadline = -1;
 
             private ItemMatAction Action => _model.MatAction == ItemMatAction.Drop && !_item._canBeSpawned
                 ? ItemMatAction.None : _model.MatAction;
@@ -131,13 +132,24 @@ namespace Modstoke.Sons
             {
                 if (_dropRequested && inventory._currentView == PlayerInventory.PlayerViews.World)
                 {
-                    _dropRequested = false;
-                    if (Action == ItemMatAction.Attach)
+                    if (Action != ItemMatAction.Attach)
                     {
-                        if (!WeaponAttachments.TryAttach(_item._id, out var attach))
-                            RuntimeEntryPoint.LogSource?.LogWarning("Item " + _item._id + " could not be attached: " + attach);
+                        _dropRequested = false;
+                        DropOne();
                     }
-                    else DropOne();
+                    else
+                    {
+                        // Closing the inventory puts the held weapon away and re-equips it a moment later, so the
+                        // weapon can be in neither the hand nor storage for a few frames.
+                        if (_attachDeadline < 0) _attachDeadline = Time.unscaledTime + 3;
+                        if (WeaponAttachments.TryAttach(_item._id, out var attach) || Time.unscaledTime >= _attachDeadline)
+                        {
+                            if (attach.Length != 0)
+                                RuntimeEntryPoint.LogSource?.LogWarning("Item " + _item._id + " could not be attached: " + attach);
+                            _dropRequested = false;
+                            _attachDeadline = -1;
+                        }
+                    }
                 }
                 if (Time.unscaledTime < _retryAt || _layout == null && !TryCreate(inventory)) return;
                 var count = inventory._itemInstanceManager.GetItemCount(_item._id);
@@ -260,6 +272,7 @@ namespace Modstoke.Sons
             {
                 _count = -1;
                 _dropRequested = false;
+                _attachDeadline = -1;
                 if (_layout == null) return;
                 // A bound group must be inactive before its binding releases, and unbound before disposal.
                 if (!_layout.TryHide(out var status)

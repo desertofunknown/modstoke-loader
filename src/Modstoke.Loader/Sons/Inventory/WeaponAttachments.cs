@@ -333,14 +333,17 @@ namespace Modstoke.Sons
                 status = "";
                 return true;
             }
-            if (inventory._itemInstanceManager._itemsMap.TryGetValue(weaponItemId, out var stack)
-                && stack != null && !stack.WasCollected && stack.UniqueInstances != null)
+            foreach (var pair in inventory._itemInstanceManager._itemsMap)
+            {
+                var stack = pair.Value;
+                if (stack == null || stack.WasCollected || stack.UniqueInstances == null) continue;
                 foreach (var instance in stack.UniqueInstances)
-                    if (instance != null && !instance.WasCollected && Fits(instance, having, out module))
+                    if (instance != null && !instance.WasCollected && instance._itemID == weaponItemId && Fits(instance, having, out module))
                     {
                         status = "";
                         return true;
                     }
+            }
             status = having == null ? "You are not carrying item " + weaponItemId + "."
                 : "No carried item " + weaponItemId + " has it attached.";
             return false;
