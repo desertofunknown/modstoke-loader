@@ -886,6 +886,7 @@
     <Compile Include="Sons/Inventory/ItemRegistration.Modules.cs" />
     <Compile Include="Sons/Inventory/ItemModel.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.Models.cs" />
+    <Compile Include="Sons/Inventory/WeaponAttachments.cs" />
     <Compile Include="Sons/Inventory/Modules/ItemModuleSnapshot.cs" />
     <Compile Include="Sons/Inventory/Modules/ModuleStackStore.cs" />
     <Compile Include="Sons/Inventory/Modules/ModuleStackStore.Serialization.cs" />

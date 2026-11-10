@@ -29,6 +29,9 @@ namespace Modstoke.Sons
         private static readonly long RetryTicks = Stopwatch.Frequency / 5, TimeoutTicks = Stopwatch.Frequency * 8;
         private static bool _ticking;
         private static PlayerInventoryEnforcement _guard;
+
+        /// <summary>Whether a strict inventory guard is armed in this process.</summary>
+        internal static bool StrictInventoryArmed => _guard?.IsArmed == true;
         private readonly int _thread = Environment.CurrentManagedThreadId;
         private readonly int _load = SaveLifecycle.State.BeforeLoadCount;
         private readonly PlayerInventoryBaseline _baseline;

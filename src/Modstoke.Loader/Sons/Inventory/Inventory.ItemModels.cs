@@ -73,7 +73,8 @@ namespace Modstoke.Sons
             private InventoryPrimaryActionBinding _binding;
             private int _clickFrame = -1;
 
-            private bool DropsFromMat => _model.DropFromMat && _item._canBeSpawned;
+            private ItemMatAction Action => _model.MatAction == ItemMatAction.Drop && !_item._canBeSpawned
+                ? ItemMatAction.None : _model.MatAction;
 
             // The game only drops held items, and modeled items cannot be held, so a mat click closes the
             // inventory and drops one once the player is back in the world view.
@@ -131,7 +132,12 @@ namespace Modstoke.Sons
                 if (_dropRequested && inventory._currentView == PlayerInventory.PlayerViews.World)
                 {
                     _dropRequested = false;
-                    DropOne();
+                    if (Action == ItemMatAction.Attach)
+                    {
+                        if (!WeaponAttachments.TryAttach(_item._id, out var attach))
+                            RuntimeEntryPoint.LogSource?.LogWarning("Item " + _item._id + " could not be attached: " + attach);
+                    }
+                    else DropOne();
                 }
                 if (Time.unscaledTime < _retryAt || _layout == null && !TryCreate(inventory)) return;
                 var count = inventory._itemInstanceManager.GetItemCount(_item._id);
@@ -201,7 +207,7 @@ namespace Modstoke.Sons
                         renderer.gameObject.AddComponent<ExcludeRenderableFrom>()._excludedFrom = ExcludeRenderableFrom.Type.Sheen;
                     }
                     // Bound while the group is still inactive, as the binding requires.
-                    if (DropsFromMat && !TryBindPrimaryAction(_layout.Group, OnMatClick, out _binding, out var bindStatus))
+                    if (Action != ItemMatAction.None && !TryBindPrimaryAction(_layout.Group, OnMatClick, out _binding, out var bindStatus))
                         throw new InvalidOperationException(bindStatus);
                 }
                 catch (Exception error)

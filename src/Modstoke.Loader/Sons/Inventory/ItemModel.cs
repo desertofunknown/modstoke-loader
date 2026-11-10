@@ -49,9 +49,18 @@ namespace Modstoke.Sons
         public int MaxAmount { get; init; } = 1;
 
         /// <summary>
-        /// For spawnable items: clicking the item on the mat closes the inventory and drops one in front of the
-        /// player. The game has no drop action for plain items. Host and singleplayer only for now.
+        /// What left click on the mat does. The game has no drop action for plain items, and attachments need
+        /// a <see cref="WeaponAttachments"/> registration. Both close the inventory first. Host and singleplayer only.
         /// </summary>
-        public bool DropFromMat { get; init; } = true;
+        public ItemMatAction MatAction { get; init; } = ItemMatAction.Drop;
+    }
+
+    public enum ItemMatAction
+    {
+        None,
+        /// <summary>Drop one in front of the player; spawnable items only.</summary>
+        Drop,
+        /// <summary>Attach one to a carried weapon it fits, swapping out whatever held that slot.</summary>
+        Attach
     }
 }

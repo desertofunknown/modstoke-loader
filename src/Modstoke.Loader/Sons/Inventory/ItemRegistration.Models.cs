@@ -179,10 +179,10 @@ namespace Modstoke.Sons
             // Combining needs a crafting-mat layout and recipes, which modeled items do not have yet, and they
             // cannot be equipped, so left click is the SDK's drop when the item can exist in the world.
             ui._rightClick = ItemUiData.RightClickCommands.None;
-            var drop = definition.CanBeSpawned && model.DropFromMat;
-            if (drop) ui._leftClick = ItemUiData.LeftClickCommands.use;
-            ui._applyCustomActionText = drop;
-            ui._leftActionCustomText = drop ? "Drop" : "";
+            var action = model.MatAction == ItemMatAction.Drop && !definition.CanBeSpawned ? ItemMatAction.None : model.MatAction;
+            if (action != ItemMatAction.None) ui._leftClick = ItemUiData.LeftClickCommands.use;
+            ui._applyCustomActionText = action != ItemMatAction.None;
+            ui._leftActionCustomText = action == ItemMatAction.Drop ? "Drop" : action == ItemMatAction.Attach ? "Attach" : "";
             ui._rightActionCustomText = "";
             item.hideFlags |= HideFlags.DontUnloadUnusedAsset;
 

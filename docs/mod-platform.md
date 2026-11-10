@@ -3805,11 +3805,33 @@ from a mod's model rather than from game data:
   pickup keeps the donor's Bolt entity under prefab id `33000 + itemId - 1000`,
   registered on every peer that registers the item, so hosted pickups reach
   clients that run the same mod. Client-local ids get local pickups.
-- The game only drops held items, and modeled items cannot be held. With
-  `DropFromMat` (the default) a spawnable item's left click on the mat reads
-  "Drop": it closes the inventory and drops one in front of the player, through
-  the native drop or, when that refuses, a removal and spawn. Combine is hidden
-  until modeled items can take part in recipes. Host and singleplayer only.
+- `ItemModel.MatAction` sets the left click on the mat. `Drop` (the default,
+  spawnable items only) closes the inventory and drops one in front of the
+  player, through the native drop or, when that refuses, a removal and spawn;
+  the game only drops held items, and modeled items cannot be held. `Attach`
+  attaches one to a carried weapon through `WeaponAttachments`. Combine is
+  hidden until modeled items can take part in recipes. Host and singleplayer only.
+
+### Weapon attachments
+
+`WeaponAttachments.TryRegister(WeaponAttachmentSpec)` turns a registered item into
+a native weapon mod for one weapon item, on a slot (`OnTopRail` by default):
+
+- The mod hash is the first four bytes (little-endian) of
+  SHA-256(`modstoke.weaponmod/1\n` + mod id + `\n` + key). A collision is refused.
+  Every peer, including dedicated servers, must register the same specs, since
+  held-weapon replication and saves carry only the hash.
+- `Model` returns a template; the game instantiates it on every weapon that
+  carries the mod, at `Offset`/`Rotation` from the slot locator. `Hides` names
+  weapon parts to hide while attached, such as the rifle's built-in red dot
+  (`RifleScopeModel`).
+- `OnAttached`/`OnDetached` run for local and remote weapon objects, and
+  `OnDetached` also runs when the carrying weapon object is destroyed.
+- `TryAttach(itemId)` moves one item from the inventory onto the held, or else
+  first carried, weapon and returns any attachment it replaces. `TryDetach`
+  returns it. Both are host and singleplayer only and refuse under strict
+  inventory. A held weapon shows the change at once; other players see it
+  when it is next equipped.
 - The definition must be a `CustomItem` without hotkeys or asset references. The
   item type defaults to `CraftingMaterial, Droppable`; equipment, weapon and
   ammunition types are refused until held models are supported.
