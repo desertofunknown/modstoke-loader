@@ -342,6 +342,87 @@ or a reason to reject a player. Referenced objects can change without updating
 list versions; these reads are not atomic. The service adds no enforcement and
 requires no client extension. Runtime behavior and frame cost remain unverified.
 
+## Map Layers
+
+`Modstoke.Sons.MapLayers` lets a Modstoke mod publish what it puts in the world
+for the hosting panel's 3D island map. The mod is named by its manifest ID and
+must have started; the layer carries that manifest's version.
+
+- `TryRegisterModel(modId, modelId, root, out status)` exports the meshes under a
+  `GameObject` in its local space, merged into one primitive per material. A
+  `Mesh` with its materials, or a list of `MapSurface` built by the mod, also
+  works. Unity objects are read on the game thread; surfaces on any thread.
+- `TryRegisterSavedModel(modId, modelId, out status)` reuses a model this mod
+  version exported in an earlier session, so the mod can skip building it.
+- `TrySetPlacement(modId, placement, out status)` and `RemovePlacement` place a
+  registered model in Unity world space.
+- `TrySetTerrainPatch(modId, patchId, surfaces, out status)` and
+  `RemoveTerrainPatch` replace edited ground with a world-space mesh.
+- `RemoveLayer(modId)` withdraws everything at shutdown.
+
+Expected rejections return false with a `MapLayerStatus`. IDs use lowercase
+letters, digits, `_`, `-` and `.`, as the panel serves them. Only meshes and
+textures created at runtime are exported: Unity gives objects loaded from game
+or bundle files positive instance IDs, and those are skipped, so the game's own
+assets never leave the server. Base-colour textures are kept when readable and
+at most 2048 px.
+
+Files go under the loader's `UserData/map/` (`Modstoke/UserData`, or
+`OpenACAI/UserData` until Bootstrap has moved an older install). Nothing is
+written per frame. A world load schedules a write after 20 s, a world save one
+straight away and a change one after 10 s; writes run on a worker thread, stay
+30 s apart and replace every file atomically, layers.json last. Multiplayer
+clients never write. With nothing registered, layers.json still appears with an
+empty `layers` array.
+
+```json
+{
+  "version": 1,
+  "written": "2026-11-08T14:20:31.512Z",
+  "layers": [
+    {
+      "mod": "modstoke.client",
+      "version": "0.2.31",
+      "models": [
+        { "id": "drone", "file": "models/modstoke.client/drone.glb",
+          "bounds": [-0.31, -0.225, -0.29, 0.31, 0.06, 0.27] }
+      ],
+      "placements": "placements/modstoke.client.json",
+      "terrain": []
+    }
+  ]
+}
+```
+
+Folders use the lowercased manifest ID. Models are binary glTF 2.0 in metres:
+positions, normals, optional UVs, vertex colours and base-colour textures, and
+indices, 16-bit where possible, with exact duplicate vertices merged. Each
+material has a linear `baseColorFactor`, metallic and roughness. Unity's
+left-handed space is converted to glTF's right-handed one by negating Z and
+reversing the winding. A model is written once per mod version. `bounds` are
+`[minX, minY, minZ, maxX, maxY, maxZ]` in the GLB's own glTF space.
+
+Placements stay in Unity world space; the panel applies the conversion, so a
+position `(x, y, z)` becomes `(x, y, -z)` and a rotation `(x, y, z, w)` becomes
+`(-x, -y, z, w)`:
+
+```json
+[
+  { "id": "drone-3f2a9c0d4b1e4f6a8c7d2e1f0a9b8c7d", "model": "drone",
+    "position": [512.4, 38.2, -1204.7], "rotation": [0, 0.3827, 0, 0.9239],
+    "scale": [1, 1, 1], "label": "Survey drone", "kind": "drone" }
+]
+```
+
+A placement that moved less than 10 cm and turned less than about two degrees
+is not rewritten. Terrain patches are world-space GLBs plus a footprint PNG:
+8-bit greyscale, 1 m per pixel over the patch's X and Z bounds, column 0 at the
+west edge and row 0 at the north edge (lowest glTF Z). White pixels are those
+whose centre the patch covers seen from above; the panel hides the base terrain
+there. Patches may be at most 1024 m on a side. Placements and patches belong to
+the current world and are cleared when another world loads; models stay
+registered.
+
 ## Structure Activation And Debug Commands
 
 `ServerInteractions` exposes three synchronous server callbacks:
@@ -643,6 +724,7 @@ find an implementation. The main entry points include:
 | Save data | [SaveData.cs](../src/Modstoke.Loader/Sons/Saves/SaveData.cs) |
 | Save lifecycle | [SaveLifecycle.cs](../src/Modstoke.Loader/Sons/Saves/SaveLifecycle.cs) |
 | Save registration | [SaveRegistry.cs](../src/Modstoke.Loader/Sons/Saves/SaveRegistry.cs) |
+| Map layers | [MapLayers.cs](../src/Modstoke.Loader/Sons/World/MapLayers.cs) |
 
 `Modstoke.Loader.Modding` exposes loader state:
 

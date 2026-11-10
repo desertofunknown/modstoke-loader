@@ -80,6 +80,7 @@ namespace Modstoke.Sons
             SaveData.RegisterMenuProvider();
             SaveLifecycle.Initialize();
             SaveRegistry.Initialize();
+            MapLayers.Initialize();
             SetState(GameState.CreateUnknown());
             MenuBridgeState.Initialize();
             PublishLifecycle("OpenACAISonsInitialized");

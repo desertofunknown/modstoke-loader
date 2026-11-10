@@ -775,6 +775,7 @@
     <Compile Include="UI/Console/ConsoleOverlay.Content.cs" />
     <Compile Include="Diagnostics/RuntimeConsole.cs" />
     <Compile Include="Diagnostics/ServerConsoleInput.cs" />
+    <Compile Include="Diagnostics/BoltWidths.cs" />
     <Compile Include="UI/Menus/ModMenuState.cs" />
     <Compile Include="UI/Menus/MenuText.cs" />
     <Compile Include="UI/Menus/MenuView.cs" />
@@ -916,6 +917,10 @@
     <Compile Include="Sons/Saves/SaveRegistry.cs" />
     <Compile Include="Sons/World/WorldRecords.cs" />
     <Compile Include="Sons/World/WorldRecords.Native.cs" />
+    <Compile Include="Sons/World/MapLayers.cs" />
+    <Compile Include="Sons/World/MapLayers.Capture.cs" />
+    <Compile Include="Sons/World/MapLayers.Files.cs" />
+    <Compile Include="Sons/World/GlbWriter.cs" />
     <Compile Include="Diagnostics/Timings.cs" />
     <Compile Include="Runtime/Jobs/TransformJobs.cs" />
     <Compile Include="Runtime/Jobs/ParticleJobs.cs" />

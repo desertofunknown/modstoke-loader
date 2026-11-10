@@ -95,7 +95,8 @@ namespace Modstoke.Loader
                 new("help", "Show console usage and the available commands.", true, false),
                 new("status", "Show the current Loader status.", true, false),
                 new("mods", "List the currently discovered mods and their status.", true, false),
-                new("desktop", "Open the desktop console window.", true, false)
+                new("desktop", "Open the desktop console window.", true, false),
+                new("boltwidths", "Report the bit width of each networked item-id field (writes UserData/bolt-widths.txt).", true, false)
             };
             commands.AddRange(HostCommands.Catalog());
             Routes.Clear();
@@ -152,6 +153,11 @@ namespace Modstoke.Loader
                 {
                     bool opened = ConsoleHost.TryOpenDesktop(out var detail);
                     Report(submission, opened ? "Info" : "Warning", detail);
+                    return;
+                }
+                if (text == "boltwidths")
+                {
+                    Report(submission, "Info", BoltWidths.Run());
                     return;
                 }
                 if (text is "help" or "status" or "mods")
