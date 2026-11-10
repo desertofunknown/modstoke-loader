@@ -4,6 +4,7 @@
 using System;
 using Bolt;
 using Il2CppInterop.Runtime;
+using Modstoke.Loader;
 using global::Sons.Gameplay;
 using global::Sons.Inventory;
 using global::Sons.Items.Core;
@@ -33,7 +34,7 @@ namespace Modstoke.Sons
         /// The definition must be a <see cref="ItemRegistrationKind.CustomItem"/> without hotkeys or asset
         /// references. Its item type defaults to "CraftingMaterial, Droppable"; equipment, weapon and ammunition
         /// types are refused. A positive BaseItemId picks the item whose remaining data (stack sounds, UI colours,
-        /// grammar) is copied; otherwise the feather is used. World pickups are local to this process.
+        /// grammar) is copied; otherwise the feather is used.
         /// </remarks>
         public static ItemRegistrationResult ExecuteItemRegistration(CustomItemDefinition definition, ItemModel model)
             => model == null
@@ -196,11 +197,6 @@ namespace Modstoke.Sons
             // root and only borrows the layer the donor renders on.
             var layer = (Live(pickup._itemRenderable) ? pickup._itemRenderable.gameObject : prefab).layer;
 
-            // Local pickups have no network identity; Bolt behaviours would look for an entity that is gone.
-            foreach (var behaviour in prefab.GetComponentsInChildren<EntityBehaviour>(true))
-                Object.DestroyImmediate(behaviour);
-            foreach (var entity in prefab.GetComponentsInChildren<BoltEntity>(true))
-                Object.DestroyImmediate(entity);
             // The donor's look: lazily loaded renderables, LOD groups, renderers and solid colliders.
             foreach (var renderable in prefab.GetComponentsInChildren<ItemRenderable>(true))
                 Object.DestroyImmediate(renderable);
@@ -229,8 +225,33 @@ namespace Modstoke.Sons
                 tag._name = definition.DisplayName;
             }
             prefab.SetActive(true);
+
+            // Keep the donor's pickup entity and state, under a prefab id every peer derives from the item id,
+            // so hosts can network the pickup and clients resolve it to this template.
+            var entity = prefab.GetComponent<BoltEntity>();
+            if (Live(entity) && definition.ItemId >= ItemIds.FirstModItemId && ItemIds.IsNetworked(definition.ItemId))
+            {
+                entity._prefabId = PickupPrefabId(definition.ItemId);
+                registration.NetworkEntity = entity;
+                NetworkPrefabs.Instance.RegisterPrefab(entity, null);
+                RuntimeEntryPoint.LogSource?.LogInfo("Item " + definition.ItemId + " pickup is Bolt prefab " + entity._prefabId
+                    + ", built from item " + donor._itemId + "'s pickup.");
+            }
+            else
+            {
+                // Client-local items never travel, so their pickups stay plain local objects.
+                foreach (var behaviour in prefab.GetComponentsInChildren<EntityBehaviour>(true))
+                    Object.DestroyImmediate(behaviour);
+                foreach (var stale in prefab.GetComponentsInChildren<BoltEntity>(true))
+                    Object.DestroyImmediate(stale);
+            }
             return prefab.transform;
         }
+
+        // Above the native prefab range and below 65536, one id per networked mod item id.
+        private const int FirstPickupPrefabId = 33000;
+
+        private static int PickupPrefabId(int itemId) => FirstPickupPrefabId + itemId - ItemIds.FirstModItemId;
 
         private static bool Finite(Vector3 value) => float.IsFinite(value.x) && float.IsFinite(value.y) && float.IsFinite(value.z);
 

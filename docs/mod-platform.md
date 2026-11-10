@@ -3801,9 +3801,10 @@ from a mod's model rather than from game data:
   by `MatOffset`, rotated by `MatRotation` and scaled by `MatScale`. The SDK
   rebuilds the layout for each inventory lifetime and follows stock.
 - A spawnable definition gets a world pickup built from a plain native pickup,
-  with the mod model in place of the donor's renderers. These pickups have no
-  Bolt identity yet, so they exist only in the process that spawns them:
-  singleplayer and the host.
+  with the mod model in place of the donor's renderers. For networked ids the
+  pickup keeps the donor's Bolt entity under prefab id `33000 + itemId - 1000`,
+  registered on every peer that registers the item, so hosted pickups reach
+  clients that run the same mod. Client-local ids get local pickups.
 - The definition must be a `CustomItem` without hotkeys or asset references. The
   item type defaults to `CraftingMaterial, Droppable`; equipment, weapon and
   ammunition types are refused until held models are supported.

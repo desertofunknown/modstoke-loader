@@ -14,8 +14,8 @@ namespace Modstoke.Sons
     /// Factories return a template the mod keeps alive, such as a prefab loaded from its asset bundle. The SDK
     /// instantiates its own copies for the inventory mat and the world pickup and never destroys the template.
     /// Copies are made inert: scripts, rigidbodies, joints and colliders are removed, and the SDK adds hit boxes
-    /// fitted to the meshes. World pickups are local to this process for now, which covers singleplayer and the
-    /// host; remote players do not see them.
+    /// fitted to the meshes. Pickups of networked ids keep the donor pickup's Bolt entity under a prefab id derived
+    /// from the item id, so every peer that registered the item resolves it; client-local ids get local pickups.
     /// </remarks>
     public sealed class ItemModel
     {

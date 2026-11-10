@@ -497,6 +497,11 @@ namespace Modstoke.Sons
                             throw new InvalidOperationException("An owned localization entry could not be removed.");
                     }
                 }
+            if (registration.NetworkEntity is not null)
+            {
+                NetworkPrefabs.Instance.UnregisterPrefab(registration.NetworkEntity);
+                registration.NetworkEntity = null;
+            }
             if (Live(registration.PrefabRoot)) Object.Destroy(registration.PrefabRoot);
             if (Live(registration.Item)) Object.Destroy(registration.Item);
         }
@@ -605,6 +610,7 @@ namespace Modstoke.Sons
             internal int NativeModuleItemId;
             internal int NativeModuleItemIndex;
             internal GameObject PrefabRoot;
+            internal BoltEntity NetworkEntity;
             internal StringTable Table;
             internal readonly Dictionary<string, IntPtr> Translations = new Dictionary<string, IntPtr>();
         }
