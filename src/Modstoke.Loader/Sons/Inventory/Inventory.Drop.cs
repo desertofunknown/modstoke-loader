@@ -130,10 +130,14 @@ namespace Modstoke.Sons
                 _counted = counted;
                 _root = LocalPlayer.GameObject;
                 _prefab = data.PickupPrefab;
-                if (!Live(_manager) || !Live(_root) || !Live(_prefab)
-                    || (counted ? !DefinitionCurrent() : !ProfileCurrent())
-                    || !EquipmentStowIdle(inventory) || !PickupServiceReady())
-                    throw new InvalidOperationException("A supported storable item, ordinary pickup prefab and idle world inventory are required.");
+                if (!Live(_manager) || !Live(_root) || !Live(_prefab))
+                    throw new InvalidOperationException("The inventory, player or item's pickup prefab is not live.");
+                if (counted ? !DefinitionCurrent() : !ProfileCurrent())
+                    throw new InvalidOperationException("The item is not a storable, spawnable, droppable item valid in this game mode.");
+                if (!EquipmentStowIdle(inventory))
+                    throw new InvalidOperationException("The player must be in the world view with idle, empty hands.");
+                if (!PickupServiceReady())
+                    throw new InvalidOperationException("The world's pickup pool is not ready.");
                 var prefabPickup = _prefab.GetComponent<PickUp>();
                 if (!Live(prefabPickup) || prefabPickup._itemId != _itemId
                     || counted && !CountedPickupSupported(prefabPickup))
