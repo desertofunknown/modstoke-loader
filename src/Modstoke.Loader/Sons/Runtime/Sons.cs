@@ -155,6 +155,7 @@ namespace Modstoke.Sons
             {
                 Combat.StrictCombatEquipmentCleanupPump.Tick();
                 Combat.StrictCombatImpactParticles.Tick();
+                global::Modstoke.Sons.ItemRegistration.RepublishIntoNewDatabase();
                 global::Modstoke.Sons.Inventory.TickItemModels();
             }
             finally

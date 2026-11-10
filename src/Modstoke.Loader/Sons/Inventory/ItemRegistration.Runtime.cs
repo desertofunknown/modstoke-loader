@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Modstoke.Loader;
 using global::Sons.Gameplay;
 using global::Sons.Items.Core;
 using UnityEngine;
@@ -499,6 +500,65 @@ namespace Modstoke.Sons
             if (Live(registration.PrefabRoot)) Object.Destroy(registration.PrefabRoot);
             if (Live(registration.Item)) Object.Destroy(registration.Item);
         }
+
+        /// <summary>
+        /// Puts published items back when the game builds a new item database, for example after returning to the
+        /// title screen and loading another save. Registrations execute once per process, so without this a mod's
+        /// items would vanish from the second world on.
+        /// </summary>
+        internal static void RepublishIntoNewDatabase()
+        {
+            if (_runtimeOwnerThreadId == 0 || Environment.CurrentManagedThreadId != _runtimeOwnerThreadId
+                || _runtimeBusy || RuntimeRegistrations.Count == 0) return;
+            if (!TryGetRuntimeDatabase(out var database, out var items, out var cache, out _)) return;
+            var seen = (database.Pointer, items.Pointer, cache.Pointer);
+            if (seen == _publishedDatabase) return;
+
+            var restored = 0;
+            lock (SyncRoot)
+            {
+                _runtimeBusy = true;
+                try
+                {
+                    foreach (var registration in RuntimeRegistrations.Values)
+                    {
+                        if (!registration.Published || !Live(registration.Item)) continue;
+                        var id = registration.Item._id;
+                        if (IsCurrent(registration, id)) continue;
+                        if (cache.ContainsKey(id) || FindItem(items, id) != null)
+                        {
+                            RuntimeEntryPoint.LogSource?.LogWarning("Item " + id + " was not restored to the new item database because the id is already taken there.");
+                            continue;
+                        }
+                        if (registration.NativeModuleMask != 0) registration.NativeModuleItemIndex = items.Count;
+                        items.Add(registration.Item);
+                        cache.Add(id, registration.Item);
+                        registration.Database = database;
+                        registration.Items = items;
+                        registration.Cache = cache;
+                        restored++;
+                    }
+                    _publishedDatabase = seen;
+                }
+                finally
+                {
+                    _runtimeBusy = false;
+                }
+            }
+            if (restored == 0) return;
+            RuntimeEntryPoint.LogSource?.LogInfo("Restored " + restored + " mod item(s) to the new item database.");
+            try
+            {
+                ItemCatalog.Refresh();
+                Refresh();
+            }
+            catch (Exception ex)
+            {
+                RuntimeEntryPoint.LogSource?.LogWarning("Item catalog refresh after restoring mod items failed: " + ex.Message);
+            }
+        }
+
+        private static (IntPtr Database, IntPtr Items, IntPtr Cache) _publishedDatabase;
 
         private static void RefreshRuntimeRegistrations()
         {
