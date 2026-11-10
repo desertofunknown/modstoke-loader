@@ -3788,6 +3788,26 @@ database, with ID checks and publication readback. This does not author layouts,
 register arbitrary network prefabs or establish multiplayer acceptance. See
 [native runtime actions](SOTF_RUNTIME_ACTIONS.md) for execution and asset ownership.
 
+### Items with their own model
+
+`ExecuteItemRegistration(CustomItemDefinition, ItemModel)` authors a counted item
+from a mod's model rather than from game data:
+
+- `ItemModel.Model` (and optionally `PickupModel`) return a template the mod keeps
+  alive, such as a prefab from its asset bundle. The SDK instantiates inert copies:
+  scripts, rigidbodies, joints and colliders are stripped and hit boxes are fitted
+  to the meshes.
+- The item shows on the inventory mat next to the `MatAnchorItemId` group, offset
+  by `MatOffset`, rotated by `MatRotation` and scaled by `MatScale`. The SDK
+  rebuilds the layout for each inventory lifetime and follows stock.
+- A spawnable definition gets a world pickup built from a plain native pickup,
+  with the mod model in place of the donor's renderers. These pickups have no
+  Bolt identity yet, so they exist only in the process that spawns them:
+  singleplayer and the host.
+- The definition must be a `CustomItem` without hotkeys or asset references. The
+  item type defaults to `CraftingMaterial, Droppable`; equipment, weapon and
+  ammunition types are refused until held models are supported.
+
 ## Current Sons Inventory SDK Slice
 
 `Modstoke.Sons.Inventory` exposes the OpenACAI-owned inventory

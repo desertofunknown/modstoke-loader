@@ -60,7 +60,8 @@ namespace Modstoke.Sons
         }
 
         private static ItemRegistrationResult ExecuteRegistration(
-            CustomItemDefinition definition, ItemData nativeItem, bool cloneBase, int nativeModuleMask = 0)
+            CustomItemDefinition definition, ItemData nativeItem, bool cloneBase, int nativeModuleMask = 0,
+            ItemModel model = null)
         {
             if (_runtimeOwnerThreadId == 0 || Environment.CurrentManagedThreadId != _runtimeOwnerThreadId)
                 return Result(false, false, false, "wrong-thread", "Registration requires the initialized Unity lifecycle thread.");
@@ -74,7 +75,7 @@ namespace Modstoke.Sons
                 _runtimeBusy = true;
                 try
                 {
-                    return ExecuteRegistrationCore(normalized, nativeItem, cloneBase, nativeModuleMask);
+                    return ExecuteRegistrationCore(normalized, nativeItem, cloneBase, nativeModuleMask, model);
                 }
                 finally
                 {
@@ -84,7 +85,7 @@ namespace Modstoke.Sons
         }
 
         private static ItemRegistrationResult ExecuteRegistrationCore(
-            NormalizedDefinition definition, ItemData nativeItem, bool cloneBase, int nativeModuleMask)
+            NormalizedDefinition definition, ItemData nativeItem, bool cloneBase, int nativeModuleMask, ItemModel model)
         {
             RuntimeRegistration registration = null;
             var attempted = false;
@@ -110,8 +111,11 @@ namespace Modstoke.Sons
                     return Result(false, false, false, "unknown-base-item", "The base id is not present in the live database.");
                 if (cloneBase && !CanClone(definition, donor, out var reason, out detail))
                     return Result(false, false, false, reason, detail);
+                ModelSources sources = null;
+                if (model != null && !TryPrepareModel(definition, model, donor, cache, items, out sources, out reason, out detail))
+                    return Result(false, false, false, reason, detail);
 
-                if (nativeModuleMask != 0 && (cloneBase || !Live(nativeItem) || !nativeItem._eachInstanceIsUnique))
+                if (nativeModuleMask != 0 && (cloneBase || model != null || !Live(nativeItem) || !nativeItem._eachInstanceIsUnique))
                     return Result(false, false, false, "unique-authored-item-required",
                         "Module contracts require caller-authored ItemData already configured for native unique-instance storage. No existing definition is converted.");
                 // Last check before anything is allocated, so a refused registration never claims an id.
@@ -120,11 +124,13 @@ namespace Modstoke.Sons
 
                 registration = new RuntimeRegistration
                 {
-                    Database = database, Items = items, Cache = cache, Owned = cloneBase,
+                    Database = database, Items = items, Cache = cache, Owned = cloneBase || model != null,
                     NativeModuleMask = nativeModuleMask, NativeModuleItemId = definition.ItemId
                 };
                 if (cloneBase)
                     CreateBaseClone(definition, donor, registration);
+                else if (model != null)
+                    CreateModeledItem(definition, model, sources, registration);
                 else
                     registration.Item = nativeItem;
 
@@ -154,6 +160,7 @@ namespace Modstoke.Sons
                 var snapshot = DefinitionSnapshot(definition, donor, true);
                 RegisteredDefinitions[key] = snapshot;
                 registration.Published = true;
+                if (model != null) Inventory.AddItemModel(registration.Item, model);
                 // Publication is already complete. A managed catalog refresh must not roll it back.
                 var refreshDetail = "";
                 try
@@ -285,21 +292,8 @@ namespace Modstoke.Sons
                 foreach (var tag in donor._pickupPrefab.GetComponentsInChildren<ItemLocatorTag>(true))
                     if (tag._itemId != donor._id) return false;
             }
-            var table = LocalizationSettings.StringDatabase.GetTable("Items");
-            if (!Live(table))
-            {
-                reason = "localization-not-ready";
-                detail = "The active locale's Items table must be loaded before cloning a display name.";
+            if (!TranslationKeysFree(definition.ItemId, out reason, out detail))
                 return false;
-            }
-            var translationKey = TranslationKey(definition.ItemId);
-            if (table.GetEntry(translationKey) != null || table.GetEntry(translationKey + "_PLURAL") != null
-                || table.GetEntry(translationKey + "_DESC") != null)
-            {
-                reason = "translation-key-collision";
-                detail = "The clone's localization keys already exist; no existing translations are replaced.";
-                return false;
-            }
             reason = "ready";
             detail = "Explicit execution can clone this simple base item into the local native database; player layouts and network registration remain separate.";
             return true;
@@ -388,11 +382,37 @@ namespace Modstoke.Sons
                 }
                 item._pickupPrefab = prefab.transform;
             }
+            AddItemTranslations(definition, registration);
+        }
+
+        private static void AddItemTranslations(NormalizedDefinition definition, RuntimeRegistration registration)
+        {
             registration.Table = LocalizationSettings.StringDatabase.GetTable("Items");
             var key = TranslationKey(definition.ItemId);
             AddTranslation(registration, key, definition.DisplayName);
             AddTranslation(registration, key + "_PLURAL", definition.DisplayName);
-            AddTranslation(registration, key + "_DESC", item._uiData._description ?? "");
+            AddTranslation(registration, key + "_DESC", registration.Item._uiData._description ?? "");
+        }
+
+        private static bool TranslationKeysFree(int itemId, out string reason, out string detail)
+        {
+            var table = LocalizationSettings.StringDatabase.GetTable("Items");
+            if (!Live(table))
+            {
+                reason = "localization-not-ready";
+                detail = "The active locale's Items table must be loaded before adding a display name.";
+                return false;
+            }
+            var key = TranslationKey(itemId);
+            if (table.GetEntry(key) != null || table.GetEntry(key + "_PLURAL") != null || table.GetEntry(key + "_DESC") != null)
+            {
+                reason = "translation-key-collision";
+                detail = "The item's localization keys already exist; no existing translations are replaced.";
+                return false;
+            }
+            reason = "ready";
+            detail = "";
+            return true;
         }
 
         private static void AddTranslation(RuntimeRegistration registration, string key, string value)
