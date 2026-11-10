@@ -387,16 +387,24 @@ namespace Modstoke.Sons
 
         private static void AddItemTranslations(NormalizedDefinition definition, RuntimeRegistration registration)
         {
-            registration.Table = LocalizationSettings.StringDatabase.GetTable("Items");
+            registration.Table = LoadedItemsTable();
             var key = TranslationKey(definition.ItemId);
             AddTranslation(registration, key, definition.DisplayName);
             AddTranslation(registration, key + "_PLURAL", definition.DisplayName);
             AddTranslation(registration, key + "_DESC", registration.Item._uiData._description ?? "");
         }
 
+        // GetTable waits for a pending load, which deadlocks when called from a scene-load callback.
+        // Only an already finished load is used; otherwise registration reports localization-not-ready.
+        private static StringTable LoadedItemsTable()
+        {
+            var load = LocalizationSettings.StringDatabase.GetTableAsync("Items", null);
+            return load.IsDone ? load.Result : null;
+        }
+
         private static bool TranslationKeysFree(int itemId, out string reason, out string detail)
         {
-            var table = LocalizationSettings.StringDatabase.GetTable("Items");
+            var table = LoadedItemsTable();
             if (!Live(table))
             {
                 reason = "localization-not-ready";
