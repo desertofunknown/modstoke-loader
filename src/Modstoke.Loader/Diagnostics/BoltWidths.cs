@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Bolt;
@@ -103,14 +104,16 @@ namespace Modstoke.Loader
 
         private static string ProbeEvent(Type type)
         {
-            var property = type?.GetProperty("ItemId") ?? type?.GetProperty("Item");
-            var create = type?.GetMethod("Create", Type.EmptyTypes);
-            if (property == null || create == null)
-                return "not found";
-
             Event sent = null, received = null;
             try
             {
+                // Declared only: Bolt's NetworkObj base has an indexer that reflection also calls "Item".
+                const BindingFlags declared = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+                var property = type?.GetProperty("ItemId", declared) ?? type?.GetProperty("Item", declared);
+                var create = type?.GetMethod("Create", BindingFlags.Public | BindingFlags.Static, Type.EmptyTypes);
+                if (property == null || create == null)
+                    return "not found";
+
                 sent = (Event)create.Invoke(null, null);
                 received = (Event)create.Invoke(null, null);
                 var integer = FindInteger(sent.Meta, property.Name);
