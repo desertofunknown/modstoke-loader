@@ -72,7 +72,6 @@ namespace Modstoke.Sons
             private bool _placementLogged, _shownLogged, _dropRequested;
             private InventoryPrimaryActionBinding _binding;
             private int _clickFrame = -1;
-            private float _attachDeadline = -1;
 
             private ItemMatAction Action => _model.MatAction == ItemMatAction.Drop && !_item._canBeSpawned
                 ? ItemMatAction.None : _model.MatAction;
@@ -91,12 +90,27 @@ namespace Modstoke.Sons
                     }
                 if (!highlighted || inventory._itemInstanceManager.GetItemCount(_item._id) < 1) return;
                 _clickFrame = Time.frameCount;
+                if (Action == ItemMatAction.Attach)
+                {
+                    // Attach with the inventory open, as native weapon-mod crafting does: the held weapon is put
+                    // away, and closing the inventory re-equips it and publishes its mods to other players.
+                    if (!WeaponAttachments.TryAttach(_item._id, out var attach))
+                        RuntimeEntryPoint.LogSource?.LogWarning("Item " + _item._id + " could not be attached: " + attach);
+                    return;
+                }
                 _dropRequested = true;
                 if (inventory._currentView == PlayerInventory.PlayerViews.Inventory) inventory.Close();
             }
 
             private void DropOne()
             {
+                // A strict server owns the client's inventory: the native inventory drop becomes its own request,
+                // which removes the item and places the pickup server-side.
+                if (BoltNetwork.isRunning && !BoltNetwork.isServer && PlayerInventoryEnforcement.StrictInventoryArmed)
+                {
+                    LocalPlayer.Inventory.DropItemFromInventory(_item._id, out _);
+                    return;
+                }
                 // The native drop keeps the game's own custody checks; fall back to remove-and-spawn only when it
                 // refused before touching the inventory.
                 if (TryDropCountedItem(_item._id, out _, out var drop)) return;
@@ -132,24 +146,8 @@ namespace Modstoke.Sons
             {
                 if (_dropRequested && inventory._currentView == PlayerInventory.PlayerViews.World)
                 {
-                    if (Action != ItemMatAction.Attach)
-                    {
-                        _dropRequested = false;
-                        DropOne();
-                    }
-                    else
-                    {
-                        // Closing the inventory puts the held weapon away and re-equips it a moment later, so the
-                        // weapon can be in neither the hand nor storage for a few frames.
-                        if (_attachDeadline < 0) _attachDeadline = Time.unscaledTime + 3;
-                        if (WeaponAttachments.TryAttach(_item._id, out var attach) || Time.unscaledTime >= _attachDeadline)
-                        {
-                            if (attach.Length != 0)
-                                RuntimeEntryPoint.LogSource?.LogWarning("Item " + _item._id + " could not be attached: " + attach);
-                            _dropRequested = false;
-                            _attachDeadline = -1;
-                        }
-                    }
+                    _dropRequested = false;
+                    DropOne();
                 }
                 if (Time.unscaledTime < _retryAt || _layout == null && !TryCreate(inventory)) return;
                 var count = inventory._itemInstanceManager.GetItemCount(_item._id);
@@ -272,7 +270,6 @@ namespace Modstoke.Sons
             {
                 _count = -1;
                 _dropRequested = false;
-                _attachDeadline = -1;
                 if (_layout == null) return;
                 // A bound group must be inactive before its binding releases, and unbound before disposal.
                 if (!_layout.TryHide(out var status)

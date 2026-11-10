@@ -27,8 +27,10 @@ namespace Modstoke.Sons
         public static bool TryDropStoredItem(ItemInstance item, out GameObject droppedObject, out ItemDropResult result)
             => TryDropItem(item, 0, false, out droppedObject, out result);
 
-        /// <summary>Drops one plain count-based item from the offline player or host's inventory.</summary>
+        /// <summary>Drops one plain count-based item from the local player's inventory.</summary>
         /// <remarks>
+        /// On a client of a server without strict inventory the native drop is sent to the server, which
+        /// spawns the pickup; strict servers take drops through their own request instead.
         /// Requires the Unity lifecycle thread, idle equipment and qualified inventory hooks.
         /// Items with modules or specialized pickups are rejected. False may follow a debit or spawn;
         /// inspect the result and never automatically retry or refund. Remote replication is not confirmed.
@@ -77,9 +79,9 @@ namespace Modstoke.Sons
                     return false;
                 }
                 var observed = drop.Apply(out droppedObject);
-                result = drop.Result(observed
-                    ? "Exact debit and live pickup observed. Save persistence and remote delivery are not confirmed."
-                    : "Drop is unconfirmed; do not automatically retry or refund.");
+                result = drop.Result(!observed ? "Drop is unconfirmed; do not automatically retry or refund."
+                    : drop.SentToServer ? "Exact debit observed and the native drop was sent to the server, which spawns the pickup."
+                    : "Exact debit and live pickup observed. Save persistence and remote delivery are not confirmed.");
                 return observed;
             }
             catch (Exception error)
@@ -99,6 +101,9 @@ namespace Modstoke.Sons
         {
             private static volatile StoredDrop _current;
             internal static StoredDrop Active => _current;
+            private static bool RemoteClient => BoltNetwork.isRunning && !BoltNetwork.isServer;
+            /// <summary>A client's drop went to the server as the native DropItem event; it spawns the pickup.</summary>
+            internal bool SentToServer { get; private set; }
             private readonly PlayerInventory _inventory;
             private readonly ItemInstanceManager _manager;
             private readonly ItemInstance _item;
@@ -120,8 +125,9 @@ namespace Modstoke.Sons
             {
                 if (_current != null || !PlayerInventoryEnforcement.LocalDropReady
                     || !TryGetMutationContext(inventory, data._id, out _context, out var currentData, out var detail)
-                    || !Same(data, currentData) || BoltNetwork.isRunning && !BoltNetwork.isServer)
-                    throw new InvalidOperationException("A local offline player or host with unreserved inventory is required.");
+                    || !Same(data, currentData) || RemoteClient && PlayerInventoryEnforcement.StrictInventoryArmed)
+                    throw new InvalidOperationException("A local player with unreserved inventory is required; strict "
+                        + "inventory drops go through the server's own drop request.");
                 _inventory = inventory;
                 _manager = inventory._itemInstanceManager;
                 _item = item;
@@ -204,7 +210,10 @@ namespace Modstoke.Sons
                 if (!Current()) return false;
                 after = EquipmentTransfer.Custody.Capture(_inventory);
                 _afterCount = after.StoredCount(_itemId);
-                if (!_spawnReturned || !CustodyMatches(after, -1) || !Live(output)) return false;
+                if (!_spawnReturned || !CustodyMatches(after, -1)) return false;
+                // On a client the native drop sends DropItem and returns no object; the server spawns the pickup.
+                if (RemoteClient) return SentToServer = true;
+                if (!Live(output)) return false;
                 var pickup = output.GetComponent<PickUp>();
                 _pickupObserved = Live(pickup) && pickup._itemId == _itemId && pickup._amountToAdd == 1
                     && Same(pickup._ItemInstance_k__BackingField, _item)
@@ -271,7 +280,7 @@ namespace Modstoke.Sons
             private bool Current() => Environment.CurrentManagedThreadId == _ownerThreadId
                 && (!_active || ReferenceEquals(_current, this))
                 && MutationContextCurrent(_inventory, in _context, out _)
-                && (!BoltNetwork.isRunning || BoltNetwork.isServer)
+                && !(RemoteClient && PlayerInventoryEnforcement.StrictInventoryArmed)
                 && !PlayerInventoryEnforcement.IsSpecializedInventoryHeld(_inventory)
                 && !InventoryStorage.IsManagerHeld(_manager)
                 && Same(_root, LocalPlayer.GameObject) && Same(_manager, _inventory._itemInstanceManager)

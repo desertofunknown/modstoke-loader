@@ -97,8 +97,9 @@ namespace Modstoke.Sons
     /// <summary>
     /// Registers mod items as native weapon mods and attaches them to weapons in the local inventory. Attached mods
     /// live in the weapon's own module, so saves and held-weapon replication follow the game. Every peer must
-    /// register the same specs. Attaching and detaching are host and singleplayer only, and refuse while strict
-    /// inventory is armed, since those changes are not yet an authorised custody operation.
+    /// register the same specs. Attaching and detaching change the local weapon, as native weapon-mod crafting
+    /// does, on hosts and clients alike; they refuse while strict inventory is armed, since those changes are not
+    /// yet an authorised custody operation.
     /// </summary>
     public static class WeaponAttachments
     {
@@ -219,7 +220,8 @@ namespace Modstoke.Sons
                 status = "It is already attached.";
                 return false;
             }
-            if (!Inventory.TryGetItemCount(attachmentItemId, out var count, out status) || count < 1)
+            var inventory = LocalPlayer.Inventory;
+            if (inventory.AmountOf(attachmentItemId, true, false) < 1)
             {
                 status = "There is no item " + attachmentItemId + " in the inventory.";
                 return false;
@@ -227,17 +229,17 @@ namespace Modstoke.Sons
             WeaponMod previous = null;
             foreach (var mod in mods)
                 if (Alive(mod) && mod.AttachesToSlot == registration.Mod.AttachesToSlot) previous = mod;
-            if (!Inventory.TryRemoveItem(attachmentItemId, 1, out var removal))
+            // The native calls also work with the inventory open, where native crafting applies weapon mods too.
+            if (!inventory.RemoveItem(attachmentItemId, 1, false, true, true, null, false))
             {
-                status = "Could not take the attachment from the inventory: " + removal.Detail;
+                status = "Could not take the attachment from the inventory.";
                 return false;
             }
             if (previous != null)
             {
                 mods.Remove(previous);
-                if (!Inventory.TryAddItem(previous.ModItemId, 1, out var returned))
-                    RuntimeEntryPoint.LogSource?.LogWarning("Weapon mod item " + previous.ModItemId + " came off but could not return to the inventory: "
-                        + returned.Detail);
+                if (!inventory.AddItem(previous.ModItemId, 1, true, false, null))
+                    RuntimeEntryPoint.LogSource?.LogWarning("Weapon mod item " + previous.ModItemId + " came off but could not return to the inventory.");
             }
             mods.Add(registration.Mod);
             Refresh(module);
@@ -256,9 +258,9 @@ namespace Modstoke.Sons
                 return false;
             }
             if (!TryWeapon(registration.Spec.WeaponItemId, registration.Mod, out var module, out status)) return false;
-            if (!Inventory.TryAddItem(attachmentItemId, 1, out var added))
+            if (!LocalPlayer.Inventory.AddItem(attachmentItemId, 1, true, false, null))
             {
-                status = "There is no room for it in the inventory: " + added.Detail;
+                status = "There is no room for it in the inventory.";
                 return false;
             }
             module._weaponMods.Remove(registration.Mod);
@@ -307,10 +309,12 @@ namespace Modstoke.Sons
             return null;
         }
 
+        // Like native weapon-mod crafting, the change is local; servers learn it from the held weapon's state.
+        // Under strict inventory a local module edit would break the authorised baseline, so it is refused.
         private static bool TryHostChange(out string status)
         {
-            status = BoltNetwork.isRunning && !BoltNetwork.isServer
-                ? "Attachments can only be changed by the host for now."
+            status = !Alive(LocalPlayer.Inventory)
+                ? "The local inventory is not available."
                 : PlayerInventoryEnforcement.StrictInventoryArmed
                     ? "Strict inventory is armed; attachment changes are not an authorised custody operation yet."
                     : "";
