@@ -66,6 +66,25 @@ namespace Modstoke.Sons
             if (!_hooksInstalled || !OnOwnerThread)
                 return;
             BeforeShutdown();
+            // The last word on this start's selection, after any plugin chose its own.
+            try { ContentAgreement.PrepareForStart(); }
+            catch (Exception error) { ReportFailure(error); }
+        }
+
+        /// <summary>Installs the start hooks ahead of any selection, so the content check can join a later start.</summary>
+        internal static bool PrepareHooks() => OnOwnerThread && InstallHooks();
+
+        // Selection from inside the start hook: the socket exists but the negotiation channel does not yet.
+        internal static bool SelectForStart()
+        {
+            if (!_hooksInstalled || !OnOwnerThread) return false;
+            lock (Gate)
+            {
+                if (_run != null) return false;
+                _selected = true;
+                _state = ControlState.Selected;
+            }
+            return true;
         }
 
         private static void CreateChannel()

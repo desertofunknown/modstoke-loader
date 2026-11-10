@@ -39,6 +39,12 @@ namespace Modstoke.Sons
                     Retire(entry, EnrollmentEndReason.InvalidMessage);
                 return;
             }
+            if (ContentAgreement.MatchesMagic(payload))
+            {
+                if (entry.State != EnrollmentState.Enrolled || !ContentAgreement.Receive(message.Peer, payload))
+                    Retire(entry, EnrollmentEndReason.InvalidMessage);
+                return;
+            }
             if (!EnrollmentWire.TryRead(payload, out var frame))
             {
                 Retire(entry, EnrollmentEndReason.InvalidMessage);
@@ -79,6 +85,7 @@ namespace Modstoke.Sons
             entry.OfferedCapabilities = frame.OfferedCapabilities;
             entry.State = EnrollmentState.Enrolled;
             ModAdmission.Enrolled(entry.Peer);
+            ContentAgreement.Enrolled(entry.Peer, frame.OfferedCapabilities);
             entry.Outgoing = EnrollmentMessageKind.Accepted;
             entry.Attempts = 0;
             entry.NextSend = now;

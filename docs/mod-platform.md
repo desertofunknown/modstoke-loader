@@ -3812,6 +3812,24 @@ from a mod's model rather than from game data:
   attaches one to a carried weapon through `WeaponAttachments`. Combine is
   hidden until modeled items can take part in recipes. Host and singleplayer only.
 
+### Mod content agreement
+
+Processes that reserve networked item ids (`ItemIds.TryReserve`, Networked band)
+check at join that client and server declare the same reservations. The check
+rides on client enrollment (capability `1 << 61`): the server sends a SHA-256
+digest of its sorted reservations with a short summary, and the client answers
+with its own.
+
+- A server with content refuses clients whose content differs. By default it
+  also refuses clients that never take part, such as vanilla clients, by
+  holding their packets until the check passes. The disconnect notice names
+  the content the server needs.
+- `allowVanillaClients=true` in `Modstoke/UserData/openacai-loader.settings.cfg`
+  lets clients that don't take part join; Modstoke clients with content are
+  still checked and refused when they differ.
+- Clients with content log the server's summary next to their own when they
+  differ. Processes without reservations are unaffected.
+
 ### Weapon attachments
 
 `WeaponAttachments.TryRegister(WeaponAttachmentSpec)` turns a registered item into

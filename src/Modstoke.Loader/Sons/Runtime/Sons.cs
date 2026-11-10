@@ -158,6 +158,7 @@ namespace Modstoke.Sons
                 global::Modstoke.Sons.ItemRegistration.RepublishIntoNewDatabase();
                 global::Modstoke.Sons.Inventory.TickItemModels();
                 global::Modstoke.Sons.WeaponAttachments.Tick();
+                global::Modstoke.Sons.ContentAgreement.EnsureHooks();
             }
             finally
             {

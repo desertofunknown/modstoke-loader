@@ -34,6 +34,27 @@ namespace Modstoke.Sons
             }
         }
 
+        // Called from the Bolt start hook, so it adds to whatever selection plugins made rather than replacing it.
+        internal static bool AddContentForStart(bool server, bool requireClients)
+        {
+            if (!OnOwnerThread || _faulted) return false;
+            if (!_selected)
+            {
+                _selected = true;
+                _localCapabilities = 0;
+                _requiredClientCapabilities = 0;
+                _gateSelected = false;
+                Entries.Clear();
+            }
+            _localCapabilities |= ContentAgreement.Capability;
+            if (!requireClients) return true;
+            _requiredClientCapabilities |= ContentAgreement.Capability;
+            // Holding packets until the check passes is what keeps unchecked (vanilla) clients out.
+            if (!_gateSelected && (!ServerSessions.HooksInstalled || !InstallGateHooks())) return false;
+            _gateSelected = true;
+            return true;
+        }
+
         internal static bool ModuleStorageSelected => _selected && _gateSelected && !_faulted
             && (_localCapabilities & ModuleStorage.ProtocolCapability) != 0
             && (_requiredClientCapabilities & ModuleStorage.ProtocolCapability) != 0;

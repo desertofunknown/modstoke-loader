@@ -177,7 +177,7 @@ namespace Modstoke.Sons
                     {
                         var connection = ServerSessions.ResolveCurrent(session);
                         if (connection != null && ReadGate(connection) == GateDecision.Reject)
-                            ServerSessions.Disconnect(session);
+                            Refuse(session, connection);
                     }
                 }
                 else if (BoltNetwork.isClient && BoltNetwork.isConnected)
@@ -215,11 +215,16 @@ namespace Modstoke.Sons
             {
                 EnrollmentState.Pending => GateDecision.Hold,
                 EnrollmentState.HostNotParticipating => GateDecision.Allow,
-                EnrollmentState.Enrolled => ModAdmission.ReadGate(peer) switch
+                EnrollmentState.Enrolled => ContentAgreement.Admits(peer) switch
                 {
-                    ModAdmissionState.Pending => GateDecision.Hold,
-                    ModAdmissionState.Admitted => GateDecision.Allow,
-                    _ => GateDecision.Reject
+                    null => GateDecision.Hold,
+                    false => GateDecision.Reject,
+                    _ => ModAdmission.ReadGate(peer) switch
+                    {
+                        ModAdmissionState.Pending => GateDecision.Hold,
+                        ModAdmissionState.Admitted => GateDecision.Allow,
+                        _ => GateDecision.Reject
+                    }
                 },
                 _ => GateDecision.Reject
             };
@@ -229,6 +234,15 @@ namespace Modstoke.Sons
         {
             var session = ServerSessions.ResolveSource(connection);
             if (session != null)
+                Refuse(session, connection);
+        }
+
+        // A server with mod content says why; other gate refusals keep the plain disconnect.
+        private static void Refuse(ServerSession session, BoltConnection connection)
+        {
+            if (ServerSessions.HasDisconnectAttempt(session)) return;
+            var notice = ContentAgreement.RefusalNotice(ControlTransport.FindPeer(connection));
+            if (notice == null || ServerSessions.DisconnectWithNotice(session, notice) != DisconnectResult.Requested)
                 ServerSessions.Disconnect(session);
         }
 

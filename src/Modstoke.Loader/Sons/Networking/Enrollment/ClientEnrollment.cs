@@ -175,6 +175,7 @@ namespace Modstoke.Sons
                     Refresh(entry, now);
                     SendNext(entry, now);
                 }
+                ContentAgreement.Tick();
             }
             catch (Exception error)
             {
@@ -217,7 +218,10 @@ namespace Modstoke.Sons
         private static void OnClosed(ControlPeer peer)
         {
             if (OnOwnerThread && peer != null)
+            {
                 Entries.Remove(peer.PeerId);
+                ContentAgreement.Closed(peer);
+            }
         }
 
         private static void Refresh(Enrollment entry, double now)

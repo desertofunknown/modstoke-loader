@@ -188,6 +188,23 @@ namespace Modstoke.Loader
             }
         }
 
+        /// <summary>Reads one boolean setting from the loader settings file; missing or unreadable gives the fallback.</summary>
+        internal static bool ReadBoolean(string key, bool fallback)
+        {
+            try
+            {
+                foreach (var setting in LoaderConfig.ParseSettings(ReadSettingsText() ?? ""))
+                    if (string.Equals(setting.Key, key, StringComparison.OrdinalIgnoreCase)
+                        && LoaderConfig.TryParseBoolean(setting.Value, out var parsed))
+                        return parsed;
+            }
+            catch (Exception ex)
+            {
+                Warn("Modstoke setting " + key + " could not be read: " + ex.Message);
+            }
+            return fallback;
+        }
+
         private static string ReadSettingsText()
         {
             try { return File.ReadAllText(SettingsPath); }

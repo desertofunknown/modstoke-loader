@@ -899,6 +899,7 @@
     <Compile Include="Sons/Inventory/Modules/ModuleStorage.Transport.cs" />
     <Compile Include="Sons/Inventory/Modules/ModuleStorage.Transport.Wire.cs" />
     <Compile Include="Sons/Networking/Enrollment/ClientEnrollment.ModuleStorage.cs" />
+    <Compile Include="Sons/Networking/Enrollment/ContentAgreement.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.UiData.cs" />
     <Compile Include="Sons/Inventory/Items.cs" />
     <Compile Include="Sons/Inventory/Items.Pages.cs" />
