@@ -72,7 +72,7 @@ namespace Modstoke.Loader
                 report.AppendLine("  " + row);
 
             report.AppendLine();
-            report.AppendLine("Item events: value kept by the generated setter, and value received after a write that skips it");
+            report.AppendLine("Item events: value kept by the generated setter; value stored by SetDynamic; values received after Write/Read");
             var events = typeof(PlayerAddItem).Assembly;
             foreach (var name in ProbeEvents)
                 report.AppendLine("  " + name + ": " + ProbeEvent(events.GetType(name)));
@@ -124,20 +124,25 @@ namespace Modstoke.Loader
                 {
                     property.SetValue(sent, id);
                     var kept = (int)property.GetValue(sent);
-                    // SetDynamic stores the value without the generated setter's clamp; Write and Read are the wire path.
+                    // A small value first, so a SetDynamic that changes nothing can't pass for one that kept the id.
+                    property.SetValue(sent, 5);
                     integer.SetDynamic(sent, Unsafe.BitCast<int, Il2CppSystem.Int32>(id).BoxIl2CppObject());
+                    var stored = integer.GetDynamic(sent).Unbox<int>();
                     var packet = new UdpPacket(new byte[64]);
                     integer.Write(null, sent, sent.Storage, packet);
                     var bits = packet.Position;
                     packet.Position = 0;
                     integer.Read(null, received, received.Storage, packet);
-                    results.Add(id + " setter " + kept + " wire " + (int)property.GetValue(received) + " (" + bits + "b)");
+                    results.Add(id + ": setter " + kept + ", stored " + stored + ", received getter "
+                        + (int)property.GetValue(received) + " raw " + integer.GetDynamic(received).Unbox<int>()
+                        + " (" + bits + "b)");
                 }
                 return string.Join("; ", results);
             }
             catch (Exception error)
             {
-                return "could not test: " + error.GetType().Name + ": " + FirstLine(error.Message);
+                var cause = error is TargetInvocationException { InnerException: { } inner } ? inner : error;
+                return "could not test: " + cause.GetType().Name + ": " + FirstLine(cause.Message);
             }
             finally
             {
