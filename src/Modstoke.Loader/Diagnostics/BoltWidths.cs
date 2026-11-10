@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text;
 using Bolt;
 using Il2CppInterop.Runtime;
@@ -72,7 +71,7 @@ namespace Modstoke.Loader
                 report.AppendLine("  " + row);
 
             report.AppendLine();
-            report.AppendLine("Item events: value kept by the generated setter; value stored by SetDynamic; values received after Write/Read");
+            report.AppendLine("Item events: value kept by the generated setter; then the id written into storage directly, read back and sent through Write/Read");
             var events = typeof(PlayerAddItem).Assembly;
             foreach (var name in ProbeEvents)
                 report.AppendLine("  " + name + ": " + ProbeEvent(events.GetType(name)));
@@ -124,18 +123,17 @@ namespace Modstoke.Loader
                 {
                     property.SetValue(sent, id);
                     var kept = (int)property.GetValue(sent);
-                    // A small value first, so a SetDynamic that changes nothing can't pass for one that kept the id.
+                    // SetDynamic leaves event storage unchanged, so the id goes straight into the storage slot.
                     property.SetValue(sent, 5);
-                    integer.SetDynamic(sent, Unsafe.BitCast<int, Il2CppSystem.Int32>(id).BoxIl2CppObject());
-                    var stored = integer.GetDynamic(sent).Unbox<int>();
+                    var direct = WriteStored(sent, integer, id, 5);
+                    var stored = (int)property.GetValue(sent);
                     var packet = new UdpPacket(new byte[64]);
                     integer.Write(null, sent, sent.Storage, packet);
                     var bits = packet.Position;
                     packet.Position = 0;
                     integer.Read(null, received, received.Storage, packet);
-                    results.Add(id + ": setter " + kept + ", stored " + stored + ", received getter "
-                        + (int)property.GetValue(received) + " raw " + integer.GetDynamic(received).Unbox<int>()
-                        + " (" + bits + "b)");
+                    results.Add(id + ": setter " + kept + ", direct " + (direct ? "written" : "refused") + ", getter "
+                        + stored + ", received " + (int)property.GetValue(received) + " (" + bits + "b)");
                 }
                 return string.Join("; ", results);
             }
@@ -150,6 +148,28 @@ namespace Modstoke.Loader
                 try { sent?.FreeStorage(); received?.FreeStorage(); }
                 catch { }
             }
+        }
+
+        // Writes NetworkValue.Int0 of the property's slot in place. The slot must already hold the value the getter
+        // reported, which confirms the computed address before anything is written.
+        private static unsafe bool WriteStored(Event target, NetworkProperty property, int value, int current)
+        {
+            var values = target.Storage?.Values;
+            var index = target.OffsetStorage + property.OffsetStorage;
+            var type = Il2CppClassPointerStore<NetworkValue>.NativeClassPtr;
+            var field = IL2CPP.il2cpp_class_get_field_from_name(type, "Int0");
+            if (values == null || index < 0 || index >= values.Length || field == IntPtr.Zero)
+                return false;
+            var size = IL2CPP.il2cpp_class_array_element_size(type);
+            // Field offsets count the boxed object header; array elements are stored without it.
+            var offset = (int)IL2CPP.il2cpp_field_get_offset(field) - 2 * IntPtr.Size;
+            if (size < sizeof(int) || size > 512 || offset < 0 || offset > size - sizeof(int))
+                return false;
+            var slot = (int*)((byte*)values.Pointer + 4 * IntPtr.Size + (long)index * size + offset);
+            if (*slot != current)
+                return false;
+            *slot = value;
+            return true;
         }
 
         private static NetworkProperty_Integer FindInteger(NetworkObj_Meta meta, string name)
