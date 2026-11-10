@@ -878,6 +878,7 @@
     <Compile Include="Sons/Inventory/Inventory.PrimaryActions.cs" />
     <Compile Include="Sons/Inventory/InventoryEvents.cs" />
     <Compile Include="Sons/Inventory/InventoryReads.cs" />
+    <Compile Include="Sons/Inventory/ItemIds.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.Runtime.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.Modules.cs" />

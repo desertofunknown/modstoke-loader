@@ -181,6 +181,9 @@ namespace Modstoke.Sons
                     return false;
                 }
 
+                if (!ItemIds.TryClaimForRegistration(created.ModId, created.ItemId, out _, out _))
+                    return false;
+
                 RegisteredDefinitions[key] = created;
             }
 
@@ -319,6 +322,14 @@ namespace Modstoke.Sons
             {
                 reason = "item-id-collision";
                 detail = "Modstoke item id " + normalized.ItemId + " is already registered by " + existingByItemId.ModId + ".";
+                status = "CHECK";
+            }
+            else if (ItemIds.TryGetOwner(normalized.ItemId, out var idOwner)
+                && !string.Equals(idOwner.ModId, normalized.ModId, StringComparison.OrdinalIgnoreCase))
+            {
+                reason = "item-id-reserved";
+                detail = "Item id " + normalized.ItemId + " is inside the range " + idOwner.First + "-" + idOwner.Last
+                    + " reserved by " + idOwner.ModId + ".";
                 status = "CHECK";
             }
             else
