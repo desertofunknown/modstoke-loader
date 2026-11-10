@@ -122,10 +122,10 @@ namespace Modstoke.Sons
         internal static string RefusalNotice(ControlPeer peer)
         {
             if (!_active || !_server) return null;
-            var known = peer != null && Peers.TryGetValue(peer.PeerId, out var entry) && ReferenceEquals(entry.Control, peer);
+            var state = Read(peer);
             // A client that agreed was refused for another reason, which is not ours to explain.
-            if (known && entry.State == Status.Agreed) return null;
-            var differs = known && entry.State == Status.Differs;
+            if (state == Status.Agreed) return null;
+            var differs = state == Status.Differs;
             if (!differs && !_requireClients) return null;
             return Fit((differs ? "Your mods don't match this server's. " : "This server uses mods with their own items. ")
                 + "Install the same mods to join: " + _local.Summary + ".");
