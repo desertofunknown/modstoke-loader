@@ -69,6 +69,7 @@ namespace Modstoke.Sons
             private int _count = -1;
             private float _retryAt;
             private string _status;
+            private bool _placementLogged, _shownLogged;
 
             internal MatModel(ItemData item, ItemModel model)
             {
@@ -88,6 +89,17 @@ namespace Modstoke.Sons
                     return;
                 }
                 _count = count;
+                if (count > 0 && !_shownLogged)
+                {
+                    _shownLogged = true;
+                    var renderers = _layout.Item.GetComponentsInChildren<Renderer>(true);
+                    var visible = 0;
+                    foreach (var renderer in renderers)
+                        if (renderer.enabled && renderer.gameObject.activeInHierarchy && !renderer.forceRenderingOff) visible++;
+                    RuntimeEntryPoint.LogSource?.LogInfo("Item " + _item._id + " is shown on the mat: group active "
+                        + _layout.Root.activeInHierarchy + ", " + visible + " of " + renderers.Length + " renderers drawing, layer "
+                        + LayerMask.LayerToName(_layout.Item.gameObject.layer) + ".");
+                }
             }
 
             private bool TryCreate(PlayerInventory inventory)
@@ -102,7 +114,8 @@ namespace Modstoke.Sons
                     }
                 if (anchor == null)
                 {
-                    Wait("Anchor item " + _model.MatAnchorItemId + " has no group on this inventory mat.");
+                    Wait("Anchor item " + _model.MatAnchorItemId + " has no group on this inventory mat ("
+                        + AnchorElsewhere(_model.MatAnchorItemId) + ").");
                     return false;
                 }
                 if (!TryCreateLayout(_item, anchor, out _layout, out var status))
@@ -141,7 +154,33 @@ namespace Modstoke.Sons
                 }
                 _count = -1;
                 _status = null;
+                if (!_placementLogged)
+                {
+                    _placementLogged = true;
+                    var root = _layout.Root.transform;
+                    RuntimeEntryPoint.LogSource?.LogInfo("Item " + _item._id + " has a mat layout under " + PathOf(root.parent)
+                        + " at local " + root.localPosition.ToString("F3") + ", world " + root.position.ToString("F3")
+                        + "; anchor item " + _model.MatAnchorItemId + " at local " + anchor.transform.localPosition.ToString("F3")
+                        + "; parent up is world " + root.parent.up.ToString("F2") + ", lossy scale " + root.lossyScale.ToString("F3") + ".");
+                }
                 return true;
+            }
+
+            private static string PathOf(Transform transform)
+            {
+                var path = transform.name;
+                for (var parent = transform.parent; parent != null && parent; parent = parent.parent)
+                    path = parent.name + "/" + path;
+                return path;
+            }
+
+            // Where the anchor's group went, when it is not under the current inventory.
+            private static string AnchorElsewhere(int itemId)
+            {
+                foreach (var group in Resources.FindObjectsOfTypeAll<InventoryLayoutItemGroup>())
+                    if (InventoryLayout.Live(group) && group._itemId == itemId)
+                        return "a group exists at " + PathOf(group.transform);
+                return "no group exists anywhere";
             }
 
             private void Wait(string status)

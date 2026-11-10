@@ -141,6 +141,9 @@ namespace Modstoke.Sons
         internal static bool LayoutInventoryCurrent(InventoryLayout layout)
             => TryGetCurrentInventory(out var inventory, out _) && layout.MatchesInventory(inventory);
 
+        internal static string LayoutMismatch(InventoryLayout layout)
+            => TryGetCurrentInventory(out var inventory, out var status) ? layout.MismatchReason(inventory) ?? "it matches again" : status;
+
         internal static void RegisterLayoutItem(InventoryLayout layout)
             => LayoutItemOwners.Add(layout.Item.Pointer, layout);
 
@@ -239,18 +242,24 @@ namespace Modstoke.Sons
             => Live(Item) && Same(Item, item) && item.GetInstanceID() == _itemInstanceId
                 && Live(Root) && Same(item.transform.parent, Root.transform);
 
-        internal bool MatchesInventory(PlayerInventory inventory)
+        internal bool MatchesInventory(PlayerInventory inventory) => MismatchReason(inventory) == null;
+
+        /// <summary>Why this layout no longer belongs to the inventory, or null when it still does.</summary>
+        internal string MismatchReason(PlayerInventory inventory)
         {
-            if (_releasing || IsDisposed || !Same(_inventory, inventory) || !Same(_manager, inventory._itemInstanceManager)
-                || !Published(_definition) || _definition._eachInstanceIsUnique || _definition._id != ItemId
-                || !Live(Root) || !Live(Group)
-                || !Same(Root.transform.parent, _parent) || !Root.transform.IsChildOf(inventory.transform)
-                || !Same(Group.gameObject, Root) || !OwnsItem(Item)
-                || !Same(Group._inventory, inventory) || !Same(Group._itemData, _definition) || Group._itemId != ItemId)
-                return false;
+            if (_releasing || IsDisposed) return "it is being released";
+            if (!Same(_inventory, inventory) || !Same(_manager, inventory._itemInstanceManager)) return "the inventory changed";
+            if (!Published(_definition) || _definition._eachInstanceIsUnique || _definition._id != ItemId)
+                return "the item definition is no longer published";
+            if (!Live(Root) || !Live(Group) || !Same(Group.gameObject, Root) || !OwnsItem(Item)) return "its objects were destroyed";
+            if (!Same(Root.transform.parent, _parent)) return "it was moved to another parent";
+            if (!Root.transform.IsChildOf(inventory.transform)) return "its parent left the inventory";
+            if (!Same(Group._inventory, inventory) || !Same(Group._itemData, _definition) || Group._itemId != ItemId)
+                return "the game rebound its group";
             var items = Group._layoutItems;
-            return items is not null && !items.WasCollected && items.Count == 1 && Same(items[0], Item)
-                && !Group._isOneToOneCollection && !Group._isInfiniteGroupCount;
+            if (items is null || items.WasCollected || items.Count != 1 || !Same(items[0], Item))
+                return "the game changed its rows (" + (items is null || items.WasCollected ? "none" : items.Count.ToString()) + ")";
+            return Group._isOneToOneCollection || Group._isInfiniteGroupCount ? "the game changed its group mode" : null;
         }
 
         /// <summary>
@@ -265,7 +274,7 @@ namespace Modstoke.Sons
             {
                 if (!Inventory.LayoutInventoryCurrent(this))
                 {
-                    status = "The inventory layout is no longer current.";
+                    status = "The inventory layout is no longer current: " + Inventory.LayoutMismatch(this) + ".";
                     return false;
                 }
                 int count = _manager.GetItemCount(ItemId);
@@ -280,7 +289,7 @@ namespace Modstoke.Sons
                 Group.RefreshItems();
                 if (!Inventory.LayoutInventoryCurrent(this))
                 {
-                    status = "The inventory layout changed during refresh.";
+                    status = "The inventory layout changed during refresh: " + Inventory.LayoutMismatch(this) + ".";
                     return false;
                 }
                 status = "";
