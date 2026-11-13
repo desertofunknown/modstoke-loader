@@ -8,9 +8,55 @@
     "refresh": "Aggiorna",
     "search": "Cerca",
     "cancel": "Annulla",
+    "select": "Seleziona",
     "yes": "Sì",
     "no": "No",
     "unknown": "Sconosciuto"
+  },
+
+  "title": {
+    "singlePlayer": "Giocatore singolo",
+    "multiplayer": "Multigiocatore",
+    "options": "Opzioni",
+    "mods": "Mod",
+    "exit": "Esci"
+  },
+
+  "mode": {
+    "normal": "Normale",
+    "hard": "Difficile",
+    "hardSurvival": "Sopravvivenza difficile",
+    "peaceful": "Pacifica",
+    "creative": "Creativa",
+    "custom": "Personalizzata",
+
+    "about": {
+      "normal": "Il gioco così com’è stato pensato: sopravvivi, costruisci e scopri cos’è successo sull’isola.",
+      "hard": "Nemici più forti e meno provviste.",
+      "hardSurvival": "Difficile, con una sopravvivenza più dura: meno cibo da trovare, recupero più lento e notti più fredde.",
+      "peaceful": "Nessun nemico. Esplora e costruisci al tuo ritmo.",
+      "creative": "Costruisci liberamente con ogni oggetto a portata di mano, senza bisogno di mangiare, bere o riposare.",
+      "custom": "Imposta tu ogni regola nella pagina successiva."
+    }
+  },
+
+  "games": {
+    "singleSection": "Giocatore singolo",
+    "singleTitle": "Le tue partite",
+    "hostTitle": "Ospita una partita",
+    "newGame": "Nuova partita",
+    "newGameHint": "Comincia dall’inizio",
+    "chooseMode": "Scegli come vuoi giocare.",
+    "continue": "Continua",
+    "delete": "Elimina",
+    "deleteConfirm": "Premi di nuovo per eliminare",
+    "saves": { "one": "{count} salvataggio", "other": "{count} salvataggi" },
+    "reading": "Lettura dei salvataggi…",
+    "none": "Ancora nessun salvataggio.",
+    "unreadable": "Salvataggio illeggibile",
+    "modeAndDay": "{mode} · Giorno {days}",
+    "saved": "Salvataggio del {when}",
+    "startFailed": "Avvio non riuscito. Il log del Loader ne spiega il motivo."
   },
 
   "multiplayer": {
@@ -19,6 +65,7 @@
     "joinByIp": "Unisciti tramite IP",
     "ownBrowser": "Browser dei server del gioco",
     "searchPlaceholder": "Cerca server",
+    "unnamed": "Server senza nome",
 
     "tab": {
       "all": "Tutti",
@@ -50,15 +97,6 @@
       "modstoke": "Modstoke {version}"
     },
 
-    "mode": {
-      "normal": "Normale",
-      "hard": "Difficile",
-      "hardSurvival": "Sopravvivenza difficile",
-      "peaceful": "Pacifica",
-      "creative": "Creativa",
-      "custom": "Personalizzata"
-    },
-
     "mods": {
       "match": "Mod corrispondenti",
       "needs": { "one": "Richiede {count} mod", "other": "Richiede {count} mod" },
@@ -74,7 +112,8 @@
       "servers": { "one": "{count} server", "other": "{count} server" },
       "filtered": { "one": "{shown} di {count} server", "other": "{shown} di {count} server" },
       "runningModstoke": "{count} con Modstoke",
-      "refreshing": "aggiornamento in corso"
+      "refreshing": "aggiornamento in corso",
+      "reading": "{done} su {total} hanno risposto"
     },
 
     "empty": {

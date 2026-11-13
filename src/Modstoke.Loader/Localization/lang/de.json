@@ -8,9 +8,55 @@
     "refresh": "Aktualisieren",
     "search": "Suchen",
     "cancel": "Abbrechen",
+    "select": "Auswählen",
     "yes": "Ja",
     "no": "Nein",
     "unknown": "Unbekannt"
+  },
+
+  "title": {
+    "singlePlayer": "Einzelspieler",
+    "multiplayer": "Mehrspieler",
+    "options": "Optionen",
+    "mods": "Mods",
+    "exit": "Beenden"
+  },
+
+  "mode": {
+    "normal": "Normal",
+    "hard": "Schwer",
+    "hardSurvival": "Schweres Überleben",
+    "peaceful": "Friedlich",
+    "creative": "Kreativ",
+    "custom": "Benutzerdefiniert",
+
+    "about": {
+      "normal": "Das Spiel, wie es gedacht ist: überleben, bauen und herausfinden, was auf der Insel geschehen ist.",
+      "hard": "Stärkere Gegner und weniger Vorräte.",
+      "hardSurvival": "Schwer, mit härterem Überleben: weniger Nahrung zu finden, langsamere Erholung und kältere Nächte.",
+      "peaceful": "Keine Gegner. Erkunde und baue in deinem eigenen Tempo.",
+      "creative": "Baue frei: Alle Gegenstände liegen bereit, und du musst weder essen noch trinken oder dich ausruhen.",
+      "custom": "Lege auf der nächsten Seite jede Regel selbst fest."
+    }
+  },
+
+  "games": {
+    "singleSection": "Einzelspieler",
+    "singleTitle": "Deine Spiele",
+    "hostTitle": "Spiel hosten",
+    "newGame": "Neues Spiel",
+    "newGameHint": "Von vorn beginnen",
+    "chooseMode": "Wähle, wie du spielen möchtest.",
+    "continue": "Fortsetzen",
+    "delete": "Löschen",
+    "deleteConfirm": "Zum Löschen erneut drücken",
+    "saves": { "one": "{count} Spielstand", "other": "{count} Spielstände" },
+    "reading": "Spielstände werden gelesen …",
+    "none": "Noch keine Spielstände.",
+    "unreadable": "Spielstand nicht lesbar",
+    "modeAndDay": "{mode} · Tag {days}",
+    "saved": "Gespeichert am {when}",
+    "startFailed": "Das konnte nicht gestartet werden. Im Loader-Protokoll steht, warum."
   },
 
   "multiplayer": {
@@ -19,6 +65,7 @@
     "joinByIp": "Per IP beitreten",
     "ownBrowser": "Serverbrowser des Spiels",
     "searchPlaceholder": "Server suchen",
+    "unnamed": "Unbenannter Server",
 
     "tab": {
       "all": "Alle",
@@ -50,15 +97,6 @@
       "modstoke": "Modstoke {version}"
     },
 
-    "mode": {
-      "normal": "Normal",
-      "hard": "Schwer",
-      "hardSurvival": "Schweres Überleben",
-      "peaceful": "Friedlich",
-      "creative": "Kreativ",
-      "custom": "Benutzerdefiniert"
-    },
-
     "mods": {
       "match": "Mods stimmen überein",
       "needs": { "one": "Benötigt {count} Mod", "other": "Benötigt {count} Mods" },
@@ -74,7 +112,8 @@
       "servers": { "one": "{count} Server", "other": "{count} Server" },
       "filtered": { "one": "{shown} von {count} Server", "other": "{shown} von {count} Servern" },
       "runningModstoke": "{count} mit Modstoke",
-      "refreshing": "wird aktualisiert"
+      "refreshing": "wird aktualisiert",
+      "reading": "{done} von {total} haben geantwortet"
     },
 
     "empty": {

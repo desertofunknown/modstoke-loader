@@ -5,9 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using Modstoke.Localization;
 using Modstoke.Sons;
 using Sons.Gui;
 using Sons.Gui.Multiplayer;
@@ -24,9 +26,10 @@ using Object = UnityEngine.Object;
 namespace Modstoke.Loader
 {
     /// <summary>
-    /// The Modstoke Join screen, drawn over the game's browser scene. The game's lobby and dedicated server
-    /// browsers keep running underneath and its own server row does the joining, so passwords, version checks
-    /// and lobby joins behave as in the game; this screen lists, searches, sorts, explains and asks.
+    /// The Modstoke Join screen, drawn on the front end's own layer while the game's browser scene is loaded.
+    /// The game's lobby and dedicated server browsers keep running underneath as the source of servers and its
+    /// own server row does the joining, so passwords, version checks and lobby joins behave as in the game;
+    /// this screen lists, searches, sorts, explains and asks.
     /// </summary>
     internal static partial class MultiplayerScreen
     {
@@ -39,12 +42,13 @@ namespace Modstoke.Loader
         // Ordered best first, which is also the order "sort by mods" lists them in.
         private enum ModState { Match, Needs, AddsItems, Differs, Modded, Checking, Vanilla, Hosted, OtherVersion }
 
-        private static readonly string[] TabNames = { "ALL", "HOSTED", "DEDICATED", "LAN" };
-        private static readonly string[] ChipNames = { "MODSTOKE", "HAS PLAYERS", "NOT FULL", "NO PASSWORD" };
-        private const float DesignHeight = 860f;
+        private static readonly string[] TabKeys = { "all", "hosted", "dedicated", "lan" };
+        private static readonly string[] ChipKeys = { "modstoke", "hasPlayers", "notFull", "noPassword" };
         private const float DoubleClickSeconds = 0.4f;
         private const float InputPauseSeconds = 0.3f;
         private const int MaxSearchLength = 40;
+        // New servers are read for this long per frame, so a list of thousands fills in without a hitch.
+        private const double ReadBudgetMs = 3;
         private static readonly Regex Tags = new("<[^>]*>", RegexOptions.Compiled);
 
         private sealed class Entry
@@ -53,12 +57,13 @@ namespace Modstoke.Loader
             internal DedicatedServerInfo Dedicated;
             internal IntPtr Id;
             internal string Key, Name, Mode;
-            internal int Order, Players, Limit, Ping;
-            internal bool Password, VersionMatch, Modded;
+            internal int Order, Players, Limit, Ping, Scan;
+            internal float RecheckAt;
+            internal bool Valid, Password, VersionMatch, Modded;
         }
 
         // A clickable area of the screen. Clicks and hover are tested against these directly, so nothing the game
-        // draws above or below can swallow or receive them.
+        // draws underneath can swallow or receive them.
         private sealed class Hot
         {
             internal RectTransform Rect;
@@ -73,33 +78,37 @@ namespace Modstoke.Loader
         private static readonly List<GameObject> StripHidden = new();
         private static readonly List<GameBackButton> Backs = new();
         private static Button _back;
-        private static Canvas _canvas;
         private static ServerInfoGuiItem _joiner;
-        private static float _s = 1f;
         private static Tab _tab;
         private static Zone _zone;
         private static SortKey _sort;
         private static bool _descending;
         private static readonly bool[] Chips = new bool[4];
+        // Every server read so far by the address of the game's own record of it, then those in the game's
+        // order, then what the search and filters leave.
+        private static readonly Dictionary<IntPtr, Entry> Known = new();
         private static readonly List<Entry> Listed = new();
         private static readonly List<Entry> Entries = new();
         private static readonly List<Hot> Hots = new();
         private static readonly HashSet<string> FailedInputs = new();
+        private static readonly Dictionary<string, string> ModeNames = new(StringComparer.OrdinalIgnoreCase);
         private static readonly bool[] PadDown = new bool[8];
         private static Hot _hover, _searchHot;
         private static string _search = "", _mine = "", _steerDevice;
-        private static int _selected, _top, _tool, _hoverRow = -1, _repeatDir, _lastClickRow = -1;
+        private static int _selected, _top, _tool, _hoverRow = -1, _repeatDir, _lastClickRow = -1, _scan, _layout;
+        private static long _listedHash;
         private static IntPtr _selectedId;
-        private static float _nextRefresh, _repeatAt, _lastClick, _resumeInputAt, _backResumeAt;
-        private static bool _dirty, _filterDirty, _acting, _searching, _backsPaused, _pad;
+        private static float _nextScan, _nextPaint, _repeatAt, _lastClick, _resumeInputAt, _backResumeAt;
+        private static bool _dirty, _filterDirty, _backlog, _rebuild, _acting, _searching, _backsPaused, _pad;
+
+        private static Strings T => FrontEnd.Text;
 
         internal static void Open(Scene scene)
         {
             Close();
             _canvasRoot = scene.GetRootGameObjects().FirstOrDefault(root => root != null && root.name == "MultiplayerMenuCanvas");
             _gui = _canvasRoot != null ? _canvasRoot.GetComponentInChildren<GameServerBrowserGui>(true) : null;
-            var canvasRect = _canvasRoot != null ? _canvasRoot.GetComponent<RectTransform>() : null;
-            if (_gui == null || !_gui || canvasRect == null)
+            if (_gui == null || !_gui)
             {
                 RuntimeEntryPoint.LogSource?.LogWarning("The game's server browser was not found; its own screen stays.");
                 _gui = null;
@@ -124,12 +133,13 @@ namespace Modstoke.Loader
             _search = "";
             _searching = false;
             Array.Clear(Chips, 0, Chips.Length);
-            _pad = PadActive();
-            Build(canvasRect);
+            _pad = FrontInput.PadActive;
+            Build(FrontEnd.Canvas());
             HideGame();
             FailedInputs.Clear();
             _resumeInputAt = Time.unscaledTime + InputPauseSeconds;
             ServerBrowserBadges.Answered += OnAnswered;
+            Languages.Changed += OnLanguageChanged;
             SetTab(Tab.All);
             RuntimeEntryPoint.LogSource?.LogInfo("Showing the Modstoke multiplayer screen.");
         }
@@ -137,6 +147,7 @@ namespace Modstoke.Loader
         internal static void Close()
         {
             ServerBrowserBadges.Answered -= OnAnswered;
+            Languages.Changed -= OnLanguageChanged;
             try
             {
                 Show(_gameList);
@@ -154,8 +165,10 @@ namespace Modstoke.Loader
             StripHidden.Clear();
             Backs.Clear();
             Hots.Clear();
+            Known.Clear();
             Listed.Clear();
             Entries.Clear();
+            ModeNames.Clear();
             _hover = _searchHot = null;
             _rootObject = _canvasRoot = null;
             _joiner = null;
@@ -163,6 +176,7 @@ namespace Modstoke.Loader
             _lobbyDialog = null;
             _gameList = _stripButtons = null;
             _back = null;
+            _rebuild = false;
         }
 
         /// <summary>Puts the game's browser back the way its own controls show it, before this screen leaves it.</summary>
@@ -187,14 +201,15 @@ namespace Modstoke.Loader
                 Close();
                 return;
             }
-            // Joining a hosted game opens the game's own lobby, which this screen stays out of.
+            if (_rebuild || _layout != FrontEnd.LayoutVersion) Rebuild();
+            // The game's lobby and its dialogs are drawn under this layer, which steps aside for them.
             var away = _lobbyDialog != null && _lobbyDialog && _lobbyDialog.gameObject.activeInHierarchy
-                || !_gui.gameObject.activeInHierarchy;
+                || !_gui.gameObject.activeInHierarchy || GameDialogOpen();
             if (_rootObject.activeSelf == away) _rootObject.SetActive(!away);
             // The press that closes a lobby or a dialog must not also act on this screen.
-            var dialog = !away && GameDialogOpen();
             var now = Time.unscaledTime;
-            if (away || dialog) _resumeInputAt = now + InputPauseSeconds;
+            // The console and the mods menu draw over this screen and take the keyboard while open.
+            if (away || ConsoleOverlay.IsVisible || MenuController.IsVisible) _resumeInputAt = now + InputPauseSeconds;
             _acting = now >= _resumeInputAt;
             if (away)
             {
@@ -202,10 +217,10 @@ namespace Modstoke.Loader
                 return;
             }
             HideGame();
-            if (!dialog) ClearSelection();
+            ClearSelection();
             if (_backsPaused && !_searching && now >= _backResumeAt) PauseBacks(false);
 
-            var pad = PadActive();
+            var pad = FrontInput.PadActive;
             if (pad != _pad)
             {
                 _pad = pad;
@@ -216,24 +231,40 @@ namespace Modstoke.Loader
             ReadDevice("keyboard", ReadKeys);
             ReadDevice("mouse", ReadMouse);
 
-            if (_dirty || now >= _nextRefresh)
+            if (_dirty || _backlog || now >= _nextScan)
             {
+                var refreshing = Refreshing();
+                _nextScan = now + (refreshing ? 0.25f : 1f);
+                if (ReadServers() || _dirty) _filterDirty = true;
                 _dirty = false;
-                _filterDirty = false;
-                // A long server list takes a moment to read, so it is read less often the longer it takes.
-                var watch = Stopwatch.StartNew();
-                ReadServers();
-                _nextRefresh = Time.unscaledTime + Mathf.Clamp((float)watch.Elapsed.TotalSeconds * 25f, 0.5f, 5f);
-                Apply();
-                Paint();
             }
-            else if (_filterDirty)
+            // While servers are still pouring in, the list is redrawn a few times a second rather than every frame.
+            if (_filterDirty && (!_backlog || now >= _nextPaint))
             {
                 _filterDirty = false;
+                _nextPaint = now + 0.2f;
                 Apply();
                 Paint();
             }
             PaintCaret();
+            PaintProgress();
+        }
+
+        private static void Rebuild()
+        {
+            _rebuild = false;
+            if (_rootObject != null && _rootObject) Object.Destroy(_rootObject);
+            _hover = null;
+            _hoverRow = -1;
+            Build(FrontEnd.Canvas());
+            Apply();
+            Paint();
+        }
+
+        private static void OnLanguageChanged()
+        {
+            ModeNames.Clear();
+            _rebuild = true;
         }
 
         private static CanvasGroup Group(Transform transform)
@@ -296,15 +327,15 @@ namespace Modstoke.Loader
             }
         }
 
-        // The game's own flag for "a controller is the device in use", which its menus switch their prompts on.
-        private static bool PadActive()
+        private static bool Refreshing()
         {
             try
             {
-                return global::Sons.Input.InputSystem.IsGamePad;
+                return _gui._dedicatedBrowser.RefreshInProgress || _gui._lobbyBrowser.RefreshInProgress;
             }
             catch (Exception)
             {
+                // The browsers report nothing between refreshes.
                 return false;
             }
         }
@@ -330,7 +361,7 @@ namespace Modstoke.Loader
             var pad = Gamepad.current;
             if (pad == null) return;
             bool previous = Pressed(0, pad.leftShoulder.isPressed), next = Pressed(1, pad.rightShoulder.isPressed);
-            bool host = Pressed(2, pad.rightTrigger.isPressed), act = Pressed(3, pad.buttonSouth.isPressed);
+            bool host = Pressed(2, pad.rightTrigger.isPressed || pad.leftTrigger.isPressed), act = Pressed(3, pad.buttonSouth.isPressed);
             bool refresh = Pressed(4, pad.buttonWest.isPressed), direct = Pressed(5, pad.buttonNorth.isPressed);
             bool left = Pressed(6, pad.dpad.left.isPressed || pad.leftStick.left.isPressed);
             bool right = Pressed(7, pad.dpad.right.isPressed || pad.leftStick.right.isPressed);
@@ -440,10 +471,9 @@ namespace Modstoke.Loader
             if (!_acting) return;
             var position = UnityEngine.Input.mousePosition;
             var pointer = new Vector2(position.x, position.y);
-            var camera = UiCamera();
             Hot over = null;
             foreach (var hot in Hots)
-                if (hot.Rect && hot.Rect.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(hot.Rect, pointer, camera))
+                if (hot.Rect && hot.Rect.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(hot.Rect, pointer, null))
                     over = hot;
             if (!ReferenceEquals(over, _hover))
             {
@@ -458,7 +488,7 @@ namespace Modstoke.Loader
             }
             var scroll = UnityEngine.Input.mouseScrollDelta.y;
             if (scroll == 0 || _listRect == null || _rows.Length == 0
-                || !RectTransformUtility.RectangleContainsScreenPoint(_listRect, pointer, camera)) return;
+                || !RectTransformUtility.RectangleContainsScreenPoint(_listRect, pointer, null)) return;
             _top = Mathf.Clamp(_top - Math.Sign(scroll) * 3, 0, Math.Max(0, Entries.Count - _rows.Length));
             Paint();
         }
@@ -498,13 +528,6 @@ namespace Modstoke.Loader
             }
         }
 
-        private static Camera UiCamera()
-        {
-            if (_canvas == null || !_canvas) return null;
-            var root = _canvas.rootCanvas;
-            return root != null && root && root.renderMode != RenderMode.ScreenSpaceOverlay ? root.worldCamera : null;
-        }
-
         private static void SetTab(Tab tab)
         {
             _tab = tab;
@@ -525,12 +548,12 @@ namespace Modstoke.Loader
             }
             catch (Exception error)
             {
-                RuntimeEntryPoint.LogSource?.LogWarning("The server list could not switch to " + TabNames[(int)tab] + ": " + error.Message);
+                RuntimeEntryPoint.LogSource?.LogWarning("The server list could not switch to " + tab + ": " + error.Message);
             }
             _dirty = true;
         }
 
-        private static void CycleTab(int step) => SetTab((Tab)(((int)_tab + step + TabNames.Length) % TabNames.Length));
+        private static void CycleTab(int step) => SetTab((Tab)(((int)_tab + step + TabKeys.Length) % TabKeys.Length));
 
         private static void Refresh()
         {
@@ -558,7 +581,12 @@ namespace Modstoke.Loader
             }
         }
 
-        private static void Host() => MultiplayerTakeover.RequestHost(BackOut);
+        // Hosting is set up on the title scene, so this leaves for it and the Host screen opens there.
+        private static void Host()
+        {
+            FrontEnd.HostWhenTitleLoads();
+            if (!BackOut()) FrontEnd.CancelHost();
+        }
 
         // Leaves through the game's own Back, the handler its Escape and controller button use.
         private static bool BackOut()
@@ -681,7 +709,7 @@ namespace Modstoke.Loader
                 var all = browser.Entries;
                 var index = 0;
                 for (var i = 0; i < all.Length; i++)
-                    if (all[i] != null && all[i].Pointer == entry.Id) index = i;
+                    if (ElementAddress(all, i) == entry.Id) index = i;
                 var row = JoinRow();
                 row.Setup(entry.Info, index, all, browser);
                 row.DoJoin();
@@ -720,64 +748,142 @@ namespace Modstoke.Loader
 
         private static void OnAnswered(string key) => _filterDirty = true;
 
-        private static void ReadServers()
+        /// <summary>
+        /// Brings the list up to date with the game's browsers; true when what is listed changed. Servers
+        /// already read are recognized by address without touching them, and new ones are read for a few
+        /// milliseconds per frame, the rest on the following frames.
+        /// </summary>
+        private static bool ReadServers()
         {
-            Listed.Clear();
             _mine = ContentAgreement.Fingerprint;
+            _scan++;
+            _backlog = false;
+            Listed.Clear();
+            var watch = Stopwatch.StartNew();
+            var changed = false;
+            long hash = 17;
+            var seen = 0;
             try
             {
-                if (_tab is Tab.All or Tab.Hosted) Read(_gui._lobbyBrowser.Entries);
+                if (_tab is Tab.All or Tab.Hosted) Read(_gui._lobbyBrowser.Entries, watch, ref changed, ref hash, ref seen);
                 var dedicated = _gui._dedicatedBrowser;
                 var internet = dedicated._isLastAnInternetDedicatedRequest;
                 if (_tab is Tab.Dedicated or Tab.All && internet || _tab == Tab.Lan && !internet)
-                    Read(dedicated.Entries);
+                    Read(dedicated.Entries, watch, ref changed, ref hash, ref seen);
             }
             catch (Exception error)
             {
                 RuntimeEntryPoint.LogSource?.LogWarning("The server list could not be read: " + error.Message);
             }
+            // Servers the game no longer lists are dropped once a pass has seen everything it does list.
+            if (!_backlog && seen != Known.Count)
+            {
+                foreach (var gone in Known.Where(pair => pair.Value.Scan != _scan).Select(pair => pair.Key).ToArray())
+                    Known.Remove(gone);
+            }
+            changed |= RefreshShown() | hash != _listedHash;
+            _listedHash = hash;
+            return changed;
         }
 
-        private static void Read(Il2CppReferenceArray<IServerInfo> infos)
+        private static void Read(Il2CppReferenceArray<IServerInfo> infos, Stopwatch watch, ref bool changed, ref long hash, ref int seen)
         {
             if (infos == null) return;
-            for (var i = 0; i < infos.Length; i++)
+            var now = Time.unscaledTime;
+            var count = infos.Length;
+            for (var i = 0; i < count; i++)
             {
+                var id = ElementAddress(infos, i);
+                if (id == IntPtr.Zero) continue;
+                if (!Known.TryGetValue(id, out var entry))
+                {
+                    if (watch.Elapsed.TotalMilliseconds > ReadBudgetMs)
+                    {
+                        _backlog = true;
+                        continue;
+                    }
+                    entry = new Entry { Info = infos[i], Id = id };
+                    Known[id] = entry;
+                }
+                entry.Scan = _scan;
+                seen++;
+                // A server that has not answered Steam yet is looked at again about once a second.
+                if (!entry.Valid && now >= entry.RecheckAt && watch.Elapsed.TotalMilliseconds <= ReadBudgetMs)
+                {
+                    entry.RecheckAt = now + 1f;
+                    if (Fill(entry)) changed = true;
+                }
+                if (!entry.Valid) continue;
+                entry.Order = Listed.Count;
+                Listed.Add(entry);
+                hash = unchecked(hash * 31 + id.ToInt64());
+            }
+        }
+
+        // The array's elements follow its four-word header; reading the addresses directly means a pass over
+        // thousands of servers creates no objects.
+        private static IntPtr ElementAddress(Il2CppReferenceArray<IServerInfo> array, int index)
+            => Marshal.ReadIntPtr(array.Pointer, (4 + index) * IntPtr.Size);
+
+        private static bool Fill(Entry entry)
+        {
+            try
+            {
+                var info = entry.Info;
+                if (info == null || !info.IsValid) return false;
+                var raw = info.Name ?? "";
+                var clean = info.CleanName;
+                entry.Dedicated = info.TryCast<DedicatedServerInfo>();
+                entry.Name = CleanName(string.IsNullOrWhiteSpace(clean) ? raw : clean);
+                entry.Mode = info.GameMode ?? "";
+                entry.Players = info.CurrentMembers;
+                entry.Limit = info.MemberLimit;
+                entry.Ping = info.Ping;
+                entry.Password = info.IsPasswordProtected;
+                entry.VersionMatch = info.VersionMatch;
+                // Modstoke and other loaders mark a dedicated server's name; only those are asked for details.
+                entry.Modded = raw.Contains("[MODDED]", StringComparison.Ordinal);
+                if (entry.Dedicated != null)
+                {
+                    var address = entry.Dedicated.NetAddr;
+                    entry.Key = ServerBrowserBadges.IpText(address.GetIP()) + ":" + address.GetQueryPort();
+                    if (entry.Modded) ServerBrowserBadges.Ask(entry.Key, address.GetIP(), address.GetQueryPort());
+                }
+                entry.Valid = true;
+                return true;
+            }
+            catch (Exception)
+            {
+                // A server that changes while it is read is read again on a later pass.
+                return false;
+            }
+        }
+
+        // Player counts and pings move while the list is open; the rows on screen are kept current.
+        private static bool RefreshShown()
+        {
+            var changed = false;
+            for (var i = 0; i <= _rows.Length; i++)
+            {
+                var index = i < _rows.Length ? _top + i : _selected;
+                if (index < 0 || index >= Entries.Count) continue;
+                var entry = Entries[index];
+                if (entry.Scan != _scan) continue;
                 try
                 {
-                    var info = infos[i];
-                    if (info == null || !info.IsValid) continue;
-                    var raw = info.Name ?? "";
-                    var clean = info.CleanName;
-                    var entry = new Entry
-                    {
-                        Info = info,
-                        Id = info.Pointer,
-                        Order = Listed.Count,
-                        Dedicated = info.TryCast<DedicatedServerInfo>(),
-                        Name = CleanName(string.IsNullOrWhiteSpace(clean) ? raw : clean),
-                        Mode = Words(info.GameMode),
-                        Players = info.CurrentMembers,
-                        Limit = info.MemberLimit,
-                        Ping = info.Ping,
-                        Password = info.IsPasswordProtected,
-                        VersionMatch = info.VersionMatch,
-                        // Modstoke and other loaders mark a dedicated server's name; only those are asked for details.
-                        Modded = raw.Contains("[MODDED]", StringComparison.Ordinal)
-                    };
-                    if (entry.Dedicated != null)
-                    {
-                        var address = entry.Dedicated.NetAddr;
-                        entry.Key = ServerBrowserBadges.IpText(address.GetIP()) + ":" + address.GetQueryPort();
-                        if (entry.Modded) ServerBrowserBadges.Ask(entry.Key, address.GetIP(), address.GetQueryPort());
-                    }
-                    Listed.Add(entry);
+                    int players = entry.Info.CurrentMembers, limit = entry.Info.MemberLimit, ping = entry.Info.Ping;
+                    if (players != entry.Players || limit != entry.Limit || ping != entry.Ping) changed = true;
+                    entry.Players = players;
+                    entry.Limit = limit;
+                    entry.Ping = ping;
+                    if (entry.Modded) Ask(entry);
                 }
                 catch (Exception)
                 {
-                    // A server that changes while it is read shows up on the next pass.
+                    // The row keeps what it showed.
                 }
             }
+            return changed;
         }
 
         // Search, filters and sorting over what was last read; cheap enough to run on every keystroke.
@@ -848,13 +954,22 @@ namespace Modstoke.Loader
         {
             var text = Tags.Replace(name ?? "", "").Trim();
             if (text.StartsWith("[MODDED]", StringComparison.Ordinal)) text = text.Substring(8).Trim();
-            return text.Length > 0 ? text : "Unnamed server";
+            return text;
+        }
+
+        // The game's mode names in the player's language; a mode Modstoke has no text for is shown as words.
+        private static string ModeName(string mode)
+        {
+            if (string.IsNullOrWhiteSpace(mode)) return "";
+            if (ModeNames.TryGetValue(mode, out var known)) return known;
+            var compact = mode.Replace("_", "").Replace(" ", "");
+            var key = compact.Length == 0 ? "" : "mode." + char.ToLowerInvariant(compact[0]) + compact.Substring(1);
+            return ModeNames[mode] = key.Length > 0 && T.Has(key) ? T[key] : Words(mode);
         }
 
         // "HardSurvival" and "hard_survival" both read "Hard survival".
         private static string Words(string text)
         {
-            if (string.IsNullOrWhiteSpace(text)) return "";
             var words = new StringBuilder();
             var afterLower = false;
             foreach (var c in text.Trim())

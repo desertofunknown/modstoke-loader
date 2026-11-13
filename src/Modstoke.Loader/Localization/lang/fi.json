@@ -8,9 +8,55 @@
     "refresh": "Päivitä",
     "search": "Hae",
     "cancel": "Peruuta",
+    "select": "Valitse",
     "yes": "Kyllä",
     "no": "Ei",
     "unknown": "Tuntematon"
+  },
+
+  "title": {
+    "singlePlayer": "Yksinpeli",
+    "multiplayer": "Moninpeli",
+    "options": "Asetukset",
+    "mods": "Modit",
+    "exit": "Lopeta"
+  },
+
+  "mode": {
+    "normal": "Normaali",
+    "hard": "Vaikea",
+    "hardSurvival": "Vaikea selviytyminen",
+    "peaceful": "Rauhallinen",
+    "creative": "Luova",
+    "custom": "Mukautettu",
+
+    "about": {
+      "normal": "Peli sellaisena kuin se on tarkoitettu pelattavaksi: selviydy, rakenna ja selvitä, mitä saarella tapahtui.",
+      "hard": "Kovempia vihollisia ja vähemmän tarvikkeita.",
+      "hardSurvival": "Vaikea, mutta selviytyminen on ankarampaa: ruokaa löytyy vähemmän, toipuminen on hitaampaa ja yöt ovat kylmempiä.",
+      "peaceful": "Ei vihollisia. Tutki ja rakenna omaan tahtiisi.",
+      "creative": "Rakenna vapaasti: kaikki esineet ovat käytössäsi, eikä sinun tarvitse syödä, juoda tai levätä.",
+      "custom": "Määritä jokainen sääntö itse seuraavalla sivulla."
+    }
+  },
+
+  "games": {
+    "singleSection": "Yksinpeli",
+    "singleTitle": "Omat pelit",
+    "hostTitle": "Isännöi peliä",
+    "newGame": "Uusi peli",
+    "newGameHint": "Aloita alusta",
+    "chooseMode": "Valitse, miten haluat pelata.",
+    "continue": "Jatka",
+    "delete": "Poista",
+    "deleteConfirm": "Poista painamalla uudelleen",
+    "saves": { "one": "{count} tallennettu peli", "other": "{count} tallennettua peliä" },
+    "reading": "Luetaan tallennettuja pelejä…",
+    "none": "Ei vielä tallennettuja pelejä.",
+    "unreadable": "Tallennusta ei voi lukea",
+    "modeAndDay": "{mode} · Päivä {days}",
+    "saved": "Tallennettu {when}",
+    "startFailed": "Käynnistäminen ei onnistunut. Syy näkyy Loaderin lokista."
   },
 
   "multiplayer": {
@@ -19,6 +65,7 @@
     "joinByIp": "Liity IP-osoitteella",
     "ownBrowser": "Pelin oma palvelinselain",
     "searchPlaceholder": "Hae palvelimia",
+    "unnamed": "Nimetön palvelin",
 
     "tab": {
       "all": "Kaikki",
@@ -50,15 +97,6 @@
       "modstoke": "Modstoke {version}"
     },
 
-    "mode": {
-      "normal": "Normaali",
-      "hard": "Vaikea",
-      "hardSurvival": "Vaikea selviytyminen",
-      "peaceful": "Rauhallinen",
-      "creative": "Luova",
-      "custom": "Mukautettu"
-    },
-
     "mods": {
       "match": "Modit täsmäävät",
       "needs": { "one": "Vaatii {count} modin", "other": "Vaatii {count} modia" },
@@ -74,7 +112,8 @@
       "servers": { "one": "{count} palvelin", "other": "{count} palvelinta" },
       "filtered": { "one": "{shown}/{count} palvelimesta", "other": "{shown}/{count} palvelimesta" },
       "runningModstoke": "{count} käyttää Modstokea",
-      "refreshing": "päivitetään"
+      "refreshing": "päivitetään",
+      "reading": "{done}/{total} vastannut"
     },
 
     "empty": {

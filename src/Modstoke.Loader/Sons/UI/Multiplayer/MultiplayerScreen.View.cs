@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using Modstoke.Localization;
 using Modstoke.Sons;
 using TMPro;
 using UnityEngine;
@@ -14,8 +15,9 @@ namespace Modstoke.Loader
 {
     internal static partial class MultiplayerScreen
     {
-        // Layout in design units: the screen is drawn as if 860 units tall and scaled to the real height.
+        // Layout in the front end's design units, scaled to the real screen height.
         private const float PanelTop = 120, RowsTop = 150, RowHeight = 48, RowGap = 2, TagHeight = 24, FooterHeight = 44;
+        private const float StripHeight = 143;
 
         private sealed class RowView
         {
@@ -36,6 +38,7 @@ namespace Modstoke.Loader
             internal RectTransform Rect;
             internal Image Brush;
             internal TextMeshProUGUI Label;
+            internal string Text;
             internal float Width;
             internal bool Hovered;
         }
@@ -66,26 +69,25 @@ namespace Modstoke.Loader
         private static readonly ToolView[] HeaderViews = new ToolView[4];
         private static readonly List<Prompt> Prompts = new();
         private static readonly TextMeshProUGUI[] StatValues = new TextMeshProUGUI[3];
-        private static RectTransform _listRect, _nav, _modsHeader;
-        private static (RectTransform Rect, TextMeshProUGUI Label) _tabLeft, _tabRight, _navLeft, _navRight, _navJoin, _navHost;
+        private static SectionNav _sections;
+        private static RectTransform _listRect, _modsHeader, _progress;
+        private static (RectTransform Rect, TextMeshProUGUI Label) _tabLeft, _tabRight;
         private static TextMeshProUGUI _status, _empty, _kind, _name, _sub, _noticeTitle, _noticeText, _joinLabel, _searchText;
         private static Image _noticeBox, _noticeBar, _joinFill, _searchBox;
-        private static float _bottom;
+        private static float _bottom, _nextProgress;
         private static int _modstokeCount;
         private static bool _caretOn;
 
-        private static float U(float design) => design * _s;
+        private static float U(float design) => FrontEnd.U(design);
 
-        private static void Build(RectTransform parent)
+        private static string Upper(string text) => text.ToUpper(Languages.CultureOf(Languages.Current));
+
+        private static void Build(RectTransform canvas)
         {
-            var root = MenuKit.Box(parent, "ModstokeMultiplayer").Place(0, 0, 1, 1);
-            root.SetAsLastSibling();
+            var root = MenuKit.Box(canvas, "Join").Place(0, 0, 1, 1);
             _rootObject = root.gameObject;
-            // Its own canvas, so repainting the list never rebuilds the game's menu canvas.
-            _canvas = _rootObject.AddComponent<Canvas>();
-            var height = parent.rect.height;
-            _s = height > 1 ? height / DesignHeight : 1f;
-            _bottom = BottomInset(parent);
+            _layout = FrontEnd.LayoutVersion;
+            _bottom = BottomInset();
             Hots.Clear();
             Prompts.Clear();
             var pad = U(60);
@@ -97,16 +99,18 @@ namespace Modstoke.Loader
         }
 
         // The game's own panels end where its bottom strip's artwork begins; this screen ends on the same line.
-        private static float BottomInset(RectTransform parent)
+        private static float BottomInset()
         {
             try
             {
                 var layout = _gameList != null && _gameList ? _gameList.GetComponent<RectTransform>() : null;
-                if (layout != null)
+                var canvas = _canvasRoot != null && _canvasRoot ? _canvasRoot.GetComponent<Canvas>() : null;
+                if (layout != null && canvas != null)
                 {
+                    var camera = canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
                     var corners = new Il2CppStructArray<Vector3>(4);
                     layout.GetWorldCorners(corners);
-                    var inset = parent.InverseTransformPoint(corners[0]).y - parent.rect.yMin;
+                    var inset = RectTransformUtility.WorldToScreenPoint(camera, corners[0]).y;
                     if (inset > U(110) && inset < U(220)) return inset;
                 }
             }
@@ -114,37 +118,19 @@ namespace Modstoke.Loader
             {
                 // Falls back to the strip's usual height below.
             }
-            return U(143);
+            return U(StripHeight);
         }
 
         private static void BuildHeader(RectTransform root, float pad)
         {
-            var section = MenuKit.Text(root, "Section", "MULTIPLAYER", U(14), true, MenuKit.Muted);
+            var section = MenuKit.Text(root, "Section", Upper(T["multiplayer.section"]), U(14), true, MenuKit.Muted);
             section.characterSpacing = 32;
             section.rectTransform.At(pad, U(30), U(600), U(18));
-            var title = MenuKit.Text(root, "Title", "JOIN A GAME", U(50), true, MenuKit.Ink);
+            var title = MenuKit.Text(root, "Title", Upper(T["multiplayer.joinTitle"]), U(50), true, MenuKit.Ink);
             title.characterSpacing = 5;
             title.rectTransform.At(pad, U(46), U(900), U(66));
-
-            _nav = MenuKit.Box(root, "Nav");
-            _nav.anchorMin = _nav.anchorMax = _nav.pivot = new Vector2(1, 1);
-            _nav.anchoredPosition = new Vector2(-pad, -U(56));
-            _navLeft = MenuKit.Tag(_nav, "Previous", "LT", U(TagHeight));
-            _navJoin = NavItem("JOIN", true);
-            _navHost = NavItem("HOST", false);
-            _navRight = MenuKit.Tag(_nav, "Next", "RT", U(TagHeight));
-            Add(_navHost.Rect, Host, on => _navHost.Label.color = on ? MenuKit.Ink : MenuKit.Muted);
-        }
-
-        private static (RectTransform Rect, TextMeshProUGUI Label) NavItem(string text, bool current)
-        {
-            var rect = MenuKit.Box(_nav, text);
-            if (current) MenuKit.Fill(rect, MenuKit.Brush, MenuKit.Ink);
-            var label = MenuKit.Text(rect, "Label", text, U(21), true, current ? MenuKit.Dark : MenuKit.Muted, TextAlignmentOptions.Center);
-            label.characterSpacing = 14;
-            label.rectTransform.Place(0, 0, 1, 1);
-            rect.sizeDelta = new Vector2(label.GetPreferredValues(text).x + U(current ? 68 : 44), U(48));
-            return (rect, label);
+            _sections = new SectionNav(root, pad, U(56), false);
+            Add(_sections.Other, Host, _sections.Hover);
         }
 
         private static void BuildList(RectTransform root, float pad)
@@ -154,15 +140,16 @@ namespace Modstoke.Loader
             var panelHeight = root.rect.height - _bottom - U(PanelTop);
 
             _tabLeft = MenuKit.Tag(panel, "PreviousTab", "LB", U(TagHeight));
-            for (var i = 0; i < TabNames.Length; i++)
+            for (var i = 0; i < TabKeys.Length; i++)
             {
                 var tab = (Tab)i;
-                var view = new TabView { Rect = MenuKit.Box(panel, "Tab " + TabNames[i]) };
+                var view = new TabView { Rect = MenuKit.Box(panel, "Tab " + TabKeys[i]), Text = Upper(T["multiplayer.tab." + TabKeys[i]]) };
                 view.Brush = MenuKit.Fill(MenuKit.Box(view.Rect, "Brush").Place(0, 0, 1, 1), MenuKit.Brush, MenuKit.Ink);
-                view.Label = MenuKit.Text(view.Rect, "Label", TabNames[i], U(15), true, MenuKit.Muted, TextAlignmentOptions.Center);
+                view.Label = MenuKit.Text(view.Rect, "Label", view.Text, U(15), true, MenuKit.Muted, TextAlignmentOptions.Center);
                 view.Label.characterSpacing = 12;
                 view.Label.rectTransform.Place(0, 0, 1, 1);
-                view.Width = view.Label.GetPreferredValues(TabNames[i] + " 0000").x + U(24);
+                // Room for the count shown beside the open tab's name.
+                view.Width = view.Label.GetPreferredValues(view.Text + " 0000").x + U(24);
                 TabViews[i] = view;
                 Add(view.Rect, () => SetTab(tab), on =>
                 {
@@ -178,19 +165,24 @@ namespace Modstoke.Loader
             _searchText.rectTransform.Place(0, 0, 1, 1, U(14), 0, U(14), 0);
             _searchHot = Add(search, () => FocusSearch(true));
 
-            MenuKit.Fill(MenuKit.Box(panel, "Rule").Strip(U(70), U(2), U(28), U(28)), MenuKit.Brush, MenuKit.Rule);
+            var rule = MenuKit.Box(panel, "Rule").Strip(U(70), U(2), U(28), U(28));
+            MenuKit.Fill(rule, MenuKit.Brush, MenuKit.Rule);
+            // The rule under the tabs fills from the left while the game is still hearing from servers.
+            _progress = MenuKit.Box(rule, "Progress").Place(0, 0, 0, 1);
+            MenuKit.Fill(_progress, null, MenuKit.Soft);
 
             var x = U(28);
-            for (var i = 0; i < ChipNames.Length; i++)
+            for (var i = 0; i < ChipKeys.Length; i++)
             {
                 var index = i;
-                var view = new ToolView { Rect = MenuKit.Box(panel, "Filter " + ChipNames[i]) };
+                var text = Upper(T["multiplayer.filter." + ChipKeys[i]]);
+                var view = new ToolView { Rect = MenuKit.Box(panel, "Filter " + ChipKeys[i]) };
                 view.Fill = MenuKit.Fill(view.Rect, null, MenuKit.ChipOff);
-                view.Label = MenuKit.Text(view.Rect, "Label", ChipNames[i], U(12.5f), true, MenuKit.Soft, TextAlignmentOptions.Center);
+                view.Label = MenuKit.Text(view.Rect, "Label", text, U(12.5f), true, MenuKit.Soft, TextAlignmentOptions.Center);
                 view.Label.characterSpacing = 10;
                 view.Label.rectTransform.Place(0, 0, 1, 1);
                 view.Focus = MenuKit.Fill(MenuKit.Box(view.Rect, "Focus").Place(0, 0, 1, 0, 0, -U(5), 0, U(3)), null, MenuKit.Ink);
-                var width = view.Label.GetPreferredValues(ChipNames[i]).x + U(26);
+                var width = view.Label.GetPreferredValues(text).x + U(26);
                 view.Rect.At(x, U(80), width, U(30));
                 x += width + U(6);
                 ChipViews[i] = view;
@@ -202,10 +194,10 @@ namespace Modstoke.Loader
             }
 
             var header = MenuKit.Box(panel, "Columns").Strip(U(118), U(26), U(28), U(28));
-            HeaderViews[0] = Header(header, 0, "SERVER", false, U(24), U(382));
-            HeaderViews[1] = Header(header, 1, "MODS", true, -U(370), U(170));
-            HeaderViews[2] = Header(header, 2, "PLAYERS", true, -U(158), U(76));
-            HeaderViews[3] = Header(header, 3, "PING", true, -U(70), 0);
+            HeaderViews[0] = Header(header, 0, "server", false, U(24), U(382));
+            HeaderViews[1] = Header(header, 1, "mods", true, -U(370), U(170));
+            HeaderViews[2] = Header(header, 2, "players", true, -U(158), U(76));
+            HeaderViews[3] = Header(header, 3, "ping", true, -U(70), 0);
 
             var visible = Mathf.Clamp(Mathf.FloorToInt((panelHeight - U(RowsTop) - U(40)) / U(RowHeight + RowGap)), 3, 14);
             _rows = new RowView[visible];
@@ -215,17 +207,18 @@ namespace Modstoke.Loader
             _empty.rectTransform.Strip(U(RowsTop + 60), U(26), U(28), U(28));
 
             _status = MenuKit.Text(panel, "Status", "", U(14), false, MenuKit.Muted);
-            _status.rectTransform.Place(0, 0, 1, 0, U(28), U(10), U(260), -U(32));
-            var classic = MenuKit.Box(panel, "Classic").Place(1, 0, 1, 0, -U(250), U(8), U(28), -U(36));
-            var classicLabel = MenuKit.Text(classic, "Label", "GAME'S OWN BROWSER", U(12), true, MenuKit.Muted, TextAlignmentOptions.MidlineRight);
+            _status.rectTransform.Place(0, 0, 1, 0, U(28), U(10), U(290), -U(32));
+            var classic = MenuKit.Box(panel, "Classic").Place(1, 0, 1, 0, -U(280), U(8), U(28), -U(36));
+            var classicLabel = MenuKit.Text(classic, "Label", Upper(T["multiplayer.ownBrowser"]), U(12), true, MenuKit.Muted, TextAlignmentOptions.MidlineRight);
             classicLabel.characterSpacing = 12;
             classicLabel.rectTransform.Place(0, 0, 1, 1);
             Add(classic, MultiplayerTakeover.UseClassicBrowser, on => classicLabel.color = on ? MenuKit.Ink : MenuKit.Muted);
         }
 
-        private static ToolView Header(RectTransform header, int index, string text, bool fromRight, float left, float right)
+        private static ToolView Header(RectTransform header, int index, string key, bool fromRight, float left, float right)
         {
-            var view = new ToolView { Rect = MenuKit.Box(header, text) };
+            var text = Upper(T["multiplayer.column." + key]);
+            var view = new ToolView { Rect = MenuKit.Box(header, key) };
             if (fromRight) view.Rect.Place(1, 0, 1, 1, left, 0, right, 0);
             else view.Rect.Place(0, 0, 1, 1, left, 0, right, 0);
             view.Label = MenuKit.Text(view.Rect, "Label", text, U(12), true, MenuKit.Muted);
@@ -251,10 +244,11 @@ namespace Modstoke.Loader
             var view = new RowView { Rect = rect };
             view.Highlight = MenuKit.Fill(MenuKit.Box(rect, "Highlight").Place(0, 0, 1, 1), MenuKit.Brush, MenuKit.RowSelected);
             view.Marker = MenuKit.Fill(MenuKit.Box(rect, "Marker").Place(0, 0, 0, 1, U(10), U(11), -U(13), U(11)), null, MenuKit.Faint);
+            // Each line gets a box taller than its text: an ellipsis box shorter than the line hides it.
             view.Name = MenuKit.Text(rect, "Name", "", U(17), true, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
-            view.Name.rectTransform.Place(0, 0.5f, 1, 1, U(24), -U(2), U(382), U(3));
+            view.Name.rectTransform.Place(0, 0.5f, 1, 1, U(24), -U(5), U(382), U(2));
             view.Kind = MenuKit.Text(rect, "Kind", "", U(13), false, MenuKit.Muted, TextAlignmentOptions.MidlineLeft, true);
-            view.Kind.rectTransform.Place(0, 0, 1, 0.5f, U(24), U(4), U(382), U(2));
+            view.Kind.rectTransform.Place(0, 0, 1, 0.5f, U(24), U(1), U(382), -U(3));
             view.Status = MenuKit.Text(rect, "Status", "", U(15), true, MenuKit.Faint);
             view.Status.rectTransform.Place(1, 0, 1, 1, -U(370), 0, U(170), 0);
             view.Players = MenuKit.Text(rect, "Players", "", U(16), false, MenuKit.Ink);
@@ -290,12 +284,12 @@ namespace Modstoke.Loader
             _sub.rectTransform.Strip(U(86), U(22), U(28), U(28));
 
             var stats = MenuKit.Box(panel, "Stats").Strip(U(118), U(58), U(28), U(28));
-            var names = new[] { "PLAYERS", "PING", "MODSTOKE" };
+            var names = new[] { "players", "ping", "modstoke" };
             for (var i = 0; i < 3; i++)
             {
                 var cell = MenuKit.Box(stats, names[i]).Place(i / 3f, 0, (i + 1) / 3f, 1, i == 0 ? 0 : U(1), 0, i == 2 ? 0 : U(1), 0);
                 MenuKit.Fill(cell, null, MenuKit.Cell);
-                var label = MenuKit.Text(cell, "Label", names[i], U(11), true, MenuKit.Muted);
+                var label = MenuKit.Text(cell, "Label", Upper(T["multiplayer.details." + names[i]]), U(11), true, MenuKit.Muted);
                 label.characterSpacing = 14;
                 label.rectTransform.Strip(U(8), U(16), U(10), U(4));
                 StatValues[i] = MenuKit.Text(cell, "Value", "", U(18), true, MenuKit.Ink);
@@ -313,9 +307,9 @@ namespace Modstoke.Loader
             _noticeText.rectTransform.Strip(U(36), U(50), U(18), U(12));
 
             _modsHeader = MenuKit.Box(panel, "ModColumns").Strip(U(294), U(18), U(28), U(28));
-            Column(_modsHeader, "MOD", false, 0, U(190));
-            Column(_modsHeader, "SERVER", true, -U(186), U(102));
-            Column(_modsHeader, "YOURS", true, -U(98), 0);
+            Column(_modsHeader, "mod", false, 0, U(190));
+            Column(_modsHeader, "server", true, -U(186), U(102));
+            Column(_modsHeader, "yours", true, -U(98), 0);
             // As many mod rows as fit between the column header and the Join button.
             var modRows = Mathf.Clamp(Mathf.FloorToInt((panelHeight - U(316) - U(92)) / U(38)), 1, 10);
             _mods = new ModView[modRows];
@@ -335,15 +329,15 @@ namespace Modstoke.Loader
 
             var join = MenuKit.Box(panel, "Join").Place(0, 0, 1, 0, U(28), U(20), U(28), -U(78));
             _joinFill = MenuKit.Fill(join, MenuKit.Brush, MenuKit.Ink);
-            _joinLabel = MenuKit.Text(join, "Label", "JOIN", U(21), true, MenuKit.Dark, TextAlignmentOptions.Center);
+            _joinLabel = MenuKit.Text(join, "Label", "", U(21), true, MenuKit.Dark, TextAlignmentOptions.Center);
             _joinLabel.characterSpacing = 16;
             _joinLabel.rectTransform.Place(0, 0, 1, 1);
             Add(join, Join);
         }
 
-        private static void Column(RectTransform header, string text, bool fromRight, float left, float right)
+        private static void Column(RectTransform header, string key, bool fromRight, float left, float right)
         {
-            var label = MenuKit.Text(header, text, text, U(12), true, MenuKit.Muted);
+            var label = MenuKit.Text(header, key, Upper(T["multiplayer.column." + key]), U(12), true, MenuKit.Muted);
             label.characterSpacing = 16;
             if (fromRight) label.rectTransform.Place(1, 0, 1, 1, left, 0, right, 0);
             else label.rectTransform.Place(0, 0, 1, 1, left, 0, right, 0);
@@ -353,18 +347,18 @@ namespace Modstoke.Loader
         private static void BuildFooter(RectTransform root, float pad)
         {
             var footer = MenuKit.Box(root, "Prompts").Place(0, 0, 1, 0, pad, U(30), pad, -U(30 + FooterHeight));
-            AddPrompt(footer, "BACK", "B", "ESC", false, () => BackOut());
-            AddPrompt(footer, "JOIN BY IP", "Y", "F2", false, JoinByIp);
-            AddPrompt(footer, "SEARCH", null, "F3", false, () => FocusSearch(true));
-            AddPrompt(footer, "JOIN", "A", "ENTER", true, Activate);
-            AddPrompt(footer, "REFRESH", "X", "F5", true, Refresh);
+            AddPrompt(footer, "common.back", "B", "ESC", false, () => BackOut());
+            AddPrompt(footer, "multiplayer.joinByIp", "Y", "F2", false, JoinByIp);
+            AddPrompt(footer, "common.search", null, "F3", false, () => FocusSearch(true));
+            AddPrompt(footer, "common.join", "A", "ENTER", true, Activate);
+            AddPrompt(footer, "common.refresh", "X", "F5", true, Refresh);
         }
 
-        private static void AddPrompt(RectTransform footer, string text, string pad, string key, bool right, Action click)
+        private static void AddPrompt(RectTransform footer, string key, string pad, string keyboard, bool right, Action click)
         {
-            var prompt = new Prompt { Rect = MenuKit.Box(footer, text), Pad = pad, Key = key, Right = right };
-            prompt.Tag = MenuKit.Tag(prompt.Rect, "Key", key ?? pad ?? "", U(TagHeight));
-            prompt.Label = MenuKit.Text(prompt.Rect, "Label", text, U(19), true, MenuKit.Soft);
+            var prompt = new Prompt { Rect = MenuKit.Box(footer, key), Pad = pad, Key = keyboard, Right = right };
+            prompt.Tag = MenuKit.Tag(prompt.Rect, "Key", keyboard ?? pad ?? "", U(TagHeight));
+            prompt.Label = MenuKit.Text(prompt.Rect, "Label", Upper(T[key]), U(19), true, MenuKit.Soft);
             prompt.Label.characterSpacing = 14;
             Prompts.Add(prompt);
             Add(prompt.Rect, click, on => prompt.Label.color = on ? MenuKit.Ink : MenuKit.Soft);
@@ -376,8 +370,7 @@ namespace Modstoke.Loader
             if (_rootObject == null || !_rootObject) return;
             SetTag(_tabLeft, _pad ? "LB" : "Q");
             SetTag(_tabRight, _pad ? "RB" : "E");
-            SetTag(_navLeft, _pad ? "LT" : "");
-            SetTag(_navRight, _pad ? "RT" : "TAB");
+            _sections.Paint(_pad);
             foreach (var prompt in Prompts)
             {
                 var text = _pad ? prompt.Pad : prompt.Key;
@@ -394,16 +387,6 @@ namespace Modstoke.Loader
                 item.At(x, U(18) + (U(44) - height) / 2, width, height);
                 x += width + U(tab != null ? 2 : 6);
             }
-
-            x = 0;
-            foreach (var item in new[] { _navLeft.Rect, _navJoin.Rect, _navHost.Rect, _navRight.Rect })
-            {
-                if (!item.gameObject.activeSelf) continue;
-                var size = item.sizeDelta;
-                item.At(x, (U(48) - size.y) / 2, size.x, size.y);
-                x += size.x + U(6);
-            }
-            _nav.sizeDelta = new Vector2(Mathf.Max(0, x - U(6)), U(48));
 
             float left = 0, right = 0;
             foreach (var prompt in Prompts)
@@ -429,8 +412,6 @@ namespace Modstoke.Loader
 
         private static void SetTag((RectTransform Rect, TextMeshProUGUI Label) tag, string text)
         {
-            tag.Rect.gameObject.SetActive(text.Length > 0);
-            if (text.Length == 0) return;
             tag.Label.text = text;
             tag.Rect.sizeDelta = new Vector2(MenuKit.TagWidth(tag.Label, text, U(TagHeight)), U(TagHeight));
         }
@@ -444,19 +425,61 @@ namespace Modstoke.Loader
             for (var i = 0; i < _rows.Length; i++) PaintRow(_rows[i], _top + i);
             PaintHighlights();
             PaintDetails();
+            PaintStatus();
+        }
 
-            var refreshing = false;
-            try { refreshing = _gui._dedicatedBrowser.RefreshInProgress || _gui._lobbyBrowser.RefreshInProgress; }
-            catch (Exception) { /* The browsers report nothing between refreshes. */ }
+        private static void PaintStatus()
+        {
+            var refreshing = Refreshing() || _backlog;
             var filtered = Entries.Count != Listed.Count;
             _empty.text = Entries.Count > 0 ? ""
-                : filtered ? "No servers match your search and filters."
-                : refreshing ? "Looking for servers…"
-                : _tab == Tab.Lan ? "No servers on your network." : "No servers found.";
-            _status.text = (filtered ? Entries.Count.ToString("N0") + " of " + Listed.Count.ToString("N0") : Listed.Count.ToString("N0"))
-                + (Listed.Count == 1 ? " server" : " servers")
-                + (_modstokeCount > 0 ? " · " + _modstokeCount + " running Modstoke" : "")
-                + (refreshing ? " · refreshing" : "");
+                : filtered ? T["multiplayer.empty.filtered"]
+                : refreshing ? T["multiplayer.empty.searching"]
+                : T[_tab == Tab.Lan ? "multiplayer.empty.lan" : "multiplayer.empty.none"];
+            var parts = new List<string>
+            {
+                filtered
+                    ? T.Count("multiplayer.status.filtered", Listed.Count, ("shown", Entries.Count))
+                    : T.Count("multiplayer.status.servers", Listed.Count)
+            };
+            if (_modstokeCount > 0) parts.Add(T.Get("multiplayer.status.runningModstoke", ("count", _modstokeCount)));
+            if (refreshing) parts.Add(ReadingText());
+            _status.text = string.Join(" · ", parts);
+        }
+
+        // How far the game is through hearing from the servers Steam listed, where it says.
+        private static string ReadingText()
+        {
+            try
+            {
+                _gui._dedicatedBrowser.GetServerCount(out var done, out var total);
+                if (total > 0 && done < total) return T.Get("multiplayer.status.reading", ("done", done), ("total", total));
+            }
+            catch (Exception)
+            {
+                // The plain word below says enough.
+            }
+            return T["multiplayer.status.refreshing"];
+        }
+
+        private static void PaintProgress()
+        {
+            var now = Time.unscaledTime;
+            if (now < _nextProgress || _progress == null || !_progress) return;
+            _nextProgress = now + 0.15f;
+            var progress = 0f;
+            try
+            {
+                var browser = _gui._dedicatedBrowser;
+                if (_tab != Tab.Hosted && browser.RefreshInProgress) progress = Mathf.Clamp01(browser.RefreshProgress);
+            }
+            catch (Exception)
+            {
+                // No bar when the browser has nothing to report.
+            }
+            // The status line carries the counts, so it follows the bar while a refresh runs and once it ends.
+            if (progress > 0 || _progress.anchorMax.x > 0) PaintStatus();
+            _progress.anchorMax = new Vector2(progress, 1);
         }
 
         private static void PaintTabs()
@@ -468,8 +491,8 @@ namespace Modstoke.Loader
                 view.Brush.enabled = on;
                 view.Label.color = on ? MenuKit.Dark : view.Hovered ? MenuKit.Ink : MenuKit.Muted;
                 view.Label.text = on && Listed.Count > 0
-                    ? TabNames[i] + " <color=" + MenuKit.Html(MenuKit.Faint) + ">" + Listed.Count + "</color>"
-                    : TabNames[i];
+                    ? view.Text + " <color=" + MenuKit.Html(MenuKit.Faint) + ">" + Listed.Count + "</color>"
+                    : view.Text;
             }
         }
 
@@ -500,7 +523,7 @@ namespace Modstoke.Loader
             _searchBox.color = _searching ? MenuKit.RowSelected : MenuKit.Field;
             var empty = _search.Length == 0 && !_searching;
             _searchText.color = empty ? MenuKit.Faint : MenuKit.Ink;
-            _searchText.text = empty ? "Search servers" : _search + (_searching && _caretOn ? "|" : "");
+            _searchText.text = empty ? T["multiplayer.searchPlaceholder"] : _search + (_searching && _caretOn ? "|" : "");
         }
 
         private static void PaintCaret()
@@ -534,8 +557,8 @@ namespace Modstoke.Loader
             var entry = Entries[index];
             var state = StateOf(entry, out var details);
             var (status, color) = Describe(state, details);
-            view.Name.text = entry.Name;
-            view.Kind.text = Kind(entry, details);
+            view.Name.text = NameOf(entry);
+            view.Kind.text = Kind(entry, details, " · ");
             view.Status.text = status;
             view.Status.color = color;
             view.Marker.color = color;
@@ -545,29 +568,30 @@ namespace Modstoke.Loader
             view.Ping.text = entry.Ping > 0 ? entry.Ping.ToString() : "";
         }
 
-        private static string Kind(Entry entry, ServerDetails details)
+        private static string NameOf(Entry entry) => entry.Name.Length > 0 ? entry.Name : T["multiplayer.unnamed"];
+
+        private static string Kind(Entry entry, ServerDetails details, string separator)
         {
-            var parts = new List<string> { entry.Dedicated != null ? "Dedicated" : "Hosted" };
-            if (details != null) parts.Add("Modstoke " + details.Loader);
-            if (entry.Mode.Length > 0) parts.Add(entry.Mode);
-            if (entry.Password) parts.Add("Password");
-            return string.Join(" · ", parts);
+            var parts = new List<string> { T[entry.Dedicated != null ? "multiplayer.kind.dedicated" : "multiplayer.kind.hosted"] };
+            if (details != null && details.Loader.Length > 0) parts.Add(T.Get("multiplayer.kind.modstoke", ("version", details.Loader)));
+            var mode = ModeName(entry.Mode);
+            if (mode.Length > 0) parts.Add(mode);
+            if (entry.Password) parts.Add(T["multiplayer.kind.password"]);
+            return string.Join(separator, parts);
         }
 
         private static (string Text, Color Color) Describe(ModState state, ServerDetails details)
         {
             switch (state)
             {
-                case ModState.Match: return ("Mods match", MenuKit.Green);
-                case ModState.Needs:
-                    var missing = ServerBrowserBadges.Missing(details).Count();
-                    return (missing == 1 ? "Needs 1 mod" : "Needs " + missing + " mods", MenuKit.Amber);
-                case ModState.AddsItems: return ("Your mods add items", MenuKit.Amber);
-                case ModState.Differs: return ("Mods differ", MenuKit.Red);
-                case ModState.Modded: return ("Modded", MenuKit.Muted);
-                case ModState.Checking: return ("Checking", MenuKit.Faint);
-                case ModState.Vanilla: return ("Vanilla", MenuKit.Faint);
-                case ModState.OtherVersion: return ("Other version", MenuKit.Red);
+                case ModState.Match: return (T["multiplayer.mods.match"], MenuKit.Green);
+                case ModState.Needs: return (T.Count("multiplayer.mods.needs", ServerBrowserBadges.Missing(details).Count()), MenuKit.Amber);
+                case ModState.AddsItems: return (T["multiplayer.mods.addsItems"], MenuKit.Amber);
+                case ModState.Differs: return (T["multiplayer.mods.differ"], MenuKit.Red);
+                case ModState.Modded: return (T["multiplayer.mods.modded"], MenuKit.Muted);
+                case ModState.Checking: return (T["multiplayer.mods.checking"], MenuKit.Faint);
+                case ModState.Vanilla: return (T["multiplayer.mods.vanilla"], MenuKit.Faint);
+                case ModState.OtherVersion: return (T["multiplayer.mods.otherVersion"], MenuKit.Red);
                 default: return ("—", MenuKit.Faint);
             }
         }
@@ -578,72 +602,68 @@ namespace Modstoke.Loader
             if (entry == null)
             {
                 _kind.text = "";
-                _name.text = "No server selected";
+                _name.text = T["multiplayer.details.none"];
                 _sub.text = "";
                 foreach (var value in StatValues) value.text = "—";
                 ShowNotice(null, null, 0);
                 ShowMods(null);
-                SetJoin(false, "JOIN");
+                SetJoin(false, T["common.join"]);
                 return;
             }
             // The selected server is always asked, so a Modstoke server is found even without a marked name.
             Ask(entry);
             var state = StateOf(entry, out var details);
-            _kind.text = (entry.Dedicated != null ? "DEDICATED" : "HOSTED") + (entry.Mode.Length > 0 ? " · " + entry.Mode.ToUpperInvariant() : "")
-                + (entry.Password ? " · PASSWORD" : "");
-            _name.text = entry.Name;
-            _sub.text = entry.Dedicated != null ? entry.Dedicated.Ip + ":" + entry.Dedicated.Port : "Hosted by a player over Steam";
+            _kind.text = Upper(Kind(entry, null, " · "));
+            _name.text = NameOf(entry);
+            _sub.text = entry.Dedicated != null ? entry.Dedicated.Ip + ":" + entry.Dedicated.Port : T["multiplayer.details.hostedBy"];
             StatValues[0].text = entry.Limit > 0 ? entry.Players + " / " + entry.Limit : entry.Players.ToString();
-            StatValues[1].text = entry.Ping > 0 ? entry.Ping + " ms" : "—";
-            StatValues[2].text = details != null ? (details.Loader.Length > 0 ? details.Loader : "Yes")
+            StatValues[1].text = entry.Ping > 0 ? T.Get("multiplayer.details.pingValue", ("ping", entry.Ping)) : "—";
+            StatValues[2].text = details != null ? (details.Loader.Length > 0 ? details.Loader : T["common.yes"])
                 : state switch
                 {
                     ModState.Checking => "…",
-                    ModState.Modded => "Unknown",
+                    ModState.Modded => T["common.unknown"],
                     ModState.Hosted => "—",
-                    _ => "No"
+                    _ => T["common.no"]
                 };
 
             var (title, text, accent) = Notice(state, details);
             ShowNotice(title, text, accent);
             ShowMods(details);
             var full = entry.Limit > 0 && entry.Players >= entry.Limit;
-            SetJoin(entry.VersionMatch && !full, !entry.VersionMatch ? "OTHER VERSION" : full ? "FULL" : "JOIN");
+            SetJoin(entry.VersionMatch && !full,
+                T[!entry.VersionMatch ? "multiplayer.mods.otherVersion" : full ? "multiplayer.details.full" : "common.join"]);
         }
 
-        private const int GreyAccent = 0x74726C, GreenAccent = 0xA7DCB8, AmberAccent = 0xF1C674, RedAccent = 0xF0A08A;
+        private const int GreyAccent = 0x85837C, GreenAccent = 0xA7DCB8, AmberAccent = 0xF1C674, RedAccent = 0xF0A08A;
 
         private static (string Title, string Text, int Accent) Notice(ModState state, ServerDetails details)
         {
+            (string, string, int) Plain(string key, int accent)
+                => (T["multiplayer.notice." + key + "Title"], T["multiplayer.notice." + key], accent);
             switch (state)
             {
-                case ModState.OtherVersion:
-                    return ("Different game version", "This server runs another version of Sons of the Forest.", RedAccent);
-                case ModState.Hosted:
-                    return ("Hosted game", "Hosted games don't list their mods yet; a Modstoke host checks them when you join.", GreyAccent);
-                case ModState.Checking:
-                    return ("Checking the server", "Asking it which mods it runs.", GreyAccent);
-                case ModState.Modded:
-                    return ("Modded server", "It doesn't list its mods. It may run another loader or an older Modstoke.", GreyAccent);
-                case ModState.Vanilla:
-                    return ("No Modstoke", "This server runs no Modstoke, so mods with their own items won't work there.", GreyAccent);
-                case ModState.Match:
-                    return ("Your mods match", "You can join with the mods you have.", GreenAccent);
-                case ModState.AddsItems:
-                    return ("Your mods add items", "This server has no mods with their own items, so yours won't exist there.", AmberAccent);
+                case ModState.OtherVersion: return Plain("otherVersion", RedAccent);
+                case ModState.Hosted: return Plain("hosted", GreyAccent);
+                case ModState.Checking: return Plain("checking", GreyAccent);
+                case ModState.Modded: return Plain("modded", GreyAccent);
+                case ModState.Vanilla: return Plain("vanilla", GreyAccent);
+                case ModState.Match: return Plain("match", GreenAccent);
+                case ModState.AddsItems: return Plain("addsItems", AmberAccent);
             }
             var missing = ServerBrowserBadges.Missing(details).Select(mod => mod.Id).ToArray();
             if (state == ModState.Needs)
-                return (missing.Length == 1 ? "Needs 1 mod" : "Needs " + missing.Length + " mods", "Add " + string.Join(", ", missing) + " to join.", AmberAccent);
+                return (T.Count("multiplayer.notice.needsTitle", missing.Length),
+                    T.Get("multiplayer.notice.needs", ("mods", string.Join(", ", missing))), AmberAccent);
             var local = ServerDetails.LocalMods();
             var extra = local.Where(own => own.Client == "required"
                 && !details.Mods.Any(mod => string.Equals(mod.Id, own.Id, StringComparison.OrdinalIgnoreCase)))
                 .Select(own => own.Id).ToArray();
-            var steps = new List<string>();
-            if (missing.Length > 0) steps.Add("Add " + string.Join(", ", missing) + ".");
-            if (extra.Length > 0) steps.Add("Turn off " + string.Join(", ", extra) + ".");
-            if (steps.Count == 0) steps.Add("Match the versions in the list below.");
-            return ("You'd be refused", "Its mods with their own items differ from yours. " + string.Join(" ", steps), RedAccent);
+            var steps = new List<string> { T["multiplayer.notice.refused"] };
+            if (missing.Length > 0) steps.Add(T.Get("multiplayer.notice.refusedAdd", ("mods", string.Join(", ", missing))));
+            if (extra.Length > 0) steps.Add(T.Get("multiplayer.notice.refusedTurnOff", ("mods", string.Join(", ", extra))));
+            if (steps.Count == 1) steps.Add(T["multiplayer.notice.refusedVersions"]);
+            return (T["multiplayer.notice.refusedTitle"], string.Join(" ", steps), RedAccent);
         }
 
         private static void ShowNotice(string title, string text, int accent)
@@ -672,7 +692,7 @@ namespace Modstoke.Loader
                 var mod = mods[i];
                 if (i == _mods.Length - 1 && details.ModCount > _mods.Length)
                 {
-                    view.Name.text = "and " + (details.ModCount - _mods.Length + 1) + " more";
+                    view.Name.text = T.Get("multiplayer.mod.more", ("count", details.ModCount - _mods.Length + 1));
                     view.Server.text = view.Yours.text = "";
                     continue;
                 }
@@ -686,7 +706,8 @@ namespace Modstoke.Loader
                 }
                 else
                 {
-                    view.Yours.text = mod.Client == "required" ? "Missing" : mod.Client == "server" ? "Not needed" : "Not installed";
+                    view.Yours.text = T[mod.Client == "required" ? "multiplayer.mod.missing"
+                        : mod.Client == "server" ? "multiplayer.mod.notNeeded" : "multiplayer.mod.notInstalled"];
                     view.Yours.color = mod.Client == "required" ? MenuKit.Red : MenuKit.Faint;
                 }
             }
@@ -696,7 +717,7 @@ namespace Modstoke.Loader
         {
             _joinFill.color = enabled ? MenuKit.Ink : MenuKit.Disabled;
             _joinLabel.color = enabled ? MenuKit.Dark : MenuKit.Faint;
-            _joinLabel.text = text;
+            _joinLabel.text = Upper(text);
         }
     }
 }

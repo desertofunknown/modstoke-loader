@@ -8,9 +8,55 @@
     "refresh": "重新整理",
     "search": "搜尋",
     "cancel": "取消",
+    "select": "選擇",
     "yes": "是",
     "no": "否",
     "unknown": "未知"
+  },
+
+  "title": {
+    "singlePlayer": "單人遊戲",
+    "multiplayer": "多人遊戲",
+    "options": "選項",
+    "mods": "模組",
+    "exit": "離開"
+  },
+
+  "mode": {
+    "normal": "普通",
+    "hard": "困難",
+    "hardSurvival": "困難生存",
+    "peaceful": "和平",
+    "creative": "創造",
+    "custom": "自訂",
+
+    "about": {
+      "normal": "遊戲原本的玩法：生存、建造，查明島上發生了什麼事。",
+      "hard": "敵人更強，物資更少。",
+      "hardSurvival": "以困難為基礎，生存更嚴苛：食物更難找，恢復更慢，夜晚更冷。",
+      "peaceful": "沒有敵人。依自己的步調探索與建造。",
+      "creative": "所有物品隨手可用，自由建造，不需進食、飲水或休息。",
+      "custom": "在下一頁自行設定每條規則。"
+    }
+  },
+
+  "games": {
+    "singleSection": "單人遊戲",
+    "singleTitle": "你的遊戲",
+    "hostTitle": "建立遊戲",
+    "newGame": "新遊戲",
+    "newGameHint": "從頭開始",
+    "chooseMode": "選擇你想要的玩法。",
+    "continue": "繼續",
+    "delete": "刪除",
+    "deleteConfirm": "再按一次即可刪除",
+    "saves": { "other": "{count} 個存檔" },
+    "reading": "正在讀取存檔……",
+    "none": "還沒有存檔。",
+    "unreadable": "存檔無法讀取",
+    "modeAndDay": "{mode} · 第 {days} 天",
+    "saved": "儲存於 {when}",
+    "startFailed": "無法開始。原因請見 Loader 記錄檔。"
   },
 
   "multiplayer": {
@@ -19,6 +65,7 @@
     "joinByIp": "透過 IP 加入",
     "ownBrowser": "遊戲內建的伺服器瀏覽器",
     "searchPlaceholder": "搜尋伺服器",
+    "unnamed": "未命名伺服器",
 
     "tab": {
       "all": "全部",
@@ -50,15 +97,6 @@
       "modstoke": "Modstoke {version}"
     },
 
-    "mode": {
-      "normal": "普通",
-      "hard": "困難",
-      "hardSurvival": "困難生存",
-      "peaceful": "和平",
-      "creative": "創造",
-      "custom": "自訂"
-    },
-
     "mods": {
       "match": "模組一致",
       "needs": { "other": "需要 {count} 個模組" },
@@ -74,7 +112,8 @@
       "servers": { "other": "{count} 個伺服器" },
       "filtered": { "other": "{shown}/{count} 個伺服器" },
       "runningModstoke": "{count} 個執行 Modstoke",
-      "refreshing": "重新整理中"
+      "refreshing": "重新整理中",
+      "reading": "已回應 {done}/{total}"
     },
 
     "empty": {

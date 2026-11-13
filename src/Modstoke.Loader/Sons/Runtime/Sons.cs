@@ -164,6 +164,7 @@ namespace Modstoke.Sons
                 global::Modstoke.Sons.ServerDetailsPublisher.Tick();
                 global::Modstoke.Sons.ServerBrowserBadges.Tick();
                 LocalizationStartup.Tick();
+                FrontEnd.Tick();
                 MultiplayerTakeover.Tick();
             }
             finally

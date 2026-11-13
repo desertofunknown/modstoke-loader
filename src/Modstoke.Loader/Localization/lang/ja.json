@@ -8,9 +8,55 @@
     "refresh": "更新",
     "search": "検索",
     "cancel": "キャンセル",
+    "select": "選択",
     "yes": "はい",
     "no": "いいえ",
     "unknown": "不明"
+  },
+
+  "title": {
+    "singlePlayer": "シングルプレイ",
+    "multiplayer": "マルチプレイ",
+    "options": "オプション",
+    "mods": "MOD",
+    "exit": "終了"
+  },
+
+  "mode": {
+    "normal": "ノーマル",
+    "hard": "ハード",
+    "hardSurvival": "ハードサバイバル",
+    "peaceful": "ピースフル",
+    "creative": "クリエイティブ",
+    "custom": "カスタム",
+
+    "about": {
+      "normal": "本来の遊び方です。生き延び、建築し、島で何が起きたのかを突き止めましょう。",
+      "hard": "敵が手強くなり、物資が少なくなります。",
+      "hardSurvival": "ハードに加えてサバイバルがさらに過酷になります。食料は少なく、回復は遅く、夜はより寒くなります。",
+      "peaceful": "敵は出現しません。自分のペースで探索と建築を楽しめます。",
+      "creative": "すべてのアイテムを自由に使って建築でき、食事・水分補給・休息の必要もありません。",
+      "custom": "次のページで各ルールを自分で設定します。"
+    }
+  },
+
+  "games": {
+    "singleSection": "シングルプレイ",
+    "singleTitle": "あなたのゲーム",
+    "hostTitle": "ゲームをホスト",
+    "newGame": "新しいゲーム",
+    "newGameHint": "最初から始める",
+    "chooseMode": "遊び方を選んでください。",
+    "continue": "続ける",
+    "delete": "削除",
+    "deleteConfirm": "もう一度押すと削除",
+    "saves": { "other": "{count}件のセーブデータ" },
+    "reading": "セーブデータを読み込み中…",
+    "none": "セーブデータはまだありません。",
+    "unreadable": "読み込めないセーブデータ",
+    "modeAndDay": "{mode} · {days}日目",
+    "saved": "{when}に保存",
+    "startFailed": "開始できませんでした。原因はLoaderのログに記録されています。"
   },
 
   "multiplayer": {
@@ -19,6 +65,7 @@
     "joinByIp": "IPで参加",
     "ownBrowser": "ゲーム標準のサーバーブラウザ",
     "searchPlaceholder": "サーバーを検索",
+    "unnamed": "名前のないサーバー",
 
     "tab": {
       "all": "すべて",
@@ -50,15 +97,6 @@
       "modstoke": "Modstoke {version}"
     },
 
-    "mode": {
-      "normal": "ノーマル",
-      "hard": "ハード",
-      "hardSurvival": "ハードサバイバル",
-      "peaceful": "ピースフル",
-      "creative": "クリエイティブ",
-      "custom": "カスタム"
-    },
-
     "mods": {
       "match": "MOD一致",
       "needs": { "other": "MODが{count}個必要" },
@@ -74,7 +112,8 @@
       "servers": { "other": "{count}件のサーバー" },
       "filtered": { "other": "{count}件中{shown}件のサーバー" },
       "runningModstoke": "Modstoke導入 {count}件",
-      "refreshing": "更新中"
+      "refreshing": "更新中",
+      "reading": "{total}件中{done}件が応答"
     },
 
     "empty": {

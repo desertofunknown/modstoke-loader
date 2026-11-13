@@ -8,9 +8,55 @@
     "refresh": "Odśwież",
     "search": "Szukaj",
     "cancel": "Anuluj",
+    "select": "Wybierz",
     "yes": "Tak",
     "no": "Nie",
     "unknown": "Nieznane"
+  },
+
+  "title": {
+    "singlePlayer": "Gra jednoosobowa",
+    "multiplayer": "Gra wieloosobowa",
+    "options": "Opcje",
+    "mods": "Mody",
+    "exit": "Wyjście"
+  },
+
+  "mode": {
+    "normal": "Normalny",
+    "hard": "Trudny",
+    "hardSurvival": "Trudne przetrwanie",
+    "peaceful": "Pokojowy",
+    "creative": "Kreatywny",
+    "custom": "Niestandardowy",
+
+    "about": {
+      "normal": "Gra w takiej formie, w jakiej ją pomyślano: przetrwaj, buduj i odkryj, co wydarzyło się na wyspie.",
+      "hard": "Silniejsi wrogowie i mniej zapasów.",
+      "hardSurvival": "Trudny, z surowszym przetrwaniem: mniej jedzenia do znalezienia, wolniejsza regeneracja i zimniejsze noce.",
+      "peaceful": "Bez wrogów. Zwiedzaj i buduj we własnym tempie.",
+      "creative": "Buduj swobodnie, mając pod ręką każdy przedmiot, bez potrzeby jedzenia, picia i odpoczynku.",
+      "custom": "Ustaw samodzielnie każdą zasadę na następnej stronie."
+    }
+  },
+
+  "games": {
+    "singleSection": "Gra jednoosobowa",
+    "singleTitle": "Twoje gry",
+    "hostTitle": "Hostuj grę",
+    "newGame": "Nowa gra",
+    "newGameHint": "Zacznij od początku",
+    "chooseMode": "Wybierz, jak chcesz grać.",
+    "continue": "Kontynuuj",
+    "delete": "Usuń",
+    "deleteConfirm": "Naciśnij ponownie, aby usunąć",
+    "saves": { "one": "{count} zapis gry", "few": "{count} zapisy gry", "many": "{count} zapisów gry", "other": "{count} zapisu gry" },
+    "reading": "Wczytywanie zapisów gry…",
+    "none": "Nie ma jeszcze zapisów gry.",
+    "unreadable": "Nieczytelny zapis",
+    "modeAndDay": "{mode} · Dzień {days}",
+    "saved": "Zapisano {when}",
+    "startFailed": "Nie udało się tego uruchomić. Przyczynę znajdziesz w dzienniku programu Loader."
   },
 
   "multiplayer": {
@@ -19,6 +65,7 @@
     "joinByIp": "Dołącz przez IP",
     "ownBrowser": "Przeglądarka serwerów gry",
     "searchPlaceholder": "Szukaj serwerów",
+    "unnamed": "Serwer bez nazwy",
 
     "tab": {
       "all": "Wszystkie",
@@ -50,15 +97,6 @@
       "modstoke": "Modstoke {version}"
     },
 
-    "mode": {
-      "normal": "Normalny",
-      "hard": "Trudny",
-      "hardSurvival": "Trudne przetrwanie",
-      "peaceful": "Pokojowy",
-      "creative": "Kreatywny",
-      "custom": "Niestandardowy"
-    },
-
     "mods": {
       "match": "Mody zgodne",
       "needs": { "one": "Wymaga {count} moda", "few": "Wymaga {count} modów", "many": "Wymaga {count} modów", "other": "Wymaga {count} moda" },
@@ -74,7 +112,8 @@
       "servers": { "one": "{count} serwer", "few": "{count} serwery", "many": "{count} serwerów", "other": "{count} serwera" },
       "filtered": { "one": "{shown} z {count} serwera", "few": "{shown} z {count} serwerów", "many": "{shown} z {count} serwerów", "other": "{shown} z {count} serwera" },
       "runningModstoke": "{count} z Modstoke",
-      "refreshing": "odświeżanie"
+      "refreshing": "odświeżanie",
+      "reading": "odpowiedź od {done} z {total}"
     },
 
     "empty": {

@@ -8,9 +8,55 @@
     "refresh": "Uppdatera",
     "search": "Sök",
     "cancel": "Avbryt",
+    "select": "Välj",
     "yes": "Ja",
     "no": "Nej",
     "unknown": "Okänt"
+  },
+
+  "title": {
+    "singlePlayer": "Enspelarläge",
+    "multiplayer": "Flerspelarläge",
+    "options": "Alternativ",
+    "mods": "Moddar",
+    "exit": "Avsluta"
+  },
+
+  "mode": {
+    "normal": "Normal",
+    "hard": "Svår",
+    "hardSurvival": "Svår överlevnad",
+    "peaceful": "Fredlig",
+    "creative": "Kreativ",
+    "custom": "Anpassad",
+
+    "about": {
+      "normal": "Spelet som det är tänkt att spelas: överlev, bygg och ta reda på vad som hände på ön.",
+      "hard": "Tuffare fiender och färre förnödenheter.",
+      "hardSurvival": "Svår, med hårdare överlevnad: mindre mat att hitta, långsammare återhämtning och kallare nätter.",
+      "peaceful": "Inga fiender. Utforska och bygg i din egen takt.",
+      "creative": "Bygg fritt med alla föremål till hands och utan att behöva äta, dricka eller vila.",
+      "custom": "Ställ in varje regel själv på nästa sida."
+    }
+  },
+
+  "games": {
+    "singleSection": "Enspelarläge",
+    "singleTitle": "Dina spel",
+    "hostTitle": "Var värd för ett spel",
+    "newGame": "Nytt spel",
+    "newGameHint": "Börja från början",
+    "chooseMode": "Välj hur du vill spela.",
+    "continue": "Fortsätt",
+    "delete": "Radera",
+    "deleteConfirm": "Tryck igen för att radera",
+    "saves": { "one": "{count} sparat spel", "other": "{count} sparade spel" },
+    "reading": "Läser sparade spel…",
+    "none": "Inga sparade spel än.",
+    "unreadable": "Oläsbar sparfil",
+    "modeAndDay": "{mode} · Dag {days}",
+    "saved": "Sparat {when}",
+    "startFailed": "Det gick inte att starta. Loader-loggen visar varför."
   },
 
   "multiplayer": {
@@ -19,6 +65,7 @@
     "joinByIp": "Gå med via IP",
     "ownBrowser": "Spelets egen serverlista",
     "searchPlaceholder": "Sök servrar",
+    "unnamed": "Namnlös server",
 
     "tab": {
       "all": "Alla",
@@ -50,15 +97,6 @@
       "modstoke": "Modstoke {version}"
     },
 
-    "mode": {
-      "normal": "Normal",
-      "hard": "Svår",
-      "hardSurvival": "Svår överlevnad",
-      "peaceful": "Fredlig",
-      "creative": "Kreativ",
-      "custom": "Anpassad"
-    },
-
     "mods": {
       "match": "Moddarna matchar",
       "needs": { "one": "Kräver {count} modd", "other": "Kräver {count} moddar" },
@@ -74,7 +112,8 @@
       "servers": { "one": "{count} server", "other": "{count} servrar" },
       "filtered": { "one": "{shown} av {count} server", "other": "{shown} av {count} servrar" },
       "runningModstoke": "{count} med Modstoke",
-      "refreshing": "uppdaterar"
+      "refreshing": "uppdaterar",
+      "reading": "{done} av {total} har svarat"
     },
 
     "empty": {

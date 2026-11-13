@@ -8,9 +8,55 @@
     "refresh": "Refresh",
     "search": "Search",
     "cancel": "Cancel",
+    "select": "Select",
     "yes": "Yes",
     "no": "No",
     "unknown": "Unknown"
+  },
+
+  "title": {
+    "singlePlayer": "Single player",
+    "multiplayer": "Multiplayer",
+    "options": "Options",
+    "mods": "Mods",
+    "exit": "Exit"
+  },
+
+  "mode": {
+    "normal": "Normal",
+    "hard": "Hard",
+    "hardSurvival": "Hard survival",
+    "peaceful": "Peaceful",
+    "creative": "Creative",
+    "custom": "Custom",
+
+    "about": {
+      "normal": "The game as it was made to be played: survive, build and find out what happened on the island.",
+      "hard": "Tougher enemies and fewer supplies.",
+      "hardSurvival": "Hard, with harsher survival: less food to find, slower recovery and colder nights.",
+      "peaceful": "No enemies. Explore and build at your own pace.",
+      "creative": "Build freely with every item to hand and no need to eat, drink or rest.",
+      "custom": "Set each rule yourself on the next page."
+    }
+  },
+
+  "games": {
+    "singleSection": "Single player",
+    "singleTitle": "Your games",
+    "hostTitle": "Host a game",
+    "newGame": "New game",
+    "newGameHint": "Start from the beginning",
+    "chooseMode": "Choose how you want to play.",
+    "continue": "Continue",
+    "delete": "Delete",
+    "deleteConfirm": "Press again to delete",
+    "saves": { "one": "{count} saved game", "other": "{count} saved games" },
+    "reading": "Reading saved games…",
+    "none": "No saved games yet.",
+    "unreadable": "Unreadable save",
+    "modeAndDay": "{mode} · Day {days}",
+    "saved": "Saved {when}",
+    "startFailed": "That could not be started. The Loader log says why."
   },
 
   "multiplayer": {
@@ -19,6 +65,7 @@
     "joinByIp": "Join by IP",
     "ownBrowser": "Game's own browser",
     "searchPlaceholder": "Search servers",
+    "unnamed": "Unnamed server",
 
     "tab": {
       "all": "All",
@@ -50,15 +97,6 @@
       "modstoke": "Modstoke {version}"
     },
 
-    "mode": {
-      "normal": "Normal",
-      "hard": "Hard",
-      "hardSurvival": "Hard survival",
-      "peaceful": "Peaceful",
-      "creative": "Creative",
-      "custom": "Custom"
-    },
-
     "mods": {
       "match": "Mods match",
       "needs": { "one": "Needs {count} mod", "other": "Needs {count} mods" },
@@ -74,7 +112,8 @@
       "servers": { "one": "{count} server", "other": "{count} servers" },
       "filtered": { "one": "{shown} of {count} server", "other": "{shown} of {count} servers" },
       "runningModstoke": "{count} running Modstoke",
-      "refreshing": "refreshing"
+      "refreshing": "refreshing",
+      "reading": "heard from {done} of {total}"
     },
 
     "empty": {

@@ -8,9 +8,55 @@
     "refresh": "Obnovit",
     "search": "Hledat",
     "cancel": "Zrušit",
+    "select": "Vybrat",
     "yes": "Ano",
     "no": "Ne",
     "unknown": "Neznámé"
+  },
+
+  "title": {
+    "singlePlayer": "Hra jednoho hráče",
+    "multiplayer": "Hra více hráčů",
+    "options": "Možnosti",
+    "mods": "Mody",
+    "exit": "Ukončit"
+  },
+
+  "mode": {
+    "normal": "Normální",
+    "hard": "Těžká",
+    "hardSurvival": "Těžké přežití",
+    "peaceful": "Mírumilovná",
+    "creative": "Kreativní",
+    "custom": "Vlastní",
+
+    "about": {
+      "normal": "Hra tak, jak byla zamýšlena: přežijte, stavějte a zjistěte, co se na ostrově stalo.",
+      "hard": "Silnější nepřátelé a méně zásob.",
+      "hardSurvival": "Těžká, s drsnějším přežíváním: méně jídla k nalezení, pomalejší zotavování a chladnější noci.",
+      "peaceful": "Žádní nepřátelé. Prozkoumávejte a stavějte vlastním tempem.",
+      "creative": "Stavějte volně se všemi předměty po ruce a bez nutnosti jíst, pít nebo odpočívat.",
+      "custom": "Každé pravidlo si na další stránce nastavíte sami."
+    }
+  },
+
+  "games": {
+    "singleSection": "Hra jednoho hráče",
+    "singleTitle": "Vaše hry",
+    "hostTitle": "Hostovat hru",
+    "newGame": "Nová hra",
+    "newGameHint": "Začít od začátku",
+    "chooseMode": "Zvolte, jak chcete hrát.",
+    "continue": "Pokračovat",
+    "delete": "Smazat",
+    "deleteConfirm": "Dalším stisknutím smažete",
+    "saves": { "one": "{count} uložená hra", "few": "{count} uložené hry", "other": "{count} uložených her" },
+    "reading": "Načítají se uložené hry…",
+    "none": "Zatím žádné uložené hry.",
+    "unreadable": "Nečitelná uložená hra",
+    "modeAndDay": "{mode} · Den {days}",
+    "saved": "Uloženo {when}",
+    "startFailed": "Spuštění se nezdařilo. Důvod najdete v protokolu programu Loader."
   },
 
   "multiplayer": {
@@ -19,6 +65,7 @@
     "joinByIp": "Připojit se přes IP",
     "ownBrowser": "Prohlížeč serverů hry",
     "searchPlaceholder": "Hledat servery",
+    "unnamed": "Server bez názvu",
 
     "tab": {
       "all": "Všechny",
@@ -50,15 +97,6 @@
       "modstoke": "Modstoke {version}"
     },
 
-    "mode": {
-      "normal": "Normální",
-      "hard": "Těžká",
-      "hardSurvival": "Těžké přežití",
-      "peaceful": "Mírumilovná",
-      "creative": "Kreativní",
-      "custom": "Vlastní"
-    },
-
     "mods": {
       "match": "Mody se shodují",
       "needs": { "one": "Vyžaduje {count} mod", "few": "Vyžaduje {count} mody", "other": "Vyžaduje {count} modů" },
@@ -74,7 +112,8 @@
       "servers": { "one": "{count} server", "few": "{count} servery", "other": "{count} serverů" },
       "filtered": { "one": "{shown} z {count} serveru", "few": "{shown} z {count} serverů", "other": "{shown} z {count} serverů" },
       "runningModstoke": "{count} s Modstoke",
-      "refreshing": "obnovuje se"
+      "refreshing": "obnovuje se",
+      "reading": "odpověď od {done} z {total}"
     },
 
     "empty": {

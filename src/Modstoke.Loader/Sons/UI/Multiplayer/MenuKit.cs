@@ -15,12 +15,12 @@ namespace Modstoke.Loader
     /// </summary>
     internal static class MenuKit
     {
-        // The game's UI draws color values as linear light, so every color here is written as it should look
-        // (sRGB) and converted once. Overlays are solid colors: a see-through white would render far too bright.
+        // Colors are written as they should look. Modstoke's menus draw on their own screen layer, which shows
+        // them exactly; the game's own menu canvas runs through its camera's tone curve and would not.
         internal static readonly Color Ink = Hex(0xECEBE6);
         internal static readonly Color Soft = Hex(0xCFCCC3);
-        internal static readonly Color Muted = Hex(0x9D9A92);
-        internal static readonly Color Faint = Hex(0x74726C);
+        internal static readonly Color Muted = Hex(0xA9A69D);
+        internal static readonly Color Faint = Hex(0x85837C);
         internal static readonly Color Dark = Hex(0x0B0C0C);
         internal static readonly Color Green = Hex(0xA7DCB8);
         internal static readonly Color Amber = Hex(0xF1C674);
@@ -34,11 +34,12 @@ namespace Modstoke.Loader
         internal static readonly Color ChipOff = Hex(0x242524);
         internal static readonly Color Field = Hex(0x1E1F1E);
         internal static readonly Color Disabled = Hex(0x2B2C2A);
+        internal static readonly Color Scrim = Hex(0x070808, 0.66f);
         private static readonly Color PanelPlain = Hex(0x141414, 0.94f);
         private const int PanelBase = 0x1B1C1B;
 
         private const int UiLayer = 5;
-        private static Sprite _brush, _panel;
+        private static Sprite _brush, _panel, _fade;
         private static TMP_FontAsset _bold, _regular;
 
         internal static Sprite Brush => Live(ref _brush, "Brush Wide");
@@ -46,19 +47,47 @@ namespace Modstoke.Loader
         internal static TMP_FontAsset Bold => LiveFont(ref _bold, MenuTheme.BoldFontName, MenuTheme.HeadingFont);
         internal static TMP_FontAsset Regular => LiveFont(ref _regular, MenuTheme.RegularFontName, MenuTheme.BodyFont) ?? Bold;
 
+        /// <summary>White that fades from solid at its top edge to clear at its bottom, for soft edges.</summary>
+        internal static Sprite Fade
+        {
+            get
+            {
+                if (_fade != null && _fade) return _fade;
+                const int steps = 64;
+                var texture = new Texture2D(1, steps, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+                texture.hideFlags = HideFlags.HideAndDontSave;
+                for (var y = 0; y < steps; y++)
+                {
+                    // Eased, so the edge has no visible start or end.
+                    var t = y / (steps - 1f);
+                    texture.SetPixel(0, y, new Color(1, 1, 1, t * t * (3f - 2f * t)));
+                }
+                texture.Apply(false, true);
+                _fade = Sprite.Create(texture, new Rect(0, 0, 1, steps), new Vector2(0.5f, 0.5f));
+                _fade.hideFlags = HideFlags.HideAndDontSave;
+                return _fade;
+            }
+        }
+
         internal static Color Hex(int rgb, float alpha = 1f)
-            => new(Linear(((rgb >> 16) & 255) / 255f), Linear(((rgb >> 8) & 255) / 255f), Linear((rgb & 255) / 255f), alpha);
+            => new(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f, alpha);
 
         /// <summary>A solid panel-toned color leaning toward an accent, for notices and tinted boxes.</summary>
         internal static Color Toned(int accentRgb, float amount)
         {
-            float Mix(int shift) => Linear(Mathf.Lerp((PanelBase >> shift) & 255, (accentRgb >> shift) & 255, amount) / 255f);
+            float Mix(int shift) => Mathf.Lerp((PanelBase >> shift) & 255, (accentRgb >> shift) & 255, amount) / 255f;
             return new Color(Mix(16), Mix(8), Mix(0), 1f);
         }
 
-        // sRGB to linear light.
-        private static float Linear(float value)
-            => value <= 0.04045f ? value / 12.92f : MathF.Pow((value + 0.055f) / 1.055f, 2.4f);
+        /// <summary>
+        /// Dims what is behind a full screen of panels, down to a soft edge above the game's bottom strip
+        /// (<paramref name="bottom"/> from the screen's lower edge), which stays as the game draws it.
+        /// </summary>
+        internal static void Backdrop(RectTransform root, float bottom, float fade)
+        {
+            Fill(Box(root, "Backdrop").Place(0, 0, 1, 1, 0, bottom + fade, 0, 0), null, Scrim);
+            Fill(Box(root, "Backdrop edge").Place(0, 0, 1, 0, 0, bottom, 0, -(bottom + fade)), Fade, Scrim);
+        }
 
         /// <summary>A color as a rich-text tag value, for text that changes color mid-line.</summary>
         internal static string Html(Color color) => "#" + ColorUtility.ToHtmlStringRGB(color);

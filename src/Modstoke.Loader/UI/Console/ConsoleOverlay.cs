@@ -37,6 +37,9 @@ namespace Modstoke.Loader
         private static float _nextRefresh;
         private static int _releaseFrame = -1;
 
+        /// <summary>Whether the console is open and taking the keyboard.</summary>
+        internal static bool IsVisible => _visible;
+
         // Called after InputBindings.InitializeDefaults, on Unity's owner thread.
         internal static void Initialize()
         {

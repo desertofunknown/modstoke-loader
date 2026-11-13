@@ -8,9 +8,55 @@
     "refresh": "Yenile",
     "search": "Ara",
     "cancel": "İptal",
+    "select": "Seç",
     "yes": "Evet",
     "no": "Hayır",
     "unknown": "Bilinmiyor"
+  },
+
+  "title": {
+    "singlePlayer": "Tek oyunculu",
+    "multiplayer": "Çok oyunculu",
+    "options": "Seçenekler",
+    "mods": "Modlar",
+    "exit": "Çıkış"
+  },
+
+  "mode": {
+    "normal": "Normal",
+    "hard": "Zor",
+    "hardSurvival": "Zorlu hayatta kalma",
+    "peaceful": "Barışçıl",
+    "creative": "Yaratıcı",
+    "custom": "Özel",
+
+    "about": {
+      "normal": "Oyunun tasarlandığı hâli: hayatta kalın, inşa edin ve adada neler olduğunu öğrenin.",
+      "hard": "Daha güçlü düşmanlar ve daha az malzeme.",
+      "hardSurvival": "Zor moda ek olarak daha çetin hayatta kalma koşulları: daha az yiyecek, daha yavaş iyileşme ve daha soğuk geceler.",
+      "peaceful": "Düşman yok. Kendi hızınızda keşfedin ve inşa edin.",
+      "creative": "Tüm eşyalar elinizin altındayken yemeye, içmeye veya dinlenmeye gerek kalmadan özgürce inşa edin.",
+      "custom": "Her kuralı sonraki sayfada kendiniz belirleyin."
+    }
+  },
+
+  "games": {
+    "singleSection": "Tek oyunculu",
+    "singleTitle": "Oyunlarınız",
+    "hostTitle": "Oyun kur",
+    "newGame": "Yeni oyun",
+    "newGameHint": "En baştan başlayın",
+    "chooseMode": "Nasıl oynamak istediğinizi seçin.",
+    "continue": "Devam et",
+    "delete": "Sil",
+    "deleteConfirm": "Silmek için tekrar basın",
+    "saves": { "one": "{count} kayıtlı oyun", "other": "{count} kayıtlı oyun" },
+    "reading": "Kayıtlı oyunlar okunuyor…",
+    "none": "Henüz kayıtlı oyun yok.",
+    "unreadable": "Okunamayan kayıt",
+    "modeAndDay": "{mode} · {days}. gün",
+    "saved": "Kaydedildi: {when}",
+    "startFailed": "Bu başlatılamadı. Nedeni Loader günlüğünde yazıyor."
   },
 
   "multiplayer": {
@@ -19,6 +65,7 @@
     "joinByIp": "IP ile katıl",
     "ownBrowser": "Oyunun kendi sunucu tarayıcısı",
     "searchPlaceholder": "Sunucu ara",
+    "unnamed": "Adsız sunucu",
 
     "tab": {
       "all": "Tümü",
@@ -50,15 +97,6 @@
       "modstoke": "Modstoke {version}"
     },
 
-    "mode": {
-      "normal": "Normal",
-      "hard": "Zor",
-      "hardSurvival": "Zorlu hayatta kalma",
-      "peaceful": "Barışçıl",
-      "creative": "Yaratıcı",
-      "custom": "Özel"
-    },
-
     "mods": {
       "match": "Modlar uyuşuyor",
       "needs": { "one": "{count} mod gerekli", "other": "{count} mod gerekli" },
@@ -74,7 +112,8 @@
       "servers": { "one": "{count} sunucu", "other": "{count} sunucu" },
       "filtered": { "one": "{shown}/{count} sunucu", "other": "{shown}/{count} sunucu" },
       "runningModstoke": "Modstoke kullanan: {count}",
-      "refreshing": "yenileniyor"
+      "refreshing": "yenileniyor",
+      "reading": "{done}/{total} yanıt verdi"
     },
 
     "empty": {

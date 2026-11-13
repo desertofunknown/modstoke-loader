@@ -8,9 +8,55 @@
     "refresh": "Обновить",
     "search": "Поиск",
     "cancel": "Отмена",
+    "select": "Выбрать",
     "yes": "Да",
     "no": "Нет",
     "unknown": "Неизвестно"
+  },
+
+  "title": {
+    "singlePlayer": "Одиночная игра",
+    "multiplayer": "Сетевая игра",
+    "options": "Настройки",
+    "mods": "Моды",
+    "exit": "Выход"
+  },
+
+  "mode": {
+    "normal": "Обычный",
+    "hard": "Сложный",
+    "hardSurvival": "Сложное выживание",
+    "peaceful": "Мирный",
+    "creative": "Творческий",
+    "custom": "Пользовательский",
+
+    "about": {
+      "normal": "Игра такой, какой она задумана: выживайте, стройте и узнайте, что произошло на острове.",
+      "hard": "Враги сильнее, припасов меньше.",
+      "hardSurvival": "Сложный, но выживать ещё труднее: еды меньше, восстановление медленнее, ночи холоднее.",
+      "peaceful": "Без врагов. Исследуйте и стройте в своём темпе.",
+      "creative": "Стройте свободно: все предметы под рукой, а есть, пить и отдыхать не нужно.",
+      "custom": "Настройте каждое правило сами на следующей странице."
+    }
+  },
+
+  "games": {
+    "singleSection": "Одиночная игра",
+    "singleTitle": "Ваши игры",
+    "hostTitle": "Создать игру",
+    "newGame": "Новая игра",
+    "newGameHint": "Начать с самого начала",
+    "chooseMode": "Выберите, как вы хотите играть.",
+    "continue": "Продолжить",
+    "delete": "Удалить",
+    "deleteConfirm": "Нажмите ещё раз, чтобы удалить",
+    "saves": { "one": "{count} сохранение", "few": "{count} сохранения", "many": "{count} сохранений", "other": "{count} сохранения" },
+    "reading": "Чтение сохранений…",
+    "none": "Сохранений пока нет.",
+    "unreadable": "Сохранение не читается",
+    "modeAndDay": "{mode} · День {days}",
+    "saved": "Сохранено {when}",
+    "startFailed": "Не удалось запустить. Причина указана в журнале Loader."
   },
 
   "multiplayer": {
@@ -19,6 +65,7 @@
     "joinByIp": "Подключиться по IP",
     "ownBrowser": "Браузер серверов игры",
     "searchPlaceholder": "Поиск серверов",
+    "unnamed": "Сервер без названия",
 
     "tab": {
       "all": "Все",
@@ -50,15 +97,6 @@
       "modstoke": "Modstoke {version}"
     },
 
-    "mode": {
-      "normal": "Обычный",
-      "hard": "Сложный",
-      "hardSurvival": "Сложное выживание",
-      "peaceful": "Мирный",
-      "creative": "Творческий",
-      "custom": "Пользовательский"
-    },
-
     "mods": {
       "match": "Моды совпадают",
       "needs": { "one": "Нужен {count} мод", "few": "Нужно {count} мода", "many": "Нужно {count} модов", "other": "Нужно {count} мода" },
@@ -74,7 +112,8 @@
       "servers": { "one": "{count} сервер", "few": "{count} сервера", "many": "{count} серверов", "other": "{count} сервера" },
       "filtered": { "one": "{shown} из {count} сервера", "few": "{shown} из {count} серверов", "many": "{shown} из {count} серверов", "other": "{shown} из {count} сервера" },
       "runningModstoke": "{count} с Modstoke",
-      "refreshing": "обновление"
+      "refreshing": "обновление",
+      "reading": "ответ от {done} из {total}"
     },
 
     "empty": {
