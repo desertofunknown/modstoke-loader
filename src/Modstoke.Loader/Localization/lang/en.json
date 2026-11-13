@@ -1,0 +1,133 @@
+{
+  "_about": "Modstoke Loader text, English. This is the source language: every other file translates these keys. Text in {braces} is filled in by the Loader and must stay as written.",
+
+  "common": {
+    "back": "Back",
+    "join": "Join",
+    "host": "Host",
+    "refresh": "Refresh",
+    "search": "Search",
+    "cancel": "Cancel",
+    "yes": "Yes",
+    "no": "No",
+    "unknown": "Unknown"
+  },
+
+  "multiplayer": {
+    "section": "Multiplayer",
+    "joinTitle": "Join a game",
+    "joinByIp": "Join by IP",
+    "ownBrowser": "Game's own browser",
+    "searchPlaceholder": "Search servers",
+
+    "tab": {
+      "all": "All",
+      "hosted": "Hosted",
+      "dedicated": "Dedicated",
+      "lan": "LAN"
+    },
+
+    "filter": {
+      "modstoke": "Modstoke",
+      "hasPlayers": "Has players",
+      "notFull": "Not full",
+      "noPassword": "No password"
+    },
+
+    "column": {
+      "server": "Server",
+      "mods": "Mods",
+      "players": "Players",
+      "ping": "Ping",
+      "mod": "Mod",
+      "yours": "Yours"
+    },
+
+    "kind": {
+      "dedicated": "Dedicated",
+      "hosted": "Hosted",
+      "password": "Password",
+      "modstoke": "Modstoke {version}"
+    },
+
+    "mode": {
+      "normal": "Normal",
+      "hard": "Hard",
+      "hardSurvival": "Hard survival",
+      "peaceful": "Peaceful",
+      "creative": "Creative",
+      "custom": "Custom"
+    },
+
+    "mods": {
+      "match": "Mods match",
+      "needs": { "one": "Needs {count} mod", "other": "Needs {count} mods" },
+      "addsItems": "Your mods add items",
+      "differ": "Mods differ",
+      "modded": "Modded",
+      "checking": "Checking",
+      "vanilla": "Vanilla",
+      "otherVersion": "Other version"
+    },
+
+    "status": {
+      "servers": { "one": "{count} server", "other": "{count} servers" },
+      "filtered": { "one": "{shown} of {count} server", "other": "{shown} of {count} servers" },
+      "runningModstoke": "{count} running Modstoke",
+      "refreshing": "refreshing"
+    },
+
+    "empty": {
+      "filtered": "No servers match your search and filters.",
+      "searching": "Looking for servers…",
+      "lan": "No servers on your network.",
+      "none": "No servers found."
+    },
+
+    "details": {
+      "none": "No server selected",
+      "hostedBy": "Hosted by a player over Steam",
+      "players": "Players",
+      "ping": "Ping",
+      "pingValue": "{ping} ms",
+      "modstoke": "Modstoke",
+      "full": "Full"
+    },
+
+    "notice": {
+      "otherVersionTitle": "Different game version",
+      "otherVersion": "This server runs another version of Sons of the Forest.",
+      "hostedTitle": "Hosted game",
+      "hosted": "Hosted games don't list their mods yet; a Modstoke host checks them when you join.",
+      "checkingTitle": "Checking the server",
+      "checking": "Asking it which mods it runs.",
+      "moddedTitle": "Modded server",
+      "modded": "It doesn't list its mods. It may run another loader or an older Modstoke.",
+      "vanillaTitle": "No Modstoke",
+      "vanilla": "This server runs no Modstoke, so mods with their own items won't work there.",
+      "matchTitle": "Your mods match",
+      "match": "You can join with the mods you have.",
+      "addsItemsTitle": "Your mods add items",
+      "addsItems": "This server has no mods with their own items, so yours won't exist there.",
+      "needsTitle": { "one": "Needs {count} mod", "other": "Needs {count} mods" },
+      "needs": "Add {mods} to join.",
+      "refusedTitle": "You'd be refused",
+      "refused": "Its mods with their own items differ from yours.",
+      "refusedAdd": "Add {mods}.",
+      "refusedTurnOff": "Turn off {mods}.",
+      "refusedVersions": "Match the versions in the list below."
+    },
+
+    "mod": {
+      "missing": "Missing",
+      "notNeeded": "Not needed",
+      "notInstalled": "Not installed",
+      "more": "and {count} more"
+    }
+  },
+
+  "kick": {
+    "yourGameHas": "Your game has: {content}.",
+    "noModContent": "no mod content"
+  }
+}

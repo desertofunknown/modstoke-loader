@@ -1,0 +1,133 @@
+{
+  "_about": "Modstoke Loader text, Korean. Translated from en.json; native review welcome.",
+
+  "common": {
+    "back": "뒤로",
+    "join": "참가",
+    "host": "호스트",
+    "refresh": "새로 고침",
+    "search": "검색",
+    "cancel": "취소",
+    "yes": "예",
+    "no": "아니요",
+    "unknown": "알 수 없음"
+  },
+
+  "multiplayer": {
+    "section": "멀티플레이",
+    "joinTitle": "게임 참가",
+    "joinByIp": "IP로 참가",
+    "ownBrowser": "게임 기본 서버 브라우저",
+    "searchPlaceholder": "서버 검색",
+
+    "tab": {
+      "all": "전체",
+      "hosted": "플레이어 호스트",
+      "dedicated": "전용 서버",
+      "lan": "LAN"
+    },
+
+    "filter": {
+      "modstoke": "Modstoke",
+      "hasPlayers": "플레이어 있음",
+      "notFull": "빈자리 있음",
+      "noPassword": "비밀번호 없음"
+    },
+
+    "column": {
+      "server": "서버",
+      "mods": "모드",
+      "players": "플레이어",
+      "ping": "핑",
+      "mod": "모드",
+      "yours": "내 버전"
+    },
+
+    "kind": {
+      "dedicated": "전용 서버",
+      "hosted": "플레이어 호스트",
+      "password": "비밀번호 있음",
+      "modstoke": "Modstoke {version}"
+    },
+
+    "mode": {
+      "normal": "보통",
+      "hard": "어려움",
+      "hardSurvival": "어려운 생존",
+      "peaceful": "평화로움",
+      "creative": "크리에이티브",
+      "custom": "사용자 지정"
+    },
+
+    "mods": {
+      "match": "모드 일치",
+      "needs": { "other": "모드 {count}개 필요" },
+      "addsItems": "내 모드가 아이템 추가",
+      "differ": "모드 불일치",
+      "modded": "모드 사용 중",
+      "checking": "확인 중",
+      "vanilla": "바닐라",
+      "otherVersion": "다른 버전"
+    },
+
+    "status": {
+      "servers": { "other": "서버 {count}개" },
+      "filtered": { "other": "서버 {count}개 중 {shown}개" },
+      "runningModstoke": "Modstoke 사용 {count}개",
+      "refreshing": "새로 고치는 중"
+    },
+
+    "empty": {
+      "filtered": "검색어와 필터에 맞는 서버가 없습니다.",
+      "searching": "서버를 찾는 중…",
+      "lan": "네트워크에 서버가 없습니다.",
+      "none": "서버를 찾을 수 없습니다."
+    },
+
+    "details": {
+      "none": "선택한 서버 없음",
+      "hostedBy": "플레이어가 Steam으로 호스트 중",
+      "players": "플레이어",
+      "ping": "핑",
+      "pingValue": "{ping} ms",
+      "modstoke": "Modstoke",
+      "full": "가득 참"
+    },
+
+    "notice": {
+      "otherVersionTitle": "게임 버전이 다름",
+      "otherVersion": "이 서버는 다른 버전의 Sons of the Forest를 실행 중입니다.",
+      "hostedTitle": "플레이어 호스트 게임",
+      "hosted": "플레이어 호스트 게임은 아직 모드 목록을 표시하지 않습니다. Modstoke를 쓰는 호스트는 참가할 때 모드를 확인합니다.",
+      "checkingTitle": "서버 확인 중",
+      "checking": "어떤 모드를 사용하는지 물어보고 있습니다.",
+      "moddedTitle": "모드 서버",
+      "modded": "모드 목록을 표시하지 않습니다. 다른 모드 로더나 이전 버전의 Modstoke를 사용 중일 수 있습니다.",
+      "vanillaTitle": "Modstoke 없음",
+      "vanilla": "이 서버는 Modstoke를 사용하지 않으므로 자체 아이템이 있는 모드는 작동하지 않습니다.",
+      "matchTitle": "내 모드가 일치합니다",
+      "match": "지금 모드 그대로 참가할 수 있습니다.",
+      "addsItemsTitle": "내 모드가 아이템을 추가합니다",
+      "addsItems": "이 서버에는 자체 아이템이 있는 모드가 없어 내 모드의 아이템은 그곳에 존재하지 않습니다.",
+      "needsTitle": { "other": "모드 {count}개 필요" },
+      "needs": "참가하려면 {mods} 모드를 추가하세요.",
+      "refusedTitle": "참가가 거부됩니다",
+      "refused": "서버의 자체 아이템 모드가 내 모드와 다릅니다.",
+      "refusedAdd": "{mods} 모드를 추가하세요.",
+      "refusedTurnOff": "{mods} 모드를 끄세요.",
+      "refusedVersions": "아래 목록의 버전에 맞추세요."
+    },
+
+    "mod": {
+      "missing": "없음",
+      "notNeeded": "필요 없음",
+      "notInstalled": "미설치",
+      "more": "외 {count}개"
+    }
+  },
+
+  "kick": {
+    "yourGameHas": "내 게임의 콘텐츠: {content}.",
+    "noModContent": "모드 콘텐츠 없음"
+  }
+}

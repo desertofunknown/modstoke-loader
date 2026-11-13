@@ -96,7 +96,8 @@ namespace Modstoke.Loader
                 new("status", "Show the current Loader status.", true, false),
                 new("mods", "List the currently discovered mods and their status.", true, false),
                 new("desktop", "Open the desktop console window.", true, false),
-                new("boltwidths", "Report the bit width of each networked item-id field (writes UserData/bolt-widths.txt).", true, false)
+                new("boltwidths", "Report the bit width of each networked item-id field (writes UserData/bolt-widths.txt).", true, false),
+                new("language", "Show the language in use; \"language reload\" reads language files again.", true, false, true)
             };
             commands.AddRange(HostCommands.Catalog());
             Routes.Clear();
@@ -158,6 +159,11 @@ namespace Modstoke.Loader
                 if (text == "boltwidths")
                 {
                     Report(submission, "Info", BoltWidths.Run());
+                    return;
+                }
+                if (text == "language" || text.StartsWith("language ", StringComparison.Ordinal))
+                {
+                    Report(submission, "Info", LocalizationStartup.RunCommand(text.Substring("language".Length)));
                     return;
                 }
                 if (text == "steamrules" || text.StartsWith("steamrules ", StringComparison.Ordinal))

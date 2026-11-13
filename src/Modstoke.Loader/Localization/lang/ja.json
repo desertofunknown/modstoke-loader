@@ -1,0 +1,133 @@
+{
+  "_about": "Modstoke Loader text, Japanese. Translated from en.json; native review welcome.",
+
+  "common": {
+    "back": "戻る",
+    "join": "参加",
+    "host": "ホスト",
+    "refresh": "更新",
+    "search": "検索",
+    "cancel": "キャンセル",
+    "yes": "はい",
+    "no": "いいえ",
+    "unknown": "不明"
+  },
+
+  "multiplayer": {
+    "section": "マルチプレイ",
+    "joinTitle": "ゲームに参加",
+    "joinByIp": "IPで参加",
+    "ownBrowser": "ゲーム標準のサーバーブラウザ",
+    "searchPlaceholder": "サーバーを検索",
+
+    "tab": {
+      "all": "すべて",
+      "hosted": "プレイヤーホスト",
+      "dedicated": "専用サーバー",
+      "lan": "LAN"
+    },
+
+    "filter": {
+      "modstoke": "Modstoke",
+      "hasPlayers": "プレイヤーあり",
+      "notFull": "空きあり",
+      "noPassword": "パスワードなし"
+    },
+
+    "column": {
+      "server": "サーバー",
+      "mods": "MOD",
+      "players": "プレイヤー",
+      "ping": "Ping",
+      "mod": "MOD",
+      "yours": "あなた"
+    },
+
+    "kind": {
+      "dedicated": "専用サーバー",
+      "hosted": "プレイヤーホスト",
+      "password": "パスワードあり",
+      "modstoke": "Modstoke {version}"
+    },
+
+    "mode": {
+      "normal": "ノーマル",
+      "hard": "ハード",
+      "hardSurvival": "ハードサバイバル",
+      "peaceful": "ピースフル",
+      "creative": "クリエイティブ",
+      "custom": "カスタム"
+    },
+
+    "mods": {
+      "match": "MOD一致",
+      "needs": { "other": "MODが{count}個必要" },
+      "addsItems": "あなたのMODがアイテムを追加",
+      "differ": "MOD不一致",
+      "modded": "MOD導入済み",
+      "checking": "確認中",
+      "vanilla": "バニラ",
+      "otherVersion": "別バージョン"
+    },
+
+    "status": {
+      "servers": { "other": "{count}件のサーバー" },
+      "filtered": { "other": "{count}件中{shown}件のサーバー" },
+      "runningModstoke": "Modstoke導入 {count}件",
+      "refreshing": "更新中"
+    },
+
+    "empty": {
+      "filtered": "検索とフィルターに一致するサーバーがありません。",
+      "searching": "サーバーを検索中…",
+      "lan": "ネットワーク上にサーバーがありません。",
+      "none": "サーバーが見つかりません。"
+    },
+
+    "details": {
+      "none": "サーバー未選択",
+      "hostedBy": "プレイヤーがSteam経由でホスト",
+      "players": "プレイヤー",
+      "ping": "Ping",
+      "pingValue": "{ping} ms",
+      "modstoke": "Modstoke",
+      "full": "満員"
+    },
+
+    "notice": {
+      "otherVersionTitle": "ゲームのバージョンが違います",
+      "otherVersion": "このサーバーは別のバージョンのSons of the Forestで動作しています。",
+      "hostedTitle": "プレイヤーホストのゲーム",
+      "hosted": "プレイヤーホストのゲームはまだMOD一覧を公開しません。Modstokeを使うホストは参加時にMODを確認します。",
+      "checkingTitle": "サーバーを確認中",
+      "checking": "使用しているMODを問い合わせています。",
+      "moddedTitle": "MOD導入サーバー",
+      "modded": "MOD一覧を公開していません。別のMODローダーか古いModstokeを使っている可能性があります。",
+      "vanillaTitle": "Modstokeなし",
+      "vanilla": "このサーバーはModstokeを使っていないため、独自アイテムを追加するMODは動作しません。",
+      "matchTitle": "MODが一致しています",
+      "match": "今のMODのまま参加できます。",
+      "addsItemsTitle": "あなたのMODがアイテムを追加します",
+      "addsItems": "このサーバーには独自アイテムを追加するMODがないため、あなたのMODのアイテムは存在しません。",
+      "needsTitle": { "other": "MODが{count}個必要" },
+      "needs": "参加するには{mods}を追加してください。",
+      "refusedTitle": "参加を拒否されます",
+      "refused": "サーバーの独自アイテムを追加するMODがあなたのものと異なります。",
+      "refusedAdd": "{mods}を追加してください。",
+      "refusedTurnOff": "{mods}を無効にしてください。",
+      "refusedVersions": "下の一覧のバージョンに合わせてください。"
+    },
+
+    "mod": {
+      "missing": "不足",
+      "notNeeded": "不要",
+      "notInstalled": "未導入",
+      "more": "ほか{count}個"
+    }
+  },
+
+  "kick": {
+    "yourGameHas": "あなたのゲームの内容：{content}。",
+    "noModContent": "MODコンテンツなし"
+  }
+}

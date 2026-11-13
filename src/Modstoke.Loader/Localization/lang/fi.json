@@ -1,0 +1,133 @@
+{
+  "_about": "Modstoke Loader text, Finnish. Translated from en.json; native review welcome.",
+
+  "common": {
+    "back": "Takaisin",
+    "join": "Liity",
+    "host": "Isännöi",
+    "refresh": "Päivitä",
+    "search": "Hae",
+    "cancel": "Peruuta",
+    "yes": "Kyllä",
+    "no": "Ei",
+    "unknown": "Tuntematon"
+  },
+
+  "multiplayer": {
+    "section": "Moninpeli",
+    "joinTitle": "Liity peliin",
+    "joinByIp": "Liity IP-osoitteella",
+    "ownBrowser": "Pelin oma palvelinselain",
+    "searchPlaceholder": "Hae palvelimia",
+
+    "tab": {
+      "all": "Kaikki",
+      "hosted": "Isännöidyt",
+      "dedicated": "Dedikoidut",
+      "lan": "LAN"
+    },
+
+    "filter": {
+      "modstoke": "Modstoke",
+      "hasPlayers": "On pelaajia",
+      "notFull": "Ei täynnä",
+      "noPassword": "Ei salasanaa"
+    },
+
+    "column": {
+      "server": "Palvelin",
+      "mods": "Modit",
+      "players": "Pelaajat",
+      "ping": "Ping",
+      "mod": "Modi",
+      "yours": "Sinulla"
+    },
+
+    "kind": {
+      "dedicated": "Dedikoitu",
+      "hosted": "Isännöity",
+      "password": "Salasana",
+      "modstoke": "Modstoke {version}"
+    },
+
+    "mode": {
+      "normal": "Normaali",
+      "hard": "Vaikea",
+      "hardSurvival": "Vaikea selviytyminen",
+      "peaceful": "Rauhallinen",
+      "creative": "Luova",
+      "custom": "Mukautettu"
+    },
+
+    "mods": {
+      "match": "Modit täsmäävät",
+      "needs": { "one": "Vaatii {count} modin", "other": "Vaatii {count} modia" },
+      "addsItems": "Modisi lisäävät esineitä",
+      "differ": "Modit eroavat",
+      "modded": "Modattu",
+      "checking": "Tarkistetaan",
+      "vanilla": "Vanilla",
+      "otherVersion": "Eri versio"
+    },
+
+    "status": {
+      "servers": { "one": "{count} palvelin", "other": "{count} palvelinta" },
+      "filtered": { "one": "{shown}/{count} palvelimesta", "other": "{shown}/{count} palvelimesta" },
+      "runningModstoke": "{count} käyttää Modstokea",
+      "refreshing": "päivitetään"
+    },
+
+    "empty": {
+      "filtered": "Yksikään palvelin ei vastaa hakua ja suodattimia.",
+      "searching": "Etsitään palvelimia…",
+      "lan": "Verkossasi ei ole palvelimia.",
+      "none": "Palvelimia ei löytynyt."
+    },
+
+    "details": {
+      "none": "Palvelinta ei ole valittu",
+      "hostedBy": "Pelaajan isännöimä Steamin kautta",
+      "players": "Pelaajat",
+      "ping": "Ping",
+      "pingValue": "{ping} ms",
+      "modstoke": "Modstoke",
+      "full": "Täynnä"
+    },
+
+    "notice": {
+      "otherVersionTitle": "Eri peliversio",
+      "otherVersion": "Tämä palvelin käyttää eri Sons of the Forest -versiota.",
+      "hostedTitle": "Isännöity peli",
+      "hosted": "Isännöidyt pelit eivät vielä näytä modejaan; Modstoke-isäntä tarkistaa ne, kun liityt.",
+      "checkingTitle": "Tarkistetaan palvelinta",
+      "checking": "Kysytään, mitä modeja se käyttää.",
+      "moddedTitle": "Modattu palvelin",
+      "modded": "Se ei näytä modejaan. Se saattaa käyttää toista modilataajaa tai vanhempaa Modstoke-versiota.",
+      "vanillaTitle": "Ei Modstokea",
+      "vanilla": "Tällä palvelimella ei ole Modstokea, joten omia esineitä lisäävät modit eivät toimi siellä.",
+      "matchTitle": "Modisi täsmäävät",
+      "match": "Voit liittyä nykyisillä modeillasi.",
+      "addsItemsTitle": "Modisi lisäävät esineitä",
+      "addsItems": "Tällä palvelimella ei ole omia esineitä lisääviä modeja, joten sinun esineitäsi ei ole siellä.",
+      "needsTitle": { "one": "Vaatii {count} modin", "other": "Vaatii {count} modia" },
+      "needs": "Lisää {mods}, niin voit liittyä.",
+      "refusedTitle": "Sinut hylättäisiin",
+      "refused": "Sen omia esineitä lisäävät modit eroavat sinun modeistasi.",
+      "refusedAdd": "Lisää {mods}.",
+      "refusedTurnOff": "Poista käytöstä {mods}.",
+      "refusedVersions": "Päivitä versiot vastaamaan alla olevaa luetteloa."
+    },
+
+    "mod": {
+      "missing": "Puuttuu",
+      "notNeeded": "Ei tarvita",
+      "notInstalled": "Ei asennettu",
+      "more": "ja {count} lisää"
+    }
+  },
+
+  "kick": {
+    "yourGameHas": "Pelissäsi on: {content}.",
+    "noModContent": "ei modisisältöä"
+  }
+}

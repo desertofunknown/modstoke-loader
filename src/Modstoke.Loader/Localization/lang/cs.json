@@ -1,0 +1,133 @@
+{
+  "_about": "Modstoke Loader text, Czech. Translated from en.json; native review welcome.",
+
+  "common": {
+    "back": "Zpět",
+    "join": "Připojit se",
+    "host": "Hostovat",
+    "refresh": "Obnovit",
+    "search": "Hledat",
+    "cancel": "Zrušit",
+    "yes": "Ano",
+    "no": "Ne",
+    "unknown": "Neznámé"
+  },
+
+  "multiplayer": {
+    "section": "Hra více hráčů",
+    "joinTitle": "Připojit se ke hře",
+    "joinByIp": "Připojit se přes IP",
+    "ownBrowser": "Prohlížeč serverů hry",
+    "searchPlaceholder": "Hledat servery",
+
+    "tab": {
+      "all": "Všechny",
+      "hosted": "Hostované",
+      "dedicated": "Dedikované",
+      "lan": "LAN"
+    },
+
+    "filter": {
+      "modstoke": "Modstoke",
+      "hasPlayers": "S hráči",
+      "notFull": "Neplné",
+      "noPassword": "Bez hesla"
+    },
+
+    "column": {
+      "server": "Server",
+      "mods": "Mody",
+      "players": "Hráči",
+      "ping": "Ping",
+      "mod": "Mod",
+      "yours": "U vás"
+    },
+
+    "kind": {
+      "dedicated": "Dedikovaný",
+      "hosted": "Hostovaný",
+      "password": "Heslo",
+      "modstoke": "Modstoke {version}"
+    },
+
+    "mode": {
+      "normal": "Normální",
+      "hard": "Těžká",
+      "hardSurvival": "Těžké přežití",
+      "peaceful": "Mírumilovná",
+      "creative": "Kreativní",
+      "custom": "Vlastní"
+    },
+
+    "mods": {
+      "match": "Mody se shodují",
+      "needs": { "one": "Vyžaduje {count} mod", "few": "Vyžaduje {count} mody", "other": "Vyžaduje {count} modů" },
+      "addsItems": "Vaše mody přidávají předměty",
+      "differ": "Mody se liší",
+      "modded": "Modovaný",
+      "checking": "Kontroluje se",
+      "vanilla": "Vanilla",
+      "otherVersion": "Jiná verze"
+    },
+
+    "status": {
+      "servers": { "one": "{count} server", "few": "{count} servery", "other": "{count} serverů" },
+      "filtered": { "one": "{shown} z {count} serveru", "few": "{shown} z {count} serverů", "other": "{shown} z {count} serverů" },
+      "runningModstoke": "{count} s Modstoke",
+      "refreshing": "obnovuje se"
+    },
+
+    "empty": {
+      "filtered": "Hledání a filtrům neodpovídá žádný server.",
+      "searching": "Hledají se servery…",
+      "lan": "Ve vaší síti nejsou žádné servery.",
+      "none": "Nebyly nalezeny žádné servery."
+    },
+
+    "details": {
+      "none": "Není vybrán žádný server",
+      "hostedBy": "Hostuje hráč přes Steam",
+      "players": "Hráči",
+      "ping": "Ping",
+      "pingValue": "{ping} ms",
+      "modstoke": "Modstoke",
+      "full": "Plný"
+    },
+
+    "notice": {
+      "otherVersionTitle": "Jiná verze hry",
+      "otherVersion": "Na tomto serveru běží jiná verze Sons of the Forest.",
+      "hostedTitle": "Hostovaná hra",
+      "hosted": "Hostované hry zatím neuvádějí své mody; hostitel s Modstoke je ověří při připojení.",
+      "checkingTitle": "Kontrola serveru",
+      "checking": "Zjišťuje se, jaké mody na něm běží.",
+      "moddedTitle": "Modovaný server",
+      "modded": "Neuvádí své mody. Možná používá jiný mod loader nebo starší Modstoke.",
+      "vanillaTitle": "Bez Modstoke",
+      "vanilla": "Na tomto serveru neběží Modstoke, takže mody s vlastními předměty na něm nebudou fungovat.",
+      "matchTitle": "Vaše mody se shodují",
+      "match": "Můžete se připojit s mody, které máte.",
+      "addsItemsTitle": "Vaše mody přidávají předměty",
+      "addsItems": "Tento server nemá žádné mody s vlastními předměty, takže ty vaše na něm nebudou.",
+      "needsTitle": { "one": "Vyžaduje {count} mod", "few": "Vyžaduje {count} mody", "other": "Vyžaduje {count} modů" },
+      "needs": "Pro připojení přidejte {mods}.",
+      "refusedTitle": "Server by vás odmítl",
+      "refused": "Jeho mody s vlastními předměty se liší od vašich.",
+      "refusedAdd": "Přidejte {mods}.",
+      "refusedTurnOff": "Vypněte {mods}.",
+      "refusedVersions": "Srovnejte verze podle seznamu níže."
+    },
+
+    "mod": {
+      "missing": "Chybí",
+      "notNeeded": "Není potřeba",
+      "notInstalled": "Nenainstalováno",
+      "more": "a ještě {count}"
+    }
+  },
+
+  "kick": {
+    "yourGameHas": "Vaše hra obsahuje: {content}.",
+    "noModContent": "žádný obsah z modů"
+  }
+}

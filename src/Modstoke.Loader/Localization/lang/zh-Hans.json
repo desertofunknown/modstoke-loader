@@ -1,0 +1,133 @@
+{
+  "_about": "Modstoke Loader text, Simplified Chinese. Translated from en.json; native review welcome.",
+
+  "common": {
+    "back": "返回",
+    "join": "加入",
+    "host": "创建游戏",
+    "refresh": "刷新",
+    "search": "搜索",
+    "cancel": "取消",
+    "yes": "是",
+    "no": "否",
+    "unknown": "未知"
+  },
+
+  "multiplayer": {
+    "section": "多人游戏",
+    "joinTitle": "加入游戏",
+    "joinByIp": "通过 IP 加入",
+    "ownBrowser": "游戏自带的服务器浏览器",
+    "searchPlaceholder": "搜索服务器",
+
+    "tab": {
+      "all": "全部",
+      "hosted": "玩家自建",
+      "dedicated": "专用服务器",
+      "lan": "LAN"
+    },
+
+    "filter": {
+      "modstoke": "Modstoke",
+      "hasPlayers": "有玩家",
+      "notFull": "未满",
+      "noPassword": "无密码"
+    },
+
+    "column": {
+      "server": "服务器",
+      "mods": "模组",
+      "players": "玩家",
+      "ping": "延迟",
+      "mod": "模组",
+      "yours": "你的"
+    },
+
+    "kind": {
+      "dedicated": "专用服务器",
+      "hosted": "玩家自建",
+      "password": "有密码",
+      "modstoke": "Modstoke {version}"
+    },
+
+    "mode": {
+      "normal": "普通",
+      "hard": "困难",
+      "hardSurvival": "困难生存",
+      "peaceful": "和平",
+      "creative": "创造",
+      "custom": "自定义"
+    },
+
+    "mods": {
+      "match": "模组一致",
+      "needs": { "other": "需要 {count} 个模组" },
+      "addsItems": "你的模组会添加物品",
+      "differ": "模组不一致",
+      "modded": "有模组",
+      "checking": "检查中",
+      "vanilla": "原版",
+      "otherVersion": "版本不同"
+    },
+
+    "status": {
+      "servers": { "other": "{count} 个服务器" },
+      "filtered": { "other": "{shown}/{count} 个服务器" },
+      "runningModstoke": "{count} 个运行 Modstoke",
+      "refreshing": "正在刷新"
+    },
+
+    "empty": {
+      "filtered": "没有符合搜索和筛选条件的服务器。",
+      "searching": "正在查找服务器……",
+      "lan": "你的网络中没有服务器。",
+      "none": "未找到服务器。"
+    },
+
+    "details": {
+      "none": "未选择服务器",
+      "hostedBy": "由玩家通过 Steam 创建",
+      "players": "玩家",
+      "ping": "延迟",
+      "pingValue": "{ping} ms",
+      "modstoke": "Modstoke",
+      "full": "已满"
+    },
+
+    "notice": {
+      "otherVersionTitle": "游戏版本不同",
+      "otherVersion": "该服务器运行的是其他版本的 Sons of the Forest。",
+      "hostedTitle": "玩家自建游戏",
+      "hosted": "玩家自建游戏暂不列出模组；使用 Modstoke 的房主会在你加入时检查模组。",
+      "checkingTitle": "正在检查服务器",
+      "checking": "正在询问它运行了哪些模组。",
+      "moddedTitle": "模组服务器",
+      "modded": "它没有列出模组，可能使用了其他模组加载器或旧版 Modstoke。",
+      "vanillaTitle": "没有 Modstoke",
+      "vanilla": "该服务器没有运行 Modstoke，带有自有物品的模组在那里无法使用。",
+      "matchTitle": "你的模组一致",
+      "match": "可以用现有模组直接加入。",
+      "addsItemsTitle": "你的模组会添加物品",
+      "addsItems": "该服务器没有带有自有物品的模组，你的模组物品在那里不会存在。",
+      "needsTitle": { "other": "需要 {count} 个模组" },
+      "needs": "添加 {mods} 后即可加入。",
+      "refusedTitle": "你会被拒绝",
+      "refused": "它带有自有物品的模组与你的不同。",
+      "refusedAdd": "请添加 {mods}。",
+      "refusedTurnOff": "请关闭 {mods}。",
+      "refusedVersions": "请按下方列表对齐版本。"
+    },
+
+    "mod": {
+      "missing": "缺少",
+      "notNeeded": "不需要",
+      "notInstalled": "未安装",
+      "more": "还有 {count} 个"
+    }
+  },
+
+  "kick": {
+    "yourGameHas": "你的游戏包含：{content}。",
+    "noModContent": "无模组内容"
+  }
+}

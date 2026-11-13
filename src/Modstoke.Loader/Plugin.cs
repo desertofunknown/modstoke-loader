@@ -449,6 +449,7 @@ namespace Modstoke.Loader
             RuntimeAttestation.InitializeDefaults();
             ServerPolicy.InitializeDefaults();
             RuntimePreferences.Initialize();
+            LocalizationStartup.Initialize();
             RuntimeCommands.Initialize();
             ChainloaderStatus.Initialize();
             BepInExPluginCompatibility.Initialize();

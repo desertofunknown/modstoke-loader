@@ -1,0 +1,133 @@
+{
+  "_about": "Modstoke Loader text, Turkish. Translated from en.json; native review welcome.",
+
+  "common": {
+    "back": "Geri",
+    "join": "Katıl",
+    "host": "Oyun kur",
+    "refresh": "Yenile",
+    "search": "Ara",
+    "cancel": "İptal",
+    "yes": "Evet",
+    "no": "Hayır",
+    "unknown": "Bilinmiyor"
+  },
+
+  "multiplayer": {
+    "section": "Çok oyunculu",
+    "joinTitle": "Oyuna katıl",
+    "joinByIp": "IP ile katıl",
+    "ownBrowser": "Oyunun kendi sunucu tarayıcısı",
+    "searchPlaceholder": "Sunucu ara",
+
+    "tab": {
+      "all": "Tümü",
+      "hosted": "Oyuncu sunucuları",
+      "dedicated": "Adanmış",
+      "lan": "LAN"
+    },
+
+    "filter": {
+      "modstoke": "Modstoke",
+      "hasPlayers": "Oyuncu var",
+      "notFull": "Dolu değil",
+      "noPassword": "Parolasız"
+    },
+
+    "column": {
+      "server": "Sunucu",
+      "mods": "Modlar",
+      "players": "Oyuncular",
+      "ping": "Ping",
+      "mod": "Mod",
+      "yours": "Sizdeki"
+    },
+
+    "kind": {
+      "dedicated": "Adanmış",
+      "hosted": "Oyuncu sunucusu",
+      "password": "Parolalı",
+      "modstoke": "Modstoke {version}"
+    },
+
+    "mode": {
+      "normal": "Normal",
+      "hard": "Zor",
+      "hardSurvival": "Zorlu hayatta kalma",
+      "peaceful": "Barışçıl",
+      "creative": "Yaratıcı",
+      "custom": "Özel"
+    },
+
+    "mods": {
+      "match": "Modlar uyuşuyor",
+      "needs": { "one": "{count} mod gerekli", "other": "{count} mod gerekli" },
+      "addsItems": "Modlarınız eşya ekliyor",
+      "differ": "Modlar farklı",
+      "modded": "Modlu",
+      "checking": "Denetleniyor",
+      "vanilla": "Vanilla",
+      "otherVersion": "Farklı sürüm"
+    },
+
+    "status": {
+      "servers": { "one": "{count} sunucu", "other": "{count} sunucu" },
+      "filtered": { "one": "{shown}/{count} sunucu", "other": "{shown}/{count} sunucu" },
+      "runningModstoke": "Modstoke kullanan: {count}",
+      "refreshing": "yenileniyor"
+    },
+
+    "empty": {
+      "filtered": "Aramanıza ve filtrelerinize uyan sunucu yok.",
+      "searching": "Sunucular aranıyor…",
+      "lan": "Ağınızda sunucu yok.",
+      "none": "Sunucu bulunamadı."
+    },
+
+    "details": {
+      "none": "Sunucu seçilmedi",
+      "hostedBy": "Bir oyuncu tarafından Steam üzerinden kuruldu",
+      "players": "Oyuncular",
+      "ping": "Ping",
+      "pingValue": "{ping} ms",
+      "modstoke": "Modstoke",
+      "full": "Dolu"
+    },
+
+    "notice": {
+      "otherVersionTitle": "Farklı oyun sürümü",
+      "otherVersion": "Bu sunucuda farklı bir Sons of the Forest sürümü çalışıyor.",
+      "hostedTitle": "Oyuncu sunucusu",
+      "hosted": "Oyuncu sunucuları modlarını henüz listelemiyor; Modstoke kullanan bir ev sahibi, siz katılırken modları denetler.",
+      "checkingTitle": "Sunucu denetleniyor",
+      "checking": "Hangi modları çalıştırdığı soruluyor.",
+      "moddedTitle": "Modlu sunucu",
+      "modded": "Modlarını listelemiyor. Başka bir mod yükleyici veya daha eski bir Modstoke sürümü kullanıyor olabilir.",
+      "vanillaTitle": "Modstoke yok",
+      "vanilla": "Bu sunucuda Modstoke çalışmıyor; kendi eşyalarını ekleyen modlar orada çalışmaz.",
+      "matchTitle": "Modlarınız uyuşuyor",
+      "match": "Mevcut modlarınızla katılabilirsiniz.",
+      "addsItemsTitle": "Modlarınız eşya ekliyor",
+      "addsItems": "Bu sunucuda kendi eşyalarını ekleyen mod yok; sizinkiler orada bulunmayacak.",
+      "needsTitle": { "one": "{count} mod gerekli", "other": "{count} mod gerekli" },
+      "needs": "Katılmak için şunları ekleyin: {mods}.",
+      "refusedTitle": "Reddedilirsiniz",
+      "refused": "Sunucunun kendi eşyalarını ekleyen modları sizinkilerden farklı.",
+      "refusedAdd": "Şunları ekleyin: {mods}.",
+      "refusedTurnOff": "Şunları kapatın: {mods}.",
+      "refusedVersions": "Sürümleri aşağıdaki listeyle eşleştirin."
+    },
+
+    "mod": {
+      "missing": "Eksik",
+      "notNeeded": "Gerekli değil",
+      "notInstalled": "Yüklü değil",
+      "more": "ve {count} tane daha"
+    }
+  },
+
+  "kick": {
+    "yourGameHas": "Oyununuzdaki içerik: {content}.",
+    "noModContent": "mod içeriği yok"
+  }
+}

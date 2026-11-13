@@ -1,0 +1,133 @@
+{
+  "_about": "Modstoke Loader text, Swedish. Translated from en.json; native review welcome.",
+
+  "common": {
+    "back": "Tillbaka",
+    "join": "Gå med",
+    "host": "Var värd",
+    "refresh": "Uppdatera",
+    "search": "Sök",
+    "cancel": "Avbryt",
+    "yes": "Ja",
+    "no": "Nej",
+    "unknown": "Okänt"
+  },
+
+  "multiplayer": {
+    "section": "Flerspelarläge",
+    "joinTitle": "Gå med i ett spel",
+    "joinByIp": "Gå med via IP",
+    "ownBrowser": "Spelets egen serverlista",
+    "searchPlaceholder": "Sök servrar",
+
+    "tab": {
+      "all": "Alla",
+      "hosted": "Spelarvärdar",
+      "dedicated": "Dedikerade",
+      "lan": "LAN"
+    },
+
+    "filter": {
+      "modstoke": "Modstoke",
+      "hasPlayers": "Har spelare",
+      "notFull": "Inte full",
+      "noPassword": "Utan lösenord"
+    },
+
+    "column": {
+      "server": "Server",
+      "mods": "Moddar",
+      "players": "Spelare",
+      "ping": "Ping",
+      "mod": "Modd",
+      "yours": "Hos dig"
+    },
+
+    "kind": {
+      "dedicated": "Dedikerad",
+      "hosted": "Spelarvärd",
+      "password": "Lösenord",
+      "modstoke": "Modstoke {version}"
+    },
+
+    "mode": {
+      "normal": "Normal",
+      "hard": "Svår",
+      "hardSurvival": "Svår överlevnad",
+      "peaceful": "Fredlig",
+      "creative": "Kreativ",
+      "custom": "Anpassad"
+    },
+
+    "mods": {
+      "match": "Moddarna matchar",
+      "needs": { "one": "Kräver {count} modd", "other": "Kräver {count} moddar" },
+      "addsItems": "Dina moddar lägger till föremål",
+      "differ": "Moddarna skiljer sig",
+      "modded": "Moddad",
+      "checking": "Kontrollerar",
+      "vanilla": "Vanilla",
+      "otherVersion": "Annan version"
+    },
+
+    "status": {
+      "servers": { "one": "{count} server", "other": "{count} servrar" },
+      "filtered": { "one": "{shown} av {count} server", "other": "{shown} av {count} servrar" },
+      "runningModstoke": "{count} med Modstoke",
+      "refreshing": "uppdaterar"
+    },
+
+    "empty": {
+      "filtered": "Inga servrar matchar din sökning och dina filter.",
+      "searching": "Söker efter servrar…",
+      "lan": "Inga servrar i ditt nätverk.",
+      "none": "Inga servrar hittades."
+    },
+
+    "details": {
+      "none": "Ingen server vald",
+      "hostedBy": "En spelare är värd via Steam",
+      "players": "Spelare",
+      "ping": "Ping",
+      "pingValue": "{ping} ms",
+      "modstoke": "Modstoke",
+      "full": "Full"
+    },
+
+    "notice": {
+      "otherVersionTitle": "Annan spelversion",
+      "otherVersion": "Den här servern kör en annan version av Sons of the Forest.",
+      "hostedTitle": "Spel med spelarvärd",
+      "hosted": "Spel med spelarvärd visar inte sina moddar än; en värd med Modstoke kontrollerar dem när du går med.",
+      "checkingTitle": "Kontrollerar servern",
+      "checking": "Frågar vilka moddar den kör.",
+      "moddedTitle": "Moddad server",
+      "modded": "Den visar inte sina moddar. Den kanske kör en annan moddladdare eller en äldre version av Modstoke.",
+      "vanillaTitle": "Utan Modstoke",
+      "vanilla": "Den här servern kör inte Modstoke, så moddar med egna föremål fungerar inte där.",
+      "matchTitle": "Dina moddar matchar",
+      "match": "Med de moddar du har kan du gå med.",
+      "addsItemsTitle": "Dina moddar lägger till föremål",
+      "addsItems": "Den här servern har inga moddar med egna föremål, så dina kommer inte att finnas där.",
+      "needsTitle": { "one": "Kräver {count} modd", "other": "Kräver {count} moddar" },
+      "needs": "Lägg till {mods} för att gå med.",
+      "refusedTitle": "Du skulle nekas",
+      "refused": "Dess moddar med egna föremål skiljer sig från dina.",
+      "refusedAdd": "Lägg till {mods}.",
+      "refusedTurnOff": "Stäng av {mods}.",
+      "refusedVersions": "Matcha versionerna i listan nedan."
+    },
+
+    "mod": {
+      "missing": "Saknas",
+      "notNeeded": "Behövs inte",
+      "notInstalled": "Inte installerad",
+      "more": "och {count} till"
+    }
+  },
+
+  "kick": {
+    "yourGameHas": "Ditt spel har: {content}.",
+    "noModContent": "inget moddinnehåll"
+  }
+}

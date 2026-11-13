@@ -1,0 +1,133 @@
+{
+  "_about": "Modstoke Loader text, Spanish. Translated from en.json; native review welcome.",
+
+  "common": {
+    "back": "Atrás",
+    "join": "Unirse",
+    "host": "Alojar",
+    "refresh": "Actualizar",
+    "search": "Buscar",
+    "cancel": "Cancelar",
+    "yes": "Sí",
+    "no": "No",
+    "unknown": "Desconocido"
+  },
+
+  "multiplayer": {
+    "section": "Multijugador",
+    "joinTitle": "Unirse a una partida",
+    "joinByIp": "Unirse por IP",
+    "ownBrowser": "Buscador de servidores del juego",
+    "searchPlaceholder": "Buscar servidores",
+
+    "tab": {
+      "all": "Todos",
+      "hosted": "Alojados",
+      "dedicated": "Dedicados",
+      "lan": "LAN"
+    },
+
+    "filter": {
+      "modstoke": "Modstoke",
+      "hasPlayers": "Con jugadores",
+      "notFull": "No lleno",
+      "noPassword": "Sin contraseña"
+    },
+
+    "column": {
+      "server": "Servidor",
+      "mods": "Mods",
+      "players": "Jugadores",
+      "ping": "Ping",
+      "mod": "Mod",
+      "yours": "Tuyo"
+    },
+
+    "kind": {
+      "dedicated": "Dedicado",
+      "hosted": "Alojado",
+      "password": "Contraseña",
+      "modstoke": "Modstoke {version}"
+    },
+
+    "mode": {
+      "normal": "Normal",
+      "hard": "Difícil",
+      "hardSurvival": "Supervivencia difícil",
+      "peaceful": "Pacífico",
+      "creative": "Creativo",
+      "custom": "Personalizado"
+    },
+
+    "mods": {
+      "match": "Los mods coinciden",
+      "needs": { "one": "Necesita {count} mod", "other": "Necesita {count} mods" },
+      "addsItems": "Tus mods añaden objetos",
+      "differ": "Los mods no coinciden",
+      "modded": "Con mods",
+      "checking": "Comprobando",
+      "vanilla": "Vanilla",
+      "otherVersion": "Otra versión"
+    },
+
+    "status": {
+      "servers": { "one": "{count} servidor", "other": "{count} servidores" },
+      "filtered": { "one": "{shown} de {count} servidor", "other": "{shown} de {count} servidores" },
+      "runningModstoke": "{count} con Modstoke",
+      "refreshing": "actualizando"
+    },
+
+    "empty": {
+      "filtered": "Ningún servidor coincide con tu búsqueda y tus filtros.",
+      "searching": "Buscando servidores…",
+      "lan": "No hay servidores en tu red.",
+      "none": "No se encontraron servidores."
+    },
+
+    "details": {
+      "none": "Ningún servidor seleccionado",
+      "hostedBy": "Alojado por un jugador a través de Steam",
+      "players": "Jugadores",
+      "ping": "Ping",
+      "pingValue": "{ping} ms",
+      "modstoke": "Modstoke",
+      "full": "Lleno"
+    },
+
+    "notice": {
+      "otherVersionTitle": "Otra versión del juego",
+      "otherVersion": "Este servidor usa otra versión de Sons of the Forest.",
+      "hostedTitle": "Partida alojada",
+      "hosted": "Las partidas alojadas aún no muestran sus mods; un anfitrión con Modstoke los comprueba cuando te unes.",
+      "checkingTitle": "Comprobando el servidor",
+      "checking": "Preguntándole qué mods usa.",
+      "moddedTitle": "Servidor con mods",
+      "modded": "No muestra sus mods. Puede que use otro cargador de mods o un Modstoke más antiguo.",
+      "vanillaTitle": "Sin Modstoke",
+      "vanilla": "Este servidor no usa Modstoke, así que los mods con objetos propios no funcionarán en él.",
+      "matchTitle": "Tus mods coinciden",
+      "match": "Puedes unirte con los mods que tienes.",
+      "addsItemsTitle": "Tus mods añaden objetos",
+      "addsItems": "Este servidor no tiene mods con objetos propios, así que los tuyos no existirán en él.",
+      "needsTitle": { "one": "Necesita {count} mod", "other": "Necesita {count} mods" },
+      "needs": "Añade {mods} para unirte.",
+      "refusedTitle": "El servidor te rechazaría",
+      "refused": "Sus mods con objetos propios no coinciden con los tuyos.",
+      "refusedAdd": "Añade {mods}.",
+      "refusedTurnOff": "Desactiva {mods}.",
+      "refusedVersions": "Iguala las versiones de la lista de abajo."
+    },
+
+    "mod": {
+      "missing": "Falta",
+      "notNeeded": "No necesario",
+      "notInstalled": "No instalado",
+      "more": "y {count} más"
+    }
+  },
+
+  "kick": {
+    "yourGameHas": "Tu juego tiene: {content}.",
+    "noModContent": "ningún contenido de mods"
+  }
+}

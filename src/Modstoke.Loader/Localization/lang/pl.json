@@ -1,0 +1,133 @@
+{
+  "_about": "Modstoke Loader text, Polish. Translated from en.json; native review welcome.",
+
+  "common": {
+    "back": "Wstecz",
+    "join": "Dołącz",
+    "host": "Hostuj",
+    "refresh": "Odśwież",
+    "search": "Szukaj",
+    "cancel": "Anuluj",
+    "yes": "Tak",
+    "no": "Nie",
+    "unknown": "Nieznane"
+  },
+
+  "multiplayer": {
+    "section": "Gra wieloosobowa",
+    "joinTitle": "Dołącz do gry",
+    "joinByIp": "Dołącz przez IP",
+    "ownBrowser": "Przeglądarka serwerów gry",
+    "searchPlaceholder": "Szukaj serwerów",
+
+    "tab": {
+      "all": "Wszystkie",
+      "hosted": "Hostowane",
+      "dedicated": "Dedykowane",
+      "lan": "LAN"
+    },
+
+    "filter": {
+      "modstoke": "Modstoke",
+      "hasPlayers": "Z graczami",
+      "notFull": "Niepełne",
+      "noPassword": "Bez hasła"
+    },
+
+    "column": {
+      "server": "Serwer",
+      "mods": "Mody",
+      "players": "Gracze",
+      "ping": "Ping",
+      "mod": "Mod",
+      "yours": "U ciebie"
+    },
+
+    "kind": {
+      "dedicated": "Dedykowany",
+      "hosted": "Hostowany",
+      "password": "Hasło",
+      "modstoke": "Modstoke {version}"
+    },
+
+    "mode": {
+      "normal": "Normalny",
+      "hard": "Trudny",
+      "hardSurvival": "Trudne przetrwanie",
+      "peaceful": "Pokojowy",
+      "creative": "Kreatywny",
+      "custom": "Niestandardowy"
+    },
+
+    "mods": {
+      "match": "Mody zgodne",
+      "needs": { "one": "Wymaga {count} moda", "few": "Wymaga {count} modów", "many": "Wymaga {count} modów", "other": "Wymaga {count} moda" },
+      "addsItems": "Twoje mody dodają przedmioty",
+      "differ": "Mody się różnią",
+      "modded": "Zmodowany",
+      "checking": "Sprawdzanie",
+      "vanilla": "Vanilla",
+      "otherVersion": "Inna wersja"
+    },
+
+    "status": {
+      "servers": { "one": "{count} serwer", "few": "{count} serwery", "many": "{count} serwerów", "other": "{count} serwera" },
+      "filtered": { "one": "{shown} z {count} serwera", "few": "{shown} z {count} serwerów", "many": "{shown} z {count} serwerów", "other": "{shown} z {count} serwera" },
+      "runningModstoke": "{count} z Modstoke",
+      "refreshing": "odświeżanie"
+    },
+
+    "empty": {
+      "filtered": "Żaden serwer nie pasuje do wyszukiwania i filtrów.",
+      "searching": "Szukanie serwerów…",
+      "lan": "Brak serwerów w twojej sieci.",
+      "none": "Nie znaleziono serwerów."
+    },
+
+    "details": {
+      "none": "Nie wybrano serwera",
+      "hostedBy": "Hostowany przez gracza za pośrednictwem Steam",
+      "players": "Gracze",
+      "ping": "Ping",
+      "pingValue": "{ping} ms",
+      "modstoke": "Modstoke",
+      "full": "Pełny"
+    },
+
+    "notice": {
+      "otherVersionTitle": "Inna wersja gry",
+      "otherVersion": "Ten serwer działa na innej wersji Sons of the Forest.",
+      "hostedTitle": "Gra hostowana",
+      "hosted": "Gry hostowane nie podają jeszcze listy modów; host z Modstoke sprawdza je przy dołączaniu.",
+      "checkingTitle": "Sprawdzanie serwera",
+      "checking": "Pytamy go, jakich modów używa.",
+      "moddedTitle": "Zmodowany serwer",
+      "modded": "Nie podaje listy modów. Może używać innego mod loadera albo starszej wersji Modstoke.",
+      "vanillaTitle": "Bez Modstoke",
+      "vanilla": "Ten serwer nie używa Modstoke, więc mody z własnymi przedmiotami nie będą na nim działać.",
+      "matchTitle": "Twoje mody są zgodne",
+      "match": "Możesz dołączyć z modami, które masz.",
+      "addsItemsTitle": "Twoje mody dodają przedmioty",
+      "addsItems": "Ten serwer nie ma modów z własnymi przedmiotami, więc twoich na nim nie będzie.",
+      "needsTitle": { "one": "Wymaga {count} moda", "few": "Wymaga {count} modów", "many": "Wymaga {count} modów", "other": "Wymaga {count} moda" },
+      "needs": "Dodaj {mods}, aby dołączyć.",
+      "refusedTitle": "Serwer cię odrzuci",
+      "refused": "Jego mody z własnymi przedmiotami różnią się od twoich.",
+      "refusedAdd": "Dodaj {mods}.",
+      "refusedTurnOff": "Wyłącz {mods}.",
+      "refusedVersions": "Dopasuj wersje do listy poniżej."
+    },
+
+    "mod": {
+      "missing": "Brak",
+      "notNeeded": "Niepotrzebny",
+      "notInstalled": "Niezainstalowany",
+      "more": "i jeszcze {count}"
+    }
+  },
+
+  "kick": {
+    "yourGameHas": "W twojej grze: {content}.",
+    "noModContent": "brak zawartości z modów"
+  }
+}

@@ -903,6 +903,11 @@
     <Compile Include="Sons/Inventory/Modules/ModuleStorage.Transport.Wire.cs" />
     <Compile Include="Sons/Networking/Enrollment/ClientEnrollment.ModuleStorage.cs" />
     <Compile Include="Sons/Networking/Enrollment/ContentAgreement.cs" />
+    <Compile Include="Localization/PluralRules.cs" />
+    <Compile Include="Localization/StringCatalog.cs" />
+    <Compile Include="Localization/Languages.cs" />
+    <Compile Include="Localization/Strings.cs" />
+    <Compile Include="Localization/LocalizationStartup.cs" />
     <Compile Include="Sons/Networking/Enrollment/KickReason.cs" />
     <Compile Include="Sons/Networking/Browser/ServerDetails.cs" />
     <Compile Include="Sons/Networking/Browser/ServerRulesQuery.cs" />
@@ -1051,5 +1056,9 @@
     <Reference Include="UnityEngine.UI" HintPath="$(GameInteropRoot)\UnityEngine.UI.dll" Private="false" />
     <Reference Include="Unity.TextMeshPro" HintPath="$(GameInteropRoot)\Unity.TextMeshPro.dll" Private="false" />
     <Reference Include="Unity.InputSystem" HintPath="$(GameInteropRoot)\Unity.InputSystem.dll" Private="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The Loader's own text, one file per language; players can override any of them under UserData/lang/modstoke. -->
+    <EmbeddedResource Include="Localization/lang/*.json" LogicalName="lang/%(Filename).json" />
   </ItemGroup>
 </Project>

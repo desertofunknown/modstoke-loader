@@ -1,0 +1,133 @@
+{
+  "_about": "Modstoke Loader text, Portuguese (Brazil). Translated from en.json; native review welcome.",
+
+  "common": {
+    "back": "Voltar",
+    "join": "Entrar",
+    "host": "Hospedar",
+    "refresh": "Atualizar",
+    "search": "Buscar",
+    "cancel": "Cancelar",
+    "yes": "Sim",
+    "no": "Não",
+    "unknown": "Desconhecido"
+  },
+
+  "multiplayer": {
+    "section": "Multijogador",
+    "joinTitle": "Entrar em uma partida",
+    "joinByIp": "Entrar por IP",
+    "ownBrowser": "Navegador de servidores do jogo",
+    "searchPlaceholder": "Buscar servidores",
+
+    "tab": {
+      "all": "Todos",
+      "hosted": "Hospedados",
+      "dedicated": "Dedicados",
+      "lan": "LAN"
+    },
+
+    "filter": {
+      "modstoke": "Modstoke",
+      "hasPlayers": "Com jogadores",
+      "notFull": "Com vagas",
+      "noPassword": "Sem senha"
+    },
+
+    "column": {
+      "server": "Servidor",
+      "mods": "Mods",
+      "players": "Jogadores",
+      "ping": "Ping",
+      "mod": "Mod",
+      "yours": "Seu"
+    },
+
+    "kind": {
+      "dedicated": "Dedicado",
+      "hosted": "Hospedado",
+      "password": "Senha",
+      "modstoke": "Modstoke {version}"
+    },
+
+    "mode": {
+      "normal": "Normal",
+      "hard": "Difícil",
+      "hardSurvival": "Sobrevivência difícil",
+      "peaceful": "Pacífico",
+      "creative": "Criativo",
+      "custom": "Personalizado"
+    },
+
+    "mods": {
+      "match": "Mods compatíveis",
+      "needs": { "one": "Precisa de {count} mod", "other": "Precisa de {count} mods" },
+      "addsItems": "Seus mods adicionam itens",
+      "differ": "Mods diferentes",
+      "modded": "Com mods",
+      "checking": "Verificando",
+      "vanilla": "Vanilla",
+      "otherVersion": "Outra versão"
+    },
+
+    "status": {
+      "servers": { "one": "{count} servidor", "other": "{count} servidores" },
+      "filtered": { "one": "{shown} de {count} servidor", "other": "{shown} de {count} servidores" },
+      "runningModstoke": "{count} com Modstoke",
+      "refreshing": "atualizando"
+    },
+
+    "empty": {
+      "filtered": "Nenhum servidor corresponde à sua busca e aos seus filtros.",
+      "searching": "Procurando servidores…",
+      "lan": "Nenhum servidor na sua rede.",
+      "none": "Nenhum servidor encontrado."
+    },
+
+    "details": {
+      "none": "Nenhum servidor selecionado",
+      "hostedBy": "Hospedado por um jogador via Steam",
+      "players": "Jogadores",
+      "ping": "Ping",
+      "pingValue": "{ping} ms",
+      "modstoke": "Modstoke",
+      "full": "Lotado"
+    },
+
+    "notice": {
+      "otherVersionTitle": "Outra versão do jogo",
+      "otherVersion": "Este servidor usa outra versão de Sons of the Forest.",
+      "hostedTitle": "Partida hospedada",
+      "hosted": "Partidas hospedadas ainda não listam seus mods; um anfitrião com Modstoke verifica os mods quando você entra.",
+      "checkingTitle": "Verificando o servidor",
+      "checking": "Perguntando quais mods ele usa.",
+      "moddedTitle": "Servidor com mods",
+      "modded": "Ele não lista seus mods. Pode estar usando outro carregador de mods ou um Modstoke mais antigo.",
+      "vanillaTitle": "Sem Modstoke",
+      "vanilla": "Este servidor não usa Modstoke, então mods com itens próprios não vão funcionar nele.",
+      "matchTitle": "Seus mods são compatíveis",
+      "match": "Você pode entrar com os mods que tem.",
+      "addsItemsTitle": "Seus mods adicionam itens",
+      "addsItems": "Este servidor não tem mods com itens próprios, então os seus não vão existir nele.",
+      "needsTitle": { "one": "Precisa de {count} mod", "other": "Precisa de {count} mods" },
+      "needs": "Adicione {mods} para entrar.",
+      "refusedTitle": "O servidor recusaria você",
+      "refused": "Os mods dele com itens próprios são diferentes dos seus.",
+      "refusedAdd": "Adicione {mods}.",
+      "refusedTurnOff": "Desative {mods}.",
+      "refusedVersions": "Iguale as versões às da lista abaixo."
+    },
+
+    "mod": {
+      "missing": "Faltando",
+      "notNeeded": "Não necessário",
+      "notInstalled": "Não instalado",
+      "more": "e mais {count}"
+    }
+  },
+
+  "kick": {
+    "yourGameHas": "Seu jogo tem: {content}.",
+    "noModContent": "nenhum conteúdo de mods"
+  }
+}

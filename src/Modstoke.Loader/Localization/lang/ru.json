@@ -1,0 +1,133 @@
+{
+  "_about": "Modstoke Loader text, Russian. Translated from en.json; native review welcome.",
+
+  "common": {
+    "back": "Назад",
+    "join": "Подключиться",
+    "host": "Создать игру",
+    "refresh": "Обновить",
+    "search": "Поиск",
+    "cancel": "Отмена",
+    "yes": "Да",
+    "no": "Нет",
+    "unknown": "Неизвестно"
+  },
+
+  "multiplayer": {
+    "section": "Сетевая игра",
+    "joinTitle": "Подключиться к игре",
+    "joinByIp": "Подключиться по IP",
+    "ownBrowser": "Браузер серверов игры",
+    "searchPlaceholder": "Поиск серверов",
+
+    "tab": {
+      "all": "Все",
+      "hosted": "Серверы игроков",
+      "dedicated": "Выделенные",
+      "lan": "LAN"
+    },
+
+    "filter": {
+      "modstoke": "Modstoke",
+      "hasPlayers": "С игроками",
+      "notFull": "Есть места",
+      "noPassword": "Без пароля"
+    },
+
+    "column": {
+      "server": "Сервер",
+      "mods": "Моды",
+      "players": "Игроки",
+      "ping": "Пинг",
+      "mod": "Мод",
+      "yours": "У вас"
+    },
+
+    "kind": {
+      "dedicated": "Выделенный",
+      "hosted": "Сервер игрока",
+      "password": "Пароль",
+      "modstoke": "Modstoke {version}"
+    },
+
+    "mode": {
+      "normal": "Обычный",
+      "hard": "Сложный",
+      "hardSurvival": "Сложное выживание",
+      "peaceful": "Мирный",
+      "creative": "Творческий",
+      "custom": "Пользовательский"
+    },
+
+    "mods": {
+      "match": "Моды совпадают",
+      "needs": { "one": "Нужен {count} мод", "few": "Нужно {count} мода", "many": "Нужно {count} модов", "other": "Нужно {count} мода" },
+      "addsItems": "Ваши моды добавляют предметы",
+      "differ": "Моды отличаются",
+      "modded": "С модами",
+      "checking": "Проверка",
+      "vanilla": "Ванилла",
+      "otherVersion": "Другая версия"
+    },
+
+    "status": {
+      "servers": { "one": "{count} сервер", "few": "{count} сервера", "many": "{count} серверов", "other": "{count} сервера" },
+      "filtered": { "one": "{shown} из {count} сервера", "few": "{shown} из {count} серверов", "many": "{shown} из {count} серверов", "other": "{shown} из {count} сервера" },
+      "runningModstoke": "{count} с Modstoke",
+      "refreshing": "обновление"
+    },
+
+    "empty": {
+      "filtered": "Нет серверов, подходящих под поиск и фильтры.",
+      "searching": "Поиск серверов…",
+      "lan": "В вашей сети нет серверов.",
+      "none": "Серверы не найдены."
+    },
+
+    "details": {
+      "none": "Сервер не выбран",
+      "hostedBy": "Создан игроком через Steam",
+      "players": "Игроки",
+      "ping": "Пинг",
+      "pingValue": "{ping} мс",
+      "modstoke": "Modstoke",
+      "full": "Нет мест"
+    },
+
+    "notice": {
+      "otherVersionTitle": "Другая версия игры",
+      "otherVersion": "На этом сервере другая версия Sons of the Forest.",
+      "hostedTitle": "Сервер игрока",
+      "hosted": "Серверы игроков пока не показывают свои моды; хост с Modstoke проверит их при подключении.",
+      "checkingTitle": "Проверка сервера",
+      "checking": "Запрашиваем список его модов.",
+      "moddedTitle": "Сервер с модами",
+      "modded": "Он не показывает свои моды. Возможно, на нём другой загрузчик модов или более старая версия Modstoke.",
+      "vanillaTitle": "Без Modstoke",
+      "vanilla": "На этом сервере нет Modstoke, поэтому моды со своими предметами там работать не будут.",
+      "matchTitle": "Ваши моды совпадают",
+      "match": "Можно подключиться с вашими модами.",
+      "addsItemsTitle": "Ваши моды добавляют предметы",
+      "addsItems": "На этом сервере нет модов со своими предметами, поэтому ваших там не будет.",
+      "needsTitle": { "one": "Нужен {count} мод", "few": "Нужно {count} мода", "many": "Нужно {count} модов", "other": "Нужно {count} мода" },
+      "needs": "Чтобы подключиться, добавьте {mods}.",
+      "refusedTitle": "Сервер вам откажет",
+      "refused": "Его моды со своими предметами отличаются от ваших.",
+      "refusedAdd": "Добавьте {mods}.",
+      "refusedTurnOff": "Отключите {mods}.",
+      "refusedVersions": "Приведите версии в соответствие со списком ниже."
+    },
+
+    "mod": {
+      "missing": "Отсутствует",
+      "notNeeded": "Не нужен",
+      "notInstalled": "Не установлен",
+      "more": "и ещё {count}"
+    }
+  },
+
+  "kick": {
+    "yourGameHas": "В вашей игре: {content}.",
+    "noModContent": "нет контента модов"
+  }
+}

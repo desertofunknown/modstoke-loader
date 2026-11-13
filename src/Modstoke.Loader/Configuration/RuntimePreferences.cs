@@ -205,6 +205,22 @@ namespace Modstoke.Loader
             return fallback;
         }
 
+        /// <summary>Reads one text setting from the loader settings file; missing or unreadable gives the fallback.</summary>
+        internal static string ReadText(string key, string fallback)
+        {
+            try
+            {
+                foreach (var setting in LoaderConfig.ParseSettings(ReadSettingsText() ?? ""))
+                    if (string.Equals(setting.Key, key, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(setting.Value))
+                        return setting.Value.Trim();
+            }
+            catch (Exception ex)
+            {
+                Warn("Modstoke setting " + key + " could not be read: " + ex.Message);
+            }
+            return fallback;
+        }
+
         private static string ReadSettingsText()
         {
             try { return File.ReadAllText(SettingsPath); }
