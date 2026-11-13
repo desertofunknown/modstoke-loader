@@ -281,6 +281,8 @@ namespace Modstoke.Sons
         internal IntPtr ItemKey { get; private set; }
         /// <summary>On the mod gear page, where the SDK places Root, rather than beside an anchor on the game's page.</summary>
         internal bool OnGearPage { get; }
+        /// <summary>Where a controller's cursor settles on a gear page item; null for other layouts.</summary>
+        internal Transform SnapAnchor { get; private set; }
         public int ItemId => Key.Item;
         public GameObject Root { get; private set; }
         public InventoryLayoutItemGroup Group { get; private set; }
@@ -331,7 +333,16 @@ namespace Modstoke.Sons
             ItemKey = Item.Pointer;
             _itemInstanceId = Item.GetInstanceID();
             Inventory.RegisterLayoutItem(this);
-            Item._doNotSnap = true;
+            // As on the game's rows, a controller's cursor is drawn to an anchor under the row it is over.
+            // Only the gear page knows where an item's middle lies, so a row beside one of the game's has none.
+            Item._doNotSnap = !OnGearPage;
+            if (OnGearPage)
+            {
+                var snap = new GameObject("SnapAnchor");
+                snap.transform.SetParent(_itemObject.transform, false);
+                snap.AddComponent<TheForest.UI.VirtualCursorSnapAnchor>();
+                SnapAnchor = snap.transform;
+            }
             Item._setToInventoryLayer = true;
             Item._uiTriggerDelay = anchor._layoutItems[0]._uiTriggerDelay;
             Item._colliderActivationRange = anchor._layoutItems[0]._colliderActivationRange;

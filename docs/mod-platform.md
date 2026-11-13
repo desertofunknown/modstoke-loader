@@ -3858,6 +3858,15 @@ position and turn, and the mod lifts and turns its visuals on the row.
 `TryCreateLayout` still places a group beside one of the game's on the first
 page.
 
+The page adds no bindings of its own. It steps on the game's inventory mode
+action and shows the game's prompt for it, and items take hover, clicks and the
+crafting mat through the game's inventory actions, so a controller and a
+player's rebinds work as they do for the game's items. A controller's cursor is
+drawn to a snap anchor on the item under it; the SDK puts one at the middle of
+each gear place. The cursor takes it while it is over the part of the item that
+covers that middle, which for an item built from several colliders is not all
+of it.
+
 The game greys out items that do not fit the recipe on the crafting mat with a
 shader that draws the base map alone. A colour kept in `_BaseColor` over a pale
 map would grey to white, so the SDK gives the greyed copy of such a material

@@ -241,6 +241,9 @@ namespace Modstoke.Sons
             var root = layout.Root.transform;
             root.localPosition = new Vector3(place.Position.x - centre.x, 0, place.Position.y - centre.y);
             root.localRotation = place.Turned ? GearTurn : Quaternion.identity;
+            // The cursor only takes an anchor whose line of sight meets the collider it is already over.
+            if (InventoryLayout.Live(layout.SnapAnchor))
+                layout.SnapAnchor.position = root.TransformPoint(new Vector3(place.Centre.x, place.Height / 2, place.Centre.y));
         }
 
         private static void EnsureGearPageHook()
