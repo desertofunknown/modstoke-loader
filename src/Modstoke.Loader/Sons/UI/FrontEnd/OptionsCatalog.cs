@@ -48,7 +48,140 @@ namespace Modstoke.Loader
 
         internal virtual void Restore(string value) { }
 
+        /// <summary>When the setting can be changed, for one that depends on another; null for always.</summary>
+        internal Func<bool> When { get; set; }
+
+        internal bool Available
+        {
+            get
+            {
+                try { return When == null || When(); }
+                catch (Exception) { return false; }
+            }
+        }
+
         protected static Strings Text => FrontEnd.Text;
+    }
+
+    /// <summary>
+    /// A setting with named choices, read and written through the accessors it is given. Without a default
+    /// it never shows as changed and has nothing to reset to.
+    /// </summary>
+    internal sealed class ChoiceRow : OptionRow
+    {
+        private readonly Func<string> _read;
+        private readonly Func<string, bool> _write;
+        private readonly string _default;
+        private readonly (string Value, Func<string> Name)[] _choices;
+
+        internal ChoiceRow(string id, Func<string> read, Func<string, bool> write, string @default,
+            (string Value, Func<string> Name)[] choices) : base(id)
+        {
+            _read = read;
+            _write = write;
+            _default = @default;
+            _choices = choices;
+            Ready = choices.Length > 0;
+        }
+
+        private string Current => _read() ?? _default ?? "";
+        internal override int Count => _choices.Length;
+        internal override int Index => Array.FindIndex(_choices, choice => string.Equals(choice.Value, Current, StringComparison.OrdinalIgnoreCase));
+        internal override string Value => NameOf(Current);
+        internal override string DefaultValue => _default == null ? "" : NameOf(_default);
+        internal override bool IsDefault => _default == null || string.Equals(Current, _default, StringComparison.OrdinalIgnoreCase);
+
+        internal override bool Step(int direction, bool wrap)
+        {
+            var index = Index;
+            // From a stored value the list does not hold, right goes to the first choice and left to the last.
+            var next = index < 0 ? (direction > 0 ? 0 : _choices.Length - 1) : index + direction;
+            next = wrap ? (next % _choices.Length + _choices.Length) % _choices.Length : Mathf.Clamp(next, 0, _choices.Length - 1);
+            return next != index && _write(_choices[next].Value);
+        }
+
+        internal override bool Reset() => !IsDefault && _write(_default);
+
+        internal override string Snapshot() => Current;
+
+        internal override void Restore(string value)
+        {
+            if (value != null) _write(value);
+        }
+
+        private string NameOf(string value)
+        {
+            foreach (var choice in _choices)
+                if (string.Equals(choice.Value, value, StringComparison.OrdinalIgnoreCase)) return choice.Name();
+            return OptionText.Describe(value);
+        }
+    }
+
+    /// <summary>A setting that is on or off, read and written through the accessors it is given.</summary>
+    internal sealed class SwitchRow : OptionRow
+    {
+        private readonly Func<bool> _read;
+        private readonly Action<bool> _write;
+        private readonly bool _default;
+
+        internal SwitchRow(string id, Func<bool> read, Action<bool> write, bool @default) : base(id)
+        {
+            _read = read;
+            _write = write;
+            _default = @default;
+            Ready = true;
+        }
+
+        internal override int Count => 2;
+        internal override int Index => _read() ? 1 : 0;
+        internal override string Value => Text[_read() ? "options.value.on" : "options.value.off"];
+        internal override string DefaultValue => Text[_default ? "options.value.on" : "options.value.off"];
+        internal override bool IsDefault => _read() == _default;
+
+        internal override bool Step(int direction, bool wrap)
+        {
+            var current = _read();
+            var next = wrap ? !current : direction > 0;
+            if (next == current) return false;
+            _write(next);
+            return true;
+        }
+
+        internal override bool Reset()
+        {
+            if (IsDefault) return false;
+            _write(_default);
+            return true;
+        }
+    }
+
+    /// <summary>A line of text the player types, such as a server's name.</summary>
+    internal sealed class TextRow : OptionRow
+    {
+        private readonly Func<string> _read;
+        private readonly Func<string, bool> _write;
+        private readonly string _default;
+
+        internal TextRow(string id, Func<string> read, Func<string, bool> write, string @default, int maxLength) : base(id)
+        {
+            _read = read;
+            _write = write;
+            _default = @default;
+            MaxLength = maxLength;
+            Ready = true;
+        }
+
+        internal int MaxLength { get; }
+        /// <summary>Opens Steam's on-screen keyboard for a controller and returns the field it types into, or null.</summary>
+        internal Func<string, TMPro.TMP_InputField> PadKeyboard { get; set; }
+        internal override string Value => _read() ?? "";
+        internal override string DefaultValue => _default ?? "";
+        internal override bool IsDefault => _default == null || Value == _default;
+        internal override bool Step(int direction, bool wrap) => false;
+        internal override bool Reset() => !IsDefault && _write(_default);
+
+        /// <summary>Stores what was typed; false when it was not accepted, as an empty name is not.</summary>
+        internal bool Write(string text) => text != Value && _write(text);
     }
 
     /// <summary>A game setting with named choices, stored as text.</summary>
@@ -234,55 +367,6 @@ namespace Modstoke.Loader
         }
     }
 
-    /// <summary>A Loader setting with named choices, kept in the Loader's own settings file.</summary>
-    internal sealed class LoaderChoice : OptionRow
-    {
-        private readonly string _key, _default;
-        private readonly (string Value, Func<string> Name)[] _choices;
-        private readonly Action _changed;
-
-        internal LoaderChoice(string id, string key, string @default, (string Value, Func<string> Name)[] choices, Action changed)
-            : base(id)
-        {
-            _key = key;
-            _default = @default;
-            _choices = choices;
-            _changed = changed;
-            Ready = choices.Length > 0;
-        }
-
-        private string Current => RuntimePreferences.ReadText(_key, _default);
-        internal override int Count => _choices.Length;
-        internal override int Index => Array.FindIndex(_choices, choice => string.Equals(choice.Value, Current, StringComparison.OrdinalIgnoreCase));
-        internal override string Value => NameOf(Current);
-        internal override string DefaultValue => NameOf(_default);
-        internal override bool IsDefault => string.Equals(Current, _default, StringComparison.OrdinalIgnoreCase);
-
-        internal override bool Step(int direction, bool wrap)
-        {
-            var index = Math.Max(0, Index);
-            var next = wrap ? ((index + direction) % _choices.Length + _choices.Length) % _choices.Length
-                : Mathf.Clamp(index + direction, 0, _choices.Length - 1);
-            return next != Index && Set(_choices[next].Value);
-        }
-
-        internal override bool Reset() => !IsDefault && Set(_default);
-
-        private bool Set(string value)
-        {
-            if (!RuntimePreferences.WriteText(_key, value, out _)) return false;
-            _changed?.Invoke();
-            return true;
-        }
-
-        private string NameOf(string value)
-        {
-            foreach (var choice in _choices)
-                if (string.Equals(choice.Value, value, StringComparison.OrdinalIgnoreCase)) return choice.Name();
-            return value;
-        }
-    }
-
     /// <summary>A row that opens something, such as the game's own bindings screen.</summary>
     internal sealed class OptionAction : OptionRow
     {
@@ -421,23 +505,32 @@ namespace Modstoke.Loader
             _ => new OptionTab("modstoke", new[]
             {
                 Section("menus",
-                    new LoaderChoice("menus", "classicMenus", "false", new (string, Func<string>)[]
+                    Loader("menus", "classicMenus", "false", new (string, Func<string>)[]
                     {
                         ("false", () => FrontEnd.Text["options.value.modstokeMenus"]),
                         ("true", () => FrontEnd.Text["options.value.gameMenus"])
                     }, FrontEnd.SettingChanged),
-                    new LoaderChoice("menuSize", "menuScale", "1", new[] { 0.9f, 1f, 1.1f, 1.2f }
+                    Loader("menuSize", "menuScale", "1", new[] { 0.9f, 1f, 1.1f, 1.2f }
                         .Select(scale => (scale.ToString(CultureInfo.InvariantCulture),
                             (Func<string>)(() => scale.ToString("P0", Languages.CultureOf(Languages.Current)))))
                         .ToArray(), FrontEnd.ScaleChanged)),
                 Section("language",
-                    new LoaderChoice("textLanguage", "language", "auto",
+                    Loader("textLanguage", "language", "auto",
                         new (string, Func<string>)[] { ("auto", () => FrontEnd.Text["options.value.followGame"]) }
                             .Concat(Languages.Known.Select(language => (language.Code, (Func<string>)(() => language.NativeName))))
                             .ToArray(),
                         LocalizationStartup.PreferenceChanged))
             })
         };
+
+        // A Loader setting, kept in the Loader's own settings file.
+        private static OptionRow Loader(string id, string key, string @default, (string Value, Func<string> Name)[] choices, Action changed)
+            => new ChoiceRow(id, () => RuntimePreferences.ReadText(key, @default), value =>
+            {
+                if (!RuntimePreferences.WriteText(key, value, out _)) return false;
+                changed();
+                return true;
+            }, @default, choices);
 
         // Bindings stay on the game's own controls screen for now; it opens over the title as usual.
         private static void OpenGameOptions()
@@ -446,7 +539,7 @@ namespace Modstoke.Loader
             FrontEnd.StepAside();
         }
 
-        private static OptionSection Section(string id, params OptionRow[] rows)
+        internal static OptionSection Section(string id, params OptionRow[] rows)
             => new(id, rows.Where(row => row != null && row.Ready).ToArray());
 
         private static OptionRow Choice(string id, Func<CustomMenuOptionGui> create, Func<string, string> describe = null)
@@ -457,7 +550,8 @@ namespace Modstoke.Loader
         private static OptionRow Slider(string id, Func<FloatOptionGui> create, OptionFormat format, int steps = 40)
             => Make(id, () => new GameSlider(id, create, format, steps));
 
-        private static OptionRow Make(string id, Func<OptionRow> create)
+        /// <summary>Creates a row, or null when this install cannot read the setting; that is logged once.</summary>
+        internal static OptionRow Make(string id, Func<OptionRow> create)
         {
             try
             {

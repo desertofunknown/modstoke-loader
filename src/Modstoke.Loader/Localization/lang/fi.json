@@ -9,6 +9,7 @@
     "search": "Hae",
     "cancel": "Peruuta",
     "select": "Valitse",
+    "next": "Seuraava",
     "yes": "Kyllä",
     "no": "Ei",
     "unknown": "Tuntematon"
@@ -213,9 +214,96 @@
       "quarter": "Neljännes",
       "eighth": "Kahdeksasosa",
       "max": "Maks.",
+      "spring": "Kevät",
+      "summer": "Kesä",
+      "autumn": "Syksy",
+      "fall": "Syksy",
+      "winter": "Talvi",
+      "short": "Lyhyt",
+      "long": "Pitkä",
+      "realistic": "Realistinen",
+      "reduced": "Vähennetty",
+      "hard": "Vaikea",
       "followGame": "Seuraa peliä",
       "modstokeMenus": "Modstoke",
       "gameMenus": "Pelin omat"
+    }
+  },
+
+  "custom": {
+    "heading": "Mukautettu peli",
+    "start": "Aloita peli",
+    "unchanged": "Kaikki säännöt ovat oletusarvoissaan.",
+    "changed": { "one": "{count} sääntö muutettu oletuksesta", "other": "{count} sääntöä muutettu oletuksista" },
+
+    "tab": {
+      "world": "Maailma",
+      "survival": "Selviytyminen",
+      "enemies": "Viholliset",
+      "rules": "Säännöt"
+    },
+
+    "section": {
+      "seasons": "Vuodenajat ja sää",
+      "player": "Pelaaja",
+      "supplies": "Tarvikkeet",
+      "building": "Rakentaminen ja ansat",
+      "enemies": "Kannibaalit ja mutantit",
+      "animals": "Eläimet",
+      "multiplayer": "Moninpeli",
+      "creative": "Luova"
+    },
+
+    "item": {
+      "startingSeason": { "name": "Aloitusvuodenaika", "about": "Vuodenaika, jona peli alkaa." },
+      "seasonLength": { "name": "Vuodenajan kesto", "about": "Kuinka kauan kukin vuodenaika kestää." },
+      "dayLength": { "name": "Päivän kesto", "about": "Kuinka kauan koko vuorokausi, päivä ja yö, kestää." },
+      "precipitation": { "name": "Sade ja lumi", "about": "Kuinka usein sataa vettä tai lunta." },
+      "statsDamage": { "name": "Nälkä ja jano", "about": "Saatko vahinkoa, jos olet liian kauan ilman ruokaa tai vettä, ja kuinka paljon." },
+      "consumables": { "name": "Pilaantunut ruoka ja juoma", "about": "Saatko vahinkoa pilaantuneesta tai mädästä ruoasta ja huonosta juomasta, ja kuinka paljon." },
+      "sleepingDelay": { "name": "Nukkumisviive", "about": "Määrää vähimmäisajan nukkumiskertojen välille." },
+      "coldPenalties": { "name": "Kylmän haittavaikutukset", "about": "Kuinka paljon kylmyys hidastaa terveyden ja kestävyyden palautumista." },
+      "recovery": { "name": "Palautumishaitat", "about": "Hidastaa terveyden ja kestävyyden palautumista." },
+      "pausedInInventory": { "name": "Tauko inventaariossa", "about": "Maailma pysähtyy, kun inventaariosi on auki." },
+      "lessFood": { "name": "Vähemmän ruokaa säiliöissä", "about": "Säiliöissä on vähemmän ruokaa." },
+      "lessAmmo": { "name": "Vähemmän ammuksia säiliöissä", "about": "Säiliöissä on vähemmän ammuksia." },
+      "noRefill": { "name": "Säiliöt eivät täyty uudelleen", "about": "Avaamasi säiliöt pysyvät tyhjinä, kun tallennus ladataan." },
+      "buildingStrength": { "name": "Rakennusten kestävyys", "about": "Kuinka hyvin rakennuksesi kestävät vihollisten hyökkäyksiä." },
+      "ownTraps": { "name": "Pelaajat laukaisevat ansoja", "about": "Omat ansasi laukeavat myös sinuun ja muihin pelaajiin. Jousiansat laukeavat aina." },
+      "enemies": { "name": "Viholliset", "about": "Ilmestyykö saarelle vihollisia lainkaan." },
+      "enemyHealth": { "name": "Vihollisen terveys", "about": "Kuinka paljon terveyttä vihollisilla on aluksi." },
+      "enemyDamage": { "name": "Vihollisen vahinko", "about": "Kuinka paljon vahinkoa viholliset tekevät." },
+      "enemyArmor": { "name": "Vihollisen suojaus", "about": "Kuinka vahva vihollisten suojaus on." },
+      "enemyAggression": { "name": "Vihollisen aggressio", "about": "Kuinka aggressiivisia viholliset ovat." },
+      "searchParties": { "name": "Etsintäpartiot", "about": "Kuinka usein viholliset lähettävät etsintäpartioita." },
+      "animals": { "name": "Eläimet", "about": "Kuinka usein saarella esiintyy eläimiä." },
+      "cheats": { "name": "Salli huijaukset", "about": "Voivatko pelaajat käyttää huijauksia tässä pelissä." },
+      "pvpDamage": { "name": "PvP-vahinko", "about": "Kuinka paljon vahinkoa pelaajat voivat tehdä toisilleen." },
+      "creative": { "name": "Luova rakentaminen", "about": "Ottaa käyttöön rakentamisen kuten luovassa tilassa." },
+      "immortal": { "name": "Jumalatila", "about": "Pelaajat eivät voi kuolla. Vaatii luovan rakentamisen." },
+      "placeFullLoad": { "name": "Ryhmäsijoitus", "about": "Asettaa kaiken käsissäsi olevan kerralla. Vaatii luovan rakentamisen." },
+      "noCuttings": { "name": "Ei lastuja", "about": "Estää lastujen ilmestymisen. Vaatii luovan rakentamisen." },
+      "oneHitTrees": { "name": "Välitön puun kaato", "about": "Puut kaatuvat yhdellä iskulla. Vaatii luovan rakentamisen." }
+    }
+  },
+
+  "host": {
+    "start": "Aloita isännöinti",
+    "nameNeeded": "Palvelimella täytyy olla nimi.",
+
+    "section": {
+      "server": "Palvelin"
+    },
+
+    "item": {
+      "serverName": { "name": "Palvelimen nimi", "about": "Nimi, jonka muut pelaajat näkevät palvelinluettelossa." },
+      "players": { "name": "Pelaajat", "about": "Suurin pelaajamäärä, jonka peli ottaa kerralla, sinut mukaan lukien." },
+      "visibility": { "name": "Näkyvyys", "about": "Julkinen peli näkyy luettelossa kaikille. Yksityinen jätetään pois julkisesta luettelosta, joten pelaajat liittyvät siihen Steamissa sinun kauttasi." }
+    },
+
+    "value": {
+      "public": "Julkinen",
+      "private": "Yksityinen"
     }
   },
 

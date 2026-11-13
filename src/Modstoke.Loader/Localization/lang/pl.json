@@ -9,6 +9,7 @@
     "search": "Szukaj",
     "cancel": "Anuluj",
     "select": "Wybierz",
+    "next": "Dalej",
     "yes": "Tak",
     "no": "Nie",
     "unknown": "Nieznane"
@@ -213,9 +214,96 @@
       "quarter": "Ćwierć",
       "eighth": "Jedna ósma",
       "max": "Maks.",
+      "spring": "Wiosna",
+      "summer": "Lato",
+      "autumn": "Jesień",
+      "fall": "Jesień",
+      "winter": "Zima",
+      "short": "Krótka",
+      "long": "Długa",
+      "realistic": "Realistyczna",
+      "reduced": "Zmniejszone",
+      "hard": "Trudne",
       "followGame": "Jak w grze",
       "modstokeMenus": "Modstoke",
       "gameMenus": "Menu gry"
+    }
+  },
+
+  "custom": {
+    "heading": "Gra niestandardowa",
+    "start": "Rozpocznij grę",
+    "unchanged": "Wszystkie zasady mają wartości domyślne.",
+    "changed": { "one": "Zmieniono {count} zasadę względem ustawień domyślnych", "few": "Zmieniono {count} zasady względem ustawień domyślnych", "many": "Zmieniono {count} zasad względem ustawień domyślnych", "other": "Zmieniono {count} zasady względem ustawień domyślnych" },
+
+    "tab": {
+      "world": "Świat",
+      "survival": "Przetrwanie",
+      "enemies": "Wrogowie",
+      "rules": "Zasady"
+    },
+
+    "section": {
+      "seasons": "Pory roku i pogoda",
+      "player": "Gracz",
+      "supplies": "Zapasy",
+      "building": "Budowanie i pułapki",
+      "enemies": "Kanibale i mutanci",
+      "animals": "Zwierzęta",
+      "multiplayer": "Gra wieloosobowa",
+      "creative": "Kreatywny"
+    },
+
+    "item": {
+      "startingSeason": { "name": "Początkowa pora roku", "about": "Pora roku, w której zaczyna się gra." },
+      "seasonLength": { "name": "Długość pór roku", "about": "Jak długo trwa każda pora roku." },
+      "dayLength": { "name": "Długość dnia", "about": "Jak długo trwa pełna doba, czyli dzień i noc." },
+      "precipitation": { "name": "Deszcz i śnieg", "about": "Jak często pada deszcz lub śnieg." },
+      "statsDamage": { "name": "Głód i pragnienie", "about": "Czy zbyt długi brak jedzenia lub wody zadaje ci obrażenia, a jeśli tak, to jak duże." },
+      "consumables": { "name": "Zepsute jedzenie i picie", "about": "Czy zepsute lub zgniłe jedzenie i nieczyste napoje zadają ci obrażenia, a jeśli tak, to jak duże." },
+      "sleepingDelay": { "name": "Opóźnienie snu", "about": "Ustala minimalny czas między jednym snem a kolejnym." },
+      "coldPenalties": { "name": "Kary od zimna", "about": "Jak bardzo zimno spowalnia odzyskiwanie zdrowia i wytrzymałości." },
+      "recovery": { "name": "Kary do regeneracji", "about": "Spowalnia odzyskiwanie zdrowia i wytrzymałości." },
+      "pausedInInventory": { "name": "Pauza w ekwipunku", "about": "Świat zatrzymuje się, gdy masz otwarty ekwipunek." },
+      "lessFood": { "name": "Mniej jedzenia w pojemnikach", "about": "W pojemnikach jest mniej jedzenia." },
+      "lessAmmo": { "name": "Mniej amunicji w pojemnikach", "about": "W pojemnikach jest mniej amunicji." },
+      "noRefill": { "name": "Pojemniki nie są uzupełniane", "about": "Otwarte przez ciebie pojemniki pozostają puste po wczytaniu zapisu gry." },
+      "buildingStrength": { "name": "Wytrzymałość budowli", "about": "Jak dobrze twoje budowle wytrzymują ataki wrogów." },
+      "ownTraps": { "name": "Gracze aktywują pułapki", "about": "Twoje własne pułapki działają też na ciebie i innych graczy. Pułapki sprężynowe działają tak zawsze." },
+      "enemies": { "name": "Wrogowie", "about": "Czy wrogowie w ogóle pojawiają się na wyspie." },
+      "enemyHealth": { "name": "Zdrowie wroga", "about": "Ile zdrowia mają wrogowie na początku." },
+      "enemyDamage": { "name": "Obrażenia wroga", "about": "Ile obrażeń zadają wrogowie." },
+      "enemyArmor": { "name": "Pancerz wroga", "about": "Jak wytrzymały jest pancerz wrogów." },
+      "enemyAggression": { "name": "Agresja wroga", "about": "Jak agresywni są wrogowie." },
+      "searchParties": { "name": "Patrole poszukiwawcze", "about": "Jak często wrogowie wysyłają patrole poszukiwawcze." },
+      "animals": { "name": "Zwierzęta", "about": "Jak często na wyspie pojawiają się zwierzęta." },
+      "cheats": { "name": "Pozwalaj na używanie kodów", "about": "Czy gracze mogą używać kodów w tej grze." },
+      "pvpDamage": { "name": "Obrażenia PvP", "about": "Ile obrażeń gracze mogą zadawać sobie nawzajem." },
+      "creative": { "name": "Kreatywne budowanie", "about": "Włącza budowanie jak w trybie kreatywnym." },
+      "immortal": { "name": "Tryb boga", "about": "Gracze nie mogą zginąć. Wymaga kreatywnego budowania." },
+      "placeFullLoad": { "name": "Zbiorowe umieszczanie", "about": "Umieszcza naraz wszystko, co trzymasz. Wymaga kreatywnego budowania." },
+      "noCuttings": { "name": "Bez ścinek", "about": "Zapobiega pojawianiu się ścinek. Wymaga kreatywnego budowania." },
+      "oneHitTrees": { "name": "Natychmiastowe ścinanie drzew", "about": "Drzewa padają po jednym uderzeniu. Wymaga kreatywnego budowania." }
+    }
+  },
+
+  "host": {
+    "start": "Rozpocznij hostowanie",
+    "nameNeeded": "Serwer musi mieć nazwę.",
+
+    "section": {
+      "server": "Serwer"
+    },
+
+    "item": {
+      "serverName": { "name": "Nazwa serwera", "about": "Nazwa, którą inni gracze widzą na liście serwerów." },
+      "players": { "name": "Gracze", "about": "Największa liczba graczy, jaką gra przyjmuje jednocześnie, łącznie z tobą." },
+      "visibility": { "name": "Widoczność", "about": "Gra publiczna jest widoczna na liście dla wszystkich. Prywatna nie pojawia się na liście publicznej, więc gracze dołączają do niej przez ciebie za pośrednictwem Steam." }
+    },
+
+    "value": {
+      "public": "Publiczna",
+      "private": "Prywatna"
     }
   },
 

@@ -9,6 +9,7 @@
     "search": "Hledat",
     "cancel": "Zrušit",
     "select": "Vybrat",
+    "next": "Další",
     "yes": "Ano",
     "no": "Ne",
     "unknown": "Neznámé"
@@ -213,9 +214,96 @@
       "quarter": "Čtvrtinové",
       "eighth": "Osminové",
       "max": "Max",
+      "spring": "Jaro",
+      "summer": "Léto",
+      "autumn": "Podzim",
+      "fall": "Podzim",
+      "winter": "Zima",
+      "short": "Krátké",
+      "long": "Dlouhé",
+      "realistic": "Realistické",
+      "reduced": "Snížené",
+      "hard": "Těžké",
       "followGame": "Podle hry",
       "modstokeMenus": "Modstoke",
       "gameMenus": "Nabídky hry"
+    }
+  },
+
+  "custom": {
+    "heading": "Vlastní hra",
+    "start": "Začít hru",
+    "unchanged": "Všechna pravidla mají výchozí hodnoty.",
+    "changed": { "one": "{count} pravidlo změněno oproti výchozímu nastavení", "few": "{count} pravidla změněna oproti výchozímu nastavení", "other": "{count} pravidel změněno oproti výchozímu nastavení" },
+
+    "tab": {
+      "world": "Svět",
+      "survival": "Přežití",
+      "enemies": "Nepřátelé",
+      "rules": "Pravidla"
+    },
+
+    "section": {
+      "seasons": "Roční období a počasí",
+      "player": "Hráč",
+      "supplies": "Zásoby",
+      "building": "Stavění a pasti",
+      "enemies": "Kanibalové a mutanti",
+      "animals": "Zvířata",
+      "multiplayer": "Hra více hráčů",
+      "creative": "Kreativní"
+    },
+
+    "item": {
+      "startingSeason": { "name": "Úvodní období", "about": "Roční období, ve kterém hra začíná." },
+      "seasonLength": { "name": "Délka období", "about": "Jak dlouho trvá každé roční období." },
+      "dayLength": { "name": "Délka dne", "about": "Jak dlouho trvá celý den i s nocí." },
+      "precipitation": { "name": "Déšť a sníh", "about": "Jak často prší nebo sněží." },
+      "statsDamage": { "name": "Hlad a žízeň", "about": "Zda vám ubližuje, když jste příliš dlouho bez jídla nebo vody, a jak moc." },
+      "consumables": { "name": "Zkažené jídlo a pití", "about": "Zda vám zkažené nebo shnilé jídlo a závadné pití ubližují, a jak moc." },
+      "sleepingDelay": { "name": "Zpoždění spánku", "about": "Nastaví nejkratší dobu mezi jedním spánkem a dalším." },
+      "coldPenalties": { "name": "Postihy za chlad", "about": "Jak moc chlad brzdí obnovu zdraví a výdrže." },
+      "recovery": { "name": "Postihy k regeneraci", "about": "Zpomalí obnovu zdraví a výdrže." },
+      "pausedInInventory": { "name": "Pauza v inventáři", "about": "Svět se zastaví, dokud máte otevřený inventář." },
+      "lessFood": { "name": "Méně jídla v úložištích", "about": "V úložištích je méně jídla." },
+      "lessAmmo": { "name": "Méně munice v úložištích", "about": "V úložištích je méně munice." },
+      "noRefill": { "name": "Úložiště se nedoplňují", "about": "Úložiště, která jste otevřeli, zůstanou po načtení uložené hry prázdná." },
+      "buildingStrength": { "name": "Odolnost budov", "about": "Jak dobře vaše budovy odolávají útokům nepřátel." },
+      "ownTraps": { "name": "Aktivace vlastních pastí", "about": "Vaše vlastní pasti se spouštějí i na vás a na ostatní hráče. Pružinové pasti se spouštějí vždy." },
+      "enemies": { "name": "Nepřátelé", "about": "Zda se na ostrově vůbec objevují nepřátelé." },
+      "enemyHealth": { "name": "Zdraví nepřátel", "about": "Kolik zdraví mají nepřátelé na začátku." },
+      "enemyDamage": { "name": "Poškození nepřátel", "about": "Jak velké poškození nepřátelé způsobují." },
+      "enemyArmor": { "name": "Zbroj nepřátel", "about": "Jak silná je zbroj nepřátel." },
+      "enemyAggression": { "name": "Agresivita nepřátel", "about": "Jak agresivní jsou nepřátelé." },
+      "searchParties": { "name": "Pátrací skupiny", "about": "Jak často nepřátelé vysílají pátrací skupiny." },
+      "animals": { "name": "Zvířata", "about": "Jak často se na ostrově objevují zvířata." },
+      "cheats": { "name": "Povolit cheaty", "about": "Zda mohou hráči v této hře používat cheaty." },
+      "pvpDamage": { "name": "Poškození v PvP", "about": "Jak velké poškození si hráči mohou navzájem způsobit." },
+      "creative": { "name": "Kreativní stavění", "about": "Zapne stavění jako v kreativním režimu." },
+      "immortal": { "name": "Božský režim", "about": "Hráči nemohou zemřít. Vyžaduje kreativní stavění." },
+      "placeFullLoad": { "name": "Skupinové umisťování", "about": "Položí najednou vše, co držíte. Vyžaduje kreativní stavění." },
+      "noCuttings": { "name": "Bez odřezků", "about": "Zabrání vzniku odřezků. Vyžaduje kreativní stavění." },
+      "oneHitTrees": { "name": "Okamžité kácení stromů", "about": "Stromy padnou po jediném úderu. Vyžaduje kreativní stavění." }
+    }
+  },
+
+  "host": {
+    "start": "Začít hostovat",
+    "nameNeeded": "Server musí mít název.",
+
+    "section": {
+      "server": "Server"
+    },
+
+    "item": {
+      "serverName": { "name": "Název serveru", "about": "Název, který ostatní hráči uvidí v seznamu serverů." },
+      "players": { "name": "Hráči", "about": "Nejvyšší počet hráčů, které hra najednou pojme, včetně vás." },
+      "visibility": { "name": "Viditelnost", "about": "Veřejná hra se v seznamu zobrazuje všem. Soukromá ve veřejném seznamu chybí, takže se k ní hráči připojují přes vás ve službě Steam." }
+    },
+
+    "value": {
+      "public": "Veřejná",
+      "private": "Soukromá"
     }
   },
 

@@ -9,6 +9,7 @@
     "search": "検索",
     "cancel": "キャンセル",
     "select": "選択",
+    "next": "次へ",
     "yes": "はい",
     "no": "いいえ",
     "unknown": "不明"
@@ -213,9 +214,96 @@
       "quarter": "1/4",
       "eighth": "1/8",
       "max": "最大",
+      "spring": "春",
+      "summer": "夏",
+      "autumn": "秋",
+      "fall": "秋",
+      "winter": "冬",
+      "short": "短",
+      "long": "長",
+      "realistic": "現実に即す",
+      "reduced": "減少",
+      "hard": "ハード",
       "followGame": "ゲームに合わせる",
       "modstokeMenus": "Modstoke",
       "gameMenus": "ゲーム本来のメニュー"
+    }
+  },
+
+  "custom": {
+    "heading": "カスタムゲーム",
+    "start": "ゲームを開始",
+    "unchanged": "すべてのルールが初期設定のままです。",
+    "changed": { "other": "{count}件のルールが初期設定と異なります" },
+
+    "tab": {
+      "world": "ワールド",
+      "survival": "サバイバル",
+      "enemies": "敵",
+      "rules": "ルール"
+    },
+
+    "section": {
+      "seasons": "季節と天候",
+      "player": "プレイヤー",
+      "supplies": "物資",
+      "building": "建築とトラップ",
+      "enemies": "食人族とミュータント",
+      "animals": "動物",
+      "multiplayer": "マルチプレイ",
+      "creative": "クリエイティブ"
+    },
+
+    "item": {
+      "startingSeason": { "name": "開始シーズン", "about": "ゲームが始まるときの季節です。" },
+      "seasonLength": { "name": "シーズン期間", "about": "各季節が続く長さです。" },
+      "dayLength": { "name": "一日の長さ", "about": "昼と夜を合わせた1日の長さです。" },
+      "precipitation": { "name": "雨と雪", "about": "雨や雪が降る頻度です。" },
+      "statsDamage": { "name": "飢えと渇き", "about": "長く飲食しないとダメージを受けるかどうかと、その大きさです。" },
+      "consumables": { "name": "傷んだ飲食物", "about": "腐ったり傷んだりした食べ物や汚れた飲み物でダメージを受けるかどうかと、その大きさです。" },
+      "sleepingDelay": { "name": "睡眠遅延", "about": "一度眠ってから次に眠れるようになるまでの最短時間を設けます。" },
+      "coldPenalties": { "name": "寒さのペナルティ", "about": "寒さによって体力とスタミナの回復がどれだけ妨げられるかです。" },
+      "recovery": { "name": "回復ペナルティ", "about": "体力とスタミナが回復する速さを遅くします。" },
+      "pausedInInventory": { "name": "インベントリで一時停止", "about": "インベントリを開いている間、ワールドの時間が止まります。" },
+      "lessFood": { "name": "コンテナの食料を減らす", "about": "コンテナに入っている食料が少なくなります。" },
+      "lessAmmo": { "name": "コンテナの弾薬を減らす", "about": "コンテナに入っている弾薬が少なくなります。" },
+      "noRefill": { "name": "コンテナが補充されない", "about": "一度開けたコンテナは、セーブデータをロードしても空のままです。" },
+      "buildingStrength": { "name": "建物の耐久力", "about": "建物が敵の攻撃にどれだけ耐えられるかです。" },
+      "ownTraps": { "name": "プレイヤーがトラップを発動", "about": "自分で仕掛けたトラップが、自分や他のプレイヤーにも作動します。スプリングトラップは常に作動します。" },
+      "enemies": { "name": "敵", "about": "島に敵が出現するかどうかです。" },
+      "enemyHealth": { "name": "敵の体力", "about": "敵の初期体力です。" },
+      "enemyDamage": { "name": "敵のダメージ", "about": "敵が与えるダメージの量です。" },
+      "enemyArmor": { "name": "敵の防御力", "about": "敵の防具の強さです。" },
+      "enemyAggression": { "name": "敵の攻撃性", "about": "敵がどれだけ積極的に襲ってくるかです。" },
+      "searchParties": { "name": "捜索隊", "about": "敵が捜索隊を送り出す頻度です。" },
+      "animals": { "name": "動物", "about": "島に動物が現れる頻度です。" },
+      "cheats": { "name": "チートを許可", "about": "このゲームでプレイヤーがチートを使えるかどうかです。" },
+      "pvpDamage": { "name": "PvPダメージ", "about": "プレイヤー同士が与え合えるダメージの量です。" },
+      "creative": { "name": "クリエイティブ建築", "about": "クリエイティブモードと同じように建築できるようにします。" },
+      "immortal": { "name": "神モード", "about": "プレイヤーが死ななくなります。クリエイティブ建築が必要です。" },
+      "placeFullLoad": { "name": "グループ配置", "about": "手に持っているものをまとめて一度に設置します。クリエイティブ建築が必要です。" },
+      "noCuttings": { "name": "木くずなし", "about": "木くずが発生しなくなります。クリエイティブ建築が必要です。" },
+      "oneHitTrees": { "name": "一撃で伐採", "about": "木が一撃で倒れます。クリエイティブ建築が必要です。" }
+    }
+  },
+
+  "host": {
+    "start": "ホストを開始",
+    "nameNeeded": "サーバー名を入力してください。",
+
+    "section": {
+      "server": "サーバー"
+    },
+
+    "item": {
+      "serverName": { "name": "サーバー名", "about": "サーバー一覧で他のプレイヤーに表示される名前です。" },
+      "players": { "name": "プレイヤー", "about": "あなたを含め、同時に参加できるプレイヤーの最大人数です。" },
+      "visibility": { "name": "公開設定", "about": "公開ゲームは誰でも一覧で見られます。非公開ゲームは公開一覧に載らないため、プレイヤーはSteam上であなたを経由して参加します。" }
+    },
+
+    "value": {
+      "public": "公開",
+      "private": "非公開"
     }
   },
 

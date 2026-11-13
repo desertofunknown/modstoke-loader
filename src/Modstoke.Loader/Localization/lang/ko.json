@@ -9,6 +9,7 @@
     "search": "검색",
     "cancel": "취소",
     "select": "선택",
+    "next": "다음",
     "yes": "예",
     "no": "아니요",
     "unknown": "알 수 없음"
@@ -213,9 +214,96 @@
       "quarter": "1/4",
       "eighth": "1/8",
       "max": "최대",
+      "spring": "봄",
+      "summer": "여름",
+      "autumn": "가을",
+      "fall": "가을",
+      "winter": "겨울",
+      "short": "짧게",
+      "long": "길게",
+      "realistic": "현실적",
+      "reduced": "감소됨",
+      "hard": "어려움",
       "followGame": "게임 따르기",
       "modstokeMenus": "Modstoke",
       "gameMenus": "게임 자체 메뉴"
+    }
+  },
+
+  "custom": {
+    "heading": "사용자 지정 게임",
+    "start": "게임 시작",
+    "unchanged": "모든 규칙이 기본값입니다.",
+    "changed": { "other": "기본값에서 바뀐 규칙 {count}개" },
+
+    "tab": {
+      "world": "월드",
+      "survival": "생존",
+      "enemies": "적",
+      "rules": "규칙"
+    },
+
+    "section": {
+      "seasons": "계절 및 날씨",
+      "player": "플레이어",
+      "supplies": "보급품",
+      "building": "건설 및 함정",
+      "enemies": "식인종 및 뮤턴트",
+      "animals": "동물",
+      "multiplayer": "멀티플레이",
+      "creative": "크리에이티브"
+    },
+
+    "item": {
+      "startingSeason": { "name": "시작 계절", "about": "게임이 시작되는 계절입니다." },
+      "seasonLength": { "name": "계절 길이", "about": "각 계절이 이어지는 기간입니다." },
+      "dayLength": { "name": "하루 길이", "about": "낮과 밤을 합친 하루의 길이입니다." },
+      "precipitation": { "name": "비와 눈", "about": "비나 눈이 내리는 빈도입니다." },
+      "statsDamage": { "name": "굶주림과 갈증", "about": "오래 먹거나 마시지 않으면 피해를 입는지, 얼마나 입는지 정합니다." },
+      "consumables": { "name": "상한 음식과 음료", "about": "상하거나 썩은 음식, 더러운 음료를 먹으면 피해를 입는지, 얼마나 입는지 정합니다." },
+      "sleepingDelay": { "name": "수면 지연", "about": "한 번 잠든 뒤 다시 잘 수 있을 때까지 최소 시간을 둡니다." },
+      "coldPenalties": { "name": "추위 패널티", "about": "추위가 체력과 스태미나 회복을 얼마나 늦추는지 정합니다." },
+      "recovery": { "name": "회복 패널티", "about": "체력과 스태미나가 회복되는 속도를 늦춥니다." },
+      "pausedInInventory": { "name": "인벤토리에서 일시 정지", "about": "인벤토리를 여는 동안 월드가 멈춥니다." },
+      "lessFood": { "name": "컨테이너 음식 감소", "about": "컨테이너에 들어 있는 음식이 줄어듭니다." },
+      "lessAmmo": { "name": "컨테이너 탄약 감소", "about": "컨테이너에 들어 있는 탄약이 줄어듭니다." },
+      "noRefill": { "name": "컨테이너 재보충 없음", "about": "열었던 컨테이너는 저장된 게임을 불러와도 빈 채로 남습니다." },
+      "buildingStrength": { "name": "건물 저항력", "about": "건물이 적의 공격을 얼마나 잘 견디는지 정합니다." },
+      "ownTraps": { "name": "플레이어 함정 발동", "about": "내가 설치한 함정이 나와 다른 플레이어에게도 작동합니다. 스프링 함정은 항상 작동합니다." },
+      "enemies": { "name": "적", "about": "섬에 적이 나타나는지 정합니다." },
+      "enemyHealth": { "name": "적 체력", "about": "적이 처음에 가진 체력입니다." },
+      "enemyDamage": { "name": "적 피해량", "about": "적이 입히는 피해량입니다." },
+      "enemyArmor": { "name": "적 방어구", "about": "적 방어구가 얼마나 튼튼한지 정합니다." },
+      "enemyAggression": { "name": "적 공격성", "about": "적이 얼마나 공격적으로 덤비는지 정합니다." },
+      "searchParties": { "name": "수색대", "about": "적이 수색대를 보내는 빈도입니다." },
+      "animals": { "name": "동물", "about": "섬에 동물이 나타나는 빈도입니다." },
+      "cheats": { "name": "치트 허용", "about": "이 게임에서 플레이어가 치트를 쓸 수 있는지 정합니다." },
+      "pvpDamage": { "name": "PvP 피해", "about": "플레이어끼리 줄 수 있는 피해량입니다." },
+      "creative": { "name": "크리에이티브 건설", "about": "크리에이티브 모드처럼 자유롭게 건설할 수 있게 합니다." },
+      "immortal": { "name": "갓 모드", "about": "플레이어가 죽지 않습니다. 크리에이티브 건설이 필요합니다." },
+      "placeFullLoad": { "name": "그룹 배치", "about": "손에 든 것을 한꺼번에 모두 놓습니다. 크리에이티브 건설이 필요합니다." },
+      "noCuttings": { "name": "잘린 부분 없음", "about": "잘린 부분이 생기지 않습니다. 크리에이티브 건설이 필요합니다." },
+      "oneHitTrees": { "name": "즉시 나무 베기", "about": "나무가 한 번에 쓰러집니다. 크리에이티브 건설이 필요합니다." }
+    }
+  },
+
+  "host": {
+    "start": "호스트 시작",
+    "nameNeeded": "서버 이름을 입력하세요.",
+
+    "section": {
+      "server": "서버"
+    },
+
+    "item": {
+      "serverName": { "name": "서버 이름", "about": "다른 플레이어가 서버 목록에서 보게 되는 이름입니다." },
+      "players": { "name": "플레이어", "about": "나를 포함해 동시에 참가할 수 있는 최대 플레이어 수입니다." },
+      "visibility": { "name": "공개 여부", "about": "공개 게임은 모두의 목록에 표시됩니다. 비공개 게임은 공개 목록에 나오지 않으므로, 플레이어는 Steam에서 나를 통해 참가합니다." }
+    },
+
+    "value": {
+      "public": "공개",
+      "private": "비공개"
     }
   },
 

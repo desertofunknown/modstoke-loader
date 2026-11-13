@@ -9,6 +9,7 @@
     "search": "Cerca",
     "cancel": "Annulla",
     "select": "Seleziona",
+    "next": "Avanti",
     "yes": "Sì",
     "no": "No",
     "unknown": "Sconosciuto"
@@ -213,9 +214,96 @@
       "quarter": "Un quarto",
       "eighth": "Un ottavo",
       "max": "Max",
+      "spring": "Primavera",
+      "summer": "Estate",
+      "autumn": "Autunno",
+      "fall": "Autunno",
+      "winter": "Inverno",
+      "short": "Breve",
+      "long": "Lunga",
+      "realistic": "Realistica",
+      "reduced": "Ridotti",
+      "hard": "Difficile",
       "followGame": "Segui il gioco",
       "modstokeMenus": "Modstoke",
       "gameMenus": "Quelli del gioco"
+    }
+  },
+
+  "custom": {
+    "heading": "Partita personalizzata",
+    "start": "Inizia partita",
+    "unchanged": "Tutte le regole sono ai valori predefiniti.",
+    "changed": { "one": "{count} regola modificata rispetto al valore predefinito", "other": "{count} regole modificate rispetto ai valori predefiniti" },
+
+    "tab": {
+      "world": "Mondo",
+      "survival": "Sopravvivenza",
+      "enemies": "Nemici",
+      "rules": "Regole"
+    },
+
+    "section": {
+      "seasons": "Stagioni e meteo",
+      "player": "Giocatore",
+      "supplies": "Provviste",
+      "building": "Costruzione e trappole",
+      "enemies": "Cannibali e mutanti",
+      "animals": "Animali",
+      "multiplayer": "Multigiocatore",
+      "creative": "Creativa"
+    },
+
+    "item": {
+      "startingSeason": { "name": "Stagione iniziale", "about": "La stagione in cui inizia la partita." },
+      "seasonLength": { "name": "Durata della stagione", "about": "Quanto dura ogni stagione." },
+      "dayLength": { "name": "Durata del giorno", "about": "Quanto dura un giorno intero, notte compresa." },
+      "precipitation": { "name": "Pioggia e neve", "about": "Quanto spesso piove o nevica." },
+      "statsDamage": { "name": "Fame e sete", "about": "Se restare troppo a lungo senza cibo né acqua ti danneggia, e quanto." },
+      "consumables": { "name": "Cibo e bevande avariati", "about": "Se il cibo guasto o marcio e le bevande avariate ti danneggiano, e quanto." },
+      "sleepingDelay": { "name": "Ritardo nel sonno", "about": "Imposta un tempo minimo tra una dormita e la successiva." },
+      "coldPenalties": { "name": "Penalità per il freddo", "about": "Quanto il freddo rallenta il recupero di salute e resistenza." },
+      "recovery": { "name": "Penalità di recupero", "about": "Rallenta il recupero di salute e resistenza." },
+      "pausedInInventory": { "name": "Pausa nell’inventario", "about": "Il mondo si ferma mentre l’inventario è aperto." },
+      "lessFood": { "name": "Meno cibo nei contenitori", "about": "Nei contenitori si trova meno cibo." },
+      "lessAmmo": { "name": "Meno munizioni nei contenitori", "about": "Nei contenitori si trovano meno munizioni." },
+      "noRefill": { "name": "I contenitori non si riempiono", "about": "I contenitori che hai aperto restano vuoti quando carichi un salvataggio." },
+      "buildingStrength": { "name": "Solidità delle costruzioni", "about": "Quanto bene le tue costruzioni resistono agli attacchi nemici." },
+      "ownTraps": { "name": "I giocatori attivano le trappole", "about": "Le tue trappole si attivano anche su di te e sugli altri giocatori. Quelle a scatto lo fanno sempre." },
+      "enemies": { "name": "Nemici", "about": "Se i nemici compaiono o meno sull’isola." },
+      "enemyHealth": { "name": "Salute dei nemici", "about": "Con quanta salute partono i nemici." },
+      "enemyDamage": { "name": "Danni dei nemici", "about": "Quanti danni infliggono i nemici." },
+      "enemyArmor": { "name": "Armatura dei nemici", "about": "Quanto è resistente l’armatura dei nemici." },
+      "enemyAggression": { "name": "Aggressività dei nemici", "about": "Quanto sono aggressivi i nemici." },
+      "searchParties": { "name": "Squadre di ricerca", "about": "Quanto spesso i nemici mandano squadre di ricerca." },
+      "animals": { "name": "Animali", "about": "Quanto spesso compaiono animali sull’isola." },
+      "cheats": { "name": "Consenti trucchi", "about": "Se i giocatori possono usare trucchi in questa partita." },
+      "pvpDamage": { "name": "Danni PvP", "about": "Quanti danni possono infliggersi i giocatori tra loro." },
+      "creative": { "name": "Costruzione creativa", "about": "Attiva la costruzione creativa, come nella modalità creativa." },
+      "immortal": { "name": "Modalità divina", "about": "I giocatori non possono morire. Richiede la costruzione creativa." },
+      "placeFullLoad": { "name": "Posizionamento in gruppo", "about": "Colloca in un colpo solo tutto ciò che hai in mano. Richiede la costruzione creativa." },
+      "noCuttings": { "name": "Nessuno scarto di legno", "about": "Impedisce la comparsa degli scarti di legno. Richiede la costruzione creativa." },
+      "oneHitTrees": { "name": "Taglio degli alberi immediato", "about": "Gli alberi cadono con un solo colpo. Richiede la costruzione creativa." }
+    }
+  },
+
+  "host": {
+    "start": "Inizia a ospitare",
+    "nameNeeded": "Il server deve avere un nome.",
+
+    "section": {
+      "server": "Server"
+    },
+
+    "item": {
+      "serverName": { "name": "Nome del server", "about": "Il nome che gli altri giocatori vedono nell’elenco dei server." },
+      "players": { "name": "Giocatori", "about": "Il numero massimo di giocatori che la partita accoglie contemporaneamente, te compreso." },
+      "visibility": { "name": "Visibilità", "about": "Una partita pubblica è visibile a tutti. Una privata non compare nell’elenco pubblico, quindi i giocatori si uniscono tramite te su Steam." }
+    },
+
+    "value": {
+      "public": "Pubblica",
+      "private": "Privata"
     }
   },
 

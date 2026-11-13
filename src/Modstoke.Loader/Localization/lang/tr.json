@@ -9,6 +9,7 @@
     "search": "Ara",
     "cancel": "İptal",
     "select": "Seç",
+    "next": "İleri",
     "yes": "Evet",
     "no": "Hayır",
     "unknown": "Bilinmiyor"
@@ -213,9 +214,96 @@
       "quarter": "Çeyrek",
       "eighth": "Sekizde bir",
       "max": "Maks.",
+      "spring": "İlkbahar",
+      "summer": "Yaz",
+      "autumn": "Sonbahar",
+      "fall": "Sonbahar",
+      "winter": "Kış",
+      "short": "Kısa",
+      "long": "Uzun",
+      "realistic": "Gerçekçi",
+      "reduced": "Azaltılmış",
+      "hard": "Zor",
       "followGame": "Oyunla aynı",
       "modstokeMenus": "Modstoke",
       "gameMenus": "Oyunun kendi menüleri"
+    }
+  },
+
+  "custom": {
+    "heading": "Özel oyun",
+    "start": "Oyunu başlat",
+    "unchanged": "Tüm kurallar varsayılan değerinde.",
+    "changed": { "one": "{count} kural varsayılandan farklı", "other": "{count} kural varsayılandan farklı" },
+
+    "tab": {
+      "world": "Dünya",
+      "survival": "Hayatta kalma",
+      "enemies": "Düşmanlar",
+      "rules": "Kurallar"
+    },
+
+    "section": {
+      "seasons": "Mevsimler ve hava",
+      "player": "Oyuncu",
+      "supplies": "Malzemeler",
+      "building": "İnşa ve tuzaklar",
+      "enemies": "Yamyamlar ve mutantlar",
+      "animals": "Hayvanlar",
+      "multiplayer": "Çok oyunculu",
+      "creative": "Yaratıcı"
+    },
+
+    "item": {
+      "startingSeason": { "name": "Başlangıç mevsimi", "about": "Oyunun başladığı mevsim." },
+      "seasonLength": { "name": "Mevsim uzunluğu", "about": "Her mevsimin ne kadar sürdüğü." },
+      "dayLength": { "name": "Gün uzunluğu", "about": "Bir tam gündüz ve gecenin ne kadar sürdüğü." },
+      "precipitation": { "name": "Yağmur ve kar", "about": "Ne sıklıkla yağmur veya kar yağdığı." },
+      "statsDamage": { "name": "Açlık ve susuzluk", "about": "Uzun süre aç veya susuz kalmanın size hasar verip vermediği ve ne kadar verdiği." },
+      "consumables": { "name": "Bozuk yiyecek ve içecek", "about": "Bozulmuş veya çürük yiyeceklerin ve kötü içeceklerin size hasar verip vermediği ve ne kadar verdiği." },
+      "sleepingDelay": { "name": "Uyku gecikmesi", "about": "İki uyku arasında geçmesi gereken en kısa süreyi belirler." },
+      "coldPenalties": { "name": "Soğuğun zararları", "about": "Soğuğun, sağlık ve dayanıklılığın yenilenmesini ne kadar geciktirdiği." },
+      "recovery": { "name": "İyileşme cezaları", "about": "Sağlık ve dayanıklılığın yenilenmesini yavaşlatır." },
+      "pausedInInventory": { "name": "Envanterde duraklat", "about": "Envanteriniz açıkken dünya durur." },
+      "lessFood": { "name": "Konteynerlerde daha az yiyecek", "about": "Konteynerlerde daha az yiyecek bulunur." },
+      "lessAmmo": { "name": "Konteynerlerde daha az cephane", "about": "Konteynerlerde daha az cephane bulunur." },
+      "noRefill": { "name": "Konteynerler yeniden dolmaz", "about": "Açtığınız konteynerler, kayıtlı oyun yüklendiğinde boş kalır." },
+      "buildingStrength": { "name": "Yapı dayanıklılığı", "about": "Yapılarınızın düşman saldırılarına ne kadar dayandığı." },
+      "ownTraps": { "name": "Oyuncular tuzakları tetikler", "about": "Kendi tuzaklarınız sizi ve diğer oyuncuları da yakalar. Yaylı tuzaklar her zaman tetiklenir." },
+      "enemies": { "name": "Düşmanlar", "about": "Adada düşman olup olmayacağı." },
+      "enemyHealth": { "name": "Düşman sağlığı", "about": "Düşmanların ne kadar sağlıkla başladığı." },
+      "enemyDamage": { "name": "Düşman hasarı", "about": "Düşmanların ne kadar hasar verdiği." },
+      "enemyArmor": { "name": "Düşman zırhı", "about": "Düşman zırhının ne kadar güçlü olduğu." },
+      "enemyAggression": { "name": "Düşman saldırganlığı", "about": "Düşmanların ne kadar saldırgan olduğu." },
+      "searchParties": { "name": "Arama ekipleri", "about": "Düşmanların ne sıklıkla arama ekibi gönderdiği." },
+      "animals": { "name": "Hayvanlar", "about": "Adada hayvanların ne sıklıkla ortaya çıktığı." },
+      "cheats": { "name": "Hilelere izin ver", "about": "Oyuncuların bu oyunda hile kullanıp kullanamayacağı." },
+      "pvpDamage": { "name": "PvP hasarı", "about": "Oyuncuların birbirine ne kadar hasar verebileceği." },
+      "creative": { "name": "Yaratıcı inşa", "about": "Yaratıcı moddaki inşa özelliklerini açar." },
+      "immortal": { "name": "Yenilmezlik modu", "about": "Oyuncular ölemez. Yaratıcı inşa gerektirir." },
+      "placeFullLoad": { "name": "Grup yerleştirme", "about": "Elinizde tuttuğunuz her şeyi tek seferde yerleştirir. Yaratıcı inşa gerektirir." },
+      "noCuttings": { "name": "Kesim atığı yok", "about": "Kesim atıklarının ortaya çıkmasını engeller. Yaratıcı inşa gerektirir." },
+      "oneHitTrees": { "name": "Anında ağaç kesme", "about": "Ağaçlar tek vuruşta devrilir. Yaratıcı inşa gerektirir." }
+    }
+  },
+
+  "host": {
+    "start": "Sunucuyu başlat",
+    "nameNeeded": "Sunucunun bir adı olmalı.",
+
+    "section": {
+      "server": "Sunucu"
+    },
+
+    "item": {
+      "serverName": { "name": "Sunucu adı", "about": "Diğer oyuncuların sunucu listesinde gördüğü ad." },
+      "players": { "name": "Oyuncular", "about": "Oyunun aynı anda alabileceği en fazla oyuncu sayısı, siz de dahil." },
+      "visibility": { "name": "Görünürlük", "about": "Herkese açık oyun herkes için listelenir. Özel oyun genel listede yer almaz; oyuncular ona Steam üzerinden sizin aracılığınızla katılır." }
+    },
+
+    "value": {
+      "public": "Herkese açık",
+      "private": "Özel"
     }
   },
 

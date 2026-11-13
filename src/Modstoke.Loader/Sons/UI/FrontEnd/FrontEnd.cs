@@ -167,6 +167,25 @@ namespace Modstoke.Loader
 
         internal static void CancelHost() => _hostWanted = false;
 
+        /// <summary>
+        /// Opens Modstoke's screen for a page the game just opened (custom game rules or the host's options) and
+        /// closes the game's; true when one was taken. A screen that starts something calls this at once, so the
+        /// game's page is never drawn for a frame.
+        /// </summary>
+        internal static bool TakePages()
+        {
+            var page = GameMenus.TakePage();
+            if (page == GamePage.None) return false;
+            var top = Stack.Count > 0 ? Stack[Stack.Count - 1] : null;
+            // The screen already standing for that page is the one that just started through it.
+            if (page == GamePage.CustomGame && top is CustomGameScreen || page == GamePage.HostOptions && top is HostSetupScreen)
+                return true;
+            _asideUntil = 0;
+            if (Stack.Count == 0) Push(new TitleScreen());
+            Push(page == GamePage.CustomGame ? new CustomGameScreen(GameMenus.SetupType(SaveGameType.SinglePlayer)) : new HostSetupScreen());
+            return true;
+        }
+
         internal static void Tick()
         {
             if (GameBuild.IsDedicatedServer || _failed) return;
@@ -211,6 +230,7 @@ namespace Modstoke.Loader
 
             // The game's bar stays hidden: every way into its menus is on Modstoke's screens.
             GameMenus.HideBar(true);
+            TakePages();
             GameMenus.CloseReplaced();
             // The game's own pages and dialogs are under this layer, so it steps aside while one is up.
             if (GameMenus.DialogOpen || ModalOpen() || GameMenus.OtherSceneOpen || Time.unscaledTime < _asideUntil)

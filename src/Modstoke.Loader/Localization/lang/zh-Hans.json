@@ -9,6 +9,7 @@
     "search": "搜索",
     "cancel": "取消",
     "select": "选择",
+    "next": "下一步",
     "yes": "是",
     "no": "否",
     "unknown": "未知"
@@ -213,9 +214,96 @@
       "quarter": "1/4",
       "eighth": "1/8",
       "max": "最大",
+      "spring": "春天",
+      "summer": "夏天",
+      "autumn": "秋天",
+      "fall": "秋天",
+      "winter": "冬天",
+      "short": "短",
+      "long": "长",
+      "realistic": "真实",
+      "reduced": "更少",
+      "hard": "困难",
       "followGame": "跟随游戏",
       "modstokeMenus": "Modstoke",
       "gameMenus": "游戏原版"
+    }
+  },
+
+  "custom": {
+    "heading": "自定义游戏",
+    "start": "开始游戏",
+    "unchanged": "所有规则均为默认值。",
+    "changed": { "other": "{count} 条规则与默认值不同" },
+
+    "tab": {
+      "world": "世界",
+      "survival": "求生",
+      "enemies": "敌人",
+      "rules": "规则"
+    },
+
+    "section": {
+      "seasons": "季节与天气",
+      "player": "玩家",
+      "supplies": "物资",
+      "building": "建造与陷阱",
+      "enemies": "食人族与变异体",
+      "animals": "动物",
+      "multiplayer": "多人游戏",
+      "creative": "创造"
+    },
+
+    "item": {
+      "startingSeason": { "name": "初始季节", "about": "游戏开始时的季节。" },
+      "seasonLength": { "name": "季节长度", "about": "每个季节持续多久。" },
+      "dayLength": { "name": "一天的长度", "about": "一个完整的昼夜持续多久。" },
+      "precipitation": { "name": "雨雪", "about": "下雨或下雪的频率。" },
+      "statsDamage": { "name": "饥饿与口渴", "about": "长时间不吃不喝是否会让你受伤，以及伤得多重。" },
+      "consumables": { "name": "变质饮食", "about": "吃下变质或腐坏的食物、喝下不洁的饮品是否会让你受伤，以及伤得多重。" },
+      "sleepingDelay": { "name": "睡眠延迟", "about": "设定两次睡眠之间的最短间隔。" },
+      "coldPenalties": { "name": "寒冷惩罚", "about": "寒冷会在多大程度上拖慢生命值和耐力的恢复。" },
+      "recovery": { "name": "恢复惩罚", "about": "减慢生命值和耐力的恢复速度。" },
+      "pausedInInventory": { "name": "物品栏中暂停", "about": "打开物品栏时，世界会暂停。" },
+      "lessFood": { "name": "容器中的食物更少", "about": "容器里的食物会变少。" },
+      "lessAmmo": { "name": "容器中的弹药更少", "about": "容器里的弹药会变少。" },
+      "noRefill": { "name": "容器不会重新填充", "about": "打开过的容器在读取存档后仍然是空的。" },
+      "buildingStrength": { "name": "建筑耐久度", "about": "你的建筑抵御敌人攻击的能力。" },
+      "ownTraps": { "name": "玩家触发陷阱", "about": "你自己的陷阱也会对你和其他玩家触发。弹簧陷阱总是会触发。" },
+      "enemies": { "name": "敌人", "about": "岛上是否会出现敌人。" },
+      "enemyHealth": { "name": "敌人血量", "about": "敌人的初始生命值。" },
+      "enemyDamage": { "name": "敌人杀伤力", "about": "敌人能造成多少伤害。" },
+      "enemyArmor": { "name": "敌人盔甲", "about": "敌人盔甲的强度。" },
+      "enemyAggression": { "name": "敌人敌意程度", "about": "敌人的攻击性有多强。" },
+      "searchParties": { "name": "搜寻队", "about": "敌人派出搜寻队的频率。" },
+      "animals": { "name": "动物", "about": "岛上动物出现的频率。" },
+      "cheats": { "name": "允许作弊", "about": "玩家能否在这局游戏中作弊。" },
+      "pvpDamage": { "name": "PvP 伤害", "about": "玩家之间可以造成多少伤害。" },
+      "creative": { "name": "创造式建造", "about": "开启与创造模式相同的建造方式。" },
+      "immortal": { "name": "上帝模式", "about": "玩家不会死亡。需要开启创造式建造。" },
+      "placeFullLoad": { "name": "集体放置", "about": "一次放下你手上的所有东西。需要开启创造式建造。" },
+      "noCuttings": { "name": "不生成木屑", "about": "不再产生木屑。需要开启创造式建造。" },
+      "oneHitTrees": { "name": "即时砍树", "about": "一击即可砍倒树木。需要开启创造式建造。" }
+    }
+  },
+
+  "host": {
+    "start": "创建游戏",
+    "nameNeeded": "请为服务器命名。",
+
+    "section": {
+      "server": "服务器"
+    },
+
+    "item": {
+      "serverName": { "name": "服务器名称", "about": "其他玩家在服务器列表中看到的名称。" },
+      "players": { "name": "玩家", "about": "游戏同时可容纳的最多玩家数，包括你在内。" },
+      "visibility": { "name": "可见性", "about": "公开游戏会列给所有人。私人游戏不会出现在公开列表中，玩家需通过 Steam 加入你的游戏。" }
+    },
+
+    "value": {
+      "public": "公开",
+      "private": "私人"
     }
   },
 

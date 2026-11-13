@@ -444,10 +444,14 @@ namespace Modstoke.Loader
             {
                 _problem = null;
                 start();
-                // Custom settings and host options are the game's own pages, which this layer already steps
-                // aside for; anything else is now loading.
-                if (!GameMenus.DialogOpen) FrontEnd.StepAside();
-                MenuSound.Play(MenuCue.Activate);
+                // Custom rules and the host's options open on Modstoke's own screens next; anything else is now
+                // loading.
+                if (FrontEnd.TakePages()) MenuSound.Play(MenuCue.Forward);
+                else
+                {
+                    if (!GameMenus.DialogOpen) FrontEnd.StepAside();
+                    MenuSound.Play(MenuCue.Activate);
+                }
                 RuntimeEntryPoint.LogSource?.LogInfo("The menu asked the game to " + what + ".");
             }
             catch (Exception error)

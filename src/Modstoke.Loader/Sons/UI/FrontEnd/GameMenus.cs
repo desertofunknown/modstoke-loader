@@ -7,7 +7,11 @@ using System.Linq;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Sons.Gameplay.GameSetup;
 using Sons.Gui;
+using Sons.Gui.Options;
+using Sons.Multiplayer;
 using Sons.Save;
+using Steam.VirtualKeyboard;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -15,19 +19,22 @@ using UnityEngine.UI;
 
 namespace Modstoke.Loader
 {
+    /// <summary>The game's pages that open on Modstoke's own screens instead.</summary>
+    internal enum GamePage { None, CustomGame, HostOptions }
+
     /// <summary>
     /// The game's own title-scene menus, used as a command layer. The front end hides the game's button bar and
     /// draws its own screens; starting, continuing, joining, options and exit still run what the game wired to
-    /// its own buttons, so games start exactly as they do in the game. Two of its pages are still handed over
-    /// to as they are: custom game settings and the host's name and player limit.
+    /// its own buttons, so games start exactly as they do in the game. When the game opens its custom game page
+    /// or its host options, the page is closed and Modstoke's screen takes its place, finishing through the
+    /// page's own handlers.
     /// </summary>
     internal static class GameMenus
     {
         private const string TitleScene = "SonsTitleScene";
+        private const string CustomPage = "CustomGameSettings", HostPage = "MultiplayerHostOptionsDialog";
         private static readonly string[] OverTitle = { "SonsOptionsMenu", "SonsMainLoading", "MultiplayerMenu", "MultiplayerHostMenu" };
         private static readonly string[] KeptVisible = { "MenuBottomStripWithLogo", "GameSetupManageSceneProxy" };
-        // The game's pages the front end still hands over to; its other dialogs are menus Modstoke replaced.
-        private static readonly string[] HandedOver = { "CustomGameSettings", "MultiplayerHostOptionsDialog" };
         private static int _bound;
         private static CanvasGroup _bar;
         private static RectTransform _barRect, _logo;
@@ -92,14 +99,99 @@ namespace Modstoke.Loader
         }
 
         /// <summary>
-        /// Backing out of a handed-over page lands on one of the game's replaced dialogs; closing that returns
-        /// the player to the Modstoke screen they came from.
+        /// The game opens its dialogs on its way through a start, as pressing its mode buttons does; every one is
+        /// a menu Modstoke replaced, so it is closed and the player stays on the Modstoke screen.
         /// </summary>
         internal static void CloseReplaced()
         {
             foreach (var dialog in Dialogs)
-                if (dialog != null && dialog && dialog.activeSelf && !HandedOver.Contains(dialog.name))
+                if (dialog != null && dialog && dialog.activeSelf)
                     dialog.SetActive(false);
+        }
+
+        /// <summary>
+        /// The custom game page or the host options, if the game just opened one. It is closed, and the caller
+        /// opens Modstoke's own screen for it; the page's handlers stay wired for that screen to finish through.
+        /// </summary>
+        internal static GamePage TakePage()
+        {
+            foreach (var dialog in Dialogs)
+            {
+                if (dialog == null || !dialog || !dialog.activeSelf) continue;
+                var page = dialog.name switch
+                {
+                    CustomPage => GamePage.CustomGame,
+                    HostPage => GamePage.HostOptions,
+                    _ => GamePage.None
+                };
+                if (page == GamePage.None) continue;
+                dialog.SetActive(false);
+                return page;
+            }
+            return GamePage.None;
+        }
+
+        /// <summary>The kind of game being set up, as the game's setup has it.</summary>
+        internal static SaveGameType SetupType(SaveGameType fallback)
+        {
+            try { return GameSetupManager.GetSaveGameType(); }
+            catch (Exception) { return fallback; }
+        }
+
+        /// <summary>
+        /// Starts the custom game through the custom page's own start handler: a single player game loads, and a
+        /// hosted one opens the host options.
+        /// </summary>
+        internal static void StartCustomGame()
+        {
+            var page = Page(CustomPage) ?? throw new InvalidOperationException("The game's custom game page was not found.");
+            var manager = page.GetComponentInChildren<CustomGameSetupGuiManager>(true)
+                ?? throw new InvalidOperationException("The game's custom game handler was not found.");
+            // The page wires its handlers while it is open, so it opens for the moment its start takes.
+            page.SetActive(true);
+            try
+            {
+                manager.OnStartGame();
+            }
+            finally
+            {
+                if (page.activeSelf) page.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// Starts hosting with the game's own start button. Opening the page fills its fields from the game's
+        /// settings, where the name, player limit and visibility already are.
+        /// </summary>
+        internal static void StartHosting(string name)
+        {
+            var page = Page(HostPage) ?? throw new InvalidOperationException("The game's host options were not found.");
+            MultiplayerUtilities.SetServerName(name);
+            page.SetActive(true);
+            try
+            {
+                var helper = page.GetComponentInChildren<MultiplayerServerNameHelper>(true);
+                if (helper != null) helper.ApplyServerNameToGui(name);
+                Press(HostPage, "StartHostButton");
+            }
+            finally
+            {
+                if (page.activeSelf) page.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// Opens Steam's on-screen keyboard for the server name the way the game's own name field does, and
+        /// returns that field, which receives the text; null when the game's field is not there.
+        /// </summary>
+        internal static TMP_InputField NameKeyboard(string current)
+        {
+            var keyboard = Page(HostPage)?.GetComponentInChildren<VirtualKeyboardField>(true);
+            var field = keyboard != null ? keyboard._field : null;
+            if (field == null) return null;
+            field.SetTextWithoutNotify(current ?? "");
+            keyboard.TryShowVirtualKeyboard();
+            return field;
         }
 
         /// <summary>Hides the game's button bar while the front end shows its own, or gives it back.</summary>
@@ -273,8 +365,10 @@ namespace Modstoke.Loader
 
         private static T Find<T>(string dialog) where T : Component
         {
-            var owner = Dialogs.FirstOrDefault(candidate => candidate != null && candidate && candidate.name == dialog);
+            var owner = Page(dialog);
             return owner == null ? null : owner.GetComponent<T>();
         }
+
+        private static GameObject Page(string name) => Dialogs.FirstOrDefault(candidate => candidate != null && candidate && candidate.name == name);
     }
 }

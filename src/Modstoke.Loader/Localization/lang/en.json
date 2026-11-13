@@ -9,6 +9,7 @@
     "search": "Search",
     "cancel": "Cancel",
     "select": "Select",
+    "next": "Next",
     "yes": "Yes",
     "no": "No",
     "unknown": "Unknown"
@@ -213,9 +214,96 @@
       "quarter": "Quarter",
       "eighth": "Eighth",
       "max": "Max",
+      "spring": "Spring",
+      "summer": "Summer",
+      "autumn": "Autumn",
+      "fall": "Autumn",
+      "winter": "Winter",
+      "short": "Short",
+      "long": "Long",
+      "realistic": "Realistic",
+      "reduced": "Reduced",
+      "hard": "Hard",
       "followGame": "Follow the game",
       "modstokeMenus": "Modstoke",
       "gameMenus": "The game's own"
+    }
+  },
+
+  "custom": {
+    "heading": "Custom game",
+    "start": "Start game",
+    "unchanged": "Every rule is at its default.",
+    "changed": { "one": "{count} rule changed from its default", "other": "{count} rules changed from their defaults" },
+
+    "tab": {
+      "world": "World",
+      "survival": "Survival",
+      "enemies": "Enemies",
+      "rules": "Rules"
+    },
+
+    "section": {
+      "seasons": "Seasons and weather",
+      "player": "Player",
+      "supplies": "Supplies",
+      "building": "Building and traps",
+      "enemies": "Cannibals and mutants",
+      "animals": "Animals",
+      "multiplayer": "Multiplayer",
+      "creative": "Creative"
+    },
+
+    "item": {
+      "startingSeason": { "name": "Starting season", "about": "The season the game begins in." },
+      "seasonLength": { "name": "Season length", "about": "How long each season lasts." },
+      "dayLength": { "name": "Day length", "about": "How long a full day and night lasts." },
+      "precipitation": { "name": "Rain and snow", "about": "How often it rains or snows." },
+      "statsDamage": { "name": "Starvation and thirst", "about": "Whether going too long without food or water hurts you, and how much." },
+      "consumables": { "name": "Bad food and drink", "about": "Whether spoiled or rotten food and bad drink hurt you, and how much." },
+      "sleepingDelay": { "name": "Sleeping delay", "about": "Sets a minimum time between one sleep and the next." },
+      "coldPenalties": { "name": "Cold penalties", "about": "How much the cold holds back the return of health and stamina." },
+      "recovery": { "name": "Recovery penalties", "about": "Slows how fast health and stamina come back." },
+      "pausedInInventory": { "name": "Pause in inventory", "about": "The world stops while your inventory is open." },
+      "lessFood": { "name": "Less food in containers", "about": "Containers hold less food." },
+      "lessAmmo": { "name": "Less ammo in containers", "about": "Containers hold less ammunition." },
+      "noRefill": { "name": "Containers don't refill", "about": "Containers you have opened stay empty when a save is loaded." },
+      "buildingStrength": { "name": "Building strength", "about": "How well your buildings stand up to enemy attacks." },
+      "ownTraps": { "name": "Players trigger traps", "about": "Your own traps go off on you and other players. Spring traps always do." },
+      "enemies": { "name": "Enemies", "about": "Whether enemies appear on the island at all." },
+      "enemyHealth": { "name": "Enemy health", "about": "How much health enemies start with." },
+      "enemyDamage": { "name": "Enemy damage", "about": "How much damage enemies deal." },
+      "enemyArmor": { "name": "Enemy armor", "about": "How strong enemy armor is." },
+      "enemyAggression": { "name": "Enemy aggression", "about": "How aggressive enemies are." },
+      "searchParties": { "name": "Search parties", "about": "How often enemies send out search parties." },
+      "animals": { "name": "Animals", "about": "How often animals appear on the island." },
+      "cheats": { "name": "Allow cheats", "about": "Whether players can use cheats in this game." },
+      "pvpDamage": { "name": "PvP damage", "about": "How much damage players can deal to each other." },
+      "creative": { "name": "Creative building", "about": "Turns on creative construction, as in Creative mode." },
+      "immortal": { "name": "God mode", "about": "Players can't die. Needs creative building." },
+      "placeFullLoad": { "name": "Group placement", "about": "Places everything you are holding at once. Needs creative building." },
+      "noCuttings": { "name": "No cuttings", "about": "Stops cuttings from appearing. Needs creative building." },
+      "oneHitTrees": { "name": "Instant tree chopping", "about": "Trees fall with a single hit. Needs creative building." }
+    }
+  },
+
+  "host": {
+    "start": "Start hosting",
+    "nameNeeded": "The server needs a name.",
+
+    "section": {
+      "server": "Server"
+    },
+
+    "item": {
+      "serverName": { "name": "Server name", "about": "The name other players see in the server list." },
+      "players": { "name": "Players", "about": "The most players the game takes at once, you included." },
+      "visibility": { "name": "Visibility", "about": "A public game is listed for everyone. A private one is left out of the public list, so players join it through you on Steam." }
+    },
+
+    "value": {
+      "public": "Public",
+      "private": "Private"
     }
   },
 

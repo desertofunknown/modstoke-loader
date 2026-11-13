@@ -197,8 +197,15 @@ namespace Modstoke.Loader
             if (next != null) Focus(next);
         }
 
+        /// <summary>
+        /// Takes the frame's input for something of the screen's own, such as text being typed; true when it did,
+        /// and focus, Back and the other buttons are left alone this frame.
+        /// </summary>
+        protected virtual bool CaptureInput() => false;
+
         internal void HandleInput()
         {
+            if (CaptureInput()) return;
             Focusable over = null;
             foreach (var item in _items)
                 if (item.Usable && item.Under(FrontInput.Pointer))

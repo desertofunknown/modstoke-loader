@@ -9,6 +9,7 @@
     "search": "Sök",
     "cancel": "Avbryt",
     "select": "Välj",
+    "next": "Nästa",
     "yes": "Ja",
     "no": "Nej",
     "unknown": "Okänt"
@@ -213,9 +214,96 @@
       "quarter": "En fjärdedel",
       "eighth": "En åttondel",
       "max": "Max",
+      "spring": "Vår",
+      "summer": "Sommar",
+      "autumn": "Höst",
+      "fall": "Höst",
+      "winter": "Vinter",
+      "short": "Kort",
+      "long": "Lång",
+      "realistic": "Realistisk",
+      "reduced": "Minskad",
+      "hard": "Svår",
       "followGame": "Följ spelet",
       "modstokeMenus": "Modstoke",
       "gameMenus": "Spelets egna"
+    }
+  },
+
+  "custom": {
+    "heading": "Anpassat spel",
+    "start": "Starta spelet",
+    "unchanged": "Alla regler har sina standardvärden.",
+    "changed": { "one": "{count} regel ändrad från standard", "other": "{count} regler ändrade från standard" },
+
+    "tab": {
+      "world": "Värld",
+      "survival": "Överlevnad",
+      "enemies": "Fiender",
+      "rules": "Regler"
+    },
+
+    "section": {
+      "seasons": "Årstider och väder",
+      "player": "Spelare",
+      "supplies": "Förnödenheter",
+      "building": "Byggande och fällor",
+      "enemies": "Kannibaler och mutanter",
+      "animals": "Djur",
+      "multiplayer": "Flerspelarläge",
+      "creative": "Kreativ"
+    },
+
+    "item": {
+      "startingSeason": { "name": "Startsäsong", "about": "Årstiden som spelet börjar i." },
+      "seasonLength": { "name": "Säsongslängd", "about": "Hur länge varje årstid varar." },
+      "dayLength": { "name": "Dygnslängd", "about": "Hur länge ett helt dygn, dag och natt, varar." },
+      "precipitation": { "name": "Regn och snö", "about": "Hur ofta det regnar eller snöar." },
+      "statsDamage": { "name": "Svält och törst", "about": "Om du tar skada av att vara för länge utan mat eller vatten, och hur mycket." },
+      "consumables": { "name": "Dålig mat och dryck", "about": "Om skämd eller rutten mat och dålig dryck skadar dig, och hur mycket." },
+      "sleepingDelay": { "name": "Sömnfördröjning", "about": "Bestämmer hur lång tid som minst måste gå mellan två sömnpass." },
+      "coldPenalties": { "name": "Kallstraff", "about": "Hur mycket kylan bromsar återhämtningen av hälsa och uthållighet." },
+      "recovery": { "name": "Återhämtningsstraff", "about": "Gör att hälsa och uthållighet återhämtar sig långsammare." },
+      "pausedInInventory": { "name": "Paus i inventariet", "about": "Världen stannar medan inventariet är öppet." },
+      "lessFood": { "name": "Mindre mat i behållare", "about": "Behållare innehåller mindre mat." },
+      "lessAmmo": { "name": "Mindre ammunition i behållare", "about": "Behållare innehåller mindre ammunition." },
+      "noRefill": { "name": "Behållare fylls inte på", "about": "Behållare som du har öppnat förblir tomma när ett sparat spel laddas." },
+      "buildingStrength": { "name": "Byggnaders hållfasthet", "about": "Hur väl dina byggen står emot fiendeattacker." },
+      "ownTraps": { "name": "Spelare utlöser fällor", "about": "Dina egna fällor utlöses av dig och andra spelare. Fjäderfällor utlöses alltid." },
+      "enemies": { "name": "Fiender", "about": "Om fiender dyker upp på ön över huvud taget." },
+      "enemyHealth": { "name": "Fienders hälsa", "about": "Hur mycket hälsa fiender börjar med." },
+      "enemyDamage": { "name": "Fienders skada", "about": "Hur mycket skada fiender gör." },
+      "enemyArmor": { "name": "Fienders pansar", "about": "Hur starkt fiendernas pansar är." },
+      "enemyAggression": { "name": "Fienders aggressivitet", "about": "Hur aggressiva fiender är." },
+      "searchParties": { "name": "Spaningspatruller", "about": "Hur ofta fiender skickar ut spaningspatruller." },
+      "animals": { "name": "Djur", "about": "Hur ofta djur dyker upp på ön." },
+      "cheats": { "name": "Tillåt fusk", "about": "Om spelare får använda fusk i det här spelet." },
+      "pvpDamage": { "name": "PvP-skada", "about": "Hur mycket skada spelare kan göra på varandra." },
+      "creative": { "name": "Kreativt byggande", "about": "Slår på byggande som i kreativt läge." },
+      "immortal": { "name": "Odödligt läge", "about": "Spelare kan inte dö. Kräver kreativt byggande." },
+      "placeFullLoad": { "name": "Gruppplacering", "about": "Placerar allt du håller i på en gång. Kräver kreativt byggande." },
+      "noCuttings": { "name": "Inga träflisor", "about": "Hindrar träflisor från att dyka upp. Kräver kreativt byggande." },
+      "oneHitTrees": { "name": "Omedelbar trädfällning", "about": "Träd faller med ett enda hugg. Kräver kreativt byggande." }
+    }
+  },
+
+  "host": {
+    "start": "Starta som värd",
+    "nameNeeded": "Servern måste ha ett namn.",
+
+    "section": {
+      "server": "Server"
+    },
+
+    "item": {
+      "serverName": { "name": "Servernamn", "about": "Namnet som andra spelare ser i serverlistan." },
+      "players": { "name": "Spelare", "about": "Det högsta antalet spelare som spelet tar emot samtidigt, du själv inräknad." },
+      "visibility": { "name": "Synlighet", "about": "Ett offentligt spel visas för alla. Ett privat spel hålls utanför den offentliga listan, så spelare går med via dig på Steam." }
+    },
+
+    "value": {
+      "public": "Offentligt",
+      "private": "Privat"
     }
   },
 
