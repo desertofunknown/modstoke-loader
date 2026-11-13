@@ -161,7 +161,11 @@ namespace Modstoke.Sons
                 var snapshot = DefinitionSnapshot(definition, donor, true);
                 RegisteredDefinitions[key] = snapshot;
                 registration.Published = true;
-                if (model != null) Inventory.AddItemModel(registration.Item, model);
+                if (model != null)
+                {
+                    Inventory.AddItemModel(registration.Item, model);
+                    Crafting.AddItemModel(registration.Item, model);
+                }
                 // Publication is already complete. A managed catalog refresh must not roll it back.
                 var refreshDetail = "";
                 try

@@ -3797,9 +3797,12 @@ from a mod's model rather than from game data:
   alive, such as a prefab from its asset bundle. The SDK instantiates inert copies:
   scripts, rigidbodies, joints and colliders are stripped and hit boxes are fitted
   to the meshes.
-- The item shows on the inventory mat next to the `MatAnchorItemId` group, offset
-  by `MatOffset`, rotated by `MatRotation` and scaled by `MatScale`. The SDK
-  rebuilds the layout for each inventory lifetime and follows stock.
+- The item shows on the inventory's mod gear page (below), rotated by
+  `MatRotation` and scaled by `MatScale`. The SDK picks its place from
+  `MatCategory` and the model's footprint as it lies; `MatOffset` moves the model
+  from that place and is usually just a lift. Unset, the category is the weapon
+  parts for items that attach or combine and Other for the rest. The SDK rebuilds
+  the layout for each inventory lifetime and follows stock.
 - A spawnable definition gets a world pickup built from a plain native pickup,
   with the mod model in place of the donor's renderers. For networked ids the
   pickup keeps the donor's Bolt entity under prefab id `33000 + itemId - 1000`,
@@ -3811,6 +3814,54 @@ from a mod's model rather than from game data:
   the game only drops held items, and modeled items cannot be held. `Attach`
   attaches one to a carried weapon through `WeaponAttachments`. Combine is
   hidden until modeled items can take part in recipes. Host and singleplayer only.
+
+### The mod gear page
+
+The game's roll bag has a place for each of its own items and no room left, so
+mod items lie on a page of their own: the same bag with the game's items put
+away. The game's inventory mode key (X, shown as Toggle Mode) steps through the
+pages:
+
+1. the game's items;
+2. mod gear, while the player carries at least one item that lies there;
+3. the game's building materials, while creative mode is on.
+
+Creative mode is a game setting that can change during play, for example when
+an admin switches it, so the third page comes and goes with it; the game reads
+it each time the inventory opens. The inventory opens on the first page, or on
+the building page if the player closed it there and creative mode is still on.
+The game itself remembers that page whatever the setting and only lets a player
+leave it while creative mode is on, so the loader forgets the page when the
+inventory opens with creative mode off.
+The crafting mat keeps its contents between the first two pages, which is how a
+mod item combines with one of the game's. Entering or leaving the building page
+clears it, as the game always did.
+
+Places on the page follow `MatCategory` (devices left of the crafting mat,
+weapon parts right of it, tools above it, consumables and the rest further
+out), then item id. Items go into the bag's own pockets, the fabric between its
+zip strips and dividers, packed in rows from each item's footprint and centred
+in the pocket. In the long columns an item lies lengthwise, its right-hand end
+away from the player, as the game lays its axes and spears; elsewhere it is
+turned only when it is too wide to lie across. A tall modeled item is moved a
+little towards the camera's resting point, so that it looks centred rather than
+leaning onto the strip behind it. The turn is the page's alone: on the crafting
+mat a combinable item lies as `MatRotation` sets it. Every registered item keeps
+its place whether or not the player carries one, so a set of mods always lays
+out the same way. A category that runs out of pockets spills onto the bag's
+flaps.
+
+Modeled items get their place from `ItemModel`. A mod that builds its own layout
+calls `Inventory.TryCreateGearLayout(definition, category, footprint, ...)`
+instead of `TryCreateLayout` with an anchor: the SDK owns the layout root's
+position and turn, and the mod lifts and turns its visuals on the row.
+`TryCreateLayout` still places a group beside one of the game's on the first
+page.
+
+The game greys out items that do not fit the recipe on the crafting mat with a
+shader that draws the base map alone. A colour kept in `_BaseColor` over a pale
+map would grey to white, so the SDK gives the greyed copy of such a material
+the colour as its map. This covers every layout made through the SDK.
 
 ### Mod content agreement
 

@@ -35,10 +35,17 @@ namespace Modstoke.Sons
 
         public string Description { get; init; } = "";
 
-        /// <summary>The native item whose mat group supplies the position, hover and audio settings.</summary>
-        public int MatAnchorItemId { get; init; } = 412;
+        /// <summary>
+        /// Where it lies on the mod gear page. Unset, items that attach or combine go with the weapon parts and
+        /// the rest under Other.
+        /// </summary>
+        /// <remarks>
+        /// The SDK picks the place within the category from the model's footprint as it lies, after
+        /// <see cref="MatRotation"/> and <see cref="MatScale"/>.
+        /// </remarks>
+        public MatCategory? MatCategory { get; init; }
 
-        /// <summary>Position relative to the anchor group, in the mat's local space (metres).</summary>
+        /// <summary>Moves the model from its place, in the mat's space (metres; Y up): usually just a lift.</summary>
         public Vector3 MatOffset { get; init; }
 
         public Quaternion MatRotation { get; init; } = Quaternion.identity;
@@ -49,8 +56,9 @@ namespace Modstoke.Sons
         public int MaxAmount { get; init; } = 1;
 
         /// <summary>
-        /// What left click on the mat does. The game has no drop action for plain items, and attachments need
-        /// a <see cref="WeaponAttachments"/> registration. Both close the inventory first. Host and singleplayer only.
+        /// What clicking it on the mat does. The game has no drop action for plain items, so Drop and Attach are
+        /// the SDK's own left clicks. Combine is the game's right click onto the crafting mat; it and Attach need
+        /// a <see cref="WeaponAttachments"/> registration.
         /// </summary>
         public ItemMatAction MatAction { get; init; } = ItemMatAction.Drop;
     }
@@ -61,6 +69,11 @@ namespace Modstoke.Sons
         /// <summary>Drop one in front of the player; spawnable items only.</summary>
         Drop,
         /// <summary>Attach one to a carried weapon it fits, swapping out whatever held that slot.</summary>
-        Attach
+        Attach,
+        /// <summary>
+        /// Put one on the crafting mat, where it combines with the weapon it fits and comes back when that
+        /// weapon is dismantled, as the game's own weapon mods do.
+        /// </summary>
+        Combine
     }
 }

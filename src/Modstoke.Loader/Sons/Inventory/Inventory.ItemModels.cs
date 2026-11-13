@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using Endnight.Rendering;
 using Modstoke.Loader;
 using global::Sons.Inventory;
 using global::Sons.Items.Core;
@@ -22,11 +21,23 @@ namespace Modstoke.Sons
 
         internal static void AddItemModel(ItemData item, ItemModel model) => MatModels.Add(new MatModel(item, model));
 
+        /// <summary>How a modeled item stands on the current inventory mat, once built.</summary>
+        /// <remarks>Its rotation and scale leave out the turn the gear page gives an item to fit a pocket.</remarks>
+        internal static bool TryGetItemModelRow(int itemId, out Transform stance)
+        {
+            foreach (var model in MatModels)
+                if (model.TryGetStance(itemId, out stance)) return true;
+            stance = null;
+            return false;
+        }
+
         /// <summary>Keeps modeled items' mat layouts on the current inventory and in step with its stock.</summary>
         internal static void TickItemModels()
         {
-            if (MatModels.Count == 0 || _ownerThreadId == 0 || Environment.CurrentManagedThreadId != _ownerThreadId)
-                return;
+            if (_ownerThreadId == 0 || Environment.CurrentManagedThreadId != _ownerThreadId) return;
+            // The gear page also carries layouts mods build themselves, so it follows the inventory either way.
+            TickGearPage();
+            if (MatModels.Count == 0) return;
             try
             {
                 if (!TryGetCurrentInventory(out var inventory, out _))
@@ -66,6 +77,8 @@ namespace Modstoke.Sons
             private readonly ItemData _item;
             private readonly ItemModel _model;
             private InventoryLayout _layout;
+            // A child of the layout root that keeps the item's rotation and scale as they are before any turn.
+            private Transform _stance;
             private int _count = -1;
             private float _retryAt;
             private string _status;
@@ -142,6 +155,17 @@ namespace Modstoke.Sons
                 _model = model;
             }
 
+            internal bool TryGetStance(int itemId, out Transform stance)
+            {
+                stance = null;
+                if (_item._id != itemId || _layout == null || !InventoryLayout.Live(_layout.Item) || !InventoryLayout.Live(_stance))
+                    return false;
+                // The gear page turns the root to fit a pocket, and may turn it again when other items register.
+                _stance.localRotation = Quaternion.Inverse(_layout.Root.transform.localRotation) * _model.MatRotation;
+                stance = _stance;
+                return true;
+            }
+
             internal void Update(PlayerInventory inventory)
             {
                 if (_dropRequested && inventory._currentView == PlayerInventory.PlayerViews.World)
@@ -175,22 +199,7 @@ namespace Modstoke.Sons
             private bool TryCreate(PlayerInventory inventory)
             {
                 if (!InventoryLayout.Published(_item)) return false;
-                InventoryLayoutItemGroup anchor = null;
-                var mat = MatContainer(inventory);
-                foreach (var group in (mat != null ? mat.gameObject : inventory.gameObject)
-                    .GetComponentsInChildren<InventoryLayoutItemGroup>(true))
-                    if (InventoryLayout.Live(group) && group._itemId == _model.MatAnchorItemId)
-                    {
-                        anchor = group;
-                        break;
-                    }
-                if (anchor == null)
-                {
-                    Wait("Anchor item " + _model.MatAnchorItemId + " has no group on this inventory mat ("
-                        + AnchorElsewhere(_model.MatAnchorItemId) + ").");
-                    return false;
-                }
-                if (!TryCreateLayout(_item, anchor, out _layout, out var status))
+                if (!TryCreateGearLayout(_item, out _layout, out var status))
                 {
                     // A joining player's mat can refuse layouts for a while.
                     Wait(status);
@@ -199,25 +208,24 @@ namespace Modstoke.Sons
                 }
                 try
                 {
-                    _layout.Root.transform.localPosition += _model.MatOffset;
                     var row = _layout.Item.transform;
+                    row.localPosition = _model.MatOffset;
                     row.localRotation = _model.MatRotation;
                     row.localScale = Vector3.one * _model.MatScale;
-                    var visual = ItemModelCopies.Create(_model.Model, row, _layout.Root.layer);
-                    foreach (var renderer in visual.GetComponentsInChildren<Renderer>(true))
-                    {
-                        // Native initialization hooks the mouse on renderer objects, so each gets its own hit box.
-                        var box = renderer.gameObject.AddComponent<BoxCollider>();
-                        var bounds = renderer is SkinnedMeshRenderer skinned ? skinned.localBounds
-                            : renderer.GetComponent<MeshFilter>() is { } filter && filter && filter.sharedMesh is { } mesh && mesh
-                                ? mesh.bounds : new Bounds(Vector3.zero, Vector3.one * 0.05f);
-                        box.center = bounds.center;
-                        box.size = Vector3.Max(bounds.size, Vector3.one * 0.005f);
-                        // The new-item sheen swaps authored materials for a flat white until hover.
-                        renderer.gameObject.AddComponent<ExcludeRenderableFrom>()._excludedFrom = ExcludeRenderableFrom.Type.Sheen;
-                    }
-                    // Bound while the group is still inactive, as the binding requires.
-                    if (Action != ItemMatAction.None && !TryBindPrimaryAction(_layout.Group, OnMatClick, out _binding, out var bindStatus))
+                    _stance = new GameObject("Stance").transform;
+                    _stance.SetParent(_layout.Root.transform, false);
+                    _stance.localScale = row.localScale;
+                    var visual = ItemModelCopies.CreateForMat(_model.Model, row, _layout.Root.layer);
+                    // Its place is cut to the model as it lies, and the offset then moves it within that place.
+                    var bounds = ItemModelCopies.LocalBounds(_layout.Root.transform, visual);
+                    var category = _model.MatCategory is { } chosen && Enum.IsDefined(chosen) ? chosen
+                        : _model.MatAction is ItemMatAction.Attach or ItemMatAction.Combine ? MatCategory.WeaponPart : MatCategory.Other;
+                    SetGearPlace(_item._id, category, new Vector2(bounds.size.x, bounds.size.z),
+                        new Vector2(bounds.center.x - _model.MatOffset.x, bounds.center.z - _model.MatOffset.z), bounds.size.y);
+                    // Bound while the group is still inactive, as the binding requires. An item that combines
+                    // keeps the game's own right click onto the crafting mat and takes no click of the SDK's.
+                    if (Action is ItemMatAction.Drop or ItemMatAction.Attach
+                        && !TryBindPrimaryAction(_layout.Group, OnMatClick, out _binding, out var bindStatus))
                         throw new InvalidOperationException(bindStatus);
                 }
                 catch (Exception error)
@@ -233,10 +241,10 @@ namespace Modstoke.Sons
                 {
                     _placementLogged = true;
                     var root = _layout.Root.transform;
-                    RuntimeEntryPoint.LogSource?.LogInfo("Item " + _item._id + " has a mat layout under " + PathOf(root.parent)
-                        + " at local " + root.localPosition.ToString("F3") + ", world " + root.position.ToString("F3")
-                        + "; anchor item " + _model.MatAnchorItemId + " at local " + anchor.transform.localPosition.ToString("F3")
-                        + "; parent up is world " + root.parent.up.ToString("F2") + ", lossy scale " + root.lossyScale.ToString("F3") + ".");
+                    RuntimeEntryPoint.LogSource?.LogInfo("Item " + _item._id + " has a place on the mod gear page at "
+                        + root.localPosition.ToString("F3") + " under " + PathOf(root.parent) + ", world "
+                        + root.position.ToString("F3") + "; parent up is world " + root.parent.up.ToString("F2")
+                        + ", lossy scale " + root.lossyScale.ToString("F3") + ".");
                 }
                 return true;
             }
@@ -247,15 +255,6 @@ namespace Modstoke.Sons
                 for (var parent = transform.parent; parent != null && parent; parent = parent.parent)
                     path = parent.name + "/" + path;
                 return path;
-            }
-
-            // Where the anchor's group went, when it is not under the current inventory.
-            private static string AnchorElsewhere(int itemId)
-            {
-                foreach (var group in Resources.FindObjectsOfTypeAll<InventoryLayoutItemGroup>())
-                    if (InventoryLayout.Live(group) && group._itemId == itemId)
-                        return "a group exists at " + PathOf(group.transform);
-                return "no group exists anywhere";
             }
 
             private void Wait(string status)

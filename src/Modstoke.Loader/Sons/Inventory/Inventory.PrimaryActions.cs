@@ -165,7 +165,8 @@ namespace Modstoke.Sons
             var cache = ItemDatabaseManager._itemsCache;
             return Live(owner) && owner.Pointer == _inventory.Pointer
                 && (_group.transform.IsChildOf(_inventory.transform)
-                    || Inventory.MatContainer(_inventory) is { } mat && _group.transform.IsChildOf(mat))
+                    || Inventory.MatContainer(_inventory) is { } mat && _group.transform.IsChildOf(mat)
+                    || Inventory.GearRoot(_inventory) is { } gear && _group.transform.IsChildOf(gear))
                 && Live(definition) && definition.Pointer == _definition.Pointer
                 && cache is not null && !cache.WasCollected
                 && cache.TryGetValue(ItemId, out var published) && Live(published)

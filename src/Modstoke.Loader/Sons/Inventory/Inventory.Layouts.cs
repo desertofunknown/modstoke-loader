@@ -19,7 +19,8 @@ namespace Modstoke.Sons
         // Opening the inventory detaches the mat from the player to lay it out in the world, so the
         // container seen while attached stays the inventory's mat after it leaves the player's hierarchy.
         private static readonly Dictionary<IntPtr, Transform> MatContainers = new();
-        private static bool _layoutHookAttempted, _layoutHookInstalled, _layoutRestoreWarned;
+        private static readonly Dictionary<int, Texture2D> GreyOutMaps = new();
+        private static bool _layoutHookAttempted, _layoutHookInstalled, _layoutRestoreWarned, _greyOutWarned;
         private static string _layoutHookFailure = "";
 
         /// <summary>Creates an inactive counted inventory group with one visual row on the Unity lifecycle thread.</summary>
@@ -31,8 +32,14 @@ namespace Modstoke.Sons
         /// Root and its children are owned by the returned handle; materials and other assets remain yours.
         /// No stock, item definition, primary action, held/crafting layout, save or network behavior is created.
         /// False may return a partial handle: retain and dispose it before retrying creation.
+        /// The group joins the game's own page of the mat, which is full; mod items belong on the gear page,
+        /// through <see cref="TryCreateGearLayout(ItemData, MatCategory, Vector2, out InventoryLayout, out string)"/>.
         /// </remarks>
         public static bool TryCreateLayout(ItemData definition, InventoryLayoutItemGroup anchor,
+            out InventoryLayout layout, out string status)
+            => TryCreateLayout(definition, anchor, false, out layout, out status);
+
+        private static bool TryCreateLayout(ItemData definition, InventoryLayoutItemGroup anchor, bool gear,
             out InventoryLayout layout, out string status)
         {
             layout = null;
@@ -64,7 +71,13 @@ namespace Modstoke.Sons
                     return false;
                 }
                 if (!EnsureLayoutHook(out status)) return false;
-                layout = new InventoryLayout(inventory, manager, definition, anchor.transform.parent, _ownerThreadId);
+                var parent = anchor.transform.parent;
+                if (gear)
+                {
+                    if (!TryGetGearPage(inventory, parent, out var page, out status)) return false;
+                    parent = page.Root.transform;
+                }
+                layout = new InventoryLayout(inventory, manager, definition, parent, _ownerThreadId, gear);
                 LayoutOwners.Add(key, layout);
                 layout.Create(anchor, layer);
                 if (!LayoutInventoryCurrent(layout))
@@ -112,9 +125,11 @@ namespace Modstoke.Sons
                 {
                     var target = AccessTools.DeclaredMethod(typeof(InventoryLayoutItem), nameof(InventoryLayoutItem.OnDisable), Type.EmptyTypes)
                         ?? throw new MissingMethodException(typeof(InventoryLayoutItem).FullName, nameof(InventoryLayoutItem.OnDisable));
-                    new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-inventory-layouts").Patch(target,
+                    var harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-inventory-layouts");
+                    harmony.Patch(target,
                         prefix: new HarmonyMethod(typeof(Inventory), nameof(BeforeLayoutItemDisable)) { priority = Priority.Last });
                     _layoutHookInstalled = true;
+                    PatchGrayOut(harmony);
                 }
                 catch (Exception error)
                 {
@@ -124,6 +139,73 @@ namespace Modstoke.Sons
             }
             status = _layoutHookFailure;
             return _layoutHookInstalled;
+        }
+
+        // Layouts work without it; their grey-out is then the game's own.
+        private static void PatchGrayOut(HarmonyLib.Harmony harmony)
+        {
+            try
+            {
+                var target = AccessTools.DeclaredMethod(typeof(InventoryLayoutItem), nameof(InventoryLayoutItem.GrayOutInit), Type.EmptyTypes)
+                    ?? throw new MissingMethodException(typeof(InventoryLayoutItem).FullName, nameof(InventoryLayoutItem.GrayOutInit));
+                harmony.Patch(target, postfix: new HarmonyMethod(typeof(Inventory), nameof(AfterGrayOutInit)));
+            }
+            catch (Exception error)
+            {
+                RuntimeEntryPoint.LogSource?.LogWarning("Tinted mod items will grey out pale: " + error.Message);
+            }
+        }
+
+        // The game greys an item by copying each material onto a shader that draws the base map alone. A
+        // colour kept in _BaseColor over a pale map is lost there and the item greys to white, so the copy
+        // gets the colour as its map.
+        private static void AfterGrayOutInit(InventoryLayoutItem __instance)
+        {
+            try
+            {
+                if (__instance is null || !LayoutItemOwners.TryGetValue(__instance.Pointer, out var owner)
+                    || !owner.OwnsItem(__instance))
+                    return;
+                var originals = __instance._originalMaterials;
+                var greyed = __instance._grayedOutMaterials;
+                if (originals is null || greyed is null) return;
+                for (var renderer = 0; renderer < originals.Count && renderer < greyed.Count; renderer++)
+                {
+                    var from = originals[renderer];
+                    var to = greyed[renderer];
+                    if (from is null || to is null) continue;
+                    for (var index = 0; index < from.Count && index < to.Count; index++)
+                    {
+                        var original = from[index];
+                        var grey = to[index];
+                        if (!InventoryLayout.Live(original) || !InventoryLayout.Live(grey)
+                            || !original.HasProperty("_BaseColor") || !grey.HasProperty("_BaseColorMap"))
+                            continue;
+                        var tint = original.GetColor("_BaseColor");
+                        if (tint.r > 0.9f && tint.g > 0.9f && tint.b > 0.9f) continue;
+                        grey.SetTexture("_BaseColorMap", GreyOutMap(tint));
+                    }
+                }
+            }
+            catch (Exception error)
+            {
+                if (_greyOutWarned) return;
+                _greyOutWarned = true;
+                RuntimeEntryPoint.LogSource?.LogWarning("A mod item's grey-out could not take its colour: " + error.Message);
+            }
+        }
+
+        private static Texture2D GreyOutMap(Color32 tint)
+        {
+            var key = tint.r << 16 | tint.g << 8 | tint.b;
+            if (GreyOutMaps.TryGetValue(key, out var map) && InventoryLayout.Live(map)) return map;
+            map = new Texture2D(1, 1, TextureFormat.RGBA32, false) { name = "Mod item grey-out colour" };
+            map.SetPixel(0, 0, new Color32(tint.r, tint.g, tint.b, 255));
+            map.Apply(false, true);
+            // Only greyed copies hold it, and the game destroys those whenever a row is put away.
+            map.hideFlags |= HideFlags.DontUnloadUnusedAsset;
+            GreyOutMaps[key] = map;
+            return map;
         }
 
         private static void BeforeLayoutItemDisable(InventoryLayoutItem __instance, bool __runOriginal)
@@ -184,18 +266,21 @@ namespace Modstoke.Sons
         private bool _releasing;
 
         internal InventoryLayout(PlayerInventory inventory, ItemInstanceManager manager, ItemData definition,
-            Transform parent, int threadId)
+            Transform parent, int threadId, bool onGearPage)
         {
             _inventory = inventory;
             _manager = manager;
             _definition = definition;
             _parent = parent;
             _threadId = threadId;
+            OnGearPage = onGearPage;
             Key = (inventory.Pointer, definition._id);
         }
 
         internal (IntPtr Inventory, int Item) Key { get; }
         internal IntPtr ItemKey { get; private set; }
+        /// <summary>On the mod gear page, where the SDK places Root, rather than beside an anchor on the game's page.</summary>
+        internal bool OnGearPage { get; }
         public int ItemId => Key.Item;
         public GameObject Root { get; private set; }
         public InventoryLayoutItemGroup Group { get; private set; }
@@ -219,8 +304,11 @@ namespace Modstoke.Sons
             Root.SetActive(false);
             Root.layer = layer;
             Root.transform.SetParent(_parent, false);
-            Root.transform.localPosition = anchor.transform.localPosition;
-            Root.transform.localRotation = anchor.transform.localRotation;
+            if (!OnGearPage)
+            {
+                Root.transform.localPosition = anchor.transform.localPosition;
+                Root.transform.localRotation = anchor.transform.localRotation;
+            }
             Group = Root.AddComponent<InventoryLayoutItemGroup>();
             _groupKey = Group.Pointer;
             Group._itemId = ItemId;
@@ -265,7 +353,8 @@ namespace Modstoke.Sons
                 return "the item definition is no longer published";
             if (!Live(Root) || !Live(Group) || !Same(Group.gameObject, Root) || !OwnsItem(Item)) return "its objects were destroyed";
             if (!Same(Root.transform.parent, _parent)) return "it was moved to another parent";
-            if (!Root.transform.IsChildOf(inventory.transform) && !Same(_parent, Inventory.MatContainer(inventory)))
+            if (!Root.transform.IsChildOf(inventory.transform) && !Same(_parent, Inventory.MatContainer(inventory))
+                && !Same(_parent, Inventory.GearRoot(inventory)))
                 return "its parent left the inventory";
             if (!Same(Group._inventory, inventory) || !Same(Group._itemData, _definition) || Group._itemId != ItemId)
                 return "the game rebound its group";

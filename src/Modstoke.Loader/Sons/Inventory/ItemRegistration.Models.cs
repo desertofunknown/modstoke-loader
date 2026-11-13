@@ -3,6 +3,7 @@
 
 using System;
 using Bolt;
+using Endnight.Rendering;
 using Il2CppInterop.Runtime;
 using Modstoke.Loader;
 using global::Sons.Gameplay;
@@ -176,12 +177,15 @@ namespace Modstoke.Sons
             ui._description = model.Description ?? "";
             ui._hasDescription = ui._description.Length != 0;
             if (Live(model.Icon)) ui._icon = ui._outlineIcon = model.Icon;
-            // Combining needs a crafting-mat layout and recipes, which modeled items do not have yet, and they
-            // cannot be equipped, so left click is the SDK's drop when the item can exist in the world.
-            ui._rightClick = ItemUiData.RightClickCommands.None;
+            // Modeled items cannot be equipped. Left click is the SDK's drop or attach when the model asks for
+            // one; an item that combines takes the game's own right click onto the crafting mat instead, where
+            // Crafting gives it a place and WeaponAttachments its recipes.
             var action = model.MatAction == ItemMatAction.Drop && !definition.CanBeSpawned ? ItemMatAction.None : model.MatAction;
-            if (action != ItemMatAction.None) ui._leftClick = ItemUiData.LeftClickCommands.use;
-            ui._applyCustomActionText = action != ItemMatAction.None;
+            var clicks = action is ItemMatAction.Drop or ItemMatAction.Attach;
+            if (clicks) ui._leftClick = ItemUiData.LeftClickCommands.use;
+            else if (action == ItemMatAction.Combine) ui._leftClick = ItemUiData.LeftClickCommands.none;
+            ui._rightClick = action == ItemMatAction.Combine ? ItemUiData.RightClickCommands.Combine : ItemUiData.RightClickCommands.None;
+            ui._applyCustomActionText = clicks;
             ui._leftActionCustomText = action == ItemMatAction.Drop ? "Drop" : action == ItemMatAction.Attach ? "Attach" : "";
             ui._rightActionCustomText = "";
             item.hideFlags |= HideFlags.DontUnloadUnusedAsset;
@@ -290,6 +294,25 @@ namespace Modstoke.Sons
             foreach (var transform in copy.GetComponentsInChildren<Transform>(true))
                 transform.gameObject.layer = layer;
             return copy;
+        }
+
+        /// <summary>A copy for a mat row: each renderer gets a hit box and stays out of the new-item sheen.</summary>
+        internal static GameObject CreateForMat(Func<GameObject> factory, Transform row, int layer)
+        {
+            var visual = Create(factory, row, layer);
+            foreach (var renderer in visual.GetComponentsInChildren<Renderer>(true))
+            {
+                // Native initialization hooks the mouse on renderer objects, so each gets its own hit box.
+                var box = renderer.gameObject.AddComponent<BoxCollider>();
+                var bounds = renderer is SkinnedMeshRenderer skinned ? skinned.localBounds
+                    : renderer.GetComponent<MeshFilter>() is { } filter && filter && filter.sharedMesh is { } mesh && mesh
+                        ? mesh.bounds : new Bounds(Vector3.zero, Vector3.one * 0.05f);
+                box.center = bounds.center;
+                box.size = Vector3.Max(bounds.size, Vector3.one * 0.005f);
+                // The new-item sheen swaps authored materials for a flat white until hover.
+                renderer.gameObject.AddComponent<ExcludeRenderableFrom>()._excludedFrom = ExcludeRenderableFrom.Type.Sheen;
+            }
+            return visual;
         }
 
         /// <summary>Mesh bounds of a model in another transform's local space, without needing active renderers.</summary>

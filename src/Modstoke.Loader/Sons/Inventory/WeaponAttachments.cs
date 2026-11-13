@@ -8,13 +8,16 @@ using System.Text;
 using HarmonyLib;
 using Il2CppInterop.Runtime;
 using Modstoke.Loader;
+using global::Sons.Crafting;
 using global::Sons.Inventory;
 using global::Sons.Items.Core;
 using global::Sons.Weapon;
 using TheForest.Utils;
 using UnityEngine;
+using NativeIngredient = global::Sons.Crafting.CraftingIngredient;
 using NativeSlot = global::Sons.Items.Core.WeaponMod.Slot;
 using Object = UnityEngine.Object;
+using Types = global::Sons.Items.Core.Types;
 
 namespace Modstoke.Sons
 {
@@ -95,25 +98,30 @@ namespace Modstoke.Sons
     }
 
     /// <summary>
-    /// Registers mod items as native weapon mods and attaches them to weapons in the local inventory. Attached mods
-    /// live in the weapon's own module, so saves and held-weapon replication follow the game. Every peer must
-    /// register the same specs. Attaching and detaching change the local weapon, as native weapon-mod crafting
-    /// does, on hosts and clients alike; they refuse while strict inventory is armed, since those changes are not
-    /// yet an authorised custody operation.
+    /// Registers mod items as native weapon mods. Attached mods live in the weapon's own module, so saves and
+    /// held-weapon replication follow the game. Every peer must register the same specs. Each registration also
+    /// gets the game's two crafting recipes: the weapon and the item combine on the crafting mat, and the weapon
+    /// alone dismantles there and hands its mods back. As with the game's own, the weapon stays on the mat after
+    /// either, and a mod taken off lies beside it. TryAttach and TryDetach change the local weapon directly,
+    /// on hosts and clients alike; they refuse while strict inventory is armed, since those changes are not yet
+    /// an authorised custody operation.
     /// </summary>
     public static class WeaponAttachments
     {
         private const string HashPrefix = "modstoke.weaponmod/1\n";
         private static readonly Dictionary<int, Registration> ByHash = new();
         private static readonly List<WeaponAttachmentContext> Live = new();
+        private static readonly HashSet<int> MatWeapons = new();
         private static GameObject _templates;
-        private static IntPtr _catalogSeen;
-        private static bool _hooksAttempted;
+        private static IntPtr _catalogSeen, _matSeen;
+        private static bool _hooksAttempted, _weaponsOnMat, _listing, _listFailureLogged;
+        private static float _recipesAt;
 
         private sealed class Registration
         {
             internal WeaponAttachmentSpec Spec;
             internal WeaponMod Mod;
+            internal CraftingRecipe Apply, Listed;
         }
 
         /// <summary>The native mod hash for a spec: the first four bytes, little-endian, of a SHA-256 of its identity.</summary>
@@ -187,6 +195,7 @@ namespace Modstoke.Sons
                 catalog.Add(mod);
                 _catalogSeen = catalog.Pointer;
                 ByHash.Add(hash, new Registration { Spec = spec, Mod = mod });
+                _weaponsOnMat = false;
                 RuntimeEntryPoint.LogSource?.LogInfo("Item " + spec.AttachmentItemId + " attaches to item " + spec.WeaponItemId
                     + " as weapon mod " + hash + " on " + spec.Slot + ".");
                 return true;
@@ -287,6 +296,7 @@ namespace Modstoke.Sons
                     foreach (var registration in ByHash.Values)
                         if (Alive(registration.Mod) && !catalog.Contains(registration.Mod)) catalog.Add(registration.Mod);
                     _catalogSeen = catalog.Pointer;
+                    _weaponsOnMat = false;
                 }
                 for (var i = Live.Count - 1; i >= 0; i--)
                 {
@@ -295,11 +305,235 @@ namespace Modstoke.Sons
                     Live.RemoveAt(i);
                     Notify(context.Spec.OnDetached, context);
                 }
+                if (Time.unscaledTime >= _recipesAt)
+                {
+                    _recipesAt = Time.unscaledTime + 1;
+                    EnsureRecipes();
+                }
             }
             catch (Exception error)
             {
                 RuntimeEntryPoint.LogSource?.LogWarning("Weapon attachment upkeep failed: " + error.Message);
             }
+        }
+
+        // The game's weapon mods go on by combining the weapon and the mod on the crafting mat and come off
+        // by dismantling the weapon there. Every attachment gets the same two recipes, appended so the game's
+        // own keep their places in the list. They carry no craft animation: the game has none for a weapon it
+        // never modded, and a recipe without one completes at once, as its chainsaw recharge does. A new
+        // recipe database (a new player or item database) is filled again.
+        private static void EnsureRecipes()
+        {
+            var system = CraftingSystem._Instance_k__BackingField;
+            if (!Alive(system) || !system._isInitialized || !Alive(system._recipeDatabase)) return;
+            var recipes = system._recipeDatabase._recipes;
+            if (recipes == null || recipes.WasCollected) return;
+            if (system.Pointer != _matSeen || !_weaponsOnMat)
+            {
+                _matSeen = system.Pointer;
+                _weaponsOnMat = PutWeaponsOnMat(system);
+            }
+            CraftingRecipe apply = null, dismantle = null;
+            foreach (var recipe in recipes)
+            {
+                if (!Alive(recipe)) continue;
+                if (recipe._recipeType == CraftingRecipe.Type.DismantleWeaponMods) dismantle ??= recipe;
+                else if (recipe._recipeType == CraftingRecipe.Type.ApplyWeaponMod && Alive(recipe._weaponMod)
+                    && !ByHash.ContainsKey(recipe._weaponMod.Id)) apply ??= recipe;
+            }
+            if (apply == null) return;
+            var added = 0;
+            foreach (var registration in ByHash.Values)
+            {
+                if (Alive(registration.Apply) && recipes.Contains(registration.Apply)) continue;
+                if (!Alive(registration.Apply)) registration.Apply = ApplyRecipe(apply, registration);
+                recipes.Add(registration.Apply);
+                ReturnOnDismantle(recipes, dismantle, registration.Spec);
+                added++;
+            }
+            if (added == 0) return;
+            system.RefreshAvailableRecipes(false);
+            RuntimeEntryPoint.LogSource?.LogInfo(added + " weapon attachment recipe(s) added to the crafting mat; " + recipes.Count
+                + " recipes in all.");
+        }
+
+        // The game moves an item to the crafting mat only if it is a crafting material, and prompts for it only
+        // if its right click says so. A weapon comes back from the mat as the same instance only if its row
+        // there keeps instances; otherwise a new one is made, without the ammunition and mods of the old. The
+        // weapons the game mods itself are set up this way, and a weapon it never modded is given the same. One
+        // with no row on the mat is left alone: the game has nowhere to lay it.
+        private static bool PutWeaponsOnMat(CraftingSystem system)
+        {
+            var groups = system._ingredientLayoutItemGroups;
+            if (groups == null || groups.WasCollected) return false;
+            MatWeapons.Clear();
+            foreach (var registration in ByHash.Values) MatWeapons.Add(registration.Spec.WeaponItemId);
+            var settled = true;
+            foreach (var group in groups)
+            {
+                if (!Alive(group) || !MatWeapons.Remove(group._itemId)) continue;
+                var id = group._itemId;
+                if (!ItemDatabaseManager.TryFindItemById(id, out var weapon) || !Alive(weapon))
+                {
+                    settled = false;
+                    continue;
+                }
+                if (!group._isOneToOneCollection)
+                {
+                    // Not while it lies there: its row took it in without the instance.
+                    if (system.GetIngredientCount(id) != 0)
+                    {
+                        settled = false;
+                        continue;
+                    }
+                    group._isOneToOneCollection = true;
+                }
+                if ((weapon._type & Types.CraftingMaterial) != 0) continue;
+                weapon._type |= Types.CraftingMaterial;
+                var ui = weapon._uiData;
+                if (ui != null && ui._rightClick == ItemUiData.RightClickCommands.None)
+                    ui._rightClick = ItemUiData.RightClickCommands.Combine;
+                RuntimeEntryPoint.LogSource?.LogInfo("Item " + id + " can go on the crafting mat to take its attachments.");
+            }
+            if (!settled) return false;
+            foreach (var id in MatWeapons)
+                RuntimeEntryPoint.LogSource?.LogWarning("Item " + id + " has no place on the crafting mat, so its attachments cannot be combined there.");
+            return true;
+        }
+
+        // The list of recipes under the cog leaves weapon mods out. An attachment is listed through a stand-in,
+        // an ordinary recipe with the same two ingredients that is never in the database. The list names a
+        // recipe after its first result and shows it while any result still fits the inventory, so the stand-in
+        // gives the attachment first and the weapon second: whichever of the two lies on the mat fits.
+        private static bool BeforeRecipeList(HudGui __instance, bool __0, Il2CppSystem.Collections.Generic.IEnumerable<CraftingRecipe> __1)
+        {
+            if (_listing || !__0 || __1 == null || ByHash.Count == 0) return true;
+            try
+            {
+                var list = __1.TryCast<Il2CppSystem.Collections.Generic.List<CraftingRecipe>>();
+                if (list == null) return true;
+                Il2CppSystem.Collections.Generic.List<CraftingRecipe> shown = null;
+                for (var i = 0; i < list.Count; i++)
+                {
+                    var recipe = list[i];
+                    var listed = Listed(recipe);
+                    if (listed == null)
+                    {
+                        shown?.Add(recipe);
+                        continue;
+                    }
+                    if (shown == null)
+                    {
+                        shown = new();
+                        for (var before = 0; before < i; before++) shown.Add(list[before]);
+                    }
+                    shown.Add(listed);
+                }
+                if (shown == null) return true;
+                _listing = true;
+                try
+                {
+                    __instance.ShowValidCraftingRecipes(true, shown.Cast<Il2CppSystem.Collections.Generic.IEnumerable<CraftingRecipe>>());
+                }
+                finally
+                {
+                    _listing = false;
+                }
+                return false;
+            }
+            catch (Exception error)
+            {
+                if (!_listFailureLogged)
+                {
+                    _listFailureLogged = true;
+                    RuntimeEntryPoint.LogSource?.LogWarning("Attachment recipes could not be listed under the cog: " + error.Message);
+                }
+                return true;
+            }
+        }
+
+        private static CraftingRecipe Listed(CraftingRecipe recipe)
+        {
+            if (!Alive(recipe) || recipe._recipeType != CraftingRecipe.Type.ApplyWeaponMod || !Alive(recipe._weaponMod)
+                || !ByHash.TryGetValue(recipe._weaponMod.Id, out var registration) || !Takes(registration)) return null;
+            if (!Alive(registration.Listed))
+            {
+                var spec = registration.Spec;
+                var listed = Clone(recipe, spec.ModId + ":" + spec.Key + " listed", CraftingRecipe.Type.CraftNewItem, spec.WeaponItemId);
+                listed._ingredients.Add(new NativeIngredient { ItemId = spec.AttachmentItemId, Count = 1, IsReusable = false });
+                listed._resultingItems.Insert(0, new CraftingRecipe.ResultingItem { Id = spec.AttachmentItemId });
+                listed._weaponMod = null;
+                registration.Listed = listed;
+            }
+            return registration.Listed;
+        }
+
+        // A weapon on the mat with the slot already taken cannot take another attachment there.
+        private static bool Takes(Registration registration)
+        {
+            var system = CraftingSystem._Instance_k__BackingField;
+            var ingredients = Alive(system) ? system._CurrentIngredients_k__BackingField : null;
+            if (ingredients == null || ingredients.WasCollected) return true;
+            foreach (var ingredient in ingredients)
+                if (ingredient != null && ingredient.ItemId == registration.Spec.WeaponItemId)
+                    return ingredient.ItemInstance is not { } weapon
+                        || !weapon.TryGetModule<RangedWeaponItemInstanceModule>(out var module) || module == null
+                        || module.IsSlotAvailable(registration.Mod.AttachesToSlot);
+            return true;
+        }
+
+        private static CraftingRecipe ApplyRecipe(CraftingRecipe template, Registration registration)
+        {
+            var spec = registration.Spec;
+            var recipe = Clone(template, spec.ModId + ":" + spec.Key + " apply", CraftingRecipe.Type.ApplyWeaponMod, spec.WeaponItemId);
+            recipe._ingredients.Add(new NativeIngredient { ItemId = spec.AttachmentItemId, Count = 1, IsReusable = false });
+            recipe._weaponMod = registration.Mod;
+            return recipe;
+        }
+
+        // The weapon's dismantle recipe lists every item it can hand back. The game's weapons have one; a weapon
+        // it never modded gets its own.
+        private static void ReturnOnDismantle(Il2CppSystem.Collections.Generic.List<CraftingRecipe> recipes, CraftingRecipe template,
+            WeaponAttachmentSpec spec)
+        {
+            CraftingRecipe dismantle = null;
+            foreach (var recipe in recipes)
+                if (Alive(recipe) && recipe._recipeType == CraftingRecipe.Type.DismantleWeaponMods && recipe._resultingItems is { Count: > 0 } returned
+                    && returned[0] != null && returned[0].Id == spec.WeaponItemId)
+                {
+                    dismantle = recipe;
+                    break;
+                }
+            if (dismantle == null)
+            {
+                if (template == null) return;
+                dismantle = Clone(template, "Modstoke dismantle " + spec.WeaponItemId, CraftingRecipe.Type.DismantleWeaponMods, spec.WeaponItemId);
+                dismantle._weaponMod = null;
+                recipes.Add(dismantle);
+            }
+            foreach (var result in dismantle._resultingItems)
+                if (result != null && result.Id == spec.AttachmentItemId) return;
+            dismantle._resultingItems.Add(new CraftingRecipe.ResultingItem { Id = spec.AttachmentItemId });
+        }
+
+        // A copy of one of the game's recipes, for its audio and settings, that takes the weapon and gives it back.
+        private static CraftingRecipe Clone(CraftingRecipe template, string name, CraftingRecipe.Type type, int weaponItemId)
+        {
+            var recipe = Object.Instantiate(template);
+            recipe.name = name;
+            recipe.hideFlags |= HideFlags.DontUnloadUnusedAsset;
+            recipe._recipeType = type;
+            recipe._animationStateName = "";
+            recipe._hasCustomName = false;
+            recipe._useContainerDataForResultingItems = false;
+            recipe._containerItemData = null;
+            recipe._forceNewItemInstance = false;
+            recipe._ingredients = new();
+            recipe._ingredients.Add(new NativeIngredient { ItemId = weaponItemId, Count = 1, IsReusable = false });
+            recipe._resultingItems = new();
+            recipe._resultingItems.Add(new CraftingRecipe.ResultingItem { Id = weaponItemId });
+            recipe._generatedResultingItems = new();
+            return recipe;
         }
 
         private static Registration Find(int itemId)
@@ -385,6 +619,17 @@ namespace Modstoke.Sons
             {
                 RuntimeEntryPoint.LogSource?.LogWarning("Weapon attachment hooks are unavailable; attachments still apply, "
                     + "but OnAttached/OnDetached and part hiding will not run: " + error.Message);
+            }
+            try
+            {
+                var harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-weapon-attachment-recipes");
+                harmony.Patch(AccessTools.Method(typeof(HudGui), nameof(HudGui.ShowValidCraftingRecipes),
+                        new[] { typeof(bool), typeof(Il2CppSystem.Collections.Generic.IEnumerable<CraftingRecipe>) }),
+                    prefix: new HarmonyMethod(typeof(WeaponAttachments), nameof(BeforeRecipeList)));
+            }
+            catch (Exception error)
+            {
+                RuntimeEntryPoint.LogSource?.LogWarning("Attachment recipes will not be listed under the crafting cog: " + error.Message);
             }
         }
 

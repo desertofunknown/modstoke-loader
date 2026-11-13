@@ -157,6 +157,7 @@ namespace Modstoke.Sons
                 Combat.StrictCombatImpactParticles.Tick();
                 global::Modstoke.Sons.ItemRegistration.RepublishIntoNewDatabase();
                 global::Modstoke.Sons.Inventory.TickItemModels();
+                global::Modstoke.Sons.Crafting.TickItemModels();
                 global::Modstoke.Sons.WeaponAttachments.Tick();
                 global::Modstoke.Sons.ContentAgreement.EnsureHooks();
             }

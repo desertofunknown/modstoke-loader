@@ -849,6 +849,7 @@
     <Compile Include="Sons/Crafting/Crafting.Specialized.cs" />
     <Compile Include="Sons/Crafting/Crafting.AuthoredModules.cs" />
     <Compile Include="Sons/Crafting/Crafting.AuthoredLayouts.cs" />
+    <Compile Include="Sons/Crafting/Crafting.ItemModels.cs" />
     <Compile Include="Sons/Crafting/CraftingRecipes.cs" />
     <Compile Include="Sons/Crafting/Crafting.Mat.cs" />
     <Compile Include="Sons/Audio/AudioPlayback.State.cs" />
@@ -876,6 +877,7 @@
     <Compile Include="Sons/Inventory/Inventory.Execution.cs" />
     <Compile Include="Sons/Inventory/Inventory.Models.cs" />
     <Compile Include="Sons/Inventory/Inventory.Layouts.cs" />
+    <Compile Include="Sons/Inventory/Inventory.GearPage.cs" />
     <Compile Include="Sons/Inventory/Inventory.PrimaryActions.cs" />
     <Compile Include="Sons/Inventory/Inventory.ItemModels.cs" />
     <Compile Include="Sons/Inventory/InventoryEvents.cs" />
