@@ -53,6 +53,13 @@ namespace Modstoke.Loader
             Languages.Refresh();
         }
 
+        /// <summary>The "language" Loader setting was just changed; it is read again on the next tick.</summary>
+        internal static void PreferenceChanged()
+        {
+            _nextPreference = 0;
+            _nextRefresh = 0;
+        }
+
         /// <summary>The "language" console command: shows the language in use; "language reload" reads files again.</summary>
         internal static string RunCommand(string arguments)
         {

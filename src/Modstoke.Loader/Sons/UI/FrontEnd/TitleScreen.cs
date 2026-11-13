@@ -22,23 +22,26 @@ namespace Modstoke.Loader
             internal string Key;
             internal Action Run;
             internal RectTransform Rect;
-            internal Image Brush;
             internal TextMeshProUGUI Label;
             internal float Width;
         }
 
         private readonly List<Entry> _entries = new();
+        private Glide _underline;
         private Vector2 _origin;
         private float _nextMeasure;
 
         protected override void Build()
         {
             _entries.Clear();
+            _marks.Clear();
             AddEntry("title.singlePlayer", () => FrontEnd.Push(new SavedGamesScreen(SaveGameType.SinglePlayer)));
             AddEntry("title.multiplayer", () => Leave(GameMenus.Join));
-            AddEntry("title.options", () => Leave(GameMenus.Options));
+            AddEntry("title.options", () => FrontEnd.Push(new OptionsScreen()));
             AddEntry("title.mods", MenuController.Show);
             AddEntry("title.exit", GameMenus.Exit);
+            // Over the words' glow, so the dark spill never dims it.
+            _underline = new Glide(Root, true);
         }
 
         internal override void Retext()
@@ -47,9 +50,10 @@ namespace Modstoke.Loader
             {
                 var text = Text[entry.Key].ToUpper(Languages.CultureOf(Languages.Current));
                 entry.Label.text = text;
-                entry.Width = entry.Label.GetPreferredValues(text).x + U(44);
+                entry.Width = entry.Label.GetPreferredValues(text).x + U(36);
             }
             Layout(Origin());
+            _underline.Follow();
         }
 
         internal override void Opened() => Focus(First());
@@ -60,7 +64,9 @@ namespace Modstoke.Loader
             if (Time.unscaledTime < _nextMeasure) return;
             _nextMeasure = Time.unscaledTime + 0.5f;
             var origin = Origin();
-            if ((origin - _origin).sqrMagnitude > 1f) Layout(origin);
+            if ((origin - _origin).sqrMagnitude <= 1f) return;
+            Layout(origin);
+            _underline.Follow();
         }
 
         // The title menu is the first screen; Back has nowhere to go.
@@ -76,7 +82,7 @@ namespace Modstoke.Loader
         // Where the row starts: where the game's own row of choices was, kept clear of its logo.
         private Vector2 Origin()
         {
-            var gap = U(14);
+            var gap = U(10);
             var total = -gap;
             foreach (var entry in _entries) total += entry.Width + gap;
             float x = U(72), y = U(79);
@@ -105,24 +111,29 @@ namespace Modstoke.Loader
                 entry.Rect.pivot = new Vector2(0, 0.5f);
                 entry.Rect.anchoredPosition = new Vector2(x, origin.y);
                 entry.Rect.sizeDelta = new Vector2(entry.Width, U(54));
-                x += entry.Width + U(14);
+                x += entry.Width + U(10);
             }
         }
 
         private void AddEntry(string key, Action run)
         {
             var entry = new Entry { Key = key, Run = run, Rect = MenuKit.Box(Root, key) };
-            entry.Brush = MenuKit.Fill(MenuKit.Box(entry.Rect, "Brush").Place(0, 0, 1, 1), MenuKit.Brush, MenuKit.Ink);
-            entry.Label = MenuKit.Text(entry.Rect, "Label", "", U(29), true, MenuKit.Soft, TextAlignmentOptions.Center);
-            entry.Label.characterSpacing = 13;
+            MenuKit.GlowBehind(entry.Rect, U(14), 0.5f);
+            entry.Label = MenuKit.Text(entry.Rect, "Label", "", U(27), true, MenuKit.Soft, TextAlignmentOptions.Center);
+            entry.Label.characterSpacing = 12;
             entry.Label.rectTransform.Place(0, 0, 1, 1);
+            // The underline runs under the word, not the whole box around it.
+            var under = MenuKit.Box(entry.Rect, "Under").Place(0, 0, 1, 0, U(18), U(6), U(18), -U(9));
             _entries.Add(entry);
-            Add(entry.Rect, () => Run(entry), focused =>
-            {
-                entry.Brush.enabled = focused;
-                entry.Label.color = focused ? MenuKit.Dark : MenuKit.Soft;
-            });
+            var item = Add(entry.Rect, () => Run(entry), focused => entry.Label.color = focused ? MenuKit.Ink : MenuKit.Soft);
+            item.Flash = Flashing(entry.Label);
+            _marks[item] = under;
         }
+
+        private readonly Dictionary<Focusable, RectTransform> _marks = new();
+
+        protected override void FocusChanged(Focusable previous, Focusable current)
+            => _underline.Target(current != null && _marks.TryGetValue(current, out var under) ? under : null, previous == null);
 
         private static void Run(Entry entry)
         {

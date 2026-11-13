@@ -55,6 +55,7 @@ namespace Modstoke.Loader
         private readonly Dictionary<uint, Texture2D> _thumbnails = new();
         private readonly List<ModeView> _modes = new();
         private RowView[] _rows = Array.Empty<RowView>();
+        private Glide _rowMark;
         private SectionNav _sections;
         private TextMeshProUGUI _section, _title, _count, _note;
         private TextMeshProUGUI _saveTitle, _saveLine, _saveWhen, _newTitle, _newHint, _modeAbout, _continueLabel, _deleteLabel;
@@ -91,10 +92,12 @@ namespace Modstoke.Loader
                 Add(_sections.Other, OpenJoin, _sections.Hover);
             }
 
-            var list = MenuKit.PanelBox(Root, "Games").rectTransform
-                .Place(0, 0, 1, 1, pad, U(StripHeight), pad + U(DetailsWidth + 24), U(PanelTop));
+            // Content sits on the veil: columns are set apart by space and a rule, not by boxes.
+            var list = MenuKit.Box(Root, "Games").Place(0, 0, 1, 1, pad, U(StripHeight), pad + U(DetailsWidth + 40), U(PanelTop));
+            MenuKit.Hairline(list, "Top", 0);
             var panelHeight = Root.rect.height - U(StripHeight) - U(PanelTop);
             var visible = Mathf.Clamp(Mathf.FloorToInt((panelHeight - U(RowsTop) - U(46)) / U(RowHeight + RowGap)), 3, 9);
+            _rowMark = new Glide(list, false);
             _rows = new RowView[visible];
             for (var i = 0; i < visible; i++) _rows[i] = Row(list, i);
             _trackHeight = visible * U(RowHeight + RowGap) - U(RowGap);
@@ -102,12 +105,12 @@ namespace Modstoke.Loader
             _scrollThumb = MenuKit.Box(track, "Thumb");
             MenuKit.Fill(_scrollThumb, null, MenuKit.Rule);
             _note = MenuKit.Text(list, "Note", "", U(15), false, MenuKit.Muted);
-            _note.rectTransform.Place(0, 0, 1, 0, U(28), U(12), U(240), -U(34));
+            _note.rectTransform.Place(0, 0, 1, 0, U(8), U(12), U(240), -U(34));
             _count = MenuKit.Text(list, "Count", "", U(14), false, MenuKit.Muted, TextAlignmentOptions.MidlineRight);
-            _count.rectTransform.Place(1, 0, 1, 0, -U(260), U(12), U(28), -U(34));
+            _count.rectTransform.Place(1, 0, 1, 0, -U(260), U(12), U(8), -U(34));
 
-            var details = MenuKit.PanelBox(Root, "Details").rectTransform
-                .Place(1, 0, 1, 1, -(pad + U(DetailsWidth)), U(StripHeight), pad, U(PanelTop));
+            var details = MenuKit.Box(Root, "Details").Place(1, 0, 1, 1, -(pad + U(DetailsWidth)), U(StripHeight), pad, U(PanelTop));
+            MenuKit.Hairline(details, "Top", 0);
             BuildSavePane(details);
             BuildNewPane(details);
             _built = true;
@@ -115,10 +118,11 @@ namespace Modstoke.Loader
 
         private RowView Row(RectTransform list, int slot)
         {
-            var rect = MenuKit.Box(list, "Row " + slot).Strip(U(RowsTop + slot * (RowHeight + RowGap)), U(RowHeight), U(20), U(20));
+            var rect = MenuKit.Box(list, "Row " + slot).Strip(U(RowsTop + slot * (RowHeight + RowGap)), U(RowHeight), 0, U(16));
             var view = new RowView { Rect = rect };
-            view.Highlight = MenuKit.Fill(MenuKit.Box(rect, "Highlight").Place(0, 0, 1, 1), MenuKit.Brush, MenuKit.RowSelected);
-            var thumb = MenuKit.Box(rect, "Thumbnail").At(U(12), U((RowHeight - 63) / 2), U(112), U(63));
+            // The selected row keeps a faint fill while focus is elsewhere; the focus mark glides over it.
+            view.Highlight = MenuKit.Fill(MenuKit.Box(rect, "Selected").Place(0, 0, 1, 1), null, MenuKit.RowSelected);
+            var thumb = MenuKit.Box(rect, "Thumbnail").At(U(14), U((RowHeight - 63) / 2), U(112), U(63));
             view.Thumbnail = thumb.gameObject.AddComponent<RawImage>();
             view.Thumbnail.raycastTarget = false;
             view.Plus = MenuKit.Text(thumb, "Plus", "+", U(34), false, MenuKit.Ink, TextAlignmentOptions.Center);
@@ -128,32 +132,34 @@ namespace Modstoke.Loader
             view.Detail = MenuKit.Text(rect, "Detail", "", U(14), false, MenuKit.Muted, TextAlignmentOptions.MidlineLeft, true);
             view.Detail.rectTransform.Place(0, 0, 1, 0.5f, U(140), U(8), U(16), -U(4));
             view.Focus = Add(rect, () => ActivateRow(slot), _ => PaintHighlights());
+            view.Focus.Mark = _rowMark;
+            view.Focus.Flash = Flashing(view.Title);
             return view;
         }
 
         private void BuildSavePane(RectTransform details)
         {
             _savePane = MenuKit.Box(details, "Save").Place(0, 0, 1, 1);
-            var width = U(DetailsWidth - 56);
+            var width = U(DetailsWidth);
             var height = width * 9f / 16f;
-            var thumb = MenuKit.Box(_savePane, "Thumbnail").At(U(28), U(26), width, height);
+            var thumb = MenuKit.Box(_savePane, "Thumbnail").At(0, U(22), width, height);
             _bigThumbnail = thumb.gameObject.AddComponent<RawImage>();
             _bigThumbnail.raycastTarget = false;
-            var y = U(26) + height + U(14);
-            _saveTitle = MenuKit.Text(_savePane, "Title", "", U(26), true, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
-            _saveTitle.rectTransform.Strip(y, U(38), U(28), U(28));
-            _saveLine = MenuKit.Text(_savePane, "Line", "", U(15), false, MenuKit.Soft);
-            _saveLine.rectTransform.Strip(y + U(40), U(22), U(28), U(28));
+            var y = U(22) + height + U(16);
+            _saveTitle = MenuKit.Text(_savePane, "Title", "", U(28), true, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
+            _saveTitle.rectTransform.Strip(y, U(40), 0, 0);
+            _saveLine = MenuKit.Text(_savePane, "Line", "", U(16), false, MenuKit.Soft);
+            _saveLine.rectTransform.Strip(y + U(42), U(24), 0, 0);
             _saveWhen = MenuKit.Text(_savePane, "When", "", U(15), false, MenuKit.Muted);
-            _saveWhen.rectTransform.Strip(y + U(62), U(22), U(28), U(28));
+            _saveWhen.rectTransform.Strip(y + U(66), U(22), 0, 0);
 
-            var delete = MenuKit.Box(_savePane, "Delete").Place(0, 0, 1, 0, U(28), U(86), U(28), -U(126));
+            var delete = MenuKit.Box(_savePane, "Delete").Place(0, 0, 1, 0, 0, U(86), 0, -U(126));
             _deleteLabel = MenuKit.Text(delete, "Label", "", U(14), true, MenuKit.Muted, TextAlignmentOptions.Center);
             _deleteLabel.characterSpacing = 12;
             _deleteLabel.rectTransform.Place(0, 0, 1, 1);
             _delete = Add(delete, DeleteSelected, _ => PaintDelete());
 
-            var go = MenuKit.Box(_savePane, "Continue").Place(0, 0, 1, 0, U(28), U(20), U(28), -U(78));
+            var go = MenuKit.Box(_savePane, "Continue").Place(0, 0, 1, 0, 0, U(20), 0, -U(78));
             var fill = MenuKit.Fill(go, MenuKit.Brush, MenuKit.Soft);
             _continueLabel = MenuKit.Text(go, "Label", "", U(21), true, MenuKit.Dark, TextAlignmentOptions.Center);
             _continueLabel.characterSpacing = 16;
@@ -164,31 +170,32 @@ namespace Modstoke.Loader
         private void BuildNewPane(RectTransform details)
         {
             _newPane = MenuKit.Box(details, "New").Place(0, 0, 1, 1);
-            _newTitle = MenuKit.Text(_newPane, "Title", "", U(26), true, MenuKit.Ink);
-            _newTitle.rectTransform.Strip(U(24), U(38), U(28), U(28));
-            _newHint = MenuKit.Text(_newPane, "Hint", "", U(15), false, MenuKit.Soft);
-            _newHint.rectTransform.Strip(U(62), U(22), U(28), U(28));
+            _newTitle = MenuKit.Text(_newPane, "Title", "", U(28), true, MenuKit.Ink);
+            _newTitle.rectTransform.Strip(U(22), U(40), 0, 0);
+            _newHint = MenuKit.Text(_newPane, "Hint", "", U(16), false, MenuKit.Soft);
+            _newHint.rectTransform.Strip(U(62), U(24), 0, 0);
             // Only the modes the game offers this player: it keeps Creative back until the story is finished.
             var offered = GameMenus.OfferedModes(_type, Modes);
-            _modeAbout = MenuKit.Text(_newPane, "About", "", U(15), false, MenuKit.Soft, TextAlignmentOptions.TopLeft);
+            _modeAbout = MenuKit.Text(_newPane, "About", "", U(16), false, MenuKit.Soft, TextAlignmentOptions.TopLeft);
             _modeAbout.enableWordWrapping = true;
-            _modeAbout.rectTransform.Strip(U(100 + offered.Length * 48 + 14), U(96), U(28), U(28));
+            _modeAbout.rectTransform.Strip(U(104 + offered.Length * 46 + 18), U(96), 0, 0);
+            var mark = new Glide(_newPane, false);
             _modes.Clear();
             for (var i = 0; i < offered.Length; i++)
             {
                 var mode = offered[i];
-                var rect = MenuKit.Box(_newPane, mode).Strip(U(100 + i * 48), U(44), U(28), U(28));
-                var brush = MenuKit.Fill(MenuKit.Box(rect, "Brush").Place(0, 0, 1, 1), MenuKit.Brush, MenuKit.Ink);
+                var rect = MenuKit.Box(_newPane, mode).Strip(U(104 + i * 46), U(42), 0, 0);
                 var view = new ModeView { Mode = mode };
                 view.Label = MenuKit.Text(rect, "Label", "", U(18), true, MenuKit.Soft);
                 view.Label.characterSpacing = 8;
-                view.Label.rectTransform.Place(0, 0, 1, 1, U(16), 0, U(16), 0);
+                view.Label.rectTransform.Place(0, 0, 1, 1, U(18), 0, U(16), 0);
                 view.Focus = Add(rect, () => StartNew(mode), focused =>
                 {
-                    brush.enabled = focused;
-                    view.Label.color = focused ? MenuKit.Dark : MenuKit.Soft;
+                    view.Label.color = focused ? MenuKit.Ink : MenuKit.Soft;
                     if (focused) _modeAbout.text = Text["mode.about." + KeyOf(mode)];
                 });
+                view.Focus.Mark = mark;
+                view.Focus.Flash = Flashing(view.Label);
                 _modes.Add(view);
             }
         }
@@ -533,10 +540,10 @@ namespace Modstoke.Loader
             for (var i = 0; i < _rows.Length; i++)
             {
                 var view = _rows[i];
-                var selected = _top + i == _selected;
-                view.Highlight.enabled = selected || ReferenceEquals(view.Focus, Focused);
-                view.Highlight.color = selected ? MenuKit.RowSelected : MenuKit.RowHover;
+                // The focus mark covers the focused row; the selection shows only while focus is elsewhere.
+                view.Highlight.enabled = _top + i == _selected && !ReferenceEquals(view.Focus, Focused);
             }
+            _rowMark.Follow();
         }
 
         private void PaintDetails()

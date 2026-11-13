@@ -221,6 +221,49 @@ namespace Modstoke.Loader
             return fallback;
         }
 
+        /// <summary>
+        /// Writes one setting to the loader settings file, replacing its line or adding one, and leaves every
+        /// other line as it was. False with the reason when the file could not be written.
+        /// </summary>
+        internal static bool WriteText(string key, string value, out string error)
+        {
+            lock (SyncRoot)
+            {
+                try
+                {
+                    var original = ReadSettingsText();
+                    var text = original ?? "# Modstoke Loader runtime preferences" + Environment.NewLine;
+                    var edits = new List<ConfigSettingEdit>();
+                    var found = false;
+                    foreach (var setting in LoaderConfig.ParseSettings(text))
+                    {
+                        if (!string.Equals(setting.Key, key, StringComparison.OrdinalIgnoreCase)) continue;
+                        found = true;
+                        if (!string.Equals(setting.Value?.Trim(), value, StringComparison.Ordinal))
+                            edits.Add(new ConfigSettingEdit(setting.LineIndex, value));
+                    }
+                    var updated = text;
+                    if (edits.Count > 0)
+                        updated = LoaderConfig.ApplySettings(text, edits);
+                    else if (!found)
+                    {
+                        var separator = text.Length == 0 || text.EndsWith("\n", StringComparison.Ordinal)
+                            || text.EndsWith("\r", StringComparison.Ordinal) ? "" : Environment.NewLine;
+                        updated = text + separator + key + " = " + value + Environment.NewLine;
+                    }
+                    if (!string.Equals(original, updated, StringComparison.Ordinal)) SaveNoLock(original, updated);
+                    error = null;
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    error = ex.Message;
+                    Warn("Modstoke setting " + key + " was not saved: " + ex.Message);
+                    return false;
+                }
+            }
+        }
+
         private static string ReadSettingsText()
         {
             try { return File.ReadAllText(SettingsPath); }

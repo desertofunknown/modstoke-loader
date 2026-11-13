@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Modstoke.Localization;
+using TMPro;
 using UnityEngine;
 
 namespace Modstoke.Loader
@@ -19,8 +20,18 @@ namespace Modstoke.Loader
         /// <summary>For a value that steps left and right; takes left and right presses while focused.</summary>
         internal Action<int> Adjust;
         internal Func<bool> Enabled;
+        /// <summary>The focus mark this item is shown with, or null for an item that draws its own.</summary>
+        internal Glide Mark;
+        /// <summary>The text that flashes the split colors when focus lands here.</summary>
+        internal Glitch Flash;
+        /// <summary>For an item in a scrolling list: the visible part of the list, outside which the mouse misses it.</summary>
+        internal RectTransform Clip;
 
         internal bool Usable => Rect != null && Rect && Rect.gameObject.activeInHierarchy && (Enabled == null || Enabled());
+
+        internal bool Under(Vector2 pointer)
+            => RectTransformUtility.RectangleContainsScreenPoint(Rect, pointer, null)
+                && (Clip == null || !Clip || RectTransformUtility.RectangleContainsScreenPoint(Clip, pointer, null));
     }
 
     /// <summary>One prompt in the bar at the bottom of a screen: what a button or key does here.</summary>
@@ -29,13 +40,15 @@ namespace Modstoke.Loader
     /// <summary>
     /// One full screen of the front end. A screen builds its layout once, registers what can hold focus, and
     /// the base class moves focus between those by direction for keyboard and controller, and by pointer for the
-    /// mouse, so every screen behaves the same on all three.
+    /// mouse, so every screen behaves the same on all three. Focus is shown one way everywhere: a light mark
+    /// glides to the item and its text brightens, with a short flash of the game's split colors as it lands.
     /// </summary>
     internal abstract class FrontScreen
     {
-        private const float AppearSeconds = 0.14f;
+        private const float AppearSeconds = 0.18f, Rise = 12f;
         private readonly List<Focusable> _items = new();
         private CanvasGroup _group;
+        private float _appearStart = -1;
 
         internal RectTransform Root { get; private set; }
         protected Focusable Focused { get; private set; }
@@ -56,16 +69,23 @@ namespace Modstoke.Loader
             Retext();
         }
 
-        /// <summary>Starts the short fade a screen arrives with.</summary>
+        /// <summary>Starts the short fade and rise a screen arrives with.</summary>
         internal void Appear()
         {
-            if (_group != null && _group) _group.alpha = 0;
+            _appearStart = Time.unscaledTime;
+            Animate();
         }
 
         internal void Animate()
         {
-            if (_group != null && _group && _group.alpha < 1)
-                _group.alpha = Mathf.MoveTowards(_group.alpha, 1, Time.unscaledDeltaTime / AppearSeconds);
+            if (_appearStart < 0 || _group == null || !_group) return;
+            var t = Mathf.Clamp01((Time.unscaledTime - _appearStart) / AppearSeconds);
+            var eased = Moving.EaseOut(t);
+            _group.alpha = eased;
+            var offset = -U(Rise) * (1f - eased);
+            Root.offsetMin = new Vector2(0, offset);
+            Root.offsetMax = new Vector2(0, offset);
+            if (t >= 1f) _appearStart = -1;
         }
 
         /// <summary>Creates the layout under <see cref="Root"/>. Text is set in <see cref="Retext"/>.</summary>
@@ -91,6 +111,9 @@ namespace Modstoke.Loader
 
         internal virtual void OnAlt2() { }
 
+        /// <summary>A step to the previous (-1) or next (1) tab of this screen, on the bumpers or Q and E.</summary>
+        internal virtual void OnTab(int step) { }
+
         /// <summary>A step to the previous (-1) or next (1) section of the menu this screen belongs to.</summary>
         internal virtual void OnSection(int step) { }
 
@@ -106,13 +129,24 @@ namespace Modstoke.Loader
             return item;
         }
 
+        /// <summary>Drops items, for a screen that rebuilds part of itself, such as a tab's rows.</summary>
+        protected void Remove(Predicate<Focusable> match)
+        {
+            if (Focused != null && match(Focused)) Focus(null);
+            _items.RemoveAll(match);
+        }
+
         protected void Focus(Focusable item)
         {
             if (ReferenceEquals(item, Focused)) return;
             var previous = Focused;
             Focused = item;
             previous?.Paint?.Invoke(false);
+            if (previous?.Mark != null && !ReferenceEquals(previous.Mark, item?.Mark)) previous.Mark.Target(null);
             item?.Paint?.Invoke(true);
+            // The mark glides from where it was; one that was hidden appears in place.
+            item?.Mark?.Target(item.Rect, previous?.Mark == null || !ReferenceEquals(previous.Mark, item.Mark));
+            item?.Flash?.Pulse();
             FocusChanged(previous, item);
         }
 
@@ -139,7 +173,7 @@ namespace Modstoke.Loader
         {
             Focusable over = null;
             foreach (var item in _items)
-                if (item.Usable && RectTransformUtility.RectangleContainsScreenPoint(item.Rect, FrontInput.Pointer, null))
+                if (item.Usable && item.Under(FrontInput.Pointer))
                     over = item;
             // The pointer takes focus only when it moves, so it does not fight the keyboard or controller.
             FromPointer = true;
@@ -152,6 +186,7 @@ namespace Modstoke.Loader
                     over.Activate?.Invoke();
                     return;
                 }
+                Pointer(over);
             }
             finally
             {
@@ -170,8 +205,13 @@ namespace Modstoke.Loader
             }
             else if (FrontInput.Alt1) OnAlt1();
             else if (FrontInput.Alt2) OnAlt2();
+            else if (FrontInput.PreviousTab) OnTab(-1);
+            else if (FrontInput.NextTab) OnTab(1);
             else if (FrontInput.Section != 0) OnSection(FrontInput.Section);
         }
+
+        /// <summary>Mouse handling beyond clicks and hover, such as dragging a slider.</summary>
+        protected virtual void Pointer(Focusable over) { }
 
         protected Focusable First()
         {
@@ -179,6 +219,9 @@ namespace Modstoke.Loader
                 if (item.Usable) return item;
             return null;
         }
+
+        /// <summary>A text that flashes the split colors when focus lands on its item.</summary>
+        protected static Glitch Flashing(TextMeshProUGUI text) => new(text);
 
         // The usable item most directly in that direction: distance along it, with sideways drift counted double.
         private Focusable Nearest(Focusable from, int dx, int dy)

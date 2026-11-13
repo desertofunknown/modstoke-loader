@@ -68,6 +68,9 @@ namespace Modstoke.Loader
             }
         }
 
+        /// <summary>The menus setting was just changed; it is read again on the next frame.</summary>
+        internal static void SettingChanged() => _nextSettingRead = 0;
+
         /// <summary>The layer every Modstoke menu draws on, created on first use.</summary>
         internal static RectTransform Canvas()
         {
@@ -131,6 +134,7 @@ namespace Modstoke.Loader
             if (GameBuild.IsDedicatedServer || _failed) return;
             try
             {
+                Moving.TickAll();
                 Run();
             }
             catch (Exception error)

@@ -10,8 +10,9 @@ using Object = UnityEngine.Object;
 namespace Modstoke.Loader
 {
     /// <summary>
-    /// Builds menu screens from the game's own art: the brush-edged panel, the brush stroke highlight and the
-    /// Roboto Condensed fonts, in the colors of the game's menus.
+    /// The pieces Modstoke's menus are built from: the game's Roboto Condensed fonts, its brush stroke for primary
+    /// actions and its soft brush for glows, in a bone-on-black palette whose surfaces are all the text color at
+    /// low opacity laid over a deep veil.
     /// </summary>
     internal static class MenuKit
     {
@@ -25,25 +26,26 @@ namespace Modstoke.Loader
         internal static readonly Color Green = Hex(0xA7DCB8);
         internal static readonly Color Amber = Hex(0xF1C674);
         internal static readonly Color Red = Hex(0xF0A08A);
-        internal static readonly Color Cell = Hex(0x222322);
-        internal static readonly Color Line = Hex(0x2A2B29);
-        internal static readonly Color Rule = Hex(0x4A4B47);
-        internal static readonly Color BarOff = Hex(0x3C3D3A);
-        internal static readonly Color RowSelected = Hex(0x3A3B36);
-        internal static readonly Color RowHover = Hex(0x262725);
-        internal static readonly Color ChipOff = Hex(0x242524);
-        internal static readonly Color Field = Hex(0x1E1F1E);
-        internal static readonly Color Disabled = Hex(0x2B2C2A);
-        internal static readonly Color Scrim = Hex(0x070808, 0.66f);
-        private static readonly Color PanelPlain = Hex(0x141414, 0.94f);
-        private const int PanelBase = 0x1B1C1B;
-
+        // Surfaces are the text color made faint, never a grey of their own, so they sit on whatever is behind
+        // the veil without turning flat or washed out.
+        internal static readonly Color Cell = Faded(0.06f);
+        internal static readonly Color Line = Faded(0.10f);
+        internal static readonly Color Rule = Faded(0.20f);
+        internal static readonly Color BarOff = Faded(0.22f);
+        internal static readonly Color RowSelected = Faded(0.07f);
+        internal static readonly Color RowHover = Faded(0.045f);
+        internal static readonly Color FocusFill = Faded(0.11f);
+        internal static readonly Color ChipOff = Faded(0.07f);
+        internal static readonly Color Field = Faded(0.07f);
+        internal static readonly Color Disabled = Faded(0.14f);
+        internal static readonly Color Scrim = Hex(0x050606, 0.76f);
         private const int UiLayer = 5;
-        private static Sprite _brush, _panel, _fade;
+        private static Sprite _brush, _fade, _glow;
         private static TMP_FontAsset _bold, _regular;
 
         internal static Sprite Brush => Live(ref _brush, "Brush Wide");
-        internal static Sprite Panel => Live(ref _panel, "Background (400ppu)");
+        /// <summary>The game's soft round brush: a dark one behind a word keeps it readable over the bright world.</summary>
+        internal static Sprite Glow => Live(ref _glow, "Brush Radial");
         internal static TMP_FontAsset Bold => LiveFont(ref _bold, MenuTheme.BoldFontName, MenuTheme.HeadingFont);
         internal static TMP_FontAsset Regular => LiveFont(ref _regular, MenuTheme.RegularFontName, MenuTheme.BodyFont) ?? Bold;
 
@@ -72,11 +74,27 @@ namespace Modstoke.Loader
         internal static Color Hex(int rgb, float alpha = 1f)
             => new(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f, alpha);
 
-        /// <summary>A solid panel-toned color leaning toward an accent, for notices and tinted boxes.</summary>
-        internal static Color Toned(int accentRgb, float amount)
+        /// <summary>The text color at a low opacity: the surface every row, field and cell is drawn with.</summary>
+        internal static Color Faded(float alpha) => Hex(0xECEBE6, alpha);
+
+        /// <summary>An accent laid thinly over the veil, for notices and tinted boxes.</summary>
+        internal static Color Toned(int accentRgb, float amount) => Hex(accentRgb, amount * 0.6f);
+
+        /// <summary>A thin horizontal rule at y below the parent's top, inset left and right.</summary>
+        internal static Image Hairline(Transform parent, string name, float y, float left = 0, float right = 0)
+            => Fill(Box(parent, name).Strip(y, Mathf.Max(1f, FrontEnd.U(1)), left, right), null, Rule);
+
+        /// <summary>
+        /// A dark soft glow behind a box, spilling past it by <paramref name="spill"/> on every side. Without the
+        /// game's soft brush there is no glow at all, since a plain dark box would look broken.
+        /// </summary>
+        internal static Image GlowBehind(RectTransform rect, float spill, float alpha = 0.6f)
         {
-            float Mix(int shift) => Mathf.Lerp((PanelBase >> shift) & 255, (accentRgb >> shift) & 255, amount) / 255f;
-            return new Color(Mix(16), Mix(8), Mix(0), 1f);
+            var sprite = Glow;
+            if (sprite == null) return null;
+            var glow = Box(rect, "Glow").Place(0, 0, 1, 1, -spill, -spill, -spill, -spill);
+            glow.SetAsFirstSibling();
+            return Fill(glow, sprite, new Color(0, 0, 0, alpha));
         }
 
         /// <summary>
@@ -152,23 +170,6 @@ namespace Modstoke.Loader
             image.type = sprite != null && sprite.border != Vector4.zero ? Image.Type.Sliced : Image.Type.Simple;
             image.color = color;
             image.raycastTarget = false;
-            return image;
-        }
-
-        /// <summary>A brush-edged panel drawn with the same sprite and material as the mods menu's panels.</summary>
-        internal static Image PanelBox(Transform parent, string name)
-        {
-            var image = Box(parent, name).gameObject.AddComponent<Image>();
-            image.raycastTarget = false;
-            try
-            {
-                MenuTheme.ApplyPanelBackground(image);
-            }
-            catch (Exception)
-            {
-                image.sprite = Panel;
-                image.color = PanelPlain;
-            }
             return image;
         }
 

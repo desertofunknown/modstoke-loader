@@ -34,6 +34,8 @@ namespace Modstoke.Loader
         internal static Vector2 Pointer { get; private set; }
         internal static bool PointerMoved { get; private set; }
         internal static bool Click { get; private set; }
+        /// <summary>The left mouse button is down, for dragging.</summary>
+        internal static bool Held { get; private set; }
         internal static float Scroll { get; private set; }
 
         /// <summary>Whether a controller is the device in use, by the game's own flag.</summary>
@@ -56,6 +58,7 @@ namespace Modstoke.Loader
             Section = 0;
             Scroll = 0;
             var acting = Time.unscaledTime >= _resumeAt;
+            Held = acting && UnityEngine.Input.GetMouseButton(0);
 
             var position = UnityEngine.Input.mousePosition;
             Pointer = new Vector2(position.x, position.y);

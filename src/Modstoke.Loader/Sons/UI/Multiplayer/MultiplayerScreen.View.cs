@@ -25,6 +25,7 @@ namespace Modstoke.Loader
             internal Image Highlight, Marker;
             internal TextMeshProUGUI Name, Kind, Status, Players, Ping;
             internal Image[] Bars;
+            internal Glitch Flash;
         }
 
         private sealed class ModView
@@ -35,9 +36,9 @@ namespace Modstoke.Loader
 
         private sealed class TabView
         {
-            internal RectTransform Rect;
-            internal Image Brush;
+            internal RectTransform Rect, Under;
             internal TextMeshProUGUI Label;
+            internal Glitch Flash;
             internal string Text;
             internal float Width;
             internal bool Hovered;
@@ -70,6 +71,9 @@ namespace Modstoke.Loader
         private static readonly List<Prompt> Prompts = new();
         private static readonly TextMeshProUGUI[] StatValues = new TextMeshProUGUI[3];
         private static SectionNav _sections;
+        private static Glide _tabMark, _rowMark;
+        private static Tab _paintedTab = (Tab)(-1);
+        private static IntPtr _paintedSelection;
         private static RectTransform _listRect, _modsHeader, _progress;
         private static (RectTransform Rect, TextMeshProUGUI Label) _tabLeft, _tabRight;
         private static TextMeshProUGUI _status, _empty, _kind, _name, _sub, _noticeTitle, _noticeText, _joinLabel, _searchText;
@@ -90,6 +94,9 @@ namespace Modstoke.Loader
             _bottom = BottomInset();
             Hots.Clear();
             Prompts.Clear();
+            _paintedTab = (Tab)(-1);
+            _paintedSelection = IntPtr.Zero;
+            MenuKit.Backdrop(root, _bottom - U(24), U(110));
             var pad = U(60);
             BuildHeader(root, pad);
             BuildList(root, pad);
@@ -135,8 +142,10 @@ namespace Modstoke.Loader
 
         private static void BuildList(RectTransform root, float pad)
         {
-            var panel = MenuKit.PanelBox(root, "ServerList").rectTransform.Place(0, 0, 1, 1, pad, _bottom, pad + U(464), U(PanelTop));
+            // No panel: the list sits on the veil, its content lined up with the title above it.
+            var panel = MenuKit.Box(root, "ServerList").Place(0, 0, 1, 1, pad - U(28), _bottom, pad + U(464) - U(28), U(PanelTop));
             _listRect = panel;
+            MenuKit.Hairline(panel, "Top", 0, U(28), U(28));
             var panelHeight = root.rect.height - _bottom - U(PanelTop);
 
             _tabLeft = MenuKit.Tag(panel, "PreviousTab", "LB", U(TagHeight));
@@ -144,12 +153,13 @@ namespace Modstoke.Loader
             {
                 var tab = (Tab)i;
                 var view = new TabView { Rect = MenuKit.Box(panel, "Tab " + TabKeys[i]), Text = Upper(T["multiplayer.tab." + TabKeys[i]]) };
-                view.Brush = MenuKit.Fill(MenuKit.Box(view.Rect, "Brush").Place(0, 0, 1, 1), MenuKit.Brush, MenuKit.Ink);
+                view.Under = MenuKit.Box(view.Rect, "Under").Place(0, 0, 1, 0, U(12), U(6), U(12), -U(9));
                 view.Label = MenuKit.Text(view.Rect, "Label", view.Text, U(15), true, MenuKit.Muted, TextAlignmentOptions.Center);
                 view.Label.characterSpacing = 12;
                 view.Label.rectTransform.Place(0, 0, 1, 1);
                 // Room for the count shown beside the open tab's name.
                 view.Width = view.Label.GetPreferredValues(view.Text + " 0000").x + U(24);
+                view.Flash = new Glitch(view.Label);
                 TabViews[i] = view;
                 Add(view.Rect, () => SetTab(tab), on =>
                 {
@@ -158,6 +168,7 @@ namespace Modstoke.Loader
                 });
             }
             _tabRight = MenuKit.Tag(panel, "NextTab", "RB", U(TagHeight));
+            _tabMark = new Glide(panel, true);
 
             var search = MenuKit.Box(panel, "Search").AtRight(U(28), U(20), U(300), U(40));
             _searchBox = MenuKit.Fill(search, null, MenuKit.Field);
@@ -166,7 +177,7 @@ namespace Modstoke.Loader
             _searchHot = Add(search, () => FocusSearch(true));
 
             var rule = MenuKit.Box(panel, "Rule").Strip(U(70), U(2), U(28), U(28));
-            MenuKit.Fill(rule, MenuKit.Brush, MenuKit.Rule);
+            MenuKit.Fill(rule, null, MenuKit.Rule);
             // The rule under the tabs fills from the left while the game is still hearing from servers.
             _progress = MenuKit.Box(rule, "Progress").Place(0, 0, 0, 1);
             MenuKit.Fill(_progress, null, MenuKit.Soft);
@@ -200,6 +211,7 @@ namespace Modstoke.Loader
             HeaderViews[3] = Header(header, 3, "ping", true, -U(70), 0);
 
             var visible = Mathf.Clamp(Mathf.FloorToInt((panelHeight - U(RowsTop) - U(40)) / U(RowHeight + RowGap)), 3, 14);
+            _rowMark = new Glide(panel, false);
             _rows = new RowView[visible];
             for (var i = 0; i < visible; i++) _rows[i] = Row(panel, i);
 
@@ -242,11 +254,12 @@ namespace Modstoke.Loader
         {
             var rect = MenuKit.Box(panel, "Row " + slot).Strip(U(RowsTop + slot * (RowHeight + RowGap)), U(RowHeight), U(28), U(28));
             var view = new RowView { Rect = rect };
-            view.Highlight = MenuKit.Fill(MenuKit.Box(rect, "Highlight").Place(0, 0, 1, 1), MenuKit.Brush, MenuKit.RowSelected);
+            view.Highlight = MenuKit.Fill(MenuKit.Box(rect, "Hover").Place(0, 0, 1, 1), null, MenuKit.RowHover);
             view.Marker = MenuKit.Fill(MenuKit.Box(rect, "Marker").Place(0, 0, 0, 1, U(10), U(11), -U(13), U(11)), null, MenuKit.Faint);
             // Each line gets a box taller than its text: an ellipsis box shorter than the line hides it.
             view.Name = MenuKit.Text(rect, "Name", "", U(17), true, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
             view.Name.rectTransform.Place(0, 0.5f, 1, 1, U(24), -U(5), U(382), U(2));
+            view.Flash = new Glitch(view.Name);
             view.Kind = MenuKit.Text(rect, "Kind", "", U(13), false, MenuKit.Muted, TextAlignmentOptions.MidlineLeft, true);
             view.Kind.rectTransform.Place(0, 0, 1, 0.5f, U(24), U(1), U(382), -U(3));
             view.Status = MenuKit.Text(rect, "Status", "", U(15), true, MenuKit.Faint);
@@ -273,7 +286,8 @@ namespace Modstoke.Loader
 
         private static void BuildDetails(RectTransform root, float pad)
         {
-            var panel = MenuKit.PanelBox(root, "Details").rectTransform.Place(1, 0, 1, 1, -(pad + U(440)), _bottom, pad, U(PanelTop));
+            var panel = MenuKit.Box(root, "Details").Place(1, 0, 1, 1, -(pad + U(440) - U(28)), _bottom, pad - U(28), U(PanelTop));
+            MenuKit.Hairline(panel, "Top", 0, U(28), U(28));
             var panelHeight = root.rect.height - _bottom - U(PanelTop);
             _kind = MenuKit.Text(panel, "Kind", "", U(13), true, MenuKit.Muted);
             _kind.characterSpacing = 18;
@@ -488,12 +502,17 @@ namespace Modstoke.Loader
             {
                 var view = TabViews[i];
                 var on = i == (int)_tab;
-                view.Brush.enabled = on;
-                view.Label.color = on ? MenuKit.Dark : view.Hovered ? MenuKit.Ink : MenuKit.Muted;
+                view.Label.color = on ? MenuKit.Ink : view.Hovered ? MenuKit.Soft : MenuKit.Muted;
                 view.Label.text = on && Listed.Count > 0
-                    ? view.Text + " <color=" + MenuKit.Html(MenuKit.Faint) + ">" + Listed.Count + "</color>"
+                    ? view.Text + " <color=" + MenuKit.Html(MenuKit.Muted) + ">" + Listed.Count + "</color>"
                     : view.Text;
             }
+            if (_paintedTab == _tab) return;
+            var first = (int)_paintedTab < 0;
+            _paintedTab = _tab;
+            var open = TabViews[(int)_tab];
+            _tabMark.Target(open.Under, first);
+            if (!first) open.Flash.Pulse();
         }
 
         private static void PaintTools()
@@ -537,16 +556,26 @@ namespace Modstoke.Loader
 
         private static void PaintHighlights()
         {
+            RowView selectedView = null;
             for (var i = 0; i < _rows.Length; i++)
             {
                 var index = _top + i;
                 if (index >= Entries.Count) continue;
-                var selected = index == _selected;
                 var view = _rows[i];
-                view.Highlight.enabled = selected || i == _hoverRow;
+                if (index == _selected) selectedView = view;
+                // The focus mark covers the selected row; others only take a faint hover.
+                view.Highlight.enabled = i == _hoverRow && index != _selected;
                 // The selection dims while the controller is up in the filters or column headers.
-                view.Highlight.color = selected && _zone == Zone.List ? MenuKit.RowSelected : MenuKit.RowHover;
+                view.Highlight.color = MenuKit.RowHover;
             }
+            var mark = selectedView != null && _zone == Zone.List ? selectedView.Rect : null;
+            _rowMark.Target(mark);
+            _rowMark.Follow();
+            if (selectedView == null || _selectedId == _paintedSelection) return;
+            // A newly selected server flashes as it is reached, not when the list merely redraws.
+            var moved = _paintedSelection != IntPtr.Zero;
+            _paintedSelection = _selectedId;
+            if (moved) selectedView.Flash.Pulse();
         }
 
         private static void PaintRow(RowView view, int index)

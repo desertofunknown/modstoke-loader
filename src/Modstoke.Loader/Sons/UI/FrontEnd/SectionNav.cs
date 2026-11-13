@@ -56,21 +56,23 @@ namespace Modstoke.Loader
             _rect.sizeDelta = new Vector2(Mathf.Max(0, x - gap), FrontEnd.U(Height));
         }
 
+        // The open section is bright and underlined, as an open tab is; the other waits in a muted tone.
         private (RectTransform Rect, TextMeshProUGUI Label) Item(string name, bool open)
         {
             var rect = MenuKit.Box(_rect, name);
-            if (open) MenuKit.Fill(rect, MenuKit.Brush, MenuKit.Ink);
-            var label = MenuKit.Text(rect, "Label", "", FrontEnd.U(21), true, open ? MenuKit.Dark : MenuKit.Muted, TextAlignmentOptions.Center);
+            if (open)
+                MenuKit.Fill(MenuKit.Box(rect, "Under").Place(0, 0, 1, 0, FrontEnd.U(14), FrontEnd.U(6), FrontEnd.U(14),
+                    -(FrontEnd.U(6) + Mathf.Max(2f, FrontEnd.U(3)))), null, MenuKit.Ink);
+            var label = MenuKit.Text(rect, "Label", "", FrontEnd.U(21), true, open ? MenuKit.Ink : MenuKit.Muted, TextAlignmentOptions.Center);
             label.characterSpacing = 14;
             label.rectTransform.Place(0, 0, 1, 1);
             return (rect, label);
         }
 
-        // An item is as wide as its text; the open one has room for the brush stroke around it.
         private static void Fit((RectTransform Rect, TextMeshProUGUI Label) item, string text, bool open)
         {
             item.Label.text = text;
-            item.Rect.sizeDelta = new Vector2(item.Label.GetPreferredValues(text).x + FrontEnd.U(open ? 68 : 44), FrontEnd.U(Height));
+            item.Rect.sizeDelta = new Vector2(item.Label.GetPreferredValues(text).x + FrontEnd.U(28), FrontEnd.U(Height));
         }
 
         private static void Label((RectTransform Rect, TextMeshProUGUI Label) tag, string text)
