@@ -35,6 +35,7 @@ namespace Modstoke.Preloader
             Add("scan-method-refs", settings.ScanMethodRefs.ToString());
             Add("dump-dummy-assemblies", settings.DumpDummyAssemblies.ToString());
             Add("obfuscation-regex", settings.ObfuscationRegex);
+            Add("managed-unity-math", InteropManagedMath.Enabled ? "on" : "off");
             if (File.Exists(settings.RenameMapPath))
                 AddFile("rename-map", settings.RenameMapPath);
             else

@@ -68,7 +68,8 @@ namespace Modstoke.Preloader
                         // Other native wrappers take precedence, including constructors and abstract declarations.
                         if (existing != null)
                         {
-                            entry.Set("existing-wrapper");
+                            if (!TryQueueManagedMath(original, existing.NewMethod, type, imports, entry))
+                                entry.Set("existing-wrapper");
                             continue;
                         }
                         if (TryQueueTransitionAnimation(original, type, imports, resolver, entry))
@@ -457,6 +458,7 @@ namespace Modstoke.Preloader
                         throw;
                     }
                 }
+                FillManagedMathBodies();
                 foreach (var initializer in pendingInitializers)
                     InteropNativeCallStubs.PrependInitializer(initializer.Field, initializer.Delegate,
                         initializer.Original, initializer.Imports);
@@ -477,6 +479,7 @@ namespace Modstoke.Preloader
                 pendingBodies.Clear();
                 completedBodies.Clear();
                 pendingInitializers.Clear();
+                pendingMathBodies.Clear();
                 valueConstructorBodies.Clear();
                 referenceConstructorBodies.Clear();
                 interfaceImplementations?.Clear();

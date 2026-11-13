@@ -240,6 +240,14 @@ namespace Modstoke.Loader
             if (e.IsInWorld) Interlocked.Exchange(ref _rescanCounters, 1);
         }
 
+        internal static bool Active => _active;
+
+        // Named moments on the capture timeline, such as the game's loading steps; nothing when no capture runs.
+        internal static void Mark(string name, object detail = null)
+        {
+            if (_active) Emit(new { kind = "mark", elapsedMs = ElapsedMs(), name, detail });
+        }
+
         private static void OnSave(SaveLifecycleEvent e)
         {
             if (_active) Emit(new { kind = "save-lifecycle", elapsedMs = ElapsedMs(), operation = e.Operation,

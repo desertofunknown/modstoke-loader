@@ -68,6 +68,7 @@ namespace Modstoke.Preloader
 
         private CilInstruction TranslateMethod(CilOpCode code, IMethodDescriptor method)
         {
+            if (TryTranslateClrMath(code, method, out var mathCall)) return mathCall;
             if (TryTranslateMovieTextureBaseConstructor(code, method, out var movieInitializer)) return movieInitializer;
             if (TryTranslateWwwBaseConstructor(code, method, out var wwwInitializer)) return wwwInitializer;
             if (TryTranslateWebFormBaseConstructor(code, method, out var formInitializer)) return formInitializer;

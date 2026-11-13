@@ -441,6 +441,20 @@ the installed runtime and release package; ownership is not runtime acceptance.
   installed generator's managed-corlib, array and Unity assembly lookup rules.
   Pending method bodies belong to one generation run and are cleared even when
   translation throws; a failed run cannot leave jobs in a process-wide queue.
+  Unity value math (`Vector2/3/4`, `Vector2Int/3Int`, `Quaternion`, `Mathf`,
+  `Color`, `Rect`, `Bounds`, `Matrix4x4`, `Plane`, `Ray`) is the one place where
+  existing native wrappers are replaced: `InteropManagedMath` admits a method only
+  when Unity's managed body is arithmetic over those types, primitives and
+  `System.Math` (no native calls, statics written, arrays, strings, exceptions or
+  virtual dispatch), and the translated body replaces the `il2cpp_runtime_invoke`
+  wrapper, which also boxed every result on the IL2CPP heap. A body that fails to
+  translate keeps its native wrapper. About 440 methods qualify in 2022.2.16,
+  including the operators, `Lerp`, `normalized`, `Cross`, `Dot` and the value
+  constructors; engine-implemented ones such as `Slerp`, `Euler`, `TRS` and
+  anything reading `Time` stay native. Translated bodies call `System.Math` and
+  `System.MathF` on the CLR instead of the game corlib's native wrappers. Setting
+  `MODSTOKE_NATIVE_UNITY_MATH=1` keeps every wrapper native; the value is part of
+  the interop input hash, so changing it regenerates the assemblies.
   `InteropNativeCallStubs` owns restored native-call delegates, static
   initialization and invocation bodies. Reference-typed ref/out temporaries are
   written back after the call instead of discarded; a typed local preserves any
