@@ -28,12 +28,20 @@ namespace Modstoke.Sons
 
         private static double Now => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
 
-        /// <summary>Adds a line to the next kick's reason, from a client that already knows why it will be refused.</summary>
-        internal static void Expect(string detail)
+        /// <summary>
+        /// From a client that already knows why it will be refused: the reason it expects, shown if the kick's own
+        /// text never arrives, and a detail line added to whichever reason is shown.
+        /// </summary>
+        internal static void Expect(string reason, string detail)
         {
             _detail = detail;
             _detailUntil = Now + ShowSeconds;
+            _reason = reason + "\n\n" + detail;
+            _reasonUntil = Now + ShowSeconds;
+            _logged = false;
         }
+
+        private static double _kickedAt = double.MinValue;
 
         internal static void Tick()
         {
@@ -43,10 +51,29 @@ namespace Modstoke.Sons
                 if (!Host.IsServer) Hook();
                 return;
             }
-            if (_dialog == null) return;
+            if (_reason == null) return;
             try
             {
-                if (!_dialog || !_dialog.gameObject.activeInHierarchy || Now >= _reasonUntil) Release();
+                if (_dialog == null)
+                {
+                    // The popup opens after the title screen loads, by a path that may skip the hooked method.
+                    if (Now >= _reasonUntil || Now < _nextLook) return;
+                    _nextLook = Now + 0.2;
+                    var manager = ModalDialogManager._instance;
+                    if (manager == null || !manager) return;
+                    foreach (var popup in new[] { manager.KickedFromGameDialog, manager.BannedFromGameDialog })
+                        if (popup != null && popup && popup.gameObject.activeInHierarchy)
+                        {
+                            AfterDialog(popup);
+                            break;
+                        }
+                    return;
+                }
+                if (!_dialog || !_dialog.gameObject.activeInHierarchy || Now >= _reasonUntil)
+                {
+                    Release();
+                    _reason = null;
+                }
                 // Localization can finish after the popup opens and write its generic line again.
                 else if (_dialog._gui.ContentText is { } text && text && text.text != _reason) text.text = _reason;
             }
@@ -56,10 +83,19 @@ namespace Modstoke.Sons
             }
         }
 
+        private static double _nextLook;
+
         private static void Hook()
         {
             var harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-kick-reason");
+            // Each kick path the game has; whichever runs first keeps the reason.
             Patch(harmony, AccessTools.Method(typeof(CoopClientCallbacks), "HandleKickDisconnect", new[] { typeof(CoopKickToken) }),
+                prefix: nameof(BeforeKick));
+            Patch(harmony, AccessTools.Method(typeof(global::Sons.Multiplayer.Dedicated.DedicatedServerBrowser),
+                nameof(global::Sons.Multiplayer.Dedicated.DedicatedServerBrowser.OnKickedOrBanned), new[] { typeof(CoopKickToken) }),
+                prefix: nameof(BeforeKick));
+            Patch(harmony, AccessTools.Method(typeof(global::Sons.Gui.Multiplayer.CoopLobbyDialogGui),
+                nameof(global::Sons.Gui.Multiplayer.CoopLobbyDialogGui.OnKickedOrBanned), new[] { typeof(CoopKickToken) }),
                 prefix: nameof(BeforeKick));
             Patch(harmony, AccessTools.Method(typeof(ModalDialogManager), nameof(ModalDialogManager.Show_Internal),
                 new[] { typeof(ModalDialogManager.Dialog), typeof(Il2CppReferenceArray<Il2CppSystem.Object>), typeof(string), typeof(bool) }),
@@ -95,10 +131,14 @@ namespace Modstoke.Sons
                 // A native kick sends a localization key; a reason written for players has spaces.
                 var written = !string.IsNullOrEmpty(message) && message.Contains(' ') ? message : null;
                 var detail = _detail != null && Now < _detailUntil ? _detail : null;
+                // Several kick paths can run for one kick; the first one keeps the reason.
+                if (written == null && detail == null || _reason != null && Now < _kickedAt + 5) return;
                 _detail = null;
                 _reason = written == null ? detail : detail == null ? written : written + "\n\n" + detail;
+                _kickedAt = Now;
                 _reasonUntil = Now + ShowSeconds;
                 _logged = false;
+                RuntimeEntryPoint.LogSource?.LogInfo("Kicked by the server: " + _reason.Replace("\n\n", " "));
             }
             catch (Exception error)
             {

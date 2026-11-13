@@ -151,6 +151,7 @@ namespace Modstoke.Sons
         private const double RepublishSeconds = 60;
         private static double _next;
         private static bool _published, _failed;
+        private static int _errors;
         private static readonly HashSet<string> Keys = new(StringComparer.Ordinal);
 
         private static double Now => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
@@ -179,8 +180,17 @@ namespace Modstoke.Sons
                 RuntimeEntryPoint.LogSource?.LogInfo("Publishing this server's Modstoke details to the server browser ("
                     + rules.Count + " Steam rules).");
             }
+            catch (InvalidOperationException)
+            {
+                // Steam's game server starts some seconds after the Loader; it is asked again shortly.
+            }
             catch (Exception error)
             {
+                if (++_errors < 5)
+                {
+                    _next = Now + 10;
+                    return;
+                }
                 _failed = true;
                 RuntimeEntryPoint.LogSource?.LogWarning("This server's Modstoke details cannot be published to the server browser: "
                     + error.Message);

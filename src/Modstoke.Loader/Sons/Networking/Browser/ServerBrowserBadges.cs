@@ -2,18 +2,17 @@
 // Copyright (C) 2026 Alex Cooper
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using HarmonyLib;
-using Il2CppInterop.Runtime;
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Modstoke.Loader;
 using Sons.Gui.Multiplayer;
 using Sons.Multiplayer;
 using Sons.Multiplayer.Dedicated;
-using Steamworks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -30,7 +29,7 @@ namespace Modstoke.Sons
     internal static class ServerBrowserBadges
     {
         private const int MaxQueries = 3;
-        private const double AnswerSeconds = 8, KeepSeconds = 120, RetrySeconds = 30;
+        private const double AnswerSeconds = 4, KeepSeconds = 120, RetrySeconds = 30;
         private const string Green = "#9CCB7A", Amber = "#E3B65A", Red = "#E2715E", Dim = "#8C8C8C";
 
         private enum State { Pending, Modstoke, Vanilla, NoAnswer }
@@ -41,11 +40,8 @@ namespace Modstoke.Sons
             internal ushort Port;
             internal State State = State.Pending;
             internal ServerDetails Details;
-            internal double Asked, Expires;
+            internal double Expires;
             internal bool Started, Done;
-            internal readonly Dictionary<string, string> Rules = new(StringComparer.Ordinal);
-            internal ISteamMatchmakingRulesResponse Response;
-            internal HServerQuery Handle;
         }
 
         private sealed class Row
@@ -61,9 +57,8 @@ namespace Modstoke.Sons
         private static readonly Dictionary<string, Server> Servers = new(StringComparer.Ordinal);
         private static readonly Queue<string> Waiting = new();
         private static readonly Dictionary<IntPtr, Row> Rows = new();
-        // Steam may still hold a finished query's response until the next frame.
-        private static readonly List<ISteamMatchmakingRulesResponse> Retired = new();
-        private static bool _hooked;
+        private static readonly ConcurrentQueue<(Server Server, Dictionary<string, string> Rules)> Answers = new();
+        private static bool _hooked, _answerLogged;
         private static int _running;
         private static double _nextPrune;
 
@@ -78,15 +73,9 @@ namespace Modstoke.Sons
                 return;
             }
             if (Rows.Count == 0 && _running == 0 && Waiting.Count == 0) return;
-            Retired.Clear();
             var now = Now;
-            foreach (var server in Servers.Values)
-                if (server.Started && !server.Done && now - server.Asked > AnswerSeconds)
-                {
-                    try { SteamMatchmakingServers.CancelServerQuery(server.Handle); }
-                    catch (Exception) { /* Steam may have finished it meanwhile. */ }
-                    Finish(server, false);
-                }
+            while (Answers.TryDequeue(out var answer))
+                Finish(answer.Server, answer.Rules);
             while (_running < MaxQueries && Waiting.Count > 0)
                 if (Servers.TryGetValue(Waiting.Dequeue(), out var next) && !next.Started)
                     Start(next);
@@ -211,44 +200,36 @@ namespace Modstoke.Sons
         private static void Start(Server server)
         {
             server.Started = true;
-            server.Asked = Now;
             _running++;
-            try
+            var address = new System.Net.IPAddress(new[] { (byte)(server.Ip >> 24), (byte)(server.Ip >> 16), (byte)(server.Ip >> 8), (byte)server.Ip });
+            // The query runs off the game thread; its answer is applied on the next tick.
+            Task.Run(async () =>
             {
-                server.Response = new ISteamMatchmakingRulesResponse(
-                    DelegateSupport.ConvertDelegate<ISteamMatchmakingRulesResponse.RulesResponded>(
-                        new Action<string, string>((rule, value) =>
-                        {
-                            if (rule != null && rule.StartsWith("ms_", StringComparison.Ordinal)) server.Rules[rule] = value ?? "";
-                        })),
-                    DelegateSupport.ConvertDelegate<ISteamMatchmakingRulesResponse.RulesFailedToRespond>(
-                        new Action(() => Finish(server, false))),
-                    DelegateSupport.ConvertDelegate<ISteamMatchmakingRulesResponse.RulesRefreshComplete>(
-                        new Action(() => Finish(server, true))));
-                server.Handle = SteamMatchmakingServers.ServerRules(server.Ip, server.Port, server.Response);
-            }
-            catch (Exception error)
-            {
-                Finish(server, false);
-                RuntimeEntryPoint.LogSource?.LogWarning("A server's Modstoke details could not be requested: " + error.Message);
-            }
+                Dictionary<string, string> rules = null;
+                try { rules = await ServerRulesQuery.RunAsync(address, server.Port, TimeSpan.FromSeconds(AnswerSeconds)).ConfigureAwait(false); }
+                catch (Exception) { /* Treated as no answer. */ }
+                Answers.Enqueue((server, rules));
+            });
         }
 
-        private static void Finish(Server server, bool answered)
+        private static void Finish(Server server, Dictionary<string, string> rules)
         {
             if (server.Done) return;
             server.Done = true;
             _running = Math.Max(0, _running - 1);
-            server.Details = answered ? ServerDetails.FromRules(server.Rules) : null;
-            server.State = !answered ? State.NoAnswer : server.Details != null ? State.Modstoke : State.Vanilla;
-            server.Expires = Now + (answered ? KeepSeconds : RetrySeconds);
-            if (server.Response != null) Retired.Add(server.Response);
-            server.Response = null;
+            server.Details = ServerDetails.FromRules(rules);
+            server.State = rules == null ? State.NoAnswer : server.Details != null ? State.Modstoke : State.Vanilla;
+            server.Expires = Now + (rules != null ? KeepSeconds : RetrySeconds);
+            if (!_answerLogged && rules != null)
+            {
+                _answerLogged = true;
+                RuntimeEntryPoint.LogSource?.LogInfo("The server browser reads Modstoke details from server rules (first answer: "
+                    + rules.Count + " rules, " + (server.Details != null ? "Modstoke " + server.Details.Loader : "no Modstoke details") + ").");
+            }
             foreach (var row in Rows.Values)
                 if (row.Key != null && Servers.TryGetValue(row.Key, out var shown) && ReferenceEquals(shown, server))
                     Paint(row);
         }
-
         private static void Paint(Row row)
         {
             try
@@ -262,7 +243,7 @@ namespace Modstoke.Sons
                         State.Pending => Tint(Dim, "· · ·"),
                         State.Vanilla => row.LegacyModded ? Tint(Dim, "Modded") : Tint(Dim, "Vanilla"),
                         State.Modstoke => Describe(server.Details),
-                        _ => ""
+                        _ => row.LegacyModded ? Tint(Dim, "Modded") : Tint(Dim, "No details")
                     };
                 row.Badge.text = text;
                 row.Badge.gameObject.SetActive(text.Length > 0);

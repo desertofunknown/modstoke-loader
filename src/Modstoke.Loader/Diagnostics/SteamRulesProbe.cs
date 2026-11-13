@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
-using Il2CppInterop.Runtime;
+using System.Threading.Tasks;
 using Steamworks;
 
 namespace Modstoke.Loader
@@ -18,9 +18,6 @@ namespace Modstoke.Loader
     internal static class SteamRulesProbe
     {
         private static readonly int[] Lengths = { 32, 64, 127, 128, 255, 256, 511, 1024, 2048 };
-        private static ISteamMatchmakingRulesResponse _response;
-        private static List<string> _received;
-        private static DateTime _started;
 
         internal static string Run(string arguments)
         {
@@ -53,30 +50,17 @@ namespace Modstoke.Loader
             if (separator <= 0 || !IPAddress.TryParse(target.Substring(0, separator), out var address)
                 || !ushort.TryParse(target.Substring(separator + 1), out var port))
                 return "Give the server as ip:queryport, for example 127.0.0.1:27016.";
-            var bytes = address.MapToIPv4().GetAddressBytes();
-            var ip = (uint)(bytes[0] << 24 | bytes[1] << 16 | bytes[2] << 8 | bytes[3]);
-            _received = new List<string>();
-            _started = DateTime.UtcNow;
-            // Steam calls back on the game thread; the response must stay alive until it reports completion.
-            _response = new ISteamMatchmakingRulesResponse(
-                DelegateSupport.ConvertDelegate<ISteamMatchmakingRulesResponse.RulesResponded>(
-                    new Action<string, string>((rule, value) => _received?.Add(rule + " = " + Describe(rule, value)))),
-                DelegateSupport.ConvertDelegate<ISteamMatchmakingRulesResponse.RulesFailedToRespond>(
-                    new Action(() => Finish("the server did not answer the rules query"))),
-                DelegateSupport.ConvertDelegate<ISteamMatchmakingRulesResponse.RulesRefreshComplete>(
-                    new Action(() => Finish("complete"))));
-            SteamMatchmakingServers.ServerRules(ip, port, _response);
+            var started = DateTime.UtcNow;
+            Task.Run(async () =>
+            {
+                var rules = await global::Modstoke.Sons.ServerRulesQuery.RunAsync(address.MapToIPv4(), port, TimeSpan.FromSeconds(4));
+                var text = new StringBuilder("Steam rules query " + (rules == null ? "got no answer" : "complete") + " after "
+                    + (DateTime.UtcNow - started).TotalMilliseconds.ToString("F0") + " ms; " + (rules?.Count ?? 0) + " rule(s):");
+                foreach (var rule in rules ?? new Dictionary<string, string>())
+                    text.AppendLine().Append("  ").Append(rule.Key).Append(" = ").Append(Describe(rule.Key, rule.Value));
+                RuntimeEntryPoint.LogSource?.LogInfo(text.ToString());
+            });
             return "Asked " + target + " for its Steam rules; the answer is logged when it arrives.";
-        }
-
-        private static void Finish(string outcome)
-        {
-            var received = _received ?? new List<string>();
-            var text = new StringBuilder("Steam rules query " + outcome + " after "
-                + (DateTime.UtcNow - _started).TotalMilliseconds.ToString("F0") + " ms; " + received.Count + " rule(s):");
-            foreach (var line in received) text.AppendLine().Append("  ").Append(line);
-            RuntimeEntryPoint.LogSource?.LogInfo(text.ToString());
-            _received = null;
         }
 
         // Probe values are filler with a recognisable end, so a truncated value shows where it was cut.

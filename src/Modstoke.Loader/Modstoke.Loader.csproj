@@ -905,6 +905,7 @@
     <Compile Include="Sons/Networking/Enrollment/ContentAgreement.cs" />
     <Compile Include="Sons/Networking/Enrollment/KickReason.cs" />
     <Compile Include="Sons/Networking/Browser/ServerDetails.cs" />
+    <Compile Include="Sons/Networking/Browser/ServerRulesQuery.cs" />
     <Compile Include="Sons/Networking/Browser/ServerBrowserBadges.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.UiData.cs" />
     <Compile Include="Sons/Inventory/Items.cs" />

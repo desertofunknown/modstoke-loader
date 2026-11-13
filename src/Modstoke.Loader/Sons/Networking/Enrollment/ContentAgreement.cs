@@ -206,7 +206,8 @@ namespace Modstoke.Sons
                 RuntimeEntryPoint.LogSource?.LogWarning("This server's mod content differs from yours, so it will refuse you. "
                     + "The server has: " + remote.Summary + ". You have: " + _local.Summary + ".");
                 // The kick popup shows the server's notice; this adds what the player has, for comparison.
-                KickReason.Expect("Your game has: " + (_local.Count == 0 ? "no mod content" : _local.Summary) + ".");
+                KickReason.Expect(Notice(true, remote.Summary),
+                    "Your game has: " + (_local.Count == 0 ? "no mod content" : _local.Summary) + ".");
             }
             return true;
         }
