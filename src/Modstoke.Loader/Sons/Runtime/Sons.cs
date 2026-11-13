@@ -160,6 +160,7 @@ namespace Modstoke.Sons
                 global::Modstoke.Sons.Crafting.TickItemModels();
                 global::Modstoke.Sons.WeaponAttachments.Tick();
                 global::Modstoke.Sons.ContentAgreement.EnsureHooks();
+                global::Modstoke.Sons.KickReason.Tick();
             }
             finally
             {

@@ -9,7 +9,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Modstoke.Loader;
-using Sons.Gui.Multiplayer.Notifications;
 
 namespace Modstoke.Sons
 {
@@ -131,61 +130,9 @@ namespace Modstoke.Sons
             return Notice(differs, _local.Summary);
         }
 
-        // Server and client build the same text from the server's summary, so a client can show it (below).
         private static string Notice(bool differs, string serverSummary)
             => Fit((differs ? "Your mods don't match this server's. " : "This server uses mods with their own items. ")
                 + "Install the same mods to join: " + serverSummary + ".");
-
-        // The server browser's status bar shows its own localized "kicked" line and never reads the kick message.
-        // A Modstoke client that learned it differs swaps the reason in when that line appears shortly after.
-        private const double KickReasonSeconds = 120;
-        private static string _kickReason;
-        private static double _kickReasonUntil;
-        private static bool _statusHookTried, _kickReasonShown;
-
-        private static void PrepareKickScreen(string notice)
-        {
-            _kickReason = notice;
-            _kickReasonUntil = Now + KickReasonSeconds;
-            _kickReasonShown = false;
-            if (_statusHookTried) return;
-            _statusHookTried = true;
-            try
-            {
-                var target = HarmonyLib.AccessTools.Method(typeof(GameServerBrowserStatusBar), nameof(GameServerBrowserStatusBar.SetText),
-                    new[] { typeof(GameServerBrowserStatusBar.State), typeof(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<Il2CppSystem.Object>) })
-                    ?? throw new MissingMethodException(nameof(GameServerBrowserStatusBar), nameof(GameServerBrowserStatusBar.SetText));
-                new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-content-refusal").Patch(target,
-                    postfix: new HarmonyLib.HarmonyMethod(typeof(ContentAgreement), nameof(AfterStatusText)));
-            }
-            catch (Exception error)
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("The refusal reason cannot be shown in the server browser: " + error.Message);
-            }
-        }
-
-        private static void AfterStatusText(GameServerBrowserStatusBar __instance, GameServerBrowserStatusBar.State __0)
-        {
-            try
-            {
-                var localized = __instance._text;
-                if (localized == null || !localized) return;
-                var show = __0 == GameServerBrowserStatusBar.State.KickedFromGame && _kickReason != null && Now < _kickReasonUntil;
-                // The localized line would rewrite the text on its next refresh, so it pauses while ours shows.
-                localized.enabled = !show;
-                if (!show) return;
-                var text = localized.GetComponent<TMPro.TMP_Text>();
-                if (text != null && text) text.text = _kickReason;
-                if (_kickReasonShown) return;
-                _kickReasonShown = true;
-                RuntimeEntryPoint.LogSource?.LogInfo("Showing the refusal reason in the server browser"
-                    + (text != null && text ? "." : ", but its status bar has no text to write to."));
-            }
-            catch (Exception error)
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("The refusal reason could not be shown: " + error.Message);
-            }
-        }
 
         internal static void Tick()
         {
@@ -245,7 +192,8 @@ namespace Modstoke.Sons
                 Peers[peer.PeerId] = new Peer { Control = peer, State = Status.Differs, RemoteSummary = remote.Summary };
                 RuntimeEntryPoint.LogSource?.LogWarning("This server's mod content differs from yours, so it will refuse you. "
                     + "The server has: " + remote.Summary + ". You have: " + _local.Summary + ".");
-                PrepareKickScreen(Notice(true, remote.Summary));
+                // The kick popup shows the server's notice; this adds what the player has, for comparison.
+                KickReason.Expect("Your game has: " + (_local.Count == 0 ? "no mod content" : _local.Summary) + ".");
             }
             return true;
         }
