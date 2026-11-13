@@ -907,6 +907,10 @@
     <Compile Include="Sons/Networking/Browser/ServerDetails.cs" />
     <Compile Include="Sons/Networking/Browser/ServerRulesQuery.cs" />
     <Compile Include="Sons/Networking/Browser/ServerBrowserBadges.cs" />
+    <Compile Include="Sons/UI/Multiplayer/MenuKit.cs" />
+    <Compile Include="Sons/UI/Multiplayer/MultiplayerTakeover.cs" />
+    <Compile Include="Sons/UI/Multiplayer/MultiplayerScreen.cs" />
+    <Compile Include="Sons/UI/Multiplayer/MultiplayerScreen.View.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.UiData.cs" />
     <Compile Include="Sons/Inventory/Items.cs" />
     <Compile Include="Sons/Inventory/Items.Pages.cs" />

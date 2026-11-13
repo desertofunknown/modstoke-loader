@@ -36,6 +36,7 @@ namespace Modstoke.Sons
 
         private sealed class Server
         {
+            internal string Key;
             internal uint Ip;
             internal ushort Port;
             internal State State = State.Pending;
@@ -190,10 +191,27 @@ namespace Modstoke.Sons
             return row;
         }
 
+        /// <summary>Raised on the game thread when a server's details arrive, with its "ip:queryport" key.</summary>
+        internal static event Action<string> Answered;
+
+        /// <summary>Asks a dedicated server for its details unless a recent answer is cached.</summary>
+        internal static void Ask(string key, uint ip, ushort port) => Request(key, ip, port);
+
+        /// <summary>False while unasked or waiting; then whether the server answered and the Modstoke details it publishes.</summary>
+        internal static bool TryRead(string key, out bool answered, out ServerDetails details)
+        {
+            answered = false;
+            details = null;
+            if (key == null || !Servers.TryGetValue(key, out var server) || !server.Done) return false;
+            answered = server.State != State.NoAnswer;
+            details = server.Details;
+            return true;
+        }
+
         private static void Request(string key, uint ip, ushort port)
         {
             if (Servers.TryGetValue(key, out var known) && (!known.Done || Now < known.Expires)) return;
-            Servers[key] = new Server { Ip = ip, Port = port };
+            Servers[key] = new Server { Key = key, Ip = ip, Port = port };
             Waiting.Enqueue(key);
         }
 
@@ -220,6 +238,7 @@ namespace Modstoke.Sons
             server.Details = ServerDetails.FromRules(rules);
             server.State = rules == null ? State.NoAnswer : server.Details != null ? State.Modstoke : State.Vanilla;
             server.Expires = Now + (rules != null ? KeepSeconds : RetrySeconds);
+            Answered?.Invoke(server.Key);
             if (!_answerLogged && rules != null)
             {
                 _answerLogged = true;
@@ -266,7 +285,7 @@ namespace Modstoke.Sons
             return Tint(color, "Modstoke " + details.Loader + " · " + verdict);
         }
 
-        private static (string Color, string Verdict) Judge(ServerDetails details)
+        internal static (string Color, string Verdict) Judge(ServerDetails details)
         {
             var mine = ContentAgreement.Fingerprint;
             if (details.Content.Length > 0 && details.Content != mine) return (Red, "mods differ");
@@ -276,7 +295,7 @@ namespace Modstoke.Sons
             return (Green, "mods match");
         }
 
-        private static IEnumerable<ServerDetails.Mod> Missing(ServerDetails details)
+        internal static IEnumerable<ServerDetails.Mod> Missing(ServerDetails details)
         {
             var local = ServerDetails.LocalMods();
             return details.Mods.Where(mod => mod.Client == "required"
@@ -345,6 +364,6 @@ namespace Modstoke.Sons
 
         private static string Tint(string color, string text) => "<color=" + color + ">" + text + "</color>";
 
-        private static string IpText(uint ip) => (ip >> 24) + "." + ((ip >> 16) & 255) + "." + ((ip >> 8) & 255) + "." + (ip & 255);
+        internal static string IpText(uint ip) => (ip >> 24) + "." + ((ip >> 16) & 255) + "." + ((ip >> 8) & 255) + "." + (ip & 255);
     }
 }

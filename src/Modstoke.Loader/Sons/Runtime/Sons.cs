@@ -163,6 +163,7 @@ namespace Modstoke.Sons
                 global::Modstoke.Sons.KickReason.Tick();
                 global::Modstoke.Sons.ServerDetailsPublisher.Tick();
                 global::Modstoke.Sons.ServerBrowserBadges.Tick();
+                MultiplayerTakeover.Tick();
             }
             finally
             {
