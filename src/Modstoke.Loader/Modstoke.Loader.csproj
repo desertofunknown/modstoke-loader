@@ -777,6 +777,7 @@
     <Compile Include="Diagnostics/RuntimeConsole.cs" />
     <Compile Include="Diagnostics/ServerConsoleInput.cs" />
     <Compile Include="Diagnostics/BoltWidths.cs" />
+    <Compile Include="Diagnostics/SteamRulesProbe.cs" />
     <Compile Include="UI/Menus/ModMenuState.cs" />
     <Compile Include="UI/Menus/MenuText.cs" />
     <Compile Include="UI/Menus/MenuView.cs" />

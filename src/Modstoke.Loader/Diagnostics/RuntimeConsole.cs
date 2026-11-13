@@ -160,6 +160,11 @@ namespace Modstoke.Loader
                     Report(submission, "Info", BoltWidths.Run());
                     return;
                 }
+                if (text == "steamrules" || text.StartsWith("steamrules ", StringComparison.Ordinal))
+                {
+                    Report(submission, "Info", SteamRulesProbe.Run(text.Substring("steamrules".Length)));
+                    return;
+                }
                 if (text is "help" or "status" or "mods")
                 {
                     var state = ConsoleHub.Read(long.MaxValue, 1);
