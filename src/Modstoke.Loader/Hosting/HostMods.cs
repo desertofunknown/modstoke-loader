@@ -356,6 +356,12 @@ namespace Modstoke.Loader
             }
         }
 
+        /// <summary>Enabled mods other than libraries, with what clients need of each ("required", "server", ...).</summary>
+        internal static IReadOnlyList<(string Id, string Name, string Version, string Client)> ListedMods() =>
+            Snapshot().Where(mod => mod.Enabled && !string.IsNullOrWhiteSpace(mod.Id) && KindName(mod.LoaderType) != "library")
+                .Select(mod => (mod.Id, mod.Name, mod.Version ?? "", ClientRequirement(mod)))
+                .ToArray();
+
         private static ModFacts[] Snapshot() =>
             (LoaderState.CurrentInventory?.Entries ?? Array.Empty<ModInventoryEntry>())
                 .Where(entry => entry != null)

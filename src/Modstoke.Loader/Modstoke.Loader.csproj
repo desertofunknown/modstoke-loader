@@ -904,6 +904,8 @@
     <Compile Include="Sons/Networking/Enrollment/ClientEnrollment.ModuleStorage.cs" />
     <Compile Include="Sons/Networking/Enrollment/ContentAgreement.cs" />
     <Compile Include="Sons/Networking/Enrollment/KickReason.cs" />
+    <Compile Include="Sons/Networking/Browser/ServerDetails.cs" />
+    <Compile Include="Sons/Networking/Browser/ServerBrowserBadges.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.UiData.cs" />
     <Compile Include="Sons/Inventory/Items.cs" />
     <Compile Include="Sons/Inventory/Items.Pages.cs" />
@@ -999,6 +1001,7 @@
     <Reference Include="Sons.Gameplay.GameSetup" HintPath="$(GameInteropRoot)\Sons.Gameplay.GameSetup.dll" Private="false" />
     <Reference Include="Sons.Gameplay.StatusEffects" HintPath="$(GameInteropRoot)\Sons.Gameplay.StatusEffects.dll" Private="false" />
     <Reference Include="Sons.Gui" HintPath="$(GameInteropRoot)\Sons.Gui.dll" Private="false" />
+    <Reference Include="Sons.Gui.Multiplayer" HintPath="$(GameInteropRoot)\Sons.Gui.Multiplayer.dll" Private="false" />
     <Reference Include="Sons.Gui.Multiplayer.Notifications" HintPath="$(GameInteropRoot)\Sons.Gui.Multiplayer.Notifications.dll" Private="false" />
     <Reference Include="Sons.Gui.Options" HintPath="$(GameInteropRoot)\Sons.Gui.Options.dll" Private="false" />
     <Reference Include="Sons.Item" HintPath="$(GameInteropRoot)\Sons.Item.dll" Private="false" />

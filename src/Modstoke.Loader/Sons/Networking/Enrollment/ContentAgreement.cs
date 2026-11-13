@@ -53,6 +53,19 @@ namespace Modstoke.Sons
         /// <summary>The summary sent with refusals, such as "modstoke.optics 1900-1919".</summary>
         public static string Summary => Capture().Summary;
 
+        /// <summary>A short form of the content digest that servers publish before a join, or "" without content.</summary>
+        internal static string Fingerprint
+        {
+            get
+            {
+                var declaration = Capture();
+                return declaration.Count == 0 ? "" : declaration.Count + ":" + Convert.ToHexString(declaration.Digest, 0, 8);
+            }
+        }
+
+        /// <summary>Whether this server lets vanilla clients in despite its content (allowVanillaClients).</summary>
+        internal static bool AllowsVanilla => RuntimePreferences.ReadBoolean(AllowVanillaKey, false);
+
         /// <summary>The agreement state with one connected peer, or NotChecked when it was not checked.</summary>
         public static Status Read(ControlPeer peer)
             => peer != null && Peers.TryGetValue(peer.PeerId, out var entry) && ReferenceEquals(entry.Control, peer)
