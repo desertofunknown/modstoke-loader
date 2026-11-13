@@ -14,9 +14,10 @@ namespace Modstoke.Sons
     /// <summary>
     /// Loading-time corrections that need no game patch.
     /// Unity integrates asynchronously loaded scenes in a slice of each frame: 4 ms at the default BelowNormal
-    /// priority, 50 ms at High. The game keeps the default and caps its loading screen at 30 fps, so most of every
-    /// loading frame sat idle. From the loading screen until the player is in the world the priority is High, then the
-    /// game's own value is put back so streaming in the world keeps its small slice.
+    /// priority, 50 ms at High, and uploads their textures and meshes in another slice. The game keeps the defaults and
+    /// caps its loading screen at 30 fps, so most of every loading frame sat idle. From the loading screen until the
+    /// player is in the world both slices are wide, then the game's own values are put back so streaming in the world
+    /// keeps its small slices.
     /// Menus: the multiplayer scenes carry a 30 fps override, which made the front end's motion visibly choppy; while
     /// no world is loading or running, such overrides are raised to the game's own menu limit.
     /// During a performance capture each loading step is marked on the timeline.
@@ -24,6 +25,9 @@ namespace Modstoke.Sons
     internal static class LoadingPerformance
     {
         private const int DefaultMenuFps = 60;
+        private const int LoadingUploadSliceMs = 24;
+        private const int LoadingUploadBufferMb = 256;
+        private static (int Slice, int Buffer, bool Persistent)? _gameUpload;
         private static readonly Dictionary<IntPtr, (FpsLimiterOverride Override, int Fps)> RaisedOverrides = new();
         private static readonly List<(LoadScene Scene, int Steps)> Watched = new();
         private static ThreadPriority? _gamePriority;
@@ -45,9 +49,10 @@ namespace Modstoke.Sons
                 // Loads that matter start outside the game scene; the game's flag alone is not trusted inside it.
                 if (!_loading && !state.IsInWorld && (loadingScene || (LoadScene._isLoading && !gameScene)))
                     Begin(state.SceneName);
-                else if (_loading && (state.IsInWorld ||
-                    (string.Equals(state.SceneKind, SceneKind.Title, StringComparison.Ordinal) && !LoadScene._isLoading)))
-                    End(state.IsInWorld ? "in the world" : "at the title");
+                // A menu scene load also sets the game's flag; once it clears outside the loading and game scenes, the
+                // menus are showing again. Between the loading screen and the world the game scene keeps it open.
+                else if (_loading && (state.IsInWorld || (!loadingScene && !gameScene && !LoadScene._isLoading)))
+                    End(state.IsInWorld ? "in the world" : "in the menus");
 
                 if (_loading)
                 {
@@ -80,7 +85,22 @@ namespace Modstoke.Sons
                 _gamePriority = current;
                 Application.backgroundLoadingPriority = ThreadPriority.High;
             }
-            PerformanceCapture.Mark("loading-started", new { scene, gamePriority = current.ToString() });
+            // Textures and meshes reach the GPU through Unity's async upload ring: a 2 ms slice a frame by default,
+            // 60 ms a second under the loading screen's 30 fps cap while gigabytes stream in.
+            var upload = (Slice: QualitySettings.asyncUploadTimeSlice, Buffer: QualitySettings.asyncUploadBufferSize,
+                Persistent: QualitySettings.asyncUploadPersistentBuffer);
+            _gameUpload ??= upload;
+            QualitySettings.asyncUploadTimeSlice = Math.Max(upload.Slice, LoadingUploadSliceMs);
+            QualitySettings.asyncUploadBufferSize = Math.Max(upload.Buffer, LoadingUploadBufferMb);
+            QualitySettings.asyncUploadPersistentBuffer = true;
+            PerformanceCapture.Mark("loading-started", new
+            {
+                scene,
+                gamePriority = current.ToString(),
+                gameUploadSliceMs = upload.Slice,
+                gameUploadBufferMb = upload.Buffer,
+                gameUploadPersistent = upload.Persistent
+            });
             Watched.Clear();
             _loaderSteps = -1;
             _scannedScene = null;
@@ -125,25 +145,38 @@ namespace Modstoke.Sons
             PerformanceCapture.Mark("loading-finished", where);
         }
 
+        // The game's values come back once the player is in the world, so streaming there keeps its small slices.
         private static void RestorePriority()
         {
             if (_gamePriority is { } priority && Application.backgroundLoadingPriority == ThreadPriority.High)
                 Application.backgroundLoadingPriority = priority;
             _gamePriority = null;
+            if (_gameUpload is { } upload)
+            {
+                QualitySettings.asyncUploadTimeSlice = upload.Slice;
+                QualitySettings.asyncUploadBufferSize = upload.Buffer;
+                QualitySettings.asyncUploadPersistentBuffer = upload.Persistent;
+            }
+            _gameUpload = null;
         }
 
         // Each loader's progress flags as bits, so a change marks the step that just happened.
         private static void WatchSteps()
         {
             var global = (LoadScene._isLoading ? 1 : 0) | (LoadScene._isMainSceneLoadComplete ? 2 : 0) |
-                (_startSequence && _startSequence.startedSequence ? 4 : 0);
+                (_startSequence && _startSequence.startedSequence ? 4 : 0) |
+                (BoltNetwork.isRunning ? 8 : 0) | (BoltNetwork.isServer ? 16 : 0) |
+                (TheForest.Utils.LocalPlayer.Entity && TheForest.Utils.LocalPlayer.Entity.isAttached ? 32 : 0);
             if (global != _loaderSteps)
             {
                 PerformanceCapture.Mark("load-global", new
                 {
                     isLoading = (global & 1) != 0,
                     mainSceneLoadComplete = (global & 2) != 0,
-                    startSequence = (global & 4) != 0
+                    startSequence = (global & 4) != 0,
+                    networkRunning = (global & 8) != 0,
+                    host = (global & 16) != 0,
+                    playerEntityAttached = (global & 32) != 0
                 });
                 _loaderSteps = global;
             }

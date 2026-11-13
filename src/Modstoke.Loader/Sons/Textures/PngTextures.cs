@@ -39,11 +39,17 @@ namespace Modstoke.Sons
             internal byte[] Data { get; }
         }
 
+        /// <summary>Rewrites full-size RGBA32 pixels in place before the mip chain is built, such as a packed normal map layout.</summary>
+        public delegate void PixelTransform(Span<byte> rgba);
+
         /// <summary>Decodes on a worker thread; safe to call from the game thread.</summary>
         public static Task<Image> DecodeAsync(byte[] png, bool mipmaps = true) => Task.Run(() => Decode(png, mipmaps));
 
         /// <summary>Decodes on the calling thread, for code already running on a worker.</summary>
-        public static Image Decode(byte[] png, bool mipmaps = true)
+        public static Image Decode(byte[] png, bool mipmaps = true) => Decode(png, mipmaps, null);
+
+        /// <summary>Decodes on the calling thread and applies <paramref name="transform"/> before the mips are built.</summary>
+        public static Image Decode(byte[] png, bool mipmaps, PixelTransform transform)
         {
             ArgumentNullException.ThrowIfNull(png);
             if (png.Length < 8 || !png.AsSpan(0, 8).SequenceEqual(Signature)) throw new InvalidDataException("Not a PNG image.");
@@ -80,6 +86,7 @@ namespace Modstoke.Sons
             compressed.Position = 0;
             using (var inflate = new ZLibStream(compressed, CompressionMode.Decompress))
                 Unfilter(inflate, width, height, channels, data);
+            transform?.Invoke(data.AsSpan(0, width * height * 4));
             if (mips > 1) Downsample(data, width, height, mips);
             return new Image(width, height, mips, data);
         }

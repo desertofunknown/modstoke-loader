@@ -455,6 +455,15 @@ the installed runtime and release package; ownership is not runtime acceptance.
   `System.MathF` on the CLR instead of the game corlib's native wrappers. Setting
   `MODSTOKE_NATIVE_UNITY_MATH=1` keeps every wrapper native; the value is part of
   the interop input hash, so changing it regenerates the assemblies.
+  `EngineBootConfig` adds `memorysetup-temp-allocator-size-preload-manager`
+  (32 MB) and `memorysetup-temp-allocator-size-main` (16 MB) to the game's or
+  server's `boot.config` when they are absent; Unity's defaults (256 KB and 4 MB)
+  overflowed to the shared heap about 370,000 and 5,000 times in one world load.
+  Existing keys are never changed, the rest of the file is kept byte for byte, and
+  the settings apply from the next start; Steam's file check restores the original,
+  so the Loader checks again at every start. `LoadingPerformance` widens Unity's
+  background-integration and async-upload slices from the loading screen until the
+  player is in the world, then restores the game's values.
   `InteropNativeCallStubs` owns restored native-call delegates, static
   initialization and invocation bodies. Reference-typed ref/out temporaries are
   written back after the call instead of discarded; a typed local preserves any

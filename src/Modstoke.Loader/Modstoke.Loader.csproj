@@ -33,6 +33,7 @@
     <Compile Include="Sons/Runtime/GameLifecycleFixes.cs" />
     <Compile Include="Sons/Runtime/GatheringLifecycleFix.cs" />
     <Compile Include="Sons/Runtime/LoadingPerformance.cs" />
+    <Compile Include="Sons/Runtime/EngineBootConfig.cs" />
     <Compile Include="Sons/Server/ServerEvents.cs" />
     <Compile Include="Sons/Server/ServerHosting.cs" />
     <Compile Include="Sons/Server/ServerDispatchGate.cs" />

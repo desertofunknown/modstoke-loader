@@ -75,6 +75,7 @@ namespace Modstoke.Sons
             }
 
             _initialized = true;
+            EngineBootConfig.Ensure();
             RefreshEnvironment();
             RegisterMenuProvider();
             SaveData.RegisterMenuProvider();
