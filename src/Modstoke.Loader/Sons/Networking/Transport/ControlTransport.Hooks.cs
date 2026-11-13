@@ -61,13 +61,14 @@ namespace Modstoke.Sons
 
         private static bool OnOwnerThread => Environment.CurrentManagedThreadId == _ownerThreadId;
 
-        private static void BeforeStart()
+        private static void BeforeStart(Bolt.ControlCommandStart __0)
         {
             if (!_hooksInstalled || !OnOwnerThread)
                 return;
             BeforeShutdown();
-            // The last word on this start's selection, after any plugin chose its own.
-            try { ContentAgreement.PrepareForStart(); }
+            // The last word on this start's selection, after any plugin chose its own. Bolt sets its mode from
+            // this command only after BeginStart runs, so the role comes from the command itself.
+            try { ContentAgreement.PrepareForStart(__0 != null && __0.Mode == BoltNetworkModes.Server); }
             catch (Exception error) { ReportFailure(error); }
         }
 

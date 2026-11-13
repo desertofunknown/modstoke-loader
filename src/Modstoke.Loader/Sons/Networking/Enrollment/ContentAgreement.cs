@@ -74,13 +74,13 @@ namespace Modstoke.Sons
         private static int _hookCheck;
 
         // Runs from the Bolt start hook, after every other selection and before the negotiation channel exists.
-        internal static void PrepareForStart()
+        internal static void PrepareForStart(bool server)
         {
             Peers.Clear();
             _active = false;
             _local = Capture();
             if (_local.Count == 0) return;
-            _server = BoltNetwork.isServer;
+            _server = server;
             _requireClients = _server && !RuntimePreferences.ReadBoolean(AllowVanillaKey, false);
             if (!ControlTransport.SelectForStart() || !ClientEnrollment.AddContentForStart(_server, _requireClients))
             {
