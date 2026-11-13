@@ -33,6 +33,7 @@ namespace Modstoke.Loader
         protected override void Build()
         {
             _entries.Clear();
+            _rects.Clear();
             var pad = U(60);
             MenuKit.Backdrop(Root, U(StripHeight - 24), U(110));
             _heading = MenuKit.Text(Root, "Heading", "", U(14), true, MenuKit.Muted);
@@ -49,7 +50,7 @@ namespace Modstoke.Loader
             var mark = new Glide(column, false);
             AddEntry(column, mark, "pause.resume", PauseHost.Resume);
             AddEntry(column, mark, "title.options", () => FrontEnd.Push(new OptionsScreen()));
-            if (PauseHost.Multiplayer) AddEntry(column, mark, "pause.players", PauseHost.Players);
+            if (PauseHost.Multiplayer) AddEntry(column, mark, "pause.players", () => FrontEnd.Push(new PlayersScreen()));
             AddEntry(column, mark, "title.mods", MenuController.Show);
             // Buttons mods added to the game's pause bar, which is put away while this screen shows.
             foreach (var (label, press) in UiMenuButtons.Registered(SonsSdk.ESonsScene.Game))
@@ -65,12 +66,16 @@ namespace Modstoke.Loader
                     FrontEnd.QuitWhenTitleLoads();
                     PauseHost.QuitToTitle();
                 }, cautious: true)));
+            new Cascade(_rects);
         }
+
+        private readonly List<RectTransform> _rects = new();
 
         private void AddEntry(RectTransform column, Glide mark, string key, Action run, Func<string> name = null)
         {
             var rect = MenuKit.Box(column, key).Strip(U(22 + _entries.Count * (EntryHeight + EntryGap)), U(EntryHeight), 0, 0);
             var entry = new Entry { Key = key, Name = name ?? (() => Text[key]), Run = run };
+            _rects.Add(rect);
             entry.Label = MenuKit.Text(rect, "Label", "", U(24), true, MenuKit.Soft);
             entry.Label.characterSpacing = 12;
             entry.Label.rectTransform.Place(0, 0, 1, 1, U(20), 0, U(16), 0);

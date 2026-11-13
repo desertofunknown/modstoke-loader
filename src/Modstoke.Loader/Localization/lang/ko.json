@@ -341,6 +341,11 @@
     "ready": "언제든 시작할 수 있습니다. 친구는 Steam을 통해 참가할 수 있습니다.",
     "starting": "게임 시작 중…",
     "waiting": "호스트가 게임을 시작하기를 기다리는 중입니다.",
+    "game": "게임",
+    "savedWorld": "저장된 월드",
+    "newWorld": "새 월드",
+    "password": "비밀번호 있음",
+    "profile": "Steam 프로필",
     "joining": "게임에 참가 중…"
   },
 
@@ -354,6 +359,105 @@
     "quitTitleTitle": "이 게임에서 나가시겠습니까?",
     "quitTitleBody": "마지막으로 저장한 이후의 진행 상황은 모두 사라집니다.",
     "quitTitleBodyOnline": "게임에서 나갑니다. 내가 호스트라면 모든 플레이어의 게임이 종료됩니다."
+  },
+
+  "mods": {
+    "search": "검색",
+    "searchAbout": "이름, ID 또는 제작자를 입력해 모드를 찾습니다. Enter를 누르면 검색어가 유지되고, Esc를 누르면 이전 검색어로 돌아갑니다.",
+    "by": "제작자: {author}",
+    "count": { "other": "모드 {count}개" },
+    "issues": { "other": "확인 필요 {count}개" },
+    "noIssues": "모두 정상 작동 중",
+    "openHint": "선택하면 설정과 세부 정보가 열립니다.",
+
+    "tab": {
+      "all": "전체",
+      "modstoke": "Modstoke",
+      "redloader": "RedLoader",
+      "bepinex": "BepInEx",
+      "libraries": "라이브러리",
+      "issues": "문제"
+    },
+
+    "section": {
+      "find": "검색",
+      "attention": "확인 필요",
+      "installed": "설치됨",
+      "none": "항목 없음"
+    },
+
+    "status": {
+      "running": "실행 중",
+      "ready": "준비됨",
+      "missing": "누락",
+      "check": "확인 필요",
+      "off": "꺼짐",
+      "found": "발견됨"
+    },
+
+    "statusAbout": {
+      "running": "Modstoke를 통해 실행 중입니다.",
+      "ready": "설치되어 있으며 사용할 준비가 되었습니다.",
+      "missing": "실행에 필요한 항목이 누락되었습니다.",
+      "check": "설치되어 있지만 확인이 필요한 부분이 있습니다.",
+      "off": "꺼져 있습니다.",
+      "found": "이 PC에서 발견되었습니다."
+    },
+
+    "kind": {
+      "modstoke": "Modstoke 모드",
+      "modstokeLibrary": "Modstoke 라이브러리",
+      "bepinex": "BepInEx 플러그인",
+      "redloader": "RedLoader 모드",
+      "redloaderLibrary": "RedLoader 라이브러리",
+      "other": "모드"
+    }
+  },
+
+  "players": {
+    "openHint": "플레이어를 선택하면 Steam 프로필과 할 수 있는 작업을 볼 수 있습니다.",
+    "mutedNote": "이 PC에서 이 플레이어를 음소거했습니다.",
+    "noBans": "차단된 플레이어가 없습니다.",
+    "nobody": "아직 다른 플레이어가 없습니다.",
+    "mute": "음소거",
+    "unmute": "음소거 해제",
+    "unban": "차단 해제",
+    "makeGuest": "게스트로 지정",
+    "makeTrusted": "신뢰로 지정",
+    "makeAdmin": "관리자로 지정",
+    "kick": "추방",
+    "ban": "차단",
+    "kickTitle": "{name} 님을 추방하시겠습니까?",
+    "kickBody": "해당 플레이어는 지금 게임에서 나가지만 다시 참가할 수 있습니다.",
+    "banTitle": "{name} 님을 차단하시겠습니까?",
+    "banBody": "해당 플레이어는 게임에서 나가며, 차단을 해제할 때까지 다시 참가할 수 없습니다.",
+
+    "tab": {
+      "players": "플레이어",
+      "banned": "차단 목록",
+      "rules": "규칙"
+    },
+
+    "section": {
+      "online": "이 게임의 플레이어",
+      "banned": "차단된 플레이어",
+      "rules": "멀티플레이 규칙"
+    },
+
+    "role": {
+      "host": "호스트",
+      "owner": "오너",
+      "admin": "관리자",
+      "trusted": "신뢰",
+      "guest": "게스트",
+      "banned": "차단됨",
+      "hostAbout": "이 게임의 호스트입니다.",
+      "ownerAbout": "이 서버의 오너입니다.",
+      "adminAbout": "플레이어를 추방하거나 차단하고 역할을 바꿀 수 있습니다.",
+      "trustedAbout": "신뢰하는 플레이어입니다.",
+      "guestAbout": "이 게임의 게스트입니다.",
+      "bannedAbout": "이 게임에서 차단되었습니다."
+    }
   },
 
   "confirm": {

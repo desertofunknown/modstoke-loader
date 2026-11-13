@@ -341,6 +341,11 @@
     "ready": "Todo listo; empieza cuando quieras. Tus amigos pueden unirse a través de Steam.",
     "starting": "Iniciando la partida…",
     "waiting": "Esperando a que el anfitrión inicie la partida.",
+    "game": "Partida",
+    "savedWorld": "Mundo guardado",
+    "newWorld": "Mundo nuevo",
+    "password": "Protegido con contraseña",
+    "profile": "Perfil de Steam",
     "joining": "Entrando en la partida…"
   },
 
@@ -354,6 +359,105 @@
     "quitTitleTitle": "¿Abandonar esta partida?",
     "quitTitleBody": "Perderás todo lo que hayas hecho desde la última vez que guardaste.",
     "quitTitleBodyOnline": "Sales de la partida. Si eres el anfitrión, terminará para todos."
+  },
+
+  "mods": {
+    "search": "Buscar",
+    "searchAbout": "Escribe para buscar un mod por su nombre, ID o autor. Intro confirma la búsqueda y Esc recupera la anterior.",
+    "by": "por {author}",
+    "count": { "one": "{count} mod", "other": "{count} mods" },
+    "issues": { "one": "{count} requiere atención", "other": "{count} requieren atención" },
+    "noIssues": "Todo funciona",
+    "openHint": "Selecciónalo para abrir sus ajustes y detalles.",
+
+    "tab": {
+      "all": "Todos",
+      "modstoke": "Modstoke",
+      "redloader": "RedLoader",
+      "bepinex": "BepInEx",
+      "libraries": "Bibliotecas",
+      "issues": "Problemas"
+    },
+
+    "section": {
+      "find": "Buscar",
+      "attention": "Requiere atención",
+      "installed": "Instalados",
+      "none": "Aquí no hay nada"
+    },
+
+    "status": {
+      "running": "Activo",
+      "ready": "Listo",
+      "missing": "Falta",
+      "check": "Revisar",
+      "off": "Desactivado",
+      "found": "Detectado"
+    },
+
+    "statusAbout": {
+      "running": "Se ejecuta a través de Modstoke.",
+      "ready": "Instalado y listo.",
+      "missing": "Falta algo que necesita.",
+      "check": "Instalado, pero hay algo que conviene revisar.",
+      "off": "Desactivado.",
+      "found": "Detectado en este PC."
+    },
+
+    "kind": {
+      "modstoke": "Mod de Modstoke",
+      "modstokeLibrary": "Biblioteca de Modstoke",
+      "bepinex": "Plugin de BepInEx",
+      "redloader": "Mod de RedLoader",
+      "redloaderLibrary": "Biblioteca de RedLoader",
+      "other": "Mod"
+    }
+  },
+
+  "players": {
+    "openHint": "Selecciona a un jugador para ver su perfil de Steam y lo que puedes hacer.",
+    "mutedNote": "Has silenciado a este jugador en este PC.",
+    "noBans": "No hay nadie baneado.",
+    "nobody": "Todavía no hay nadie más.",
+    "mute": "Silenciar",
+    "unmute": "Quitar silencio",
+    "unban": "Desbanear",
+    "makeGuest": "Hacer invitado",
+    "makeTrusted": "Hacer de confianza",
+    "makeAdmin": "Hacer administrador",
+    "kick": "Expulsar",
+    "ban": "Banear",
+    "kickTitle": "¿Expulsar a {name}?",
+    "kickBody": "Sale de la partida ahora, pero puede volver a unirse.",
+    "banTitle": "¿Banear a {name}?",
+    "banBody": "Sale de la partida y no podrá volver a unirse hasta que lo desbanees.",
+
+    "tab": {
+      "players": "Jugadores",
+      "banned": "Baneados",
+      "rules": "Reglas"
+    },
+
+    "section": {
+      "online": "En esta partida",
+      "banned": "Jugadores baneados",
+      "rules": "Reglas multijugador"
+    },
+
+    "role": {
+      "host": "Anfitrión",
+      "owner": "Propietario",
+      "admin": "Administrador",
+      "trusted": "De confianza",
+      "guest": "Invitado",
+      "banned": "Baneado",
+      "hostAbout": "Aloja esta partida.",
+      "ownerAbout": "Propietario de este servidor.",
+      "adminAbout": "Puede expulsar y banear a jugadores y cambiar sus roles.",
+      "trustedAbout": "Un jugador de confianza.",
+      "guestAbout": "Un invitado en esta partida.",
+      "bannedAbout": "Baneado de esta partida."
+    }
   },
 
   "confirm": {

@@ -194,6 +194,7 @@ namespace Modstoke.Loader
 
             SceneInitQueue.Enqueue(pending);
             InvokeLifecycle("SceneLoaded.MenuBridge", () => GameMenuBridge.OnSceneLoaded(scene));
+            InvokeLifecycle("SceneLoaded.FrontEnd", () => FrontEnd.SceneLoaded(scene));
             InvokeLifecycle("SceneLoaded.Modding", () => Modding.PublishScene("loaded", pending.BuildIndex, pending.Name));
             InvokeLifecycle("SceneLoaded.Sons", () => GameRuntime.PublishScene("Loaded", pending.BuildIndex, pending.Name));
             InvokeLifecycle("SceneLoaded.RedLoader", () => LegacyLifecycleBridge.PublishSceneLoaded(pending.BuildIndex, pending.Name));

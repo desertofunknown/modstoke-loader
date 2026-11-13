@@ -341,6 +341,11 @@
     "ready": "隨時可以開始。好友可以透過 Steam 加入。",
     "starting": "正在啟動遊戲……",
     "waiting": "正在等待房主開始遊戲。",
+    "game": "遊戲",
+    "savedWorld": "已儲存的世界",
+    "newWorld": "新世界",
+    "password": "有密碼",
+    "profile": "Steam 個人檔案",
     "joining": "正在加入遊戲……"
   },
 
@@ -354,6 +359,105 @@
     "quitTitleTitle": "要離開這場遊戲嗎？",
     "quitTitleBody": "上次存檔之後的所有進度都會遺失。",
     "quitTitleBodyOnline": "你將離開遊戲。如果你是房主，遊戲將對所有人結束。"
+  },
+
+  "mods": {
+    "search": "搜尋",
+    "searchAbout": "輸入名稱、ID 或作者來尋找模組。按 Enter 保留搜尋，按 Esc 恢復上一次的搜尋。",
+    "by": "作者：{author}",
+    "count": { "other": "{count} 個模組" },
+    "issues": { "other": "{count} 個需要處理" },
+    "noIssues": "一切正常",
+    "openHint": "選擇後即可開啟它的設定與詳細資訊。",
+
+    "tab": {
+      "all": "全部",
+      "modstoke": "Modstoke",
+      "redloader": "RedLoader",
+      "bepinex": "BepInEx",
+      "libraries": "函式庫",
+      "issues": "問題"
+    },
+
+    "section": {
+      "find": "搜尋",
+      "attention": "需要處理",
+      "installed": "已安裝",
+      "none": "沒有內容"
+    },
+
+    "status": {
+      "running": "執行中",
+      "ready": "就緒",
+      "missing": "缺少",
+      "check": "需檢查",
+      "off": "已關閉",
+      "found": "已找到"
+    },
+
+    "statusAbout": {
+      "running": "正在透過 Modstoke 執行。",
+      "ready": "已安裝，可以使用。",
+      "missing": "缺少它執行所需的內容。",
+      "check": "已安裝，但有地方需要檢查。",
+      "off": "已關閉。",
+      "found": "在這台電腦上找到。"
+    },
+
+    "kind": {
+      "modstoke": "Modstoke 模組",
+      "modstokeLibrary": "Modstoke 函式庫",
+      "bepinex": "BepInEx 外掛",
+      "redloader": "RedLoader 模組",
+      "redloaderLibrary": "RedLoader 函式庫",
+      "other": "模組"
+    }
+  },
+
+  "players": {
+    "openHint": "選擇一名玩家，查看其 Steam 個人檔案和可執行的操作。",
+    "mutedNote": "你已在這台電腦上將其靜音。",
+    "noBans": "沒有被封禁的玩家。",
+    "nobody": "這裡還沒有其他人。",
+    "mute": "靜音",
+    "unmute": "取消靜音",
+    "unban": "解除封禁",
+    "makeGuest": "設為訪客",
+    "makeTrusted": "設為可信",
+    "makeAdmin": "設為管理者",
+    "kick": "踢出",
+    "ban": "封禁",
+    "kickTitle": "要踢出 {name} 嗎？",
+    "kickBody": "對方會立即離開遊戲，但可以再次加入。",
+    "banTitle": "要封禁 {name} 嗎？",
+    "banBody": "對方會離開遊戲，在你解除封禁之前無法再次加入。",
+
+    "tab": {
+      "players": "玩家",
+      "banned": "已封禁",
+      "rules": "規則"
+    },
+
+    "section": {
+      "online": "這場遊戲中",
+      "banned": "已封禁的玩家",
+      "rules": "多人遊戲規則"
+    },
+
+    "role": {
+      "host": "房主",
+      "owner": "擁有者",
+      "admin": "管理者",
+      "trusted": "可信",
+      "guest": "訪客",
+      "banned": "已封禁",
+      "hostAbout": "這場遊戲的房主。",
+      "ownerAbout": "這個伺服器的擁有者。",
+      "adminAbout": "可以踢出和封禁玩家，並變更他們的身分。",
+      "trustedAbout": "可信的玩家。",
+      "guestAbout": "這場遊戲的訪客。",
+      "bannedAbout": "已被禁止加入這場遊戲。"
+    }
   },
 
   "confirm": {

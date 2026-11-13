@@ -341,6 +341,11 @@
     "ready": "Wszystko gotowe – zacznij, kiedy chcesz. Znajomi mogą dołączyć przez Steam.",
     "starting": "Uruchamianie gry…",
     "waiting": "Oczekiwanie, aż host rozpocznie grę.",
+    "game": "Gra",
+    "savedWorld": "Zapisany świat",
+    "newWorld": "Nowy świat",
+    "password": "Chroniona hasłem",
+    "profile": "Profil Steam",
     "joining": "Dołączanie do gry…"
   },
 
@@ -354,6 +359,105 @@
     "quitTitleTitle": "Opuścić tę grę?",
     "quitTitleBody": "Wszystko od ostatniego zapisu zostanie utracone.",
     "quitTitleBodyOnline": "Opuścisz grę. Jeśli jesteś hostem, zakończy się ona dla wszystkich."
+  },
+
+  "mods": {
+    "search": "Szukaj",
+    "searchAbout": "Wpisz nazwę, ID lub autora moda, aby go znaleźć. Enter zachowuje wyszukiwanie, a Escape przywraca poprzednie.",
+    "by": "autor: {author}",
+    "count": { "one": "{count} mod", "few": "{count} mody", "many": "{count} modów", "other": "{count} moda" },
+    "issues": { "one": "{count} wymaga uwagi", "few": "{count} wymagają uwagi", "many": "{count} wymaga uwagi", "other": "{count} wymaga uwagi" },
+    "noIssues": "Wszystko działa",
+    "openHint": "Wybierz go, aby otworzyć jego ustawienia i szczegóły.",
+
+    "tab": {
+      "all": "Wszystkie",
+      "modstoke": "Modstoke",
+      "redloader": "RedLoader",
+      "bepinex": "BepInEx",
+      "libraries": "Biblioteki",
+      "issues": "Problemy"
+    },
+
+    "section": {
+      "find": "Wyszukiwanie",
+      "attention": "Wymagające uwagi",
+      "installed": "Zainstalowane",
+      "none": "Nic tu nie ma"
+    },
+
+    "status": {
+      "running": "Działa",
+      "ready": "Gotowy",
+      "missing": "Brak",
+      "check": "Sprawdź",
+      "off": "Wyłączony",
+      "found": "Znaleziony"
+    },
+
+    "statusAbout": {
+      "running": "Uruchomiony przez Modstoke.",
+      "ready": "Zainstalowany i gotowy.",
+      "missing": "Brakuje czegoś, czego potrzebuje.",
+      "check": "Zainstalowany, ale coś w nim wymaga sprawdzenia.",
+      "off": "Wyłączony.",
+      "found": "Znaleziony na tym komputerze."
+    },
+
+    "kind": {
+      "modstoke": "Mod Modstoke",
+      "modstokeLibrary": "Biblioteka Modstoke",
+      "bepinex": "Wtyczka BepInEx",
+      "redloader": "Mod RedLoader",
+      "redloaderLibrary": "Biblioteka RedLoader",
+      "other": "Mod"
+    }
+  },
+
+  "players": {
+    "openHint": "Wybierz gracza, aby zobaczyć jego profil Steam i dostępne działania.",
+    "mutedNote": "Ten gracz jest wyciszony na tym komputerze.",
+    "noBans": "Nikt nie ma bana.",
+    "nobody": "Nikogo innego jeszcze tu nie ma.",
+    "mute": "Wycisz",
+    "unmute": "Cofnij wyciszenie",
+    "unban": "Odbanuj",
+    "makeGuest": "Ustaw jako gościa",
+    "makeTrusted": "Ustaw jako zaufanego",
+    "makeAdmin": "Ustaw jako admina",
+    "kick": "Wyrzuć",
+    "ban": "Zbanuj",
+    "kickTitle": "Wyrzucić gracza {name}?",
+    "kickBody": "Gracz od razu opuści grę, ale będzie mógł dołączyć ponownie.",
+    "banTitle": "Zbanować gracza {name}?",
+    "banBody": "Gracz opuści grę i nie dołączy ponownie, dopóki go nie odbanujesz.",
+
+    "tab": {
+      "players": "Gracze",
+      "banned": "Zbanowani",
+      "rules": "Zasady"
+    },
+
+    "section": {
+      "online": "W tej grze",
+      "banned": "Gracze z banem",
+      "rules": "Zasady gry wieloosobowej"
+    },
+
+    "role": {
+      "host": "Host",
+      "owner": "Właściciel",
+      "admin": "Admin",
+      "trusted": "Zaufany",
+      "guest": "Gość",
+      "banned": "Zbanowany",
+      "hostAbout": "Hostuje tę grę.",
+      "ownerAbout": "Właściciel tego serwera.",
+      "adminAbout": "Może wyrzucać i banować graczy oraz zmieniać ich role.",
+      "trustedAbout": "Zaufany gracz.",
+      "guestAbout": "Gość w tej grze.",
+      "bannedAbout": "Ma bana w tej grze."
+    }
   },
 
   "confirm": {

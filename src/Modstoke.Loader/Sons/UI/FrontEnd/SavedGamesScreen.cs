@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Modstoke.Localization;
 using Sons.Save;
 using TMPro;
@@ -100,6 +101,7 @@ namespace Modstoke.Loader
             _rowMark = new Glide(list, false);
             _rows = new RowView[visible];
             for (var i = 0; i < visible; i++) _rows[i] = Row(list, i);
+            new Cascade(_rows.Select(row => row.Rect));
             _trackHeight = visible * U(RowHeight + RowGap) - U(RowGap);
             var track = MenuKit.Box(list, "Scroll").AtRight(U(8), U(RowsTop), U(3), _trackHeight);
             _scrollThumb = MenuKit.Box(track, "Thumb");

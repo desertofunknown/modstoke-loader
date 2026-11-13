@@ -270,6 +270,49 @@ namespace Modstoke.Loader
         }
     }
 
+    /// <summary>
+    /// Rows that arrive one after another: each fades in a moment after the one above it, so a list reads from the
+    /// top as it appears. Only the first rows wait; the rest come with the last of them.
+    /// </summary>
+    internal sealed class Cascade : Moving
+    {
+        private const float Seconds = 0.2f, Gap = 0.028f;
+        private const int Staggered = 12;
+        private readonly List<CanvasGroup> _groups = new();
+        private float _start;
+
+        internal Cascade(IEnumerable<RectTransform> rows)
+        {
+            foreach (var row in rows)
+            {
+                if (row == null || !row) continue;
+                var group = row.GetComponent<CanvasGroup>();
+                if (group == null || !group) group = row.gameObject.AddComponent<CanvasGroup>();
+                group.alpha = 0f;
+                _groups.Add(group);
+            }
+            _start = Time.unscaledTime;
+            Start();
+        }
+
+        protected override bool Alive => _groups.Count > 0 && _groups[0] != null && _groups[0];
+
+        protected override void Step(float dt)
+        {
+            var elapsed = Time.unscaledTime - _start;
+            var done = true;
+            for (var i = 0; i < _groups.Count; i++)
+            {
+                var group = _groups[i];
+                if (group == null || !group) continue;
+                var t = Mathf.Clamp01((elapsed - Math.Min(i, Staggered) * Gap) / Seconds);
+                group.alpha = EaseOut(t);
+                done &= t >= 1f;
+            }
+            if (done) Stop();
+        }
+    }
+
     /// <summary>A number that eases toward its target, for slider fills and scroll positions.</summary>
     internal sealed class Ease
     {

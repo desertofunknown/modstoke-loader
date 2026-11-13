@@ -168,6 +168,39 @@ namespace Modstoke.Loader
         internal static void CancelHost() => _hostWanted = false;
 
         /// <summary>
+        /// A scene just loaded, before its first frame is drawn: a game menu that Modstoke replaces is made
+        /// invisible here, so it never shows even for a frame before Modstoke's screen takes its place.
+        /// </summary>
+        internal static void SceneLoaded(UnityEngine.SceneManagement.Scene scene)
+        {
+            if (GameBuild.IsDedicatedServer || _failed || !Enabled) return;
+            LobbyHost.SceneLoaded(scene);
+        }
+
+        /// <summary>
+        /// Opens the Mods screen over the title or the pause menu, or closes it when it is already in front, as the
+        /// Mods hotkey toggles; false where these menus are not showing, for the Mods menu to open on its own.
+        /// </summary>
+        internal static bool OpenModsScreen()
+        {
+            if (_failed || !_shown || Stack.Count == 0 || _place != Place.Title && _place != Place.Pause) return false;
+            if (Stack[Stack.Count - 1] is ModsScreen) Pop();
+            else
+            {
+                MenuSound.Play(MenuCue.Forward);
+                Push(new ModsScreen());
+            }
+            return true;
+        }
+
+        /// <summary>The game's pause menu was created; its button bar is made invisible before it is ever opened.</summary>
+        internal static void PauseMenuAvailable(PauseMenu menu)
+        {
+            if (GameBuild.IsDedicatedServer || _failed || !Enabled) return;
+            PauseHost.Adopt(menu);
+        }
+
+        /// <summary>
         /// Opens Modstoke's screen for a page the game just opened (custom game rules or the host's options) and
         /// closes the game's; true when one was taken. A screen that starts something calls this at once, so the
         /// game's page is never drawn for a frame.
@@ -223,14 +256,10 @@ namespace Modstoke.Loader
             var place = LobbyHost.Open ? Place.Lobby : title ? Place.Title : PauseHost.Open ? Place.Pause : Place.None;
             if (place != _place)
             {
-                // Each place has its own screens; leaving it closes them and gives the game's own menu back.
+                // Each place has its own screens; leaving it closes them. The game's own lobby and pause bar stay
+                // invisible all the while these menus are on, so they never show between one place and the next.
                 if (Stack.Count > 0) Clear();
-                if (_place == Place.Lobby) LobbyHost.Release();
-                if (_place == Place.Pause)
-                {
-                    PauseHost.HoldEscape(false);
-                    PauseHost.Release();
-                }
+                if (_place == Place.Pause) PauseHost.HoldEscape(false);
                 _place = place;
                 _asideUntil = 0;
             }

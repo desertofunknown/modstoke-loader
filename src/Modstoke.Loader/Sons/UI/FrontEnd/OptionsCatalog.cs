@@ -51,6 +51,15 @@ namespace Modstoke.Loader
         /// <summary>When the setting can be changed, for one that depends on another; null for always.</summary>
         internal Func<bool> When { get; set; }
 
+        /// <summary>A color for the value, for a row whose value is a status; null for the usual ink.</summary>
+        internal virtual Color? Tint => null;
+
+        /// <summary>Whether the row starts with a small picture, such as a player's Steam picture.</summary>
+        internal virtual bool HasPicture => false;
+
+        /// <summary>The picture, once it is there; Steam's pictures arrive upside down and are drawn flipped.</summary>
+        internal virtual Texture Picture => null;
+
         internal bool Available
         {
             get

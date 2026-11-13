@@ -341,6 +341,11 @@
     "ready": "Allt är klart – starta när du vill. Vänner kan gå med via Steam.",
     "starting": "Startar spelet…",
     "waiting": "Väntar på att värden startar spelet.",
+    "game": "Spel",
+    "savedWorld": "Sparad värld",
+    "newWorld": "Ny värld",
+    "password": "Lösenordsskyddat",
+    "profile": "Steam-profil",
     "joining": "Går med i spelet…"
   },
 
@@ -354,6 +359,105 @@
     "quitTitleTitle": "Lämna det här spelet?",
     "quitTitleBody": "Allt sedan du senast sparade går förlorat.",
     "quitTitleBodyOnline": "Du lämnar spelet. Om du är värd avslutas det för alla."
+  },
+
+  "mods": {
+    "search": "Sök",
+    "searchAbout": "Skriv för att hitta en modd efter namn, ID eller skapare. Enter behåller sökningen och Escape tar tillbaka den förra.",
+    "by": "av {author}",
+    "count": { "one": "{count} modd", "other": "{count} moddar" },
+    "issues": { "one": "{count} behöver ses över", "other": "{count} behöver ses över" },
+    "noIssues": "Allt fungerar",
+    "openHint": "Välj den för att öppna dess inställningar och detaljer.",
+
+    "tab": {
+      "all": "Alla",
+      "modstoke": "Modstoke",
+      "redloader": "RedLoader",
+      "bepinex": "BepInEx",
+      "libraries": "Bibliotek",
+      "issues": "Problem"
+    },
+
+    "section": {
+      "find": "Sök",
+      "attention": "Behöver ses över",
+      "installed": "Installerade",
+      "none": "Här finns inget"
+    },
+
+    "status": {
+      "running": "Körs",
+      "ready": "Redo",
+      "missing": "Saknas",
+      "check": "Kontrollera",
+      "off": "Av",
+      "found": "Hittad"
+    },
+
+    "statusAbout": {
+      "running": "Körs via Modstoke.",
+      "ready": "Installerad och redo.",
+      "missing": "Något som den behöver saknas.",
+      "check": "Installerad, men något med den behöver ses över.",
+      "off": "Avstängd.",
+      "found": "Hittad på den här datorn."
+    },
+
+    "kind": {
+      "modstoke": "Modstoke-modd",
+      "modstokeLibrary": "Modstoke-bibliotek",
+      "bepinex": "BepInEx-plugin",
+      "redloader": "RedLoader-modd",
+      "redloaderLibrary": "RedLoader-bibliotek",
+      "other": "Modd"
+    }
+  },
+
+  "players": {
+    "openHint": "Välj en spelare för att se Steam-profilen och vad du kan göra.",
+    "mutedNote": "Du har tystat den här spelaren på den här datorn.",
+    "noBans": "Ingen är bannad.",
+    "nobody": "Ingen annan är här än.",
+    "mute": "Tysta",
+    "unmute": "Häv tystning",
+    "unban": "Häv bann",
+    "makeGuest": "Gör till gäst",
+    "makeTrusted": "Gör pålitlig",
+    "makeAdmin": "Gör till admin",
+    "kick": "Kicka",
+    "ban": "Banna",
+    "kickTitle": "Kicka {name}?",
+    "kickBody": "Spelaren lämnar spelet direkt men kan gå med igen.",
+    "banTitle": "Banna {name}?",
+    "banBody": "Spelaren lämnar spelet och kan inte gå med igen förrän du häver bannet.",
+
+    "tab": {
+      "players": "Spelare",
+      "banned": "Bannade",
+      "rules": "Regler"
+    },
+
+    "section": {
+      "online": "I det här spelet",
+      "banned": "Bannade spelare",
+      "rules": "Flerspelarregler"
+    },
+
+    "role": {
+      "host": "Värd",
+      "owner": "Ägare",
+      "admin": "Admin",
+      "trusted": "Pålitlig",
+      "guest": "Gäst",
+      "banned": "Bannad",
+      "hostAbout": "Är värd för det här spelet.",
+      "ownerAbout": "Äger den här servern.",
+      "adminAbout": "Kan kicka och banna spelare och ändra deras roller.",
+      "trustedAbout": "En pålitlig spelare.",
+      "guestAbout": "En gäst i det här spelet.",
+      "bannedAbout": "Bannad från det här spelet."
+    }
   },
 
   "confirm": {

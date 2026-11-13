@@ -316,13 +316,30 @@ namespace Modstoke.Loader
             return OpenPage(pageKey, true);
         }
 
+        /// <summary>
+        /// Whether the open pages were handed over from Modstoke's Mods screen, which stays underneath: Back from the
+        /// first of them closes this menu and returns there, rather than going on to this menu's Home.
+        /// </summary>
+        internal static bool HandedOver { get; private set; }
+
+        /// <summary>Opens one page with nothing behind it, for the Mods screen handing a mod's settings to this menu.</summary>
+        internal static bool OpenHandedOver(string pageKey)
+        {
+            ViewState.ClearHistory();
+            HandedOver = true;
+            return OpenPage(pageKey, false);
+        }
+
+        /// <summary>This menu was opened on its own Home again, as the hotkey does where the Mods screen is not available.</summary>
+        internal static void EndHandOver() => HandedOver = false;
+
         /// <summary>Returns to the previous page; false when Home is already showing with nothing behind it.</summary>
         internal static bool Back()
         {
             var previous = ViewState.PopHistory();
             if (previous == null)
             {
-                if (string.Equals(ViewState.LastPage, MenuKeys.Home, StringComparison.OrdinalIgnoreCase))
+                if (HandedOver || string.Equals(ViewState.LastPage, MenuKeys.Home, StringComparison.OrdinalIgnoreCase))
                 {
                     return false;
                 }

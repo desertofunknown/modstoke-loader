@@ -21,6 +21,7 @@ namespace Modstoke.Loader
         private readonly Action _yes, _no;
         private readonly float _seconds;
         private readonly bool _cautious;
+        private readonly string _titleText;
         private TextMeshProUGUI _title, _body, _countdown, _yesLabel, _noLabel;
         private Focusable _yesItem, _noItem;
         private float _deadline;
@@ -28,9 +29,11 @@ namespace Modstoke.Loader
 
         /// <param name="cautious">Focus starts on the "no" choice, for questions whose "yes" cannot be undone.</param>
         /// <param name="seconds">With a value above zero, "no" is chosen when this many seconds pass.</param>
+        /// <param name="titleText">A title already written out, such as one naming a player, in place of the title key.</param>
         internal ConfirmScreen(string titleKey, string bodyKey, string yesKey, string noKey, Action yes, Action no = null,
-            bool cautious = false, float seconds = 0)
+            bool cautious = false, float seconds = 0, string titleText = null)
         {
+            _titleText = titleText;
             _titleKey = titleKey;
             _bodyKey = bodyKey;
             _yesKey = yesKey;
@@ -83,7 +86,7 @@ namespace Modstoke.Loader
         internal override void Retext()
         {
             var culture = Languages.CultureOf(Languages.Current);
-            _title.text = Text[_titleKey];
+            _title.text = _titleText ?? Text[_titleKey];
             _body.text = Text[_bodyKey];
             _yesLabel.text = Text[_yesKey].ToUpper(culture);
             _noLabel.text = Text[_noKey].ToUpper(culture);

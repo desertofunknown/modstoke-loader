@@ -506,6 +506,12 @@ namespace Modstoke.Loader
 
         private static void RenderChrome()
         {
+            // A page handed over from the Mods screen stands alone: that screen is the list, so the nav, the filter
+            // chips and the counts stay away and the page takes the full width.
+            var alone = MenuState.HandedOver;
+            if (_navElement.gameObject.activeSelf == alone) _navElement.gameObject.SetActive(!alone);
+            var strip = _statusRefresh.transform.parent.gameObject;
+            if (strip.activeSelf == alone) strip.SetActive(!alone);
             _statusLine.Set(MenuText.StatusLine(MenuState.Inventory, RuntimeEntryPoint.Version));
             // Without a loaded file there is nothing to switch views of or to save.
             var config = MenuState.ConfigCanSave;

@@ -127,8 +127,8 @@ namespace Modstoke.Loader
                 ("private", () => FrontEnd.Text["host.value.private"])
             }));
 
-        // The world being hosted: a saved game by its name, or a new one by its mode.
-        private static (string World, string About) Describe()
+        /// <summary>The world being hosted: a saved game by its name, or a new one by its mode.</summary>
+        internal static (string World, string About) Describe()
         {
             try
             {
@@ -153,7 +153,7 @@ namespace Modstoke.Loader
             }
         }
 
-        private static string ModeName(string mode)
+        internal static string ModeName(string mode)
         {
             if (string.IsNullOrEmpty(mode)) return "";
             var key = "mode." + char.ToLowerInvariant(mode[0]) + mode.Substring(1);

@@ -341,6 +341,11 @@
     "ready": "いつでも開始できます。友達はSteamから参加できます。",
     "starting": "ゲームを開始中…",
     "waiting": "ホストがゲームを開始するのを待っています。",
+    "game": "ゲーム",
+    "savedWorld": "セーブしたワールド",
+    "newWorld": "新しいワールド",
+    "password": "パスワードあり",
+    "profile": "Steamプロフィール",
     "joining": "ゲームに参加中…"
   },
 
@@ -354,6 +359,105 @@
     "quitTitleTitle": "タイトルに戻りますか？",
     "quitTitleBody": "最後にセーブしてからの進行状況は失われます。",
     "quitTitleBodyOnline": "ゲームから退出します。あなたがホストの場合は、全員のゲームが終了します。"
+  },
+
+  "mods": {
+    "search": "検索",
+    "searchAbout": "名前、ID、作者名を入力してMODを探します。Enterで検索を確定し、Escで直前の検索に戻します。",
+    "by": "作者：{author}",
+    "count": { "other": "{count}個のMOD" },
+    "issues": { "other": "要確認 {count}件" },
+    "noIssues": "すべて正常に動作中",
+    "openHint": "選択すると、設定と詳細が開きます。",
+
+    "tab": {
+      "all": "すべて",
+      "modstoke": "Modstoke",
+      "redloader": "RedLoader",
+      "bepinex": "BepInEx",
+      "libraries": "ライブラリ",
+      "issues": "問題"
+    },
+
+    "section": {
+      "find": "検索",
+      "attention": "要確認",
+      "installed": "導入済み",
+      "none": "何もありません"
+    },
+
+    "status": {
+      "running": "動作中",
+      "ready": "準備完了",
+      "missing": "不足",
+      "check": "要確認",
+      "off": "オフ",
+      "found": "検出"
+    },
+
+    "statusAbout": {
+      "running": "Modstokeで動作しています。",
+      "ready": "導入済みで、すぐに使えます。",
+      "missing": "動作に必要なものが不足しています。",
+      "check": "導入済みですが、確認が必要な点があります。",
+      "off": "オフになっています。",
+      "found": "このPCで見つかりました。"
+    },
+
+    "kind": {
+      "modstoke": "Modstoke MOD",
+      "modstokeLibrary": "Modstokeライブラリ",
+      "bepinex": "BepInExプラグイン",
+      "redloader": "RedLoader MOD",
+      "redloaderLibrary": "RedLoaderライブラリ",
+      "other": "MOD"
+    }
+  },
+
+  "players": {
+    "openHint": "プレイヤーを選ぶと、Steamプロフィールと実行できる操作が表示されます。",
+    "mutedNote": "このPCでミュートしています。",
+    "noBans": "BANしたプレイヤーはいません。",
+    "nobody": "まだ他に誰もいません。",
+    "mute": "ミュート",
+    "unmute": "ミュート解除",
+    "unban": "BAN解除",
+    "makeGuest": "ゲストにする",
+    "makeTrusted": "信頼済みにする",
+    "makeAdmin": "管理者にする",
+    "kick": "退出させる",
+    "ban": "BANする",
+    "kickTitle": "{name}を退出させますか？",
+    "kickBody": "このプレイヤーはすぐにゲームから退出しますが、再び参加できます。",
+    "banTitle": "{name}をBANしますか？",
+    "banBody": "このプレイヤーはゲームから退出し、BANを解除するまで再び参加できません。",
+
+    "tab": {
+      "players": "プレイヤー",
+      "banned": "BAN済み",
+      "rules": "ルール"
+    },
+
+    "section": {
+      "online": "このゲームの参加者",
+      "banned": "BANしたプレイヤー",
+      "rules": "マルチプレイのルール"
+    },
+
+    "role": {
+      "host": "ホスト",
+      "owner": "オーナー",
+      "admin": "管理者",
+      "trusted": "信頼済み",
+      "guest": "ゲスト",
+      "banned": "BAN済み",
+      "hostAbout": "このゲームのホストです。",
+      "ownerAbout": "このサーバーのオーナーです。",
+      "adminAbout": "プレイヤーを退出させたりBANしたり、役割を変更したりできます。",
+      "trustedAbout": "信頼済みのプレイヤーです。",
+      "guestAbout": "このゲームのゲストです。",
+      "bannedAbout": "このゲームからBANされています。"
+    }
   },
 
   "confirm": {

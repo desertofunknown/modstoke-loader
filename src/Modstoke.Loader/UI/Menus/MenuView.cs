@@ -266,6 +266,8 @@ namespace Modstoke.Loader
             }
         }
 
+        internal void ClearHistory() => _history.Clear();
+
         internal string PopHistory()
         {
             if (_history.Count == 0)

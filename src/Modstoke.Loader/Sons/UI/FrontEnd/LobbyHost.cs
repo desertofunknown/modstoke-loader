@@ -86,6 +86,20 @@ namespace Modstoke.Loader
             return members;
         }
 
+        /// <summary>What the lobby is for, as its Steam lobby data says: the mode, a saved world or a new one, a password.</summary>
+        internal static (string Mode, bool Saved, bool Password) Game
+            => Safe(() =>
+            {
+                var lobby = CoopLobbyManager.GetActiveInstance();
+                return lobby == null ? ("", false, false) : (lobby.GameMode ?? "", lobby.HasSave, lobby.IsPasswordProtected);
+            }, ("", false, false));
+
+        internal static bool Private => Safe(MultiplayerUtilities.GetServerIsPrivate, false);
+
+        /// <summary>The player's Steam profile, in Steam's overlay.</summary>
+        internal static void ShowProfile(ulong id)
+            => Steamworks.SteamFriends.ActivateGameOverlayToUser("steamid", new Steamworks.CSteamID(id));
+
         internal static void Start() => _dialog?.OnStartClicked();
 
         internal static void Invite() => _dialog?.OnInviteClicked();
@@ -147,6 +161,26 @@ namespace Modstoke.Loader
             foreach (var back in PausedBacks)
                 if (back != null && back) back.enabled = true;
             PausedBacks.Clear();
+        }
+
+        /// <summary>
+        /// A lobby scene just loaded: its dialog is found and made invisible at once, before the scene draws, whether
+        /// or not the dialog is showing yet, so the game's lobby never appears.
+        /// </summary>
+        internal static void SceneLoaded(Scene scene)
+        {
+            if (Array.IndexOf(Scenes, scene.name) < 0) return;
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                var found = root.GetComponentInChildren<CoopLobbyDialogGui>(true);
+                if (found == null) continue;
+                _dialog = found;
+                _hidden = 0;
+                Hidden.Clear();
+                PausedBacks.Clear();
+                HideNative();
+                return;
+            }
         }
 
         private static void Find()

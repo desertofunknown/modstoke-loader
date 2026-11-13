@@ -341,6 +341,11 @@
     "ready": "Her şey hazır, istediğiniz zaman başlayın. Arkadaşlarınız Steam üzerinden katılabilir.",
     "starting": "Oyun başlatılıyor…",
     "waiting": "Ev sahibinin oyunu başlatması bekleniyor.",
+    "game": "Oyun",
+    "savedWorld": "Kayıtlı dünya",
+    "newWorld": "Yeni dünya",
+    "password": "Parola korumalı",
+    "profile": "Steam profili",
     "joining": "Oyuna katılınıyor…"
   },
 
@@ -354,6 +359,105 @@
     "quitTitleTitle": "Bu oyundan ayrılınsın mı?",
     "quitTitleBody": "Son kayıttan bu yana olan her şey kaybolacak.",
     "quitTitleBodyOnline": "Oyundan ayrılacaksınız. Ev sahibi sizseniz oyun herkes için sona erecek."
+  },
+
+  "mods": {
+    "search": "Ara",
+    "searchAbout": "Bir modu adına, ID’sine veya yazarına göre bulmak için yazın. Enter aramayı korur, Escape ise bir önceki aramayı geri getirir.",
+    "by": "{author} tarafından",
+    "count": { "one": "{count} mod", "other": "{count} mod" },
+    "issues": { "one": "{count} tanesi dikkat gerektiriyor", "other": "{count} tanesi dikkat gerektiriyor" },
+    "noIssues": "Her şey çalışıyor",
+    "openHint": "Ayarlarını ve ayrıntılarını açmak için seçin.",
+
+    "tab": {
+      "all": "Tümü",
+      "modstoke": "Modstoke",
+      "redloader": "RedLoader",
+      "bepinex": "BepInEx",
+      "libraries": "Kütüphaneler",
+      "issues": "Sorunlar"
+    },
+
+    "section": {
+      "find": "Arama",
+      "attention": "Dikkat gerektiriyor",
+      "installed": "Yüklü",
+      "none": "Burada bir şey yok"
+    },
+
+    "status": {
+      "running": "Çalışıyor",
+      "ready": "Hazır",
+      "missing": "Eksik",
+      "check": "İncele",
+      "off": "Kapalı",
+      "found": "Bulundu"
+    },
+
+    "statusAbout": {
+      "running": "Modstoke üzerinden çalışıyor.",
+      "ready": "Yüklü ve hazır.",
+      "missing": "İhtiyaç duyduğu bir şey eksik.",
+      "check": "Yüklü, ancak bir şeyinin incelenmesi gerekiyor.",
+      "off": "Kapatıldı.",
+      "found": "Bu bilgisayarda bulundu."
+    },
+
+    "kind": {
+      "modstoke": "Modstoke modu",
+      "modstokeLibrary": "Modstoke kütüphanesi",
+      "bepinex": "BepInEx eklentisi",
+      "redloader": "RedLoader modu",
+      "redloaderLibrary": "RedLoader kütüphanesi",
+      "other": "Mod"
+    }
+  },
+
+  "players": {
+    "openHint": "Steam profilini ve yapabileceklerinizi görmek için bir oyuncu seçin.",
+    "mutedNote": "Bu oyuncuyu bu bilgisayarda susturdunuz.",
+    "noBans": "Yasaklı kimse yok.",
+    "nobody": "Henüz burada başka kimse yok.",
+    "mute": "Sustur",
+    "unmute": "Sesi aç",
+    "unban": "Yasağı kaldır",
+    "makeGuest": "Misafir yap",
+    "makeTrusted": "Güvenilir yap",
+    "makeAdmin": "Yönetici yap",
+    "kick": "Oyundan at",
+    "ban": "Yasakla",
+    "kickTitle": "{name} oyundan atılsın mı?",
+    "kickBody": "Oyuncu hemen oyundan çıkar ama yeniden katılabilir.",
+    "banTitle": "{name} yasaklansın mı?",
+    "banBody": "Oyuncu oyundan çıkar ve siz yasağı kaldırana kadar yeniden katılamaz.",
+
+    "tab": {
+      "players": "Oyuncular",
+      "banned": "Yasaklılar",
+      "rules": "Kurallar"
+    },
+
+    "section": {
+      "online": "Bu oyunda",
+      "banned": "Yasaklı oyuncular",
+      "rules": "Çok oyunculu kuralları"
+    },
+
+    "role": {
+      "host": "Ev sahibi",
+      "owner": "Kurucu",
+      "admin": "Yönetici",
+      "trusted": "Güvenilir",
+      "guest": "Misafir",
+      "banned": "Yasaklı",
+      "hostAbout": "Bu oyunun ev sahibi.",
+      "ownerAbout": "Bu sunucunun sahibi.",
+      "adminAbout": "Oyuncuları atabilir, yasaklayabilir ve rollerini değiştirebilir.",
+      "trustedAbout": "Güvenilir bir oyuncu.",
+      "guestAbout": "Bu oyunda misafir.",
+      "bannedAbout": "Bu oyundan yasaklı."
+    }
   },
 
   "confirm": {

@@ -341,6 +341,11 @@
     "ready": "Kaikki on valmiina – aloita, kun haluat. Kaverit voivat liittyä Steamin kautta.",
     "starting": "Käynnistetään peliä…",
     "waiting": "Odotetaan, että isäntä aloittaa pelin.",
+    "game": "Peli",
+    "savedWorld": "Tallennettu maailma",
+    "newWorld": "Uusi maailma",
+    "password": "Salasanasuojattu",
+    "profile": "Steam-profiili",
     "joining": "Liitytään peliin…"
   },
 
@@ -354,6 +359,105 @@
     "quitTitleTitle": "Poistutaanko tästä pelistä?",
     "quitTitleBody": "Kaikki viimeisimmän tallennuksen jälkeen tapahtunut menetetään.",
     "quitTitleBodyOnline": "Poistut pelistä. Jos olet isäntä, peli päättyy kaikilta."
+  },
+
+  "mods": {
+    "search": "Hae",
+    "searchAbout": "Kirjoita, niin löydät modin sen nimen, ID:n tai tekijän perusteella. Enter säilyttää haun ja Escape palauttaa edellisen.",
+    "by": "tekijä: {author}",
+    "count": { "one": "{count} modi", "other": "{count} modia" },
+    "issues": { "one": "{count} vaatii huomiota", "other": "{count} vaativat huomiota" },
+    "noIssues": "Kaikki toimii",
+    "openHint": "Valitse se, niin sen asetukset ja tiedot avautuvat.",
+
+    "tab": {
+      "all": "Kaikki",
+      "modstoke": "Modstoke",
+      "redloader": "RedLoader",
+      "bepinex": "BepInEx",
+      "libraries": "Kirjastot",
+      "issues": "Ongelmat"
+    },
+
+    "section": {
+      "find": "Haku",
+      "attention": "Vaatii huomiota",
+      "installed": "Asennetut",
+      "none": "Täällä ei ole mitään"
+    },
+
+    "status": {
+      "running": "Käynnissä",
+      "ready": "Valmis",
+      "missing": "Puuttuu",
+      "check": "Tarkista",
+      "off": "Pois",
+      "found": "Löydetty"
+    },
+
+    "statusAbout": {
+      "running": "Käynnissä Modstoken kautta.",
+      "ready": "Asennettu ja valmis.",
+      "missing": "Jotain sen tarvitsemaa puuttuu.",
+      "check": "Asennettu, mutta jotain siinä pitää tarkistaa.",
+      "off": "Poistettu käytöstä.",
+      "found": "Löydetty tältä tietokoneelta."
+    },
+
+    "kind": {
+      "modstoke": "Modstoke-modi",
+      "modstokeLibrary": "Modstoke-kirjasto",
+      "bepinex": "BepInEx-lisäosa",
+      "redloader": "RedLoader-modi",
+      "redloaderLibrary": "RedLoader-kirjasto",
+      "other": "Modi"
+    }
+  },
+
+  "players": {
+    "openHint": "Valitse pelaaja, niin näet hänen Steam-profiilinsa ja mitä voit tehdä.",
+    "mutedNote": "Olet mykistänyt tämän pelaajan tällä tietokoneella.",
+    "noBans": "Kenelläkään ei ole porttikieltoa.",
+    "nobody": "Täällä ei ole vielä muita.",
+    "mute": "Mykistä",
+    "unmute": "Poista mykistys",
+    "unban": "Poista porttikielto",
+    "makeGuest": "Tee vieraaksi",
+    "makeTrusted": "Tee luotetuksi",
+    "makeAdmin": "Tee ylläpitäjäksi",
+    "kick": "Potkaise",
+    "ban": "Anna porttikielto",
+    "kickTitle": "Potkaistaanko {name}?",
+    "kickBody": "Pelaaja poistuu pelistä heti, mutta voi liittyä uudelleen.",
+    "banTitle": "Annetaanko pelaajalle {name} porttikielto?",
+    "banBody": "Pelaaja poistuu pelistä eikä voi liittyä uudelleen, ennen kuin poistat porttikiellon.",
+
+    "tab": {
+      "players": "Pelaajat",
+      "banned": "Porttikiellot",
+      "rules": "Säännöt"
+    },
+
+    "section": {
+      "online": "Tässä pelissä",
+      "banned": "Porttikiellon saaneet pelaajat",
+      "rules": "Moninpelin säännöt"
+    },
+
+    "role": {
+      "host": "Isäntä",
+      "owner": "Omistaja",
+      "admin": "Ylläpitäjä",
+      "trusted": "Luotettu",
+      "guest": "Vieras",
+      "banned": "Porttikiellossa",
+      "hostAbout": "Isännöi tätä peliä.",
+      "ownerAbout": "Omistaa tämän palvelimen.",
+      "adminAbout": "Voi potkaista pelaajia, antaa porttikieltoja ja vaihtaa pelaajien rooleja.",
+      "trustedAbout": "Luotettu pelaaja.",
+      "guestAbout": "Vieras tässä pelissä.",
+      "bannedAbout": "Porttikielto tähän peliin."
+    }
   },
 
   "confirm": {

@@ -29,6 +29,7 @@ namespace Modstoke.Loader
             internal TextMeshProUGUI Label, Value;
             internal Image[] Left, Right;
             internal Image Changed, Underline;
+            internal RawImage Picture;
             internal Image[] PipMarks;
             internal Focusable Focus;
             internal readonly Ease Slide = new(22f);
@@ -102,7 +103,24 @@ namespace Modstoke.Loader
 
         protected virtual void TabChanged(int index) { }
 
+        /// <summary>Whether rows go back to a default, with the Default prompt; not for a list of things rather than settings.</summary>
+        protected virtual bool CanReset => true;
+
+        /// <summary>What an empty tab says.</summary>
+        protected virtual string EmptyText => Text["options.none"];
+
         protected int TabIndex => _tab;
+
+        /// <summary>Builds the open tab's rows again, as when what they list changed; focus returns to the row it was on.</summary>
+        protected void Rebuild(string focusId = null)
+        {
+            var keep = focusId ?? _rows.ElementAtOrDefault(_focusIndex)?.Row.Id;
+            EndEdit(false);
+            BuildRows();
+            if (keep != null) FocusRow(keep);
+            if (Focused == null || !Focused.Usable) FocusRow(0, 1);
+            PaintDetails();
+        }
 
         protected override void Build()
         {
@@ -208,6 +226,7 @@ namespace Modstoke.Loader
             var tab = BuildTab(TabIds[_tab]);
             var culture = Languages.CultureOf(Languages.Current);
             var y = 0f;
+            var arriving = new List<RectTransform>();
             foreach (var section in tab.Sections)
             {
                 if (section.Rows.Count == 0) continue;
@@ -215,17 +234,23 @@ namespace Modstoke.Loader
                 heading.characterSpacing = 28;
                 heading.rectTransform.Strip(y + U(16), U(20), U(16), 0);
                 var headingWidth = heading.GetPreferredValues(heading.text).x;
-                MenuKit.Hairline(_content, "Rule " + section.Id, y + U(26), U(16) + headingWidth + U(16), 0);
+                var rule = MenuKit.Hairline(_content, "Rule " + section.Id, y + U(26), U(16) + headingWidth + U(16), 0);
+                arriving.Add(heading.rectTransform);
+                arriving.Add(rule.rectTransform);
                 y += y == 0 ? U(SectionHeight) - U(6) : U(SectionHeight);
                 foreach (var row in section.Rows)
                 {
-                    _rows.Add(BuildRow(row, y));
+                    var view = BuildRow(row, y);
+                    _rows.Add(view);
+                    arriving.Add(view.Rect);
                     y += U(RowHeight);
                 }
             }
+            // The list reads in from the top, as it does each time a tab opens.
+            new Cascade(arriving);
             _contentHeight = y + U(12);
             _content.sizeDelta = new Vector2(0, _contentHeight);
-            _empty.text = _rows.Count == 0 ? Text["options.none"] : "";
+            _empty.text = _rows.Count == 0 ? EmptyText : "";
             _scroll.Set(0, true);
             ApplyScroll();
             PaintRows();
@@ -235,8 +260,18 @@ namespace Modstoke.Loader
         {
             var view = new RowView { Row = row, Rect = MenuKit.Box(_content, "Row " + row.Id).Strip(y, U(RowHeight), 0, 0) };
             view.Changed = MenuKit.Fill(MenuKit.Box(view.Rect, "Changed").Place(0, 0.5f, 0, 0.5f, U(6), -U(3), -U(12), -U(3)), null, MenuKit.Muted);
+            var labelLeft = 20f;
+            if (row.HasPicture)
+            {
+                var frame = MenuKit.Box(view.Rect, "Picture").At(U(20), U((RowHeight - 32) / 2), U(32), U(32));
+                MenuKit.Fill(frame, null, MenuKit.Cell);
+                view.Picture = MenuKit.Box(frame, "Image").Place(0, 0, 1, 1).gameObject.AddComponent<RawImage>();
+                view.Picture.raycastTarget = false;
+                view.Picture.uvRect = new Rect(0, 1, 1, -1);
+                labelLeft += 44;
+            }
             view.Label = MenuKit.Text(view.Rect, "Label", ItemName(row), U(18), false, MenuKit.Soft, TextAlignmentOptions.MidlineLeft, true);
-            view.Label.rectTransform.Place(0, 0, 1, 1, U(20), 0, U(ControlWidth + 28), 0);
+            view.Label.rectTransform.Place(0, 0, 1, 1, U(labelLeft), 0, U(ControlWidth + 28), 0);
             view.Control = MenuKit.Box(view.Rect, "Control").Place(1, 0, 1, 1, -U(ControlWidth + 12), 0, U(12), 0);
             if (row is TextRow) BuildField(view);
             else if (row.Fraction.HasValue) BuildSlider(view);
@@ -364,17 +399,17 @@ namespace Modstoke.Loader
         {
             get
             {
-                var prompts = new List<PromptSpec>
-                {
-                    new(Text["common.back"], "B", "ESC", () => FrontEnd.Pop()),
-                    new(Text["options.reset"], "X", "DEL", ResetFocused)
-                };
+                var prompts = new List<PromptSpec> { new(Text["common.back"], "B", "ESC", () => FrontEnd.Pop()) };
+                if (CanReset) prompts.Add(new PromptSpec(Text["options.reset"], "X", "DEL", ResetFocused));
                 if (PrimaryLabel != null) prompts.Add(new PromptSpec(PrimaryLabel, "Y", "F2", RunPrimary));
                 return prompts;
             }
         }
 
-        internal override void OnAlt1() => ResetFocused();
+        internal override void OnAlt1()
+        {
+            if (CanReset) ResetFocused();
+        }
 
         internal override void OnAlt2()
         {
@@ -757,10 +792,16 @@ namespace Modstoke.Loader
             {
                 value = "—";
             }
+            if (view.Picture != null)
+            {
+                var picture = row.Picture;
+                view.Picture.texture = picture;
+                view.Picture.enabled = picture != null;
+            }
             // A setting that another has switched off stays in view, dimmed, and focus passes over it.
             view.Label.color = !available ? MenuKit.Faint : focused ? MenuKit.Ink : MenuKit.Soft;
             view.Value.text = row.Open != null ? value.ToUpper(Languages.CultureOf(Languages.Current)) : value;
-            view.Value.color = !available ? MenuKit.Faint : focused || row.Open == null ? MenuKit.Ink : MenuKit.Soft;
+            view.Value.color = !available ? MenuKit.Faint : row.Tint ?? (focused || row.Open == null ? MenuKit.Ink : MenuKit.Soft);
             // A dot beside a setting that is not at its default.
             view.Changed.enabled = row.Open == null && !SafeDefault(row);
             if (view.Underline != null)

@@ -10,14 +10,15 @@ namespace Modstoke.Loader
 {
     /// <summary>
     /// The game's pause menu, as the source for Modstoke's. The game still opens and closes it, so pausing,
-    /// the cursor, the hidden HUD, its music and multiplayer behaviour stay its own; only its button bar is put
-    /// away, as the game itself does for its sub-pages, while Modstoke's pause screen shows. The game's own
-    /// pages that Modstoke has no screen for yet (players, the shelter save) still show as they are.
+    /// the cursor, the hidden HUD, its music and multiplayer behaviour stay its own; only its button bar is made
+    /// invisible, from the moment the menu is created, while Modstoke's pause screen shows in its place. The
+    /// game's own pages that Modstoke has no screen for (the shelter save) still show as they are.
     /// </summary>
     internal static class PauseHost
     {
-        private static readonly List<GameObject> PutAway = new();
+        private static readonly List<CanvasGroup> Hidden = new();
         private static PauseMenu _menu;
+        private static int _hiddenFor;
         private static bool _escapeHeld;
 
         private static PauseMenu Menu
@@ -59,32 +60,51 @@ namespace Modstoke.Loader
             }
         }
 
-        /// <summary>Puts the game's button bar away while Modstoke's pause screen shows.</summary>
-        internal static void HideNative()
+        /// <summary>The game's pause menu was just created; its button bar is made invisible before it ever opens.</summary>
+        internal static void Adopt(PauseMenu menu)
         {
-            var menu = Menu;
-            if (menu == null || PutAway.Count > 0) return;
-            var targets = menu._deactivateForOptions;
-            if (targets == null) return;
-            for (var i = 0; i < targets.Count; i++)
-            {
-                var target = targets[i];
-                if (target == null || !target || !target.activeSelf) continue;
-                target.SetActive(false);
-                PutAway.Add(target);
-            }
+            if (menu == null || !menu) return;
+            _menu = menu;
+            HideNative();
         }
 
         /// <summary>
-        /// Brings the game's button bar back while its menu is still on its first page; a page of its own that opened
-        /// has put the bar away itself, and brings it back when it closes.
+        /// Makes the game's button bar invisible and unclickable, for as long as Modstoke's menus are on. The game
+        /// still switches it on and off with its own pages; it simply never shows.
         /// </summary>
+        internal static void HideNative()
+        {
+            var menu = Menu;
+            if (menu == null || _hiddenFor == menu.GetInstanceID()) return;
+            var targets = menu._deactivateForOptions;
+            if (targets == null) return;
+            _hiddenFor = menu.GetInstanceID();
+            Hidden.Clear();
+            for (var i = 0; i < targets.Count; i++)
+            {
+                var target = targets[i];
+                if (target == null || !target) continue;
+                var group = target.GetComponent<CanvasGroup>();
+                if (group == null || !group) group = target.AddComponent<CanvasGroup>();
+                group.alpha = 0f;
+                group.interactable = false;
+                group.blocksRaycasts = false;
+                Hidden.Add(group);
+            }
+        }
+
+        /// <summary>Shows the game's button bar again, as when Modstoke's menus stop.</summary>
         internal static void Release()
         {
-            var open = Open;
-            foreach (var target in PutAway)
-                if (open && target != null && target) target.SetActive(true);
-            PutAway.Clear();
+            foreach (var group in Hidden)
+            {
+                if (group == null || !group) continue;
+                group.alpha = 1f;
+                group.interactable = true;
+                group.blocksRaycasts = true;
+            }
+            Hidden.Clear();
+            _hiddenFor = 0;
         }
 
         /// <summary>
@@ -113,8 +133,6 @@ namespace Modstoke.Loader
             Menu?.Close();
         }
 
-        internal static void Players() => Menu?.SetPlayersActive(true);
-
         /// <summary>The game's own options page, for the key bindings Modstoke has no screen for yet.</summary>
         internal static void Options()
         {
@@ -129,11 +147,5 @@ namespace Modstoke.Loader
             PauseMenu.QuitToTitleSkipConfirm();
         }
 
-        internal static void Forget()
-        {
-            _menu = null;
-            _escapeHeld = false;
-            PutAway.Clear();
-        }
     }
 }

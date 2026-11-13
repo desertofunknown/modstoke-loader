@@ -47,6 +47,7 @@ namespace Modstoke.Loader
                 "common.cancel", Application.Quit, cautious: true)));
             // Over the words' glow, so the dark spill never dims it.
             _underline = new Glide(Root, true);
+            new Cascade(_entries.ConvertAll(entry => entry.Rect));
         }
 
         internal override void Retext()

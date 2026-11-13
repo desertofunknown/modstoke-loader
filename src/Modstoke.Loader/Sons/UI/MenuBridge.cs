@@ -125,6 +125,7 @@ namespace Modstoke.Loader
             try
             {
                 GameRuntime.ObservePauseMenu();
+                FrontEnd.PauseMenuAvailable(menu);
                 var parent = menu.transform.Find(PauseButtonPath);
                 if (parent == null)
                     throw new InvalidOperationException("Pause menu button container was not found.");

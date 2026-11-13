@@ -341,6 +341,11 @@
     "ready": "Vše je připraveno – začněte, až budete chtít. Přátelé se mohou připojit přes Steam.",
     "starting": "Spouští se hra…",
     "waiting": "Čeká se, až hostitel spustí hru.",
+    "game": "Hra",
+    "savedWorld": "Uložený svět",
+    "newWorld": "Nový svět",
+    "password": "Chráněná heslem",
+    "profile": "Profil Steam",
     "joining": "Připojování ke hře…"
   },
 
@@ -354,6 +359,105 @@
     "quitTitleTitle": "Opustit tuto hru?",
     "quitTitleBody": "Vše od posledního uložení bude ztraceno.",
     "quitTitleBodyOnline": "Opustíte hru. Pokud ji hostujete, skončí pro všechny."
+  },
+
+  "mods": {
+    "search": "Hledat",
+    "searchAbout": "Psaním vyhledáte mod podle názvu, ID nebo autora. Enter hledání ponechá a Escape vrátí to předchozí.",
+    "by": "autor: {author}",
+    "count": { "one": "{count} mod", "few": "{count} mody", "other": "{count} modů" },
+    "issues": { "one": "{count} vyžaduje pozornost", "few": "{count} vyžadují pozornost", "other": "{count} vyžaduje pozornost" },
+    "noIssues": "Vše funguje",
+    "openHint": "Výběrem otevřete jeho nastavení a podrobnosti.",
+
+    "tab": {
+      "all": "Všechny",
+      "modstoke": "Modstoke",
+      "redloader": "RedLoader",
+      "bepinex": "BepInEx",
+      "libraries": "Knihovny",
+      "issues": "Problémy"
+    },
+
+    "section": {
+      "find": "Hledání",
+      "attention": "Vyžadují pozornost",
+      "installed": "Nainstalované",
+      "none": "Nic tu není"
+    },
+
+    "status": {
+      "running": "Běží",
+      "ready": "Připraveno",
+      "missing": "Chybí",
+      "check": "Zkontrolovat",
+      "off": "Vypnuto",
+      "found": "Nalezeno"
+    },
+
+    "statusAbout": {
+      "running": "Běží přes Modstoke.",
+      "ready": "Nainstalováno a připraveno.",
+      "missing": "Chybí něco, co potřebuje.",
+      "check": "Nainstalováno, ale něco v něm je třeba zkontrolovat.",
+      "off": "Vypnuto.",
+      "found": "Nalezeno na tomto PC."
+    },
+
+    "kind": {
+      "modstoke": "Mod pro Modstoke",
+      "modstokeLibrary": "Knihovna pro Modstoke",
+      "bepinex": "Plugin pro BepInEx",
+      "redloader": "Mod pro RedLoader",
+      "redloaderLibrary": "Knihovna pro RedLoader",
+      "other": "Mod"
+    }
+  },
+
+  "players": {
+    "openHint": "Výběrem hráče zobrazíte jeho profil na Steamu a dostupné akce.",
+    "mutedNote": "Tohoto hráče jste na tomto PC ztlumili.",
+    "noBans": "Nikdo není zablokovaný.",
+    "nobody": "Zatím tu nikdo další není.",
+    "mute": "Ztlumit",
+    "unmute": "Zrušit ztlumení",
+    "unban": "Odblokovat",
+    "makeGuest": "Nastavit jako hosta",
+    "makeTrusted": "Nastavit jako důvěryhodného",
+    "makeAdmin": "Nastavit jako správce",
+    "kick": "Vyhodit",
+    "ban": "Zablokovat",
+    "kickTitle": "Vyhodit hráče {name}?",
+    "kickBody": "Hráč hned opustí hru, ale bude se moci znovu připojit.",
+    "banTitle": "Zablokovat hráče {name}?",
+    "banBody": "Hráč opustí hru a nebude se moci znovu připojit, dokud ho neodblokujete.",
+
+    "tab": {
+      "players": "Hráči",
+      "banned": "Zablokovaní",
+      "rules": "Pravidla"
+    },
+
+    "section": {
+      "online": "V této hře",
+      "banned": "Zablokovaní hráči",
+      "rules": "Pravidla hry více hráčů"
+    },
+
+    "role": {
+      "host": "Hostitel",
+      "owner": "Vlastník",
+      "admin": "Správce",
+      "trusted": "Důvěryhodný",
+      "guest": "Host",
+      "banned": "Zablokovaný",
+      "hostAbout": "Hostuje tuto hru.",
+      "ownerAbout": "Vlastní tento server.",
+      "adminAbout": "Může vyhazovat a blokovat hráče a měnit jejich role.",
+      "trustedAbout": "Důvěryhodný hráč.",
+      "guestAbout": "Host v této hře.",
+      "bannedAbout": "Zablokovaný v této hře."
+    }
   },
 
   "confirm": {

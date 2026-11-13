@@ -30,7 +30,29 @@ namespace Modstoke.Loader
             MenuState.SetInventory(inventory);
         }
 
+        /// <summary>
+        /// Opens the Mods screen where Modstoke's menus are showing (the title and the pause menu), and this menu's own
+        /// home elsewhere.
+        /// </summary>
         internal static void Show()
+        {
+            if (!_openingLiveControls && !ScreenHost.IsOpen && _closeLiveControls == null && FrontEnd.OpenModsScreen())
+            {
+                return;
+            }
+
+            MenuState.EndHandOver();
+            ShowNative();
+        }
+
+        /// <summary>Shows one mod's page, handed over from the Mods screen, which Back from that page returns to.</summary>
+        internal static void ShowHandedOver(string pageKey)
+        {
+            MenuState.OpenHandedOver(pageKey);
+            ShowNative();
+        }
+
+        private static void ShowNative()
         {
             // The pause menu's MODS button skips the focus checks that keep the menu shut under a screen host.
             if (_openingLiveControls || ScreenHost.IsOpen)

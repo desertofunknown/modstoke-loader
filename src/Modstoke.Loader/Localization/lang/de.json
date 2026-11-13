@@ -341,6 +341,11 @@
     "ready": "Alles bereit: Starte, wann du willst. Freunde können über Steam beitreten.",
     "starting": "Spiel wird gestartet …",
     "waiting": "Warten, bis der Host das Spiel startet.",
+    "game": "Spiel",
+    "savedWorld": "Gespeicherte Welt",
+    "newWorld": "Neue Welt",
+    "password": "Passwortgeschützt",
+    "profile": "Steam-Profil",
     "joining": "Beitritt zum Spiel …"
   },
 
@@ -354,6 +359,105 @@
     "quitTitleTitle": "Dieses Spiel verlassen?",
     "quitTitleBody": "Alles seit deinem letzten Speichern geht verloren.",
     "quitTitleBodyOnline": "Du verlässt das Spiel. Wenn du hostest, endet es für alle."
+  },
+
+  "mods": {
+    "search": "Suchen",
+    "searchAbout": "Tippe, um Mods nach Name, ID oder Autor zu finden. Mit Enter übernimmst du die Suche, mit Esc kehrt die vorherige zurück.",
+    "by": "von {author}",
+    "count": { "one": "{count} Mod", "other": "{count} Mods" },
+    "issues": { "one": "{count} benötigt Aufmerksamkeit", "other": "{count} benötigen Aufmerksamkeit" },
+    "noIssues": "Alles funktioniert",
+    "openHint": "Wähle einen Eintrag aus, um seine Einstellungen und Details zu öffnen.",
+
+    "tab": {
+      "all": "Alle",
+      "modstoke": "Modstoke",
+      "redloader": "RedLoader",
+      "bepinex": "BepInEx",
+      "libraries": "Bibliotheken",
+      "issues": "Probleme"
+    },
+
+    "section": {
+      "find": "Suchen",
+      "attention": "Benötigt Aufmerksamkeit",
+      "installed": "Installiert",
+      "none": "Hier ist nichts"
+    },
+
+    "status": {
+      "running": "Läuft",
+      "ready": "Bereit",
+      "missing": "Fehlt",
+      "check": "Prüfen",
+      "off": "Aus",
+      "found": "Gefunden"
+    },
+
+    "statusAbout": {
+      "running": "Läuft über Modstoke.",
+      "ready": "Installiert und bereit.",
+      "missing": "Es fehlt etwas, das benötigt wird.",
+      "check": "Installiert, aber etwas daran sollte geprüft werden.",
+      "off": "Ausgeschaltet.",
+      "found": "Auf diesem PC gefunden."
+    },
+
+    "kind": {
+      "modstoke": "Modstoke-Mod",
+      "modstokeLibrary": "Modstoke-Bibliothek",
+      "bepinex": "BepInEx-Plugin",
+      "redloader": "RedLoader-Mod",
+      "redloaderLibrary": "RedLoader-Bibliothek",
+      "other": "Mod"
+    }
+  },
+
+  "players": {
+    "openHint": "Wähle einen Spieler für sein Steam-Profil und weitere Aktionen.",
+    "mutedNote": "Du hast diesen Spieler auf diesem PC stummgeschaltet.",
+    "noBans": "Niemand ist gesperrt.",
+    "nobody": "Außer dir ist noch niemand hier.",
+    "mute": "Stummschalten",
+    "unmute": "Stummschaltung aufheben",
+    "unban": "Entsperren",
+    "makeGuest": "Zum Gast machen",
+    "makeTrusted": "Als vertraut markieren",
+    "makeAdmin": "Zum Admin machen",
+    "kick": "Rauswerfen",
+    "ban": "Sperren",
+    "kickTitle": "{name} rauswerfen?",
+    "kickBody": "Der Spieler verlässt das Spiel sofort, kann aber wieder beitreten.",
+    "banTitle": "{name} sperren?",
+    "banBody": "Der Spieler verlässt das Spiel und kann erst wieder beitreten, wenn du ihn entsperrst.",
+
+    "tab": {
+      "players": "Spieler",
+      "banned": "Gesperrt",
+      "rules": "Regeln"
+    },
+
+    "section": {
+      "online": "In diesem Spiel",
+      "banned": "Gesperrte Spieler",
+      "rules": "Mehrspielerregeln"
+    },
+
+    "role": {
+      "host": "Host",
+      "owner": "Besitzer",
+      "admin": "Admin",
+      "trusted": "Vertraut",
+      "guest": "Gast",
+      "banned": "Gesperrt",
+      "hostAbout": "Hostet dieses Spiel.",
+      "ownerAbout": "Besitzt diesen Server.",
+      "adminAbout": "Kann Spieler rauswerfen, sperren und ihre Rollen ändern.",
+      "trustedAbout": "Ein vertrauenswürdiger Spieler.",
+      "guestAbout": "Ein Gast in diesem Spiel.",
+      "bannedAbout": "Für dieses Spiel gesperrt."
+    }
   },
 
   "confirm": {

@@ -341,6 +341,11 @@
     "ready": "Ready when you are. Friends can join through Steam.",
     "starting": "Starting the game…",
     "waiting": "Waiting for the host to start the game.",
+    "game": "Game",
+    "savedWorld": "Saved world",
+    "newWorld": "New world",
+    "password": "Password protected",
+    "profile": "Steam profile",
     "joining": "Joining the game…"
   },
 
@@ -354,6 +359,105 @@
     "quitTitleTitle": "Leave this game?",
     "quitTitleBody": "Anything since your last save is lost.",
     "quitTitleBodyOnline": "You leave the game. If you are hosting, it ends for everyone."
+  },
+
+  "mods": {
+    "search": "Search",
+    "searchAbout": "Type to find a mod by its name, ID or author. Enter keeps the search and Escape puts the last one back.",
+    "by": "by {author}",
+    "count": { "one": "{count} mod", "other": "{count} mods" },
+    "issues": { "one": "{count} needs attention", "other": "{count} need attention" },
+    "noIssues": "Everything is working",
+    "openHint": "Select it to open its settings and details.",
+
+    "tab": {
+      "all": "All",
+      "modstoke": "Modstoke",
+      "redloader": "RedLoader",
+      "bepinex": "BepInEx",
+      "libraries": "Libraries",
+      "issues": "Issues"
+    },
+
+    "section": {
+      "find": "Search",
+      "attention": "Needs attention",
+      "installed": "Installed",
+      "none": "Nothing here"
+    },
+
+    "status": {
+      "running": "Running",
+      "ready": "Ready",
+      "missing": "Missing",
+      "check": "Check",
+      "off": "Off",
+      "found": "Found"
+    },
+
+    "statusAbout": {
+      "running": "Running through Modstoke.",
+      "ready": "Installed and ready.",
+      "missing": "Something it needs is missing.",
+      "check": "Installed, but something about it needs a look.",
+      "off": "Turned off.",
+      "found": "Found on this PC."
+    },
+
+    "kind": {
+      "modstoke": "Modstoke mod",
+      "modstokeLibrary": "Modstoke library",
+      "bepinex": "BepInEx plugin",
+      "redloader": "RedLoader mod",
+      "redloaderLibrary": "RedLoader library",
+      "other": "Mod"
+    }
+  },
+
+  "players": {
+    "openHint": "Select a player for their Steam profile and what you can do.",
+    "mutedNote": "You have muted them on this PC.",
+    "noBans": "Nobody is banned.",
+    "nobody": "Nobody else is here yet.",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "unban": "Allow back",
+    "makeGuest": "Make guest",
+    "makeTrusted": "Make trusted",
+    "makeAdmin": "Make admin",
+    "kick": "Kick",
+    "ban": "Ban",
+    "kickTitle": "Kick {name}?",
+    "kickBody": "They leave the game now, but can join again.",
+    "banTitle": "Ban {name}?",
+    "banBody": "They leave the game and cannot join again until you allow them back.",
+
+    "tab": {
+      "players": "Players",
+      "banned": "Banned",
+      "rules": "Rules"
+    },
+
+    "section": {
+      "online": "In this game",
+      "banned": "Banned",
+      "rules": "Multiplayer rules"
+    },
+
+    "role": {
+      "host": "Host",
+      "owner": "Owner",
+      "admin": "Admin",
+      "trusted": "Trusted",
+      "guest": "Guest",
+      "banned": "Banned",
+      "hostAbout": "Hosts this game.",
+      "ownerAbout": "Owns this server.",
+      "adminAbout": "Can kick and ban players and change their roles.",
+      "trustedAbout": "A trusted player.",
+      "guestAbout": "A guest in this game.",
+      "bannedAbout": "Banned from this game."
+    }
   },
 
   "confirm": {
