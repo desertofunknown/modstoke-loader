@@ -102,6 +102,7 @@
       "windowMode": { "name": "Tryb okna", "about": "Czy gra wypełnia cały ekran, czy działa w oknie." },
       "vsync": { "name": "Synchronizacja pionowa", "about": "Dopasowuje każdą klatkę do odświeżania monitora, co zapobiega rozrywaniu obrazu. Może nieco opóźnić reakcję na sterowanie." },
       "maxFps": { "name": "Limit klatek", "about": "Najwyższa liczba klatek na sekundę, jaką rysuje gra. Limit sprawia, że komputer jest chłodniejszy i cichszy; „Maks.” go znosi." },
+      "graphicsApi": { "name": "API grafiki", "about": "Interfejs graficzny, za pomocą którego gra rysuje obraz. Gra domyślnie korzysta z DirectX 11. DirectX 12 jest dostępny w jej silniku i na nowszych kartach graficznych może działać lepiej, ale gra nie była pod niego tworzona, więc przełącz z powrotem, jeśli coś wygląda lub działa źle. Zmiana zacznie obowiązywać przy następnym uruchomieniu gry." },
       "gamma": { "name": "Gamma", "about": "Rozjaśnia lub przyciemnia średnie tony obrazu." },
       "brightness": { "name": "Jasność", "about": "Zwiększa lub zmniejsza jasność całego obrazu." },
       "dlss": { "name": "NVIDIA DLSS", "about": "Rysuje grę w niższej rozdzielczości i odtwarza z niej ostry obraz, co daje więcej klatek na sekundę. Wymaga karty graficznej NVIDIA RTX." },
@@ -173,6 +174,12 @@
       "textLanguage": { "name": "Język Modstoke", "about": "Język tekstów samego Modstoke, np. tych menu. Opcja „Jak w grze” używa języka gry." }
     },
 
+    "graphicsApi": {
+      "running": "Obecnie w użyciu: {api}",
+      "fellBack": "Ostatnim razem DirectX 12 się nie uruchomił, więc przywrócono wybór samej gry.",
+      "launchOptions": "API grafiki określają twoje opcje uruchamiania w Steam, więc to ustawienie nic nie zmienia."
+    },
+
     "value": {
       "on": "Włączone",
       "off": "Wyłączone",
@@ -214,6 +221,7 @@
       "quarter": "Ćwierć",
       "eighth": "Jedna ósma",
       "max": "Maks.",
+      "gameDefault": "Domyślne ustawienie gry",
       "spring": "Wiosna",
       "summer": "Lato",
       "autumn": "Jesień",
@@ -307,6 +315,47 @@
     }
   },
 
+  "lobby": {
+    "headingHost": "Twoje lobby",
+    "headingJoined": "Lobby",
+    "unnamed": "Lobby",
+    "players": "Gracze",
+    "count": "{count} / {limit}",
+    "openSlots": { "one": "{count} wolne miejsce", "few": "{count} wolne miejsca", "many": "{count} wolnych miejsc", "other": "{count} wolnego miejsca" },
+    "full": "Lobby jest pełne.",
+    "openSlot": "Wolne miejsce",
+    "host": "Host",
+    "you": "Ty",
+    "voice": "Czat głosowy",
+    "microphone": "Mikrofon",
+    "micAlwaysOn": "Zawsze włączony",
+    "micPushToTalk": "Naciśnij, aby mówić",
+    "leave": "Opuść",
+    "invite": "Zaproś znajomych",
+    "remove": "Usuń",
+    "leaveTitle": "Opuścić lobby?",
+    "leaveBody": "Lobby zostanie zamknięte dla wszystkich, którzy w nim są.",
+    "removeTitle": "Usunąć tego gracza?",
+    "removeBody": "Gracz zostanie poproszony o opuszczenie lobby.",
+    "creating": "Tworzenie lobby…",
+    "ready": "Wszystko gotowe – zacznij, kiedy chcesz. Znajomi mogą dołączyć przez Steam.",
+    "starting": "Uruchamianie gry…",
+    "waiting": "Oczekiwanie, aż host rozpocznie grę.",
+    "joining": "Dołączanie do gry…"
+  },
+
+  "pause": {
+    "title": "Pauza",
+    "titleOnline": "Menu",
+    "resume": "Wznów",
+    "players": "Gracze",
+    "quitTitle": "Wyjdź do ekranu tytułowego",
+    "quitDesktop": "Wyjdź na pulpit",
+    "quitTitleTitle": "Opuścić tę grę?",
+    "quitTitleBody": "Wszystko od ostatniego zapisu zostanie utracone.",
+    "quitTitleBodyOnline": "Opuścisz grę. Jeśli jesteś hostem, zakończy się ona dla wszystkich."
+  },
+
   "confirm": {
     "keepDisplayTitle": "Zachować te ustawienia wyświetlania?",
     "keepDisplayBody": "Jeśli obraz wygląda źle, zaczekaj, a poprzednie ustawienia wrócą same.",
@@ -315,6 +364,10 @@
     "revertIn": { "one": "Powrót za {count} sekundę", "few": "Powrót za {count} sekundy", "many": "Powrót za {count} sekund", "other": "Powrót za {count} sekundy" },
     "quitTitle": "Wyjść z gry?",
     "quitBody": "Gra Sons of the Forest zostanie zamknięta, a ty wrócisz na pulpit.",
+    "restartTitle": "Uruchomić teraz grę ponownie?",
+    "restartBody": "Nowe API grafiki zacznie działać po ponownym uruchomieniu gry.",
+    "restart": "Uruchom ponownie",
+    "later": "Później",
     "quit": "Wyjdź"
   },
 

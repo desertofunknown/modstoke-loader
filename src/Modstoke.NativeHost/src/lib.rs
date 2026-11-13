@@ -30,6 +30,17 @@ const IMAGE_FILE_MACHINE_AMD64: u16 = 0x8664;
 const HDT_LOAD_ASSEMBLY_AND_GET_FUNCTION_POINTER: i32 = 5;
 const UNSET_HOSTFXR_RESULT: i32 = i32::MIN;
 const NATIVE_HOST_LOG_NAME: &str = "openacai-native-host.log";
+const LOADER_SETTINGS_NAME: &str = "openacai-loader.settings.cfg";
+const GRAPHICS_API_KEY: &str = "graphicsApi";
+// Written before a start with a forced graphics API and removed by the Loader once the menus draw, so a start that
+// never got that far is known on the next one.
+const GRAPHICS_PENDING_NAME: &str = "graphics-api-pending";
+const GRAPHICS_FAILED_NAME: &str = "graphics-api-failed";
+// Launch options that already pick a graphics API, or start the game without graphics.
+const GRAPHICS_FLAGS: [&str; 6] = ["-force-d3d", "-force-vulkan", "-force-gl", "-force-gfx-", "-batchmode", "-nographics"];
+
+static COMMAND_LINE_W: OnceLock<Vec<u16>> = OnceLock::new();
+static COMMAND_LINE_A: OnceLock<Vec<u8>> = OnceLock::new();
 
 struct HostState {
     game_dir: OnceLock<PathBuf>,
@@ -189,6 +200,8 @@ struct NativeHostConfig {
 
 #[link(name = "kernel32")]
 unsafe extern "system" {
+    fn GetCommandLineW() -> *const u16;
+    fn GetCommandLineA() -> *const c_char;
     fn GetModuleFileNameW(module: Hmodule, filename: *mut u16, size: Dword) -> Dword;
     fn GetModuleHandleW(module_name: *const u16) -> Hmodule;
     fn GetCurrentThreadId() -> Dword;
@@ -318,6 +331,7 @@ unsafe fn process_attach(hinst_dll: Hinstance) -> Result<(), BootstrapError> {
     validate_bootstrap_config(&config)?;
     let _ = STATE.config.set(config);
 
+    apply_graphics_api(&game_exe, &game_dir);
     install_get_proc_address_hook()?;
     set_env("DOORSTOP_DISABLE", "TRUE");
     write_state(
@@ -326,6 +340,114 @@ unsafe fn process_attach(hinst_dll: Hinstance) -> Result<(), BootstrapError> {
         None,
     );
     Ok(())
+}
+
+/// Adds the graphics API chosen in Modstoke's options to the command line Unity reads. Unity picks its graphics
+/// device from -force-d3d11 or -force-d3d12 on the command line only, before any managed code runs, so the choice
+/// is applied here, at the next start after it was made.
+unsafe fn apply_graphics_api(game_exe: &Path, game_dir: &Path) {
+    let user_data = user_data_dir(game_dir);
+    let Some(choice) = read_setting(&user_data.join(LOADER_SETTINGS_NAME), GRAPHICS_API_KEY) else {
+        return;
+    };
+    let flag = match choice.to_ascii_lowercase().as_str() {
+        "d3d12" => "-force-d3d12",
+        "d3d11" => "-force-d3d11",
+        _ => return,
+    };
+
+    let server = game_exe
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .is_some_and(|stem| stem.to_ascii_lowercase().ends_with("ds"));
+    let original_w = GetCommandLineW();
+    let original_a = GetCommandLineA();
+    if server || original_w.is_null() || original_a.is_null() {
+        return;
+    }
+    let line = String::from_utf16_lossy(wide_slice(original_w));
+    let lower = line.to_ascii_lowercase();
+    if GRAPHICS_FLAGS.iter().any(|known| lower.contains(known)) {
+        log_line("Graphics API: the launch options already choose one; the Modstoke setting is left out");
+        return;
+    }
+
+    let pending = user_data.join(GRAPHICS_PENDING_NAME);
+    if pending.is_file() {
+        // The last start with this choice never reached the menus; this one starts as the game would.
+        let _ = fs::rename(&pending, user_data.join(GRAPHICS_FAILED_NAME));
+        log_line(&format!("Graphics API: the last start with {flag} did not finish; starting without it"));
+        return;
+    }
+    if fs::write(&pending, flag).is_err() {
+        log_line("Graphics API: the start marker could not be written; starting without the setting");
+        return;
+    }
+
+    let _ = COMMAND_LINE_W.set(wide_null(&format!("{line} {flag}")));
+    let mut ansi = CStr::from_ptr(original_a).to_bytes().to_vec();
+    ansi.extend_from_slice(b" ");
+    ansi.extend_from_slice(flag.as_bytes());
+    ansi.push(0);
+    let _ = COMMAND_LINE_A.set(ansi);
+
+    let kernel32 = GetModuleHandleW(wide_null("kernel32.dll").as_ptr());
+    let exe = GetModuleHandleW(null());
+    let unity = GetModuleHandleW(wide_null("UnityPlayer.dll").as_ptr());
+    let mut hooked = false;
+    for (name, detour) in [
+        (&b"GetCommandLineW\0"[..], get_command_line_w_detour as Farproc),
+        (&b"GetCommandLineA\0"[..], get_command_line_a_detour as Farproc),
+    ] {
+        let target = GetProcAddress(kernel32, name.as_ptr().cast());
+        if target.is_null() {
+            continue;
+        }
+        for module in [unity, exe] {
+            if !module.is_null() {
+                hooked |= iat_hook(module, None, target, detour);
+            }
+        }
+    }
+    if hooked {
+        log_line(&format!("Graphics API: starting with {flag}"));
+    } else {
+        let _ = fs::remove_file(&pending);
+        log_line("Graphics API: the command line could not be hooked; starting without the setting");
+    }
+}
+
+unsafe extern "system" fn get_command_line_w_detour() -> *const u16 {
+    COMMAND_LINE_W.get().map_or_else(|| GetCommandLineW(), |line| line.as_ptr())
+}
+
+unsafe extern "system" fn get_command_line_a_detour() -> *const c_char {
+    COMMAND_LINE_A.get().map_or_else(|| GetCommandLineA(), |line| line.as_ptr().cast())
+}
+
+unsafe fn wide_slice<'a>(text: *const u16) -> &'a [u16] {
+    let mut length = 0;
+    while *text.add(length) != 0 {
+        length += 1;
+    }
+    std::slice::from_raw_parts(text, length)
+}
+
+fn user_data_dir(game_dir: &Path) -> PathBuf {
+    let user_data = game_dir.join("Modstoke").join("UserData");
+    let legacy = game_dir.join("OpenACAI").join("UserData");
+    if !user_data.is_dir() && legacy.is_dir() { legacy } else { user_data }
+}
+
+/// One value from the Loader's settings file, which holds `key = value` lines.
+fn read_setting(path: &Path, key: &str) -> Option<String> {
+    let text = fs::read_to_string(path).ok()?;
+    text.lines()
+        .map(str::trim)
+        .filter(|line| !line.starts_with('#') && !line.starts_with(';'))
+        .filter_map(|line| line.split_once('='))
+        .find(|(name, _)| name.trim().eq_ignore_ascii_case(key))
+        .map(|(_, value)| value.trim().to_string())
 }
 
 unsafe fn install_get_proc_address_hook() -> Result<(), BootstrapError> {
@@ -345,13 +467,13 @@ unsafe fn install_get_proc_address_hook() -> Result<(), BootstrapError> {
     let mut hooked = false;
 
     if !unity.is_null() {
-        let unity_hooked = iat_hook(unity, "kernel32.dll", target, hook);
+        let unity_hooked = iat_hook(unity, Some("kernel32.dll"), target, hook);
         STATE.iat_hooked_unity_player.store(unity_hooked, Ordering::SeqCst);
         hooked |= unity_hooked;
     }
 
     if !exe.is_null() && exe != unity {
-        let exe_hooked = iat_hook(exe, "kernel32.dll", target, hook);
+        let exe_hooked = iat_hook(exe, Some("kernel32.dll"), target, hook);
         STATE.iat_hooked_executable.store(exe_hooked, Ordering::SeqCst);
         hooked |= exe_hooked;
     }
@@ -761,9 +883,11 @@ fn validate_pe_architecture(label: &str, path: &Path) -> Result<PeArchitecture, 
     })
 }
 
+/// Points a module's import of `target_function` at `detour_function`; with no `target_dll`, the import is looked
+/// for under every DLL the module imports from, as an API set name may stand in for kernel32.
 unsafe fn iat_hook(
     module: Hmodule,
-    target_dll: &str,
+    target_dll: Option<&str>,
     target_function: Farproc,
     detour_function: Farproc,
 ) -> bool {
@@ -804,7 +928,7 @@ unsafe fn iat_hook(
 
         let name_ptr = (base + name_rva) as *const c_char;
         let dll_name = CStr::from_ptr(name_ptr).to_string_lossy();
-        if dll_name.eq_ignore_ascii_case(target_dll) {
+        if target_dll.is_none_or(|wanted| dll_name.eq_ignore_ascii_case(wanted)) {
             let mut thunk = (base + first_thunk_rva) as *mut usize;
             while *thunk != 0 {
                 if *thunk == target_function as usize {

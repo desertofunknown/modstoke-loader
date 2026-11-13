@@ -39,10 +39,9 @@ namespace Modstoke.Loader
         private const int MaxJumpButtons = 6;
         private const int JumpBarMinSections = 3;
         private const float JumpPadding = 8f;
-        private static readonly Color PaneColor = new Color(0f, 0f, 0f, 0.18f);
-        private static readonly Color BandColor = new Color(1f, 1f, 1f, 0.035f);
-        private static readonly Color ActiveButtonColor = new Color(1f, 1f, 1f, 0.32f);
-        private static readonly Color ShadeColor = new Color(0.03f, 0.03f, 0.03f, 1f);
+        private static readonly Color ActiveButtonColor = MenuKit.Faded(0.42f);
+        // The front end's veil, a little deeper: the menu sits on the world, which is blurred behind it.
+        private static readonly Color ShadeColor = MenuKit.Hex(0x050606, 0.86f);
         private static readonly char[] NonPlainNumberMarks = { 'e', 'E', '+' };
         private static readonly UiEventSystem EventSystemLease = new UiEventSystem("Modstoke Mods Menu Event System");
         private static readonly List<Chip> _chips = new List<Chip>();
@@ -474,10 +473,7 @@ namespace Modstoke.Loader
 
                 chip.Active = on;
                 chip.Button.image.color = on ? ActiveButtonColor : MenuWidgets.ButtonColor;
-                // The options panel's active red is unreadable on the tinted chip, so the active chip is plain white.
-                chip.Label.SetColor(on
-                    ? MenuWidgets.TextColor
-                    : MenuTheme.HasOptionColors ? MenuTheme.InactiveColor : MenuWidgets.MutedColor);
+                chip.Label.SetColor(on ? MenuWidgets.TextColor : MenuWidgets.MutedColor);
             }
         }
 
@@ -1307,12 +1303,12 @@ namespace Modstoke.Loader
 
                 var shade = MenuWidgets.CreateImage("Shade", _root.transform, ShadeColor);
                 MenuWidgets.Stretch(shade.rectTransform, 0f, 0f, 0f, 0f);
-                // Opaque because the panel's brush edges are ragged, and keeps clicks from reaching the pause menu underneath.
+                // Keeps clicks from reaching the menus underneath.
                 shade.raycastTarget = true;
 
-                var panel = MenuWidgets.CreateImage("NativeOptionsPanelClone", _root.transform, Color.clear);
+                // Content on the veil, with no panel of its own: grouped by space and hairlines.
+                var panel = MenuWidgets.CreateImage("Content", _root.transform, Color.clear);
                 _panel = panel.rectTransform;
-                MenuTheme.ApplyPanelBackground(panel);
                 var stack = panel.gameObject.AddComponent<VerticalLayoutGroup>();
                 stack.padding = new RectOffset(28, 28, 0, 0);
                 stack.spacing = 4f;
@@ -1352,10 +1348,11 @@ namespace Modstoke.Loader
 
         private static void CreateHeader(Transform parent)
         {
-            var header = Band(parent, "Header", 76f, false);
-            var title = MenuLabel.Create(header, "Heading", 30f, MenuWidgets.TextColor, true, false);
+            var header = Band(parent, "Header", 96f, false);
+            var title = MenuLabel.Create(header, "Heading", 62f, MenuWidgets.TextColor, true, false);
+            title.Text.characterSpacing = 5f;
             title.Set("MODS");
-            MenuWidgets.Fixed(title.Text.gameObject, 240f, 0f);
+            MenuWidgets.Fixed(title.Text.gameObject, 320f, 0f);
             _breadcrumb = MenuLabel.Create(header, "Breadcrumb", 16f, MenuWidgets.MutedColor, false, false);
             _breadcrumb.Text.richText = false;
             _breadcrumb.Text.alignment = TextAlignmentOptions.MidlineRight;
@@ -1516,14 +1513,18 @@ namespace Modstoke.Loader
             blocker.raycastTarget = true;
             _prompt = blocker.gameObject;
 
+            // A dark band across the screen, as the front end's dialogs have.
+            var band = MenuWidgets.CreateImage("Band", blocker.transform, MenuKit.Hex(0x050606, 0.94f));
+            band.rectTransform.anchorMin = new Vector2(0f, 0.5f);
+            band.rectTransform.anchorMax = new Vector2(1f, 0.5f);
+            band.rectTransform.sizeDelta = new Vector2(0f, 260f);
             var dialog = MenuWidgets.CreateImage("Dialog", blocker.transform, Color.clear);
-            MenuTheme.ApplyPanelBackground(dialog);
             var rect = dialog.rectTransform;
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(680f, 230f);
             var stack = dialog.gameObject.AddComponent<VerticalLayoutGroup>();
-            stack.padding = new RectOffset(32, 32, 24, 24);
+            stack.padding = new RectOffset(0, 0, 24, 24);
             stack.spacing = 12f;
             stack.childControlWidth = true;
             stack.childForceExpandWidth = true;
@@ -1581,12 +1582,13 @@ namespace Modstoke.Loader
             return input;
         }
 
-        /// <summary>A fixed-height horizontal strip in the panel or a pane.</summary>
+        /// <summary>A fixed-height horizontal strip in the panel or a pane; a backed one is set off by a hairline.</summary>
         internal static RectTransform Band(Transform parent, string name, float height, bool backed)
         {
-            var rect = backed ? MenuWidgets.CreateImage(name, parent, BandColor).rectTransform : MenuWidgets.CreateRect(name, parent);
+            var rect = MenuWidgets.CreateRect(name, parent);
+            if (backed) MenuWidgets.Underline(rect);
             var layout = rect.gameObject.AddComponent<HorizontalLayoutGroup>();
-            layout.padding = backed ? new RectOffset(16, 0, 0, 0) : new RectOffset();
+            layout.padding = backed ? new RectOffset(4, 0, 0, 0) : new RectOffset();
             layout.spacing = 12f;
             layout.childAlignment = TextAnchor.MiddleLeft;
             layout.childControlWidth = true;
@@ -1599,11 +1601,22 @@ namespace Modstoke.Loader
             return rect;
         }
 
+        /// <summary>A column of the body; a backed one is set off from the next by a hairline down its right side.</summary>
         internal static RectTransform Pane(Transform parent, string name, bool backed)
         {
-            var rect = backed ? MenuWidgets.CreateImage(name, parent, PaneColor).rectTransform : MenuWidgets.CreateRect(name, parent);
+            var rect = MenuWidgets.CreateRect(name, parent);
+            if (backed)
+            {
+                var rule = MenuWidgets.CreateImage("Rule", rect, MenuWidgets.RuleColor);
+                rule.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+                rule.rectTransform.anchorMin = new Vector2(1f, 0f);
+                rule.rectTransform.anchorMax = Vector2.one;
+                rule.rectTransform.pivot = new Vector2(1f, 0.5f);
+                rule.rectTransform.sizeDelta = new Vector2(1f, 0f);
+                rule.rectTransform.anchoredPosition = Vector2.zero;
+            }
             var layout = rect.gameObject.AddComponent<VerticalLayoutGroup>();
-            layout.padding = backed ? new RectOffset(12, 12, 12, 12) : new RectOffset();
+            layout.padding = backed ? new RectOffset(0, 16, 12, 12) : new RectOffset();
             layout.spacing = 8f;
             layout.childControlWidth = true;
             layout.childForceExpandWidth = true;
@@ -1927,9 +1940,7 @@ namespace Modstoke.Loader
         {
             private const float Height = 40f;
             private const int Indent = 20;
-            private static readonly Color GroupColor = new Color(1f, 1f, 1f, 0.02f);
-            private static readonly Color SelectedColor = new Color(1f, 1f, 1f, 0.16f);
-            private readonly Image _backing;
+            private readonly Image _backing, _edge;
             private readonly HorizontalLayoutGroup _layout;
             private readonly MenuDot _dot;
             private readonly MenuLabel _label;
@@ -1941,9 +1952,17 @@ namespace Modstoke.Loader
             internal NavRow(Transform parent, bool group, Action<NavRow> click)
             {
                 Group = group;
-                _backing = MenuWidgets.CreateImage(group ? "NavGroup" : "NavRow", parent, group ? GroupColor : MenuWidgets.RowColor);
-                MenuWidgets.ApplySprite(_backing, MenuTheme.RowSprite);
+                // The focus fill shows faintly at rest; the open page is marked by a bright edge, as focus is elsewhere.
+                _backing = MenuWidgets.CreateImage(group ? "NavGroup" : "NavRow", parent, MenuWidgets.RowColor);
                 Root = _backing.rectTransform;
+                _edge = MenuWidgets.CreateImage("Edge", Root, MenuWidgets.TextColor);
+                _edge.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+                _edge.rectTransform.anchorMin = Vector2.zero;
+                _edge.rectTransform.anchorMax = new Vector2(0f, 1f);
+                _edge.rectTransform.pivot = new Vector2(0f, 0.5f);
+                _edge.rectTransform.sizeDelta = new Vector2(3f, 0f);
+                _edge.rectTransform.anchoredPosition = Vector2.zero;
+                _edge.enabled = false;
                 _layout = Root.gameObject.AddComponent<HorizontalLayoutGroup>();
                 _layout.spacing = 8f;
                 _layout.childAlignment = TextAnchor.MiddleLeft;
@@ -1965,7 +1984,7 @@ namespace Modstoke.Loader
                 _chevron = MenuLabel.Create(Root, "Chevron", 15f, MenuWidgets.HeaderColor, true, false);
                 _chevron.Text.alignment = TextAlignmentOptions.Center;
                 MenuWidgets.Fixed(_chevron.Text.gameObject, 24f, 0f);
-                Button = MenuWidgets.MakeButton(_backing);
+                Button = MenuWidgets.MakeButton(_backing, group ? 0f : 0.2f);
                 Button.onClick.AddListener((UnityAction)new Action(() =>
                 {
                     if (Item != null)
@@ -1997,7 +2016,8 @@ namespace Modstoke.Loader
                 if (_selected != selected)
                 {
                     _selected = selected;
-                    _backing.color = selected ? SelectedColor : Group ? GroupColor : MenuWidgets.RowColor;
+                    _edge.enabled = selected;
+                    _label.SetColor(selected ? MenuWidgets.TextColor : Group ? MenuWidgets.MutedColor : MenuWidgets.HeaderColor);
                     changed = true;
                 }
 

@@ -102,6 +102,7 @@
       "windowMode": { "name": "Window mode", "about": "Whether the game fills the screen or runs in a window." },
       "vsync": { "name": "Vertical sync", "about": "Matches each frame to your monitor's refresh, which stops tearing. It can add a little delay to your input." },
       "maxFps": { "name": "Frame rate limit", "about": "The most frames per second the game draws. A limit keeps your PC cooler and quieter; Max removes it." },
+      "graphicsApi": { "name": "Graphics API", "about": "The graphics interface the game draws with. DirectX 11 is how the game ships. DirectX 12 comes with its engine and can run better on newer graphics cards, but the game was not made for it, so switch back if anything looks or runs wrong. A change applies the next time the game starts." },
       "gamma": { "name": "Gamma", "about": "Brightens or darkens the middle tones of the picture." },
       "brightness": { "name": "Brightness", "about": "Raises or lowers the brightness of the whole picture." },
       "dlss": { "name": "NVIDIA DLSS", "about": "Draws the game at a lower resolution and rebuilds a sharp picture from it, for more frames per second. Needs an NVIDIA RTX graphics card." },
@@ -173,6 +174,12 @@
       "textLanguage": { "name": "Modstoke language", "about": "The language of Modstoke's own text, such as these menus. Following the game uses the game's language." }
     },
 
+    "graphicsApi": {
+      "running": "Running now: {api}",
+      "fellBack": "DirectX 12 did not start last time, so the game's own choice is back.",
+      "launchOptions": "Your Steam launch options choose the graphics API, so this setting has no effect."
+    },
+
     "value": {
       "on": "On",
       "off": "Off",
@@ -214,6 +221,7 @@
       "quarter": "Quarter",
       "eighth": "Eighth",
       "max": "Max",
+      "gameDefault": "Game default",
       "spring": "Spring",
       "summer": "Summer",
       "autumn": "Autumn",
@@ -307,6 +315,47 @@
     }
   },
 
+  "lobby": {
+    "headingHost": "Your lobby",
+    "headingJoined": "Lobby",
+    "unnamed": "Lobby",
+    "players": "Players",
+    "count": "{count} / {limit}",
+    "openSlots": { "one": "{count} place open", "other": "{count} places open" },
+    "full": "The lobby is full.",
+    "openSlot": "Open place",
+    "host": "Host",
+    "you": "You",
+    "voice": "Voice",
+    "microphone": "Microphone",
+    "micAlwaysOn": "Always on",
+    "micPushToTalk": "Push to talk",
+    "leave": "Leave",
+    "invite": "Invite friends",
+    "remove": "Remove",
+    "leaveTitle": "Leave the lobby?",
+    "leaveBody": "The lobby closes for everyone in it.",
+    "removeTitle": "Remove this player?",
+    "removeBody": "They are asked to leave the lobby.",
+    "creating": "Setting up the lobby…",
+    "ready": "Ready when you are. Friends can join through Steam.",
+    "starting": "Starting the game…",
+    "waiting": "Waiting for the host to start the game.",
+    "joining": "Joining the game…"
+  },
+
+  "pause": {
+    "title": "Paused",
+    "titleOnline": "Menu",
+    "resume": "Resume",
+    "players": "Players",
+    "quitTitle": "Quit to title",
+    "quitDesktop": "Quit to desktop",
+    "quitTitleTitle": "Leave this game?",
+    "quitTitleBody": "Anything since your last save is lost.",
+    "quitTitleBodyOnline": "You leave the game. If you are hosting, it ends for everyone."
+  },
+
   "confirm": {
     "keepDisplayTitle": "Keep these display settings?",
     "keepDisplayBody": "If the screen looks wrong, wait and the previous settings come back by themselves.",
@@ -315,6 +364,10 @@
     "revertIn": { "one": "Going back in {count} second", "other": "Going back in {count} seconds" },
     "quitTitle": "Quit the game?",
     "quitBody": "Sons of the Forest will close and return you to the desktop.",
+    "restartTitle": "Restart the game now?",
+    "restartBody": "The new graphics API takes effect when the game starts again.",
+    "restart": "Restart",
+    "later": "Later",
     "quit": "Quit"
   },
 

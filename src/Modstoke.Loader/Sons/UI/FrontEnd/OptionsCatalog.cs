@@ -406,7 +406,13 @@ namespace Modstoke.Loader
                     Choice("resolution", () => new ResolutionOptionGui(), OptionText.Resolution),
                     Choice("windowMode", () => new FullscreenOptionGui()),
                     Choice("vsync", () => new VSyncOptionGui()),
-                    Slider("maxFps", () => new TargetFrameRateOptionGui(), OptionFormat.Fps, 54)),
+                    Slider("maxFps", () => new TargetFrameRateOptionGui(), OptionFormat.Fps, 54),
+                    new ChoiceRow("graphicsApi", () => GraphicsApi.Choice, GraphicsApi.Write, GraphicsApi.Default, new (string, Func<string>)[]
+                    {
+                        ("auto", () => FrontEnd.Text["options.value.gameDefault"]),
+                        ("d3d11", () => "DirectX 11"),
+                        ("d3d12", () => "DirectX 12")
+                    })),
                 Section("picture",
                     Slider("gamma", () => new GammaOptionGui(), OptionFormat.Decimal),
                     Slider("brightness", () => new BrightnessOptionGui(), OptionFormat.Decimal)),
@@ -532,9 +538,15 @@ namespace Modstoke.Loader
                 return true;
             }, @default, choices);
 
-        // Bindings stay on the game's own controls screen for now; it opens over the title as usual.
+        // Bindings stay on the game's own controls screen for now: over the title its options scene, in a game the
+        // pause menu's own options page.
         private static void OpenGameOptions()
         {
+            if (!FrontEnd.AtTitle)
+            {
+                PauseHost.Options();
+                return;
+            }
             GameMenus.Options();
             FrontEnd.StepAside();
         }

@@ -102,6 +102,7 @@
       "windowMode": { "name": "Pencere modu", "about": "Oyunun tüm ekranı mı kaplayacağı yoksa bir pencerede mi çalışacağı." },
       "vsync": { "name": "Dikey senkronizasyon", "about": "Her kareyi monitörünüzün yenileme hızına eşitleyerek görüntü yırtılmasını önler. Girdilerinize biraz gecikme ekleyebilir." },
       "maxFps": { "name": "Kare hızı sınırı", "about": "Oyunun saniyede çizdiği en fazla kare sayısı. Sınır, bilgisayarınızı daha serin ve sessiz tutar; “Maks.” sınırı kaldırır." },
+      "graphicsApi": { "name": "Grafik API’si", "about": "Oyunun görüntüyü çizerken kullandığı grafik arayüzü. Oyun normalde DirectX 11 ile çalışır. DirectX 12 oyunun motorunda mevcuttur ve daha yeni ekran kartlarında daha iyi çalışabilir, ancak oyun bunun için yapılmadı; bir şey yanlış görünür ya da düzgün çalışmazsa eski ayara geri dönün. Değişiklik, oyunun bir sonraki açılışında geçerli olur." },
       "gamma": { "name": "Gama", "about": "Görüntünün orta tonlarını aydınlatır veya karartır." },
       "brightness": { "name": "Parlaklık", "about": "Tüm görüntünün parlaklığını artırır veya azaltır." },
       "dlss": { "name": "NVIDIA DLSS", "about": "Oyunu daha düşük çözünürlükte çizer ve bundan net bir görüntü oluşturarak saniyedeki kare sayısını artırır. NVIDIA RTX ekran kartı gerektirir." },
@@ -173,6 +174,12 @@
       "textLanguage": { "name": "Modstoke dili", "about": "Bu menüler gibi Modstoke’un kendi metinlerinin dili. “Oyunla aynı” seçeneği oyunun dilini kullanır." }
     },
 
+    "graphicsApi": {
+      "running": "Şu an kullanılan: {api}",
+      "fellBack": "DirectX 12 geçen sefer başlatılamadı, bu yüzden oyunun kendi seçimine geri dönüldü.",
+      "launchOptions": "Grafik API’sini Steam başlatma seçenekleriniz belirliyor, bu yüzden bu ayarın bir etkisi yok."
+    },
+
     "value": {
       "on": "Açık",
       "off": "Kapalı",
@@ -214,6 +221,7 @@
       "quarter": "Çeyrek",
       "eighth": "Sekizde bir",
       "max": "Maks.",
+      "gameDefault": "Oyun varsayılanı",
       "spring": "İlkbahar",
       "summer": "Yaz",
       "autumn": "Sonbahar",
@@ -307,6 +315,47 @@
     }
   },
 
+  "lobby": {
+    "headingHost": "Lobiniz",
+    "headingJoined": "Lobi",
+    "unnamed": "Lobi",
+    "players": "Oyuncular",
+    "count": "{count} / {limit}",
+    "openSlots": { "one": "{count} boş yer", "other": "{count} boş yer" },
+    "full": "Lobi dolu.",
+    "openSlot": "Boş yer",
+    "host": "Ev sahibi",
+    "you": "Siz",
+    "voice": "Sesli sohbet",
+    "microphone": "Mikrofon",
+    "micAlwaysOn": "Her zaman açık",
+    "micPushToTalk": "Bas-konuş",
+    "leave": "Ayrıl",
+    "invite": "Arkadaşları davet et",
+    "remove": "Çıkar",
+    "leaveTitle": "Lobiden ayrılınsın mı?",
+    "leaveBody": "Lobi, içindeki herkes için kapanacak.",
+    "removeTitle": "Bu oyuncu çıkarılsın mı?",
+    "removeBody": "Oyuncudan lobiden ayrılması istenecek.",
+    "creating": "Lobi oluşturuluyor…",
+    "ready": "Her şey hazır, istediğiniz zaman başlayın. Arkadaşlarınız Steam üzerinden katılabilir.",
+    "starting": "Oyun başlatılıyor…",
+    "waiting": "Ev sahibinin oyunu başlatması bekleniyor.",
+    "joining": "Oyuna katılınıyor…"
+  },
+
+  "pause": {
+    "title": "Duraklatıldı",
+    "titleOnline": "Menü",
+    "resume": "Devam et",
+    "players": "Oyuncular",
+    "quitTitle": "Giriş menüsüne dön",
+    "quitDesktop": "Masaüstüne çık",
+    "quitTitleTitle": "Bu oyundan ayrılınsın mı?",
+    "quitTitleBody": "Son kayıttan bu yana olan her şey kaybolacak.",
+    "quitTitleBodyOnline": "Oyundan ayrılacaksınız. Ev sahibi sizseniz oyun herkes için sona erecek."
+  },
+
   "confirm": {
     "keepDisplayTitle": "Bu ekran ayarları korunsun mu?",
     "keepDisplayBody": "Ekran yanlış görünüyorsa bekleyin; önceki ayarlar kendiliğinden geri gelir.",
@@ -315,6 +364,10 @@
     "revertIn": { "one": "{count} saniye sonra geri alınacak", "other": "{count} saniye sonra geri alınacak" },
     "quitTitle": "Oyundan çıkılsın mı?",
     "quitBody": "Sons of the Forest kapanacak ve masaüstüne döneceksiniz.",
+    "restartTitle": "Oyun şimdi yeniden başlatılsın mı?",
+    "restartBody": "Yeni grafik API’si, oyun yeniden başladığında devreye girer.",
+    "restart": "Yeniden başlat",
+    "later": "Sonra",
     "quit": "Çık"
   },
 

@@ -388,8 +388,6 @@ namespace Modstoke.Loader
         internal const float OptionHeight = 56f;
         /// <summary>The height of a row that also shows a description line.</summary>
         internal const float DescribedHeight = 76f;
-        private const float BrushHeight = 3f;
-        private static readonly Color BrushColor = new Color(1f, 1f, 1f, 0.10f);
         private readonly float _baseHeight;
 
         protected RowView(PageView owner, MenuRowTemplate template, Transform parent, float minHeight, Color backing, bool vertical = false)
@@ -397,21 +395,10 @@ namespace Modstoke.Loader
             Owner = owner;
             Template = template;
             _baseHeight = minHeight;
-            Backing = MenuWidgets.CreateImage(template + "Row", parent, backing);
+            // Rows sit on the veil, set apart by a hairline; the fill shows faintly at rest and fully when focused.
+            Backing = MenuWidgets.CreateImage(template + "Row", parent, backing.a > 0.001f ? MenuKit.Faded(0.035f) : backing);
             Root = Backing.rectTransform;
-            if (backing.a > 0.001f)
-            {
-                // A simple sprite reports its own size as the row's preferred height, so the brush only edges the row.
-                var brush = MenuWidgets.CreateImage("Brush", Root, BrushColor);
-                MenuWidgets.ApplySprite(brush, MenuTheme.RowSprite);
-                brush.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-                var rect = brush.rectTransform;
-                rect.anchorMin = Vector2.zero;
-                rect.anchorMax = new Vector2(1f, 0f);
-                rect.pivot = new Vector2(0.5f, 0f);
-                rect.anchoredPosition = Vector2.zero;
-                rect.sizeDelta = new Vector2(0f, BrushHeight);
-            }
+            if (backing.a > 0.001f) MenuWidgets.Underline(Root);
 
             HorizontalOrVerticalLayoutGroup layout = vertical
                 ? Root.gameObject.AddComponent<VerticalLayoutGroup>()
@@ -628,7 +615,9 @@ namespace Modstoke.Loader
             chevron.Text.alignment = TextAlignmentOptions.Center;
             chevron.Set(">");
             MenuWidgets.Fixed(chevron.Text.gameObject, 24f, 0f);
-            var button = MenuWidgets.MakeButton(Backing);
+            // A row that opens something takes the full focus fill when hovered or selected.
+            Backing.color = MenuWidgets.RowColor;
+            var button = MenuWidgets.MakeButton(Backing, 0.3f);
             OnClick(button, () => Invoke(null));
             Primary = button;
         }
@@ -693,8 +682,8 @@ namespace Modstoke.Loader
 
     internal sealed class ToggleView : OptionView
     {
-        private static readonly Color OnBacking = new Color(0.13f, 0.30f, 0.18f, 0.94f);
-        private static readonly Color OffBacking = new Color(0.18f, 0.18f, 0.16f, 0.94f);
+        private static readonly Color OnBacking = MenuKit.Faded(0.30f);
+        private static readonly Color OffBacking = MenuWidgets.ButtonColor;
         private readonly Button _button;
         private readonly MenuLabel _value;
         private bool? _on;
@@ -717,7 +706,7 @@ namespace Modstoke.Loader
 
             _on = on;
             _value.Set(MenuText.BoolDisplay(on));
-            _value.SetColor(on ? MenuWidgets.ToneColor(MenuTone.Good) : MenuWidgets.TextColor);
+            _value.SetColor(on ? MenuWidgets.TextColor : MenuWidgets.MutedColor);
             _button.image.color = on ? OnBacking : OffBacking;
             return true;
         }
@@ -1554,22 +1543,26 @@ namespace Modstoke.Loader
     internal static class MenuWidgets
     {
         internal const float ControlHeight = 40f;
-        internal static readonly Color TextColor = Color.white;
-        internal static readonly Color MutedColor = new Color(0.72f, 0.74f, 0.72f, 0.92f);
-        internal static readonly Color HeaderColor = new Color(0.80f, 0.84f, 0.82f, 0.88f);
-        internal static readonly Color RowColor = new Color(1f, 1f, 1f, 0.045f);
-        internal static readonly Color ButtonColor = new Color(1f, 1f, 1f, 0.16f);
-        internal static readonly Color InputColor = new Color(0.05f, 0.05f, 0.045f, 0.9f);
-        internal static readonly Color CaretColor = new Color(0.92f, 0.94f, 0.08f, 1f);
+        // The front end's language: text in its ink, every surface that ink at low opacity, never a grey of its own.
+        internal static readonly Color TextColor = MenuKit.Ink;
+        internal static readonly Color MutedColor = MenuKit.Muted;
+        internal static readonly Color HeaderColor = MenuKit.Soft;
+        /// <summary>A row's fill when focused; at rest it shows only faintly, through its button tint.</summary>
+        internal static readonly Color RowColor = MenuKit.FocusFill;
+        internal static readonly Color ButtonColor = MenuKit.Faded(0.16f);
+        internal static readonly Color InputColor = MenuKit.Field;
+        internal static readonly Color CaretColor = MenuKit.Ink;
+        internal static readonly Color RuleColor = MenuKit.Rule;
 
+        // Status colors only for status; plain information stays in the ink.
         internal static Color ToneColor(MenuTone tone)
         {
             switch (tone)
             {
-                case MenuTone.Info: return new Color(0.35f, 0.82f, 1f, 1f);
-                case MenuTone.Good: return new Color(0.42f, 0.95f, 0.64f, 1f);
-                case MenuTone.Bad: return new Color(1f, 0.36f, 0.32f, 1f);
-                case MenuTone.Warn: return new Color(1f, 0.78f, 0.34f, 1f);
+                case MenuTone.Info: return MenuKit.Soft;
+                case MenuTone.Good: return MenuKit.Green;
+                case MenuTone.Bad: return MenuKit.Red;
+                case MenuTone.Warn: return MenuKit.Amber;
                 default: return MutedColor;
             }
         }
@@ -1717,26 +1710,43 @@ namespace Modstoke.Loader
             selectable.navigation = navigation;
         }
 
-        /// <summary>Hover and selection come from the ColorBlock tint, so rows need no pointer triggers.</summary>
-        internal static Button MakeButton(Image target)
+        /// <summary>
+        /// Hover and selection come from the ColorBlock tint, so rows need no pointer triggers. The fill shows at
+        /// <paramref name="rest"/> of its strength until the control is hovered or selected.
+        /// </summary>
+        internal static Button MakeButton(Image target, float rest = 0.45f)
         {
             target.raycastTarget = true;
             var button = target.gameObject.AddComponent<Button>();
             button.targetGraphic = target;
             var colors = button.colors;
-            colors.normalColor = new Color(0.62f, 0.62f, 0.62f, 1f);
+            colors.normalColor = new Color(1f, 1f, 1f, rest);
             colors.highlightedColor = Color.white;
-            colors.pressedColor = new Color(0.8f, 0.8f, 0.8f, 1f);
+            colors.pressedColor = Color.white;
             colors.selectedColor = Color.white;
-            colors.disabledColor = new Color(0.4f, 0.4f, 0.4f, 0.5f);
+            colors.disabledColor = new Color(1f, 1f, 1f, rest * 0.5f);
+            colors.fadeDuration = 0.08f;
             button.colors = colors;
             return button;
+        }
+
+        /// <summary>A hairline along a control's foot, in place of a fill, to set it apart.</summary>
+        internal static Image Underline(RectTransform parent)
+        {
+            var line = CreateImage("Rule", parent, RuleColor);
+            line.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            var rect = line.rectTransform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = new Vector2(1f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(0f, 1f);
+            return line;
         }
 
         internal static Button CreateButton(Transform parent, string text, float width, out MenuLabel label)
         {
             var image = CreateImage("Button_" + text, parent, ButtonColor);
-            ApplySprite(image, MenuTheme.ButtonSprite);
             Fixed(image.gameObject, width, ControlHeight);
             label = MenuLabel.Create(image.transform, "Label", 16f, TextColor, true, false);
             label.Text.alignment = TextAlignmentOptions.Center;
@@ -1748,7 +1758,7 @@ namespace Modstoke.Loader
         internal static TMP_InputField CreateInput(Transform parent, bool multiline, string placeholderText)
         {
             var image = CreateImage("Input", parent, InputColor);
-            ApplySprite(image, MenuTheme.InputSprite);
+            Underline(image.rectTransform);
             image.raycastTarget = true;
             var element = image.gameObject.AddComponent<LayoutElement>();
             // TMP_InputField reports its whole text as its preferred size at priority 1, so a long value or file would
@@ -1781,7 +1791,7 @@ namespace Modstoke.Loader
             text.overflowMode = multiline ? TextOverflowModes.Overflow : TextOverflowModes.Ellipsis;
             Stretch(text.rectTransform, 0f, 2f, 0f, 2f);
 
-            var placeholder = CreateText(viewport, "Placeholder", multiline ? 15f : 17f, new Color(1f, 1f, 1f, 0.22f), false, multiline);
+            var placeholder = CreateText(viewport, "Placeholder", multiline ? 15f : 17f, MenuKit.Faint, false, multiline);
             placeholder.alignment = alignment;
             placeholder.text = placeholderText ?? "";
             Stretch(placeholder.rectTransform, 0f, 2f, 0f, 2f);
@@ -1799,15 +1809,15 @@ namespace Modstoke.Loader
             element.minHeight = 24f;
             element.preferredHeight = 24f;
 
-            var track = CreateImage("Background", root, new Color(1f, 1f, 1f, 0.10f));
-            ApplySprite(track, MenuTheme.InputSprite);
+            // A thin track, its fill and an upright thumb, as on the Options screen.
+            var track = CreateImage("Background", root, MenuKit.BarOff);
             // The track takes clicks so a click jumps the handle there.
             track.raycastTarget = true;
-            Stretch(track.rectTransform, 0f, 8f, 0f, 8f);
+            Stretch(track.rectTransform, 0f, 10f, 0f, 10f);
 
             var fillArea = CreateRect("Fill Area", root);
-            Stretch(fillArea, 0f, 8f, 8f, 8f);
-            var fill = CreateImage("Fill", fillArea, new Color(0.35f, 0.82f, 1f, 0.7f));
+            Stretch(fillArea, 0f, 10f, 8f, 10f);
+            var fill = CreateImage("Fill", fillArea, MenuKit.Soft);
             fill.rectTransform.anchorMin = Vector2.zero;
             fill.rectTransform.anchorMax = new Vector2(0f, 1f);
             fill.rectTransform.offsetMin = Vector2.zero;
@@ -1815,12 +1825,11 @@ namespace Modstoke.Loader
 
             var handleArea = CreateRect("Handle Slide Area", root);
             Stretch(handleArea, 8f, 0f, 8f, 0f);
-            var handle = CreateImage("Handle", handleArea, Color.white);
-            ApplySprite(handle, MenuTheme.ButtonSprite);
+            var handle = CreateImage("Handle", handleArea, MenuKit.Ink);
             handle.raycastTarget = true;
             handle.rectTransform.anchorMin = Vector2.zero;
             handle.rectTransform.anchorMax = new Vector2(0f, 1f);
-            handle.rectTransform.sizeDelta = new Vector2(16f, 0f);
+            handle.rectTransform.sizeDelta = new Vector2(4f, 0f);
 
             var slider = root.gameObject.AddComponent<Slider>();
             slider.direction = Slider.Direction.LeftToRight;

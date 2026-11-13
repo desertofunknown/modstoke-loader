@@ -143,6 +143,9 @@ namespace Modstoke.Loader
         /// <summary>A dialog over the screen below it, which stays in view, dimmed, while it is open.</summary>
         internal virtual bool Overlay => false;
 
+        /// <summary>Whether the game's logo stays in view; it belongs to the title row and fades under the screens past it.</summary>
+        internal virtual bool ShowsLogo => false;
+
         /// <summary>The prompts to show for this screen, left group first.</summary>
         internal virtual IReadOnlyList<PromptSpec> Prompts => Array.Empty<PromptSpec>();
 

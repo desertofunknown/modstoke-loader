@@ -102,6 +102,7 @@
       "windowMode": { "name": "Modo de janela", "about": "Se o jogo ocupa a tela inteira ou roda em uma janela." },
       "vsync": { "name": "Sincronização vertical", "about": "Ajusta cada quadro à taxa de atualização do seu monitor, o que evita cortes na imagem. Pode adicionar um pequeno atraso aos seus comandos." },
       "maxFps": { "name": "Limite de quadros", "about": "O máximo de quadros por segundo que o jogo desenha. Um limite deixa seu PC mais frio e silencioso; “Máximo” remove o limite." },
+      "graphicsApi": { "name": "API gráfica", "about": "A interface com que o jogo desenha os gráficos. O jogo vem com DirectX 11. O motor dele também suporta DirectX 12, que pode rodar melhor em placas de vídeo mais novas, mas o jogo não foi feito para ele, então volte à opção anterior se algo parecer estranho ou rodar mal. A mudança vale a partir da próxima vez que o jogo iniciar." },
       "gamma": { "name": "Gama", "about": "Clareia ou escurece os tons médios da imagem." },
       "brightness": { "name": "Brilho", "about": "Aumenta ou diminui o brilho da imagem inteira." },
       "dlss": { "name": "NVIDIA DLSS", "about": "Desenha o jogo em uma resolução menor e reconstrói a partir dela uma imagem nítida, para mais quadros por segundo. Requer uma placa de vídeo NVIDIA RTX." },
@@ -173,6 +174,12 @@
       "textLanguage": { "name": "Idioma do Modstoke", "about": "O idioma dos textos do próprio Modstoke, como estes menus. “Seguir o jogo” usa o idioma do jogo." }
     },
 
+    "graphicsApi": {
+      "running": "Em uso agora: {api}",
+      "fellBack": "O DirectX 12 não iniciou da última vez, então o padrão do jogo foi restaurado.",
+      "launchOptions": "Suas opções de inicialização da Steam definem a API gráfica, então esta configuração não tem efeito."
+    },
+
     "value": {
       "on": "Ligado",
       "off": "Desligado",
@@ -214,6 +221,7 @@
       "quarter": "Um quarto",
       "eighth": "Um oitavo",
       "max": "Máximo",
+      "gameDefault": "Padrão do jogo",
       "spring": "Primavera",
       "summer": "Verão",
       "autumn": "Outono",
@@ -307,6 +315,47 @@
     }
   },
 
+  "lobby": {
+    "headingHost": "Seu lobby",
+    "headingJoined": "Lobby",
+    "unnamed": "Lobby",
+    "players": "Jogadores",
+    "count": "{count} / {limit}",
+    "openSlots": { "one": "{count} vaga livre", "other": "{count} vagas livres" },
+    "full": "O lobby está cheio.",
+    "openSlot": "Vaga livre",
+    "host": "Anfitrião",
+    "you": "Você",
+    "voice": "Chat de voz",
+    "microphone": "Microfone",
+    "micAlwaysOn": "Sempre ligado",
+    "micPushToTalk": "Apertar para falar",
+    "leave": "Sair",
+    "invite": "Convidar amigos",
+    "remove": "Remover",
+    "leaveTitle": "Sair do lobby?",
+    "leaveBody": "O lobby é fechado para todos que estão nele.",
+    "removeTitle": "Remover este jogador?",
+    "removeBody": "O jogador será convidado a sair do lobby.",
+    "creating": "Criando o lobby…",
+    "ready": "Tudo pronto: comece quando quiser. Seus amigos podem entrar pela Steam.",
+    "starting": "Iniciando a partida…",
+    "waiting": "Aguardando o anfitrião iniciar a partida.",
+    "joining": "Entrando na partida…"
+  },
+
+  "pause": {
+    "title": "Pausado",
+    "titleOnline": "Menu",
+    "resume": "Continuar",
+    "players": "Jogadores",
+    "quitTitle": "Sair para a tela de título",
+    "quitDesktop": "Sair para a área de trabalho",
+    "quitTitleTitle": "Sair desta partida?",
+    "quitTitleBody": "Todo o progresso desde o seu último salvamento será perdido.",
+    "quitTitleBodyOnline": "Você sai da partida. Se for o anfitrião, ela termina para todos."
+  },
+
   "confirm": {
     "keepDisplayTitle": "Manter estas configurações de tela?",
     "keepDisplayBody": "Se a tela parecer errada, espere e as configurações anteriores voltarão sozinhas.",
@@ -315,6 +364,10 @@
     "revertIn": { "one": "Revertendo em {count} segundo", "other": "Revertendo em {count} segundos" },
     "quitTitle": "Sair do jogo?",
     "quitBody": "Sons of the Forest será fechado e você voltará para a área de trabalho.",
+    "restartTitle": "Reiniciar o jogo agora?",
+    "restartBody": "A nova API gráfica entra em vigor quando o jogo iniciar de novo.",
+    "restart": "Reiniciar",
+    "later": "Mais tarde",
     "quit": "Sair"
   },
 

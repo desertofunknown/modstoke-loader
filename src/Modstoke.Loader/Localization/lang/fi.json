@@ -102,6 +102,7 @@
       "windowMode": { "name": "Ikkunatila", "about": "Täyttääkö peli koko näytön vai toimiiko se ikkunassa." },
       "vsync": { "name": "Pystytahdistus", "about": "Tahdistaa jokaisen ruudun näytön virkistystaajuuteen, mikä estää kuvan repeilyn. Se voi lisätä hieman viivettä ohjaukseen." },
       "maxFps": { "name": "Ruudunpäivitysraja", "about": "Suurin ruutujen määrä sekunnissa, jonka peli piirtää. Raja pitää tietokoneen viileämpänä ja hiljaisempana; ”Maks.” poistaa sen." },
+      "graphicsApi": { "name": "Grafiikka-API", "about": "Grafiikkarajapinta, jolla peli piirtää kuvan. Peli on julkaistu DirectX 11 -rajapinnalla. DirectX 12 sisältyy pelin moottoriin ja voi toimia paremmin uudemmilla näytönohjaimilla, mutta peliä ei ole tehty sitä varten, joten vaihda takaisin, jos jokin näyttää tai toimii väärin. Muutos tulee voimaan, kun peli käynnistetään seuraavan kerran." },
       "gamma": { "name": "Gamma", "about": "Vaalentaa tai tummentaa kuvan keskisävyjä." },
       "brightness": { "name": "Kirkkaus", "about": "Nostaa tai laskee koko kuvan kirkkautta." },
       "dlss": { "name": "NVIDIA DLSS", "about": "Piirtää pelin pienemmällä resoluutiolla ja muodostaa siitä terävän kuvan, jotta ruutuja sekunnissa saadaan enemmän. Vaatii NVIDIA RTX -näytönohjaimen." },
@@ -173,6 +174,12 @@
       "textLanguage": { "name": "Modstoken kieli", "about": "Modstoken omien tekstien, kuten näiden valikoiden, kieli. ”Seuraa peliä” käyttää pelin kieltä." }
     },
 
+    "graphicsApi": {
+      "running": "Käytössä nyt: {api}",
+      "fellBack": "DirectX 12 ei käynnistynyt viime kerralla, joten pelin oma valinta on palautettu.",
+      "launchOptions": "Steamin käynnistysvalintasi määräävät grafiikka-API:n, joten tällä asetuksella ei ole vaikutusta."
+    },
+
     "value": {
       "on": "Päällä",
       "off": "Pois",
@@ -214,6 +221,7 @@
       "quarter": "Neljännes",
       "eighth": "Kahdeksasosa",
       "max": "Maks.",
+      "gameDefault": "Pelin oletus",
       "spring": "Kevät",
       "summer": "Kesä",
       "autumn": "Syksy",
@@ -307,6 +315,47 @@
     }
   },
 
+  "lobby": {
+    "headingHost": "Oma aula",
+    "headingJoined": "Aula",
+    "unnamed": "Aula",
+    "players": "Pelaajat",
+    "count": "{count} / {limit}",
+    "openSlots": { "one": "{count} vapaa paikka", "other": "{count} vapaata paikkaa" },
+    "full": "Aula on täynnä.",
+    "openSlot": "Vapaa paikka",
+    "host": "Isäntä",
+    "you": "Sinä",
+    "voice": "Puhechat",
+    "microphone": "Mikrofoni",
+    "micAlwaysOn": "Aina päällä",
+    "micPushToTalk": "Paina puhuaksesi",
+    "leave": "Poistu",
+    "invite": "Kutsu kavereita",
+    "remove": "Poista",
+    "leaveTitle": "Poistutaanko aulasta?",
+    "leaveBody": "Aula suljetaan kaikilta siinä olevilta pelaajilta.",
+    "removeTitle": "Poistetaanko tämä pelaaja?",
+    "removeBody": "Pelaajaa pyydetään poistumaan aulasta.",
+    "creating": "Luodaan aulaa…",
+    "ready": "Kaikki on valmiina – aloita, kun haluat. Kaverit voivat liittyä Steamin kautta.",
+    "starting": "Käynnistetään peliä…",
+    "waiting": "Odotetaan, että isäntä aloittaa pelin.",
+    "joining": "Liitytään peliin…"
+  },
+
+  "pause": {
+    "title": "Tauko",
+    "titleOnline": "Valikko",
+    "resume": "Jatka",
+    "players": "Pelaajat",
+    "quitTitle": "Poistu niminäyttöön",
+    "quitDesktop": "Poistu työpöydälle",
+    "quitTitleTitle": "Poistutaanko tästä pelistä?",
+    "quitTitleBody": "Kaikki viimeisimmän tallennuksen jälkeen tapahtunut menetetään.",
+    "quitTitleBodyOnline": "Poistut pelistä. Jos olet isäntä, peli päättyy kaikilta."
+  },
+
   "confirm": {
     "keepDisplayTitle": "Säilytetäänkö nämä näyttöasetukset?",
     "keepDisplayBody": "Jos kuva näyttää väärältä, odota, niin aiemmat asetukset palaavat itsestään.",
@@ -315,6 +364,10 @@
     "revertIn": { "one": "Palautetaan {count} sekunnin kuluttua", "other": "Palautetaan {count} sekunnin kuluttua" },
     "quitTitle": "Lopetetaanko peli?",
     "quitBody": "Sons of the Forest sulkeutuu, ja palaat työpöydälle.",
+    "restartTitle": "Käynnistetäänkö peli uudelleen nyt?",
+    "restartBody": "Uusi grafiikka-API otetaan käyttöön, kun peli käynnistyy uudelleen.",
+    "restart": "Käynnistä uudelleen",
+    "later": "Myöhemmin",
     "quit": "Lopeta"
   },
 

@@ -102,6 +102,7 @@
       "windowMode": { "name": "窗口模式", "about": "游戏是占满整个屏幕，还是在窗口中运行。" },
       "vsync": { "name": "垂直同步", "about": "让每一帧与显示器的刷新同步，从而消除画面撕裂。可能会让操作略有延迟。" },
       "maxFps": { "name": "帧率上限", "about": "游戏每秒绘制的最大帧数。设置上限可让电脑温度更低、更安静；选择“最大”则取消上限。" },
+      "graphicsApi": { "name": "图形 API", "about": "游戏绘制画面所用的图形接口。游戏原本使用 DirectX 11。DirectX 12 由游戏引擎提供支持，在较新的显卡上可能运行得更好，但游戏并非为它而设计；如果画面或运行出现异常，请切换回去。更改将在下次启动游戏时生效。" },
       "gamma": { "name": "伽马", "about": "调亮或调暗画面的中间色调。" },
       "brightness": { "name": "亮度", "about": "提高或降低整个画面的亮度。" },
       "dlss": { "name": "NVIDIA DLSS", "about": "以较低分辨率绘制游戏，再据此重建清晰画面，以获得更高的每秒帧数。需要 NVIDIA RTX 显卡。" },
@@ -173,6 +174,12 @@
       "textLanguage": { "name": "Modstoke 语言", "about": "Modstoke 自身文本（例如这些菜单）的语言。选择“跟随游戏”时使用游戏的语言。" }
     },
 
+    "graphicsApi": {
+      "running": "当前使用：{api}",
+      "fellBack": "上次 DirectX 12 未能启动，因此已恢复为游戏默认设置。",
+      "launchOptions": "你的 Steam 启动选项已指定图形 API，因此此设置不会生效。"
+    },
+
     "value": {
       "on": "开",
       "off": "关",
@@ -214,6 +221,7 @@
       "quarter": "1/4",
       "eighth": "1/8",
       "max": "最大",
+      "gameDefault": "游戏默认",
       "spring": "春天",
       "summer": "夏天",
       "autumn": "秋天",
@@ -307,6 +315,47 @@
     }
   },
 
+  "lobby": {
+    "headingHost": "你的大厅",
+    "headingJoined": "大厅",
+    "unnamed": "大厅",
+    "players": "玩家",
+    "count": "{count} / {limit}",
+    "openSlots": { "other": "还有 {count} 个空位" },
+    "full": "大厅已满。",
+    "openSlot": "空位",
+    "host": "房主",
+    "you": "你",
+    "voice": "语音",
+    "microphone": "麦克风",
+    "micAlwaysOn": "始终开启",
+    "micPushToTalk": "按键通话",
+    "leave": "离开",
+    "invite": "邀请好友",
+    "remove": "移除",
+    "leaveTitle": "要离开大厅吗？",
+    "leaveBody": "大厅将会关闭，里面的所有人都会退出。",
+    "removeTitle": "要移除这名玩家吗？",
+    "removeBody": "对方会被要求离开大厅。",
+    "creating": "正在创建大厅……",
+    "ready": "随时可以开始。好友可以通过 Steam 加入。",
+    "starting": "正在启动游戏……",
+    "waiting": "正在等待房主开始游戏。",
+    "joining": "正在加入游戏……"
+  },
+
+  "pause": {
+    "title": "已暂停",
+    "titleOnline": "菜单",
+    "resume": "继续",
+    "players": "玩家",
+    "quitTitle": "退出至标题画面",
+    "quitDesktop": "退出至桌面",
+    "quitTitleTitle": "要离开这局游戏吗？",
+    "quitTitleBody": "上次存档之后的所有进度都将丢失。",
+    "quitTitleBodyOnline": "你将离开游戏。如果你是房主，游戏将对所有人结束。"
+  },
+
   "confirm": {
     "keepDisplayTitle": "要保留这些显示设置吗？",
     "keepDisplayBody": "如果画面显示不正常，请稍候，之前的设置会自动恢复。",
@@ -315,6 +364,10 @@
     "revertIn": { "other": "{count} 秒后还原" },
     "quitTitle": "要退出游戏吗？",
     "quitBody": "Sons of the Forest 将会关闭，并返回桌面。",
+    "restartTitle": "要立即重启游戏吗？",
+    "restartBody": "新的图形 API 将在游戏重新启动后生效。",
+    "restart": "重启",
+    "later": "稍后",
     "quit": "退出"
   },
 

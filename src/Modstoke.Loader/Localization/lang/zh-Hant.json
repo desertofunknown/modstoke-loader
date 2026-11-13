@@ -102,6 +102,7 @@
       "windowMode": { "name": "視窗模式", "about": "遊戲是佔滿整個螢幕，還是在視窗中執行。" },
       "vsync": { "name": "垂直同步", "about": "讓每一格畫面與螢幕的更新同步，以消除畫面撕裂。可能會讓操作稍有延遲。" },
       "maxFps": { "name": "影格率上限", "about": "遊戲每秒繪製的最大影格數。設定上限可讓電腦溫度更低、更安靜；選擇「最大」則取消上限。" },
+      "graphicsApi": { "name": "圖形 API", "about": "遊戲繪製畫面所用的圖形介面。遊戲原本使用 DirectX 11。DirectX 12 由遊戲引擎提供支援，在較新的顯示卡上可能執行得更好，但遊戲並非為它而設計；如果畫面或執行出現異常，請切換回去。變更會在下次啟動遊戲時生效。" },
       "gamma": { "name": "伽瑪", "about": "調亮或調暗畫面的中間色調。" },
       "brightness": { "name": "亮度", "about": "提高或降低整個畫面的亮度。" },
       "dlss": { "name": "NVIDIA DLSS", "about": "以較低解析度繪製遊戲，再據此重建清晰畫面，以獲得更高的每秒影格數。需要 NVIDIA RTX 顯示卡。" },
@@ -173,6 +174,12 @@
       "textLanguage": { "name": "Modstoke 語言", "about": "Modstoke 本身文字（例如這些選單）的語言。選擇「跟隨遊戲」時會使用遊戲的語言。" }
     },
 
+    "graphicsApi": {
+      "running": "目前使用：{api}",
+      "fellBack": "上次 DirectX 12 未能啟動，因此已恢復為遊戲預設設定。",
+      "launchOptions": "你的 Steam 啟動選項已指定圖形 API，因此此設定不會生效。"
+    },
+
     "value": {
       "on": "開",
       "off": "關",
@@ -214,6 +221,7 @@
       "quarter": "1/4",
       "eighth": "1/8",
       "max": "最大",
+      "gameDefault": "遊戲預設",
       "spring": "春天",
       "summer": "夏天",
       "autumn": "秋天",
@@ -307,6 +315,47 @@
     }
   },
 
+  "lobby": {
+    "headingHost": "你的大廳",
+    "headingJoined": "大廳",
+    "unnamed": "大廳",
+    "players": "玩家",
+    "count": "{count} / {limit}",
+    "openSlots": { "other": "還有 {count} 個空位" },
+    "full": "大廳已滿。",
+    "openSlot": "空位",
+    "host": "房主",
+    "you": "你",
+    "voice": "語音",
+    "microphone": "麥克風",
+    "micAlwaysOn": "一律開啟",
+    "micPushToTalk": "按鍵通話",
+    "leave": "離開",
+    "invite": "邀請好友",
+    "remove": "移除",
+    "leaveTitle": "要離開大廳嗎？",
+    "leaveBody": "大廳將會關閉，裡面的所有人都會離開。",
+    "removeTitle": "要移除這名玩家嗎？",
+    "removeBody": "對方會被要求離開大廳。",
+    "creating": "正在建立大廳……",
+    "ready": "隨時可以開始。好友可以透過 Steam 加入。",
+    "starting": "正在啟動遊戲……",
+    "waiting": "正在等待房主開始遊戲。",
+    "joining": "正在加入遊戲……"
+  },
+
+  "pause": {
+    "title": "已暫停",
+    "titleOnline": "選單",
+    "resume": "繼續",
+    "players": "玩家",
+    "quitTitle": "退出至標題畫面",
+    "quitDesktop": "退出至桌面",
+    "quitTitleTitle": "要離開這場遊戲嗎？",
+    "quitTitleBody": "上次存檔之後的所有進度都會遺失。",
+    "quitTitleBodyOnline": "你將離開遊戲。如果你是房主，遊戲將對所有人結束。"
+  },
+
   "confirm": {
     "keepDisplayTitle": "要保留這些顯示設定嗎？",
     "keepDisplayBody": "如果畫面顯示不正常，請稍候，先前的設定會自動恢復。",
@@ -315,6 +364,10 @@
     "revertIn": { "other": "{count} 秒後還原" },
     "quitTitle": "要離開遊戲嗎？",
     "quitBody": "Sons of the Forest 將會關閉，並返回桌面。",
+    "restartTitle": "要立即重新啟動遊戲嗎？",
+    "restartBody": "新的圖形 API 會在遊戲重新啟動後生效。",
+    "restart": "重新啟動",
+    "later": "稍後",
     "quit": "離開"
   },
 

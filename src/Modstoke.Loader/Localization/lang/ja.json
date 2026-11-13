@@ -102,6 +102,7 @@
       "windowMode": { "name": "ウィンドウモード", "about": "ゲームを画面全体に表示するか、ウィンドウで表示するかを選びます。" },
       "vsync": { "name": "垂直同期", "about": "各フレームをモニターのリフレッシュに合わせ、ティアリングを防ぎます。入力にわずかな遅延が生じる場合があります。" },
       "maxFps": { "name": "フレームレート上限", "about": "ゲームが描画する1秒あたりの最大フレーム数です。上限を設けるとPCの発熱と騒音が抑えられます。「最大」にすると上限がなくなります。" },
+      "graphicsApi": { "name": "グラフィックAPI", "about": "ゲームの描画に使うグラフィックインターフェースです。ゲームは標準でDirectX 11を使用します。DirectX 12はゲームエンジンが対応しており、新しいグラフィックカードではより快適に動作する場合がありますが、ゲーム自体はDirectX 12向けに作られていません。表示や動作に問題があれば元に戻してください。変更は次回のゲーム起動時に反映されます。" },
       "gamma": { "name": "ガンマ", "about": "映像の中間調を明るくしたり暗くしたりします。" },
       "brightness": { "name": "明るさ", "about": "映像全体の明るさを上げ下げします。" },
       "dlss": { "name": "NVIDIA DLSS", "about": "低い解像度で描画し、そこから鮮明な映像を再構築して、1秒あたりのフレーム数を増やします。NVIDIA RTXグラフィックカードが必要です。" },
@@ -173,6 +174,12 @@
       "textLanguage": { "name": "Modstokeの言語", "about": "このメニューなど、Modstoke独自のテキストの言語です。「ゲームに合わせる」ではゲームの言語を使います。" }
     },
 
+    "graphicsApi": {
+      "running": "現在使用中：{api}",
+      "fellBack": "前回DirectX 12で起動できなかったため、ゲーム標準の設定に戻りました。",
+      "launchOptions": "Steamの起動オプションでグラフィックAPIが指定されているため、この設定は適用されません。"
+    },
+
     "value": {
       "on": "オン",
       "off": "オフ",
@@ -214,6 +221,7 @@
       "quarter": "1/4",
       "eighth": "1/8",
       "max": "最大",
+      "gameDefault": "ゲーム標準",
       "spring": "春",
       "summer": "夏",
       "autumn": "秋",
@@ -307,6 +315,47 @@
     }
   },
 
+  "lobby": {
+    "headingHost": "あなたのロビー",
+    "headingJoined": "ロビー",
+    "unnamed": "ロビー",
+    "players": "プレイヤー",
+    "count": "{count} / {limit}",
+    "openSlots": { "other": "空き{count}枠" },
+    "full": "ロビーは満員です。",
+    "openSlot": "空き枠",
+    "host": "ホスト",
+    "you": "あなた",
+    "voice": "ボイスチャット",
+    "microphone": "マイク",
+    "micAlwaysOn": "常時オン",
+    "micPushToTalk": "プッシュトゥトーク",
+    "leave": "退出",
+    "invite": "友達を招待",
+    "remove": "退出させる",
+    "leaveTitle": "ロビーを退出しますか？",
+    "leaveBody": "ロビーが閉じられ、参加者全員が退出します。",
+    "removeTitle": "このプレイヤーを退出させますか？",
+    "removeBody": "このプレイヤーにロビーからの退出を求めます。",
+    "creating": "ロビー作成中…",
+    "ready": "いつでも開始できます。友達はSteamから参加できます。",
+    "starting": "ゲームを開始中…",
+    "waiting": "ホストがゲームを開始するのを待っています。",
+    "joining": "ゲームに参加中…"
+  },
+
+  "pause": {
+    "title": "一時停止中",
+    "titleOnline": "メニュー",
+    "resume": "再開",
+    "players": "プレイヤー",
+    "quitTitle": "タイトルに戻る",
+    "quitDesktop": "デスクトップに戻る",
+    "quitTitleTitle": "タイトルに戻りますか？",
+    "quitTitleBody": "最後にセーブしてからの進行状況は失われます。",
+    "quitTitleBodyOnline": "ゲームから退出します。あなたがホストの場合は、全員のゲームが終了します。"
+  },
+
   "confirm": {
     "keepDisplayTitle": "この表示設定を維持しますか？",
     "keepDisplayBody": "画面が正しく表示されない場合は、そのままお待ちください。元の設定に自動で戻ります。",
@@ -315,6 +364,10 @@
     "revertIn": { "other": "{count}秒後に元に戻ります" },
     "quitTitle": "ゲームを終了しますか？",
     "quitBody": "Sons of the Forestを終了し、デスクトップに戻ります。",
+    "restartTitle": "今すぐゲームを再起動しますか？",
+    "restartBody": "新しいグラフィックAPIは、ゲームの再起動後に反映されます。",
+    "restart": "再起動",
+    "later": "後で",
     "quit": "終了"
   },
 

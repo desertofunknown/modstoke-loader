@@ -504,7 +504,14 @@ namespace Modstoke.Loader
             {
                 Save();
                 MenuSound.Play(MenuCue.Forward);
-                row.Open();
+                try
+                {
+                    row.Open();
+                }
+                catch (Exception error)
+                {
+                    RuntimeEntryPoint.LogSource?.LogWarning("\"" + row.Id + "\" could not open: " + error.Message);
+                }
                 return;
             }
             if (view.Track != null)
@@ -825,7 +832,10 @@ namespace Modstoke.Loader
             string defaultValue;
             try { defaultValue = view.Row.DefaultValue; }
             catch (Exception) { defaultValue = ""; }
-            _default.text = defaultValue.Length > 0 && !(view.Row is TextRow) ? Text.Get("options.default", ("value", defaultValue)) : "";
+            // A default whose own name is "Default" says nothing more than the label would.
+            var plain = defaultValue.Length == 0 || view.Row is TextRow
+                || string.Equals(defaultValue, Text["options.value.default"], StringComparison.CurrentCultureIgnoreCase);
+            _default.text = plain ? "" : Text.Get("options.default", ("value", defaultValue));
         }
 
         private void PaintNote()

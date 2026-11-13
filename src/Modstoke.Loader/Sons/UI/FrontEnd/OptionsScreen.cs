@@ -28,11 +28,32 @@ namespace Modstoke.Loader
         protected override string TabName(string id) => Text["options.tab." + id];
         protected override string SectionName(string id) => Text["options.section." + id];
         protected override string ItemName(OptionRow row) => Text["options.item." + row.Id + ".name"];
-        protected override string ItemAbout(OptionRow row) => Text["options.item." + row.Id + ".about"];
+        protected override string ItemAbout(OptionRow row)
+        {
+            var about = Text["options.item." + row.Id + ".about"];
+            if (row.Id != "graphicsApi") return about;
+            // What this start is drawing with, and anything that keeps the choice from applying.
+            var running = GraphicsApi.Running switch { "d3d12" => "DirectX 12", "d3d11" => "DirectX 11", _ => SystemInfo.graphicsDeviceVersion };
+            about += "\n\n" + Text.Get("options.graphicsApi.running", ("api", running));
+            if (GraphicsApi.FellBack) about += "\n" + Text["options.graphicsApi.fellBack"];
+            if (LaunchOptionsChooseApi) about += "\n" + Text["options.graphicsApi.launchOptions"];
+            return about;
+        }
+
+        private static bool LaunchOptionsChooseApi
+            => Array.Exists(Environment.GetCommandLineArgs(), argument => argument.StartsWith("-force-", StringComparison.OrdinalIgnoreCase));
 
         protected override void TabChanged(int index) => _lastTab = index;
 
-        protected override void RowChanged(OptionRow row) => _saveAt = Time.unscaledTime + SaveDelay;
+        protected override void RowChanged(OptionRow row)
+        {
+            _saveAt = Time.unscaledTime + SaveDelay;
+            // The engine picks its graphics API as the game starts, so the change waits for a restart; at the title
+            // it can be had at once, while in a game it waits for the next start.
+            if (row.Id != "graphicsApi" || LaunchOptionsChooseApi || !FrontEnd.AtTitle) return;
+            FrontEnd.Push(new ConfirmScreen("confirm.restartTitle", "confirm.restartBody", "confirm.restart", "confirm.later",
+                () => GameRestart.Now(Save)));
+        }
 
         protected override bool NeedsConfirm(OptionRow row) => DisplayRows.Contains(row.Id);
 

@@ -102,6 +102,7 @@
       "windowMode": { "name": "Mode d’affichage", "about": "Indique si le jeu occupe tout l’écran ou s’exécute dans une fenêtre." },
       "vsync": { "name": "Synchronisation verticale", "about": "Cale chaque image sur le rafraîchissement de votre écran, ce qui supprime le déchirement. Cela peut ajouter un léger délai à vos commandes." },
       "maxFps": { "name": "Limite d’images par seconde", "about": "Le nombre maximal d’images par seconde que le jeu affiche. Une limite garde votre PC plus frais et plus silencieux ; « Max » la supprime." },
+      "graphicsApi": { "name": "API graphique", "about": "L’interface que le jeu utilise pour son rendu graphique. Le jeu est livré en DirectX 11. Son moteur prend aussi en charge DirectX 12, qui peut mieux tourner sur les cartes graphiques récentes, mais le jeu n’a pas été conçu pour lui : revenez en arrière si quelque chose s’affiche ou tourne mal. Un changement prend effet au prochain lancement du jeu." },
       "gamma": { "name": "Gamma", "about": "Éclaircit ou assombrit les tons moyens de l’image." },
       "brightness": { "name": "Luminosité", "about": "Augmente ou diminue la luminosité de toute l’image." },
       "dlss": { "name": "NVIDIA DLSS", "about": "Calcule le jeu dans une résolution plus basse et en reconstruit une image nette, pour plus d’images par seconde. Nécessite une carte graphique NVIDIA RTX." },
@@ -173,6 +174,12 @@
       "textLanguage": { "name": "Langue de Modstoke", "about": "La langue des textes propres à Modstoke, comme ces menus. « Suivre le jeu » utilise la langue du jeu." }
     },
 
+    "graphicsApi": {
+      "running": "Utilisée en ce moment : {api}",
+      "fellBack": "DirectX 12 n’a pas démarré la dernière fois, le choix du jeu a donc été rétabli.",
+      "launchOptions": "Vos options de lancement Steam imposent l’API graphique : ce réglage est donc sans effet."
+    },
+
     "value": {
       "on": "Activé",
       "off": "Désactivé",
@@ -214,6 +221,7 @@
       "quarter": "Quart",
       "eighth": "Huitième",
       "max": "Max",
+      "gameDefault": "Choix du jeu",
       "spring": "Printemps",
       "summer": "Été",
       "autumn": "Automne",
@@ -307,6 +315,47 @@
     }
   },
 
+  "lobby": {
+    "headingHost": "Votre salon",
+    "headingJoined": "Salon",
+    "unnamed": "Salon",
+    "players": "Joueurs",
+    "count": "{count} / {limit}",
+    "openSlots": { "one": "{count} place libre", "other": "{count} places libres" },
+    "full": "Le salon est complet.",
+    "openSlot": "Place libre",
+    "host": "Hôte",
+    "you": "Vous",
+    "voice": "Chat vocal",
+    "microphone": "Microphone",
+    "micAlwaysOn": "Toujours actif",
+    "micPushToTalk": "Appuyer pour parler",
+    "leave": "Quitter",
+    "invite": "Inviter des amis",
+    "remove": "Retirer",
+    "leaveTitle": "Quitter le salon ?",
+    "leaveBody": "Le salon se ferme pour tous ceux qui s’y trouvent.",
+    "removeTitle": "Retirer ce joueur ?",
+    "removeBody": "Il lui sera demandé de quitter le salon.",
+    "creating": "Création du salon…",
+    "ready": "Tout est prêt : lancez quand vous voulez. Vos amis peuvent vous rejoindre via Steam.",
+    "starting": "Lancement de la partie…",
+    "waiting": "En attente du lancement de la partie par l’hôte.",
+    "joining": "Connexion à la partie…"
+  },
+
+  "pause": {
+    "title": "En pause",
+    "titleOnline": "Menu",
+    "resume": "Reprendre",
+    "players": "Joueurs",
+    "quitTitle": "Retour à l’écran titre",
+    "quitDesktop": "Quitter vers le bureau",
+    "quitTitleTitle": "Quitter cette partie ?",
+    "quitTitleBody": "Toute progression depuis votre dernière sauvegarde sera perdue.",
+    "quitTitleBodyOnline": "Vous quittez la partie. Si vous l’hébergez, elle se termine pour tout le monde."
+  },
+
   "confirm": {
     "keepDisplayTitle": "Conserver ces paramètres d’affichage ?",
     "keepDisplayBody": "Si l’image semble incorrecte, patientez : les paramètres précédents reviendront d’eux-mêmes.",
@@ -315,6 +364,10 @@
     "revertIn": { "one": "Retour dans {count} seconde", "other": "Retour dans {count} secondes" },
     "quitTitle": "Quitter le jeu ?",
     "quitBody": "Sons of the Forest va se fermer et vous ramener au bureau.",
+    "restartTitle": "Redémarrer le jeu maintenant ?",
+    "restartBody": "La nouvelle API graphique prendra effet au prochain démarrage du jeu.",
+    "restart": "Redémarrer",
+    "later": "Plus tard",
     "quit": "Quitter"
   },
 

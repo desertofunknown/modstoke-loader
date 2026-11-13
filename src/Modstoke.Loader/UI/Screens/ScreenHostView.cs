@@ -21,7 +21,8 @@ namespace Modstoke.Loader
     {
         private const int SortingOrder = 4700;
         private const float ReferenceHeight = 1080f;
-        private static readonly Color ShadeColor = new Color(0f, 0f, 0f, 0.70f);
+        // The front end's veil behind the panel side; the panel itself has no fill of its own.
+        private static readonly Color ShadeColor = MenuKit.Hex(0x050606, 0.84f);
         // Clear enough to see through, but still a raycast target, so clicks never reach the pause menu underneath.
         private static readonly Color BlockerColor = new Color(0f, 0f, 0f, 0.001f);
         private static GameObject _root;
@@ -257,7 +258,6 @@ namespace Modstoke.Loader
         private static void CreateLeftPanel(Transform parent)
         {
             var panel = MenuWidgets.CreateImage("Panel", parent, Color.clear);
-            MenuTheme.ApplyPanelBackground(panel);
             _left = panel.rectTransform;
             _leftElement = panel.gameObject.AddComponent<LayoutElement>();
             _leftElement.flexibleWidth = 0f;

@@ -219,15 +219,76 @@ namespace Modstoke.Loader
                 Languages.Changed += () => _retext = true;
             }
             Measure();
-            if (!title)
+            // A lobby can open while the title scene is still loaded underneath, and comes first.
+            var place = LobbyHost.Open ? Place.Lobby : title ? Place.Title : PauseHost.Open ? Place.Pause : Place.None;
+            if (place != _place)
             {
-                // Screens belong to the title scene; elsewhere only the layer itself stays for other menus.
+                // Each place has its own screens; leaving it closes them and gives the game's own menu back.
                 if (Stack.Count > 0) Clear();
-                Show(false);
+                if (_place == Place.Lobby) LobbyHost.Release();
+                if (_place == Place.Pause)
+                {
+                    PauseHost.HoldEscape(false);
+                    PauseHost.Release();
+                }
+                _place = place;
                 _asideUntil = 0;
+            }
+            if (place == Place.Title && _quitAtTitle)
+            {
+                Application.Quit();
                 return;
             }
+            switch (place)
+            {
+                case Place.Title:
+                    RunTitle();
+                    break;
+                case Place.None:
+                    Show(false);
+                    break;
+                default:
+                    RunElsewhere(place);
+                    break;
+            }
+        }
 
+        private enum Place { None, Title, Lobby, Pause }
+
+        private static Place _place;
+        private static bool _quitAtTitle;
+
+        /// <summary>Whether the screens showing belong to the title, rather than a lobby or a game in progress.</summary>
+        internal static bool AtTitle => _place == Place.Title;
+
+        /// <summary>Quits once the title is back, for leaving a game for the desktop through the game's own way out.</summary>
+        internal static void QuitWhenTitleLoads() => _quitAtTitle = true;
+
+        // Away from the title, the layer shows for the lobby and while the game is paused.
+        private static void RunElsewhere(Place place)
+        {
+            // Over the pause screen, Escape steps back to it rather than closing the game's whole menu.
+            if (place == Place.Pause) PauseHost.HoldEscape(Stack.Count > 1);
+            if (ModalOpen() || Time.unscaledTime < _asideUntil)
+            {
+                Show(false);
+                FrontInput.Pause();
+                return;
+            }
+            Canvas();
+            if (Stack.Count > 0 && _stackLayout != LayoutVersion) Rebuild();
+            if (Stack.Count == 0) Push(place == Place.Lobby ? new LobbyScreen() : new PauseScreen());
+            if (place == Place.Lobby) LobbyHost.HideNative();
+            else PauseHost.HideNative();
+            if (CoveredByModsMenu()) return;
+            Show(true);
+            Drive();
+        }
+
+        private static void RunTitle()
+        {
+            // Reaching the title means this start's graphics work.
+            GraphicsApi.Confirm();
             // The game's bar stays hidden: every way into its menus is on Modstoke's screens.
             GameMenus.HideBar(true);
             TakePages();
@@ -240,6 +301,7 @@ namespace Modstoke.Loader
                 return;
             }
             Canvas();
+            GameMenus.KeepStrip();
             if (Stack.Count > 0 && _stackLayout != LayoutVersion) Rebuild();
             if (Stack.Count == 0) Push(new TitleScreen());
             if (_hostWanted)
@@ -249,9 +311,25 @@ namespace Modstoke.Loader
                 _hostWanted = false;
                 if (fresh && Stack.Count == 1) Push(new SavedGamesScreen(SaveGameType.Multiplayer));
             }
+            if (CoveredByModsMenu()) return;
             Show(true);
-            GameMenus.ClearSelection();
+            Drive();
+        }
 
+        // The mods menu has a veil of its own; behind it the world shows, blurred, rather than these screens.
+        private static bool CoveredByModsMenu()
+        {
+            if (!MenuController.IsVisible) return false;
+            Show(false);
+            WorldBlur.Want(true);
+            FrontInput.Pause();
+            return true;
+        }
+
+        // The top screen: device and language changes, its prompts, motion, and this frame's input.
+        private static void Drive()
+        {
+            GameMenus.ClearSelection();
             var top = Stack[Stack.Count - 1];
             var pad = FrontInput.PadActive;
             if (pad != _pad)
@@ -268,10 +346,12 @@ namespace Modstoke.Loader
             }
             if (_promptsDirty) BuildPrompts(top);
             top.Animate();
-            WorldBlur.Want(top.Blurs);
+            // The lobby has its own blurred backdrop and the pause menu its own volume; the title's world is blurred here.
+            WorldBlur.Want(top.Blurs && _place == Place.Title);
+            GameMenus.FadeLogo(top.ShowsLogo, Time.unscaledDeltaTime);
 
-            // The mods menu and the console draw over this layer and take input while open.
-            if (MenuController.IsVisible || ConsoleOverlay.IsVisible)
+            // The console draws over this layer and takes input while open.
+            if (ConsoleOverlay.IsVisible)
             {
                 FrontInput.Pause();
                 return;
@@ -361,6 +441,10 @@ namespace Modstoke.Loader
                 Clear();
                 _shown = false;
                 GameMenus.HideBar(false);
+                GameMenus.FadeLogo(true, 1f);
+                LobbyHost.Release();
+                PauseHost.HoldEscape(false);
+                PauseHost.Release();
             }
             catch (Exception)
             {
@@ -375,10 +459,10 @@ namespace Modstoke.Loader
             if (_prompts != null && _prompts) Object.Destroy(_prompts.gameObject);
             PromptViews.Clear();
             _hoverPrompt = null;
-            // On the line the game's own choices sat on, and clear of its logo.
+            // On the line the game's own choices sat on, and clear of its logo where the logo shows.
             float left = U(60), right = U(60), middle = U(52);
             if (GameMenus.TryBar(out _, out var barMiddle) && barMiddle > U(30) && barMiddle < U(150)) middle = barMiddle;
-            if (GameMenus.TryLogo(out var logoLeft, out var logoRight))
+            if (top.ShowsLogo && GameMenus.TryLogo(out var logoLeft, out var logoRight))
             {
                 if ((logoLeft + logoRight) / 2f > _width / 2f) right = Mathf.Max(right, _width - logoLeft + U(30));
                 else left = Mathf.Max(left, logoRight + U(30));

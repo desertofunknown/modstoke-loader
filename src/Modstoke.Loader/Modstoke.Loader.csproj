@@ -920,6 +920,9 @@
     <Compile Include="Sons/UI/FrontEnd/MenuSound.cs" />
     <Compile Include="Sons/UI/FrontEnd/Glyphs.cs" />
     <Compile Include="Sons/UI/FrontEnd/WorldBlur.cs" />
+    <Compile Include="Sons/UI/FrontEnd/GraphicsApi.cs" />
+    <Compile Include="Sons/UI/FrontEnd/LobbyHost.cs" />
+    <Compile Include="Sons/UI/FrontEnd/PauseHost.cs" />
     <Compile Include="Sons/UI/FrontEnd/FrontInput.cs" />
     <Compile Include="Sons/UI/FrontEnd/FrontScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/GameMenus.cs" />
@@ -933,6 +936,8 @@
     <Compile Include="Sons/UI/FrontEnd/CustomGameCatalog.cs" />
     <Compile Include="Sons/UI/FrontEnd/CustomGameScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/HostSetupScreen.cs" />
+    <Compile Include="Sons/UI/FrontEnd/LobbyScreen.cs" />
+    <Compile Include="Sons/UI/FrontEnd/PauseScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/ConfirmScreen.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.UiData.cs" />
     <Compile Include="Sons/Inventory/Items.cs" />

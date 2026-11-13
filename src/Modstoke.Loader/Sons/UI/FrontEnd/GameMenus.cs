@@ -35,9 +35,11 @@ namespace Modstoke.Loader
         private const string CustomPage = "CustomGameSettings", HostPage = "MultiplayerHostOptionsDialog";
         private static readonly string[] OverTitle = { "SonsOptionsMenu", "SonsMainLoading", "MultiplayerMenu", "MultiplayerHostMenu" };
         private static readonly string[] KeptVisible = { "MenuBottomStripWithLogo", "GameSetupManageSceneProxy" };
+        private const float LogoFadeSeconds = 0.18f;
         private static int _bound;
-        private static CanvasGroup _bar;
+        private static CanvasGroup _bar, _logoGroup;
         private static RectTransform _barRect, _logo;
+        private static GameObject _strip;
         private static readonly List<GameObject> Dialogs = new();
 
         /// <summary>Finds the title scene's menus once per load; true while the title scene is loaded.</summary>
@@ -67,6 +69,8 @@ namespace Modstoke.Loader
                         var child = root.transform.GetChild(i).gameObject;
                         if (!KeptVisible.Contains(child.name)) Dialogs.Add(child);
                     }
+                    var strip = root.transform.Find("MenuBottomStripWithLogo");
+                    if (strip != null) _strip = strip.gameObject;
                     var logo = root.transform.Find("MenuBottomStripWithLogo/GameLogo");
                     if (logo != null) _logo = logo.GetComponent<RectTransform>();
                 }
@@ -206,6 +210,24 @@ namespace Modstoke.Loader
         }
 
         /// <summary>
+        /// Keeps the game's bottom strip up under Modstoke's screens. Its custom game page hides the strip on
+        /// the way in and only its own Back brings it back, which a page Modstoke closed never presses.
+        /// </summary>
+        internal static void KeepStrip()
+        {
+            if (_strip != null && _strip && !_strip.activeSelf) _strip.SetActive(true);
+        }
+
+        /// <summary>Fades the game's logo in for the title row and out under every other screen.</summary>
+        internal static void FadeLogo(bool shown, float seconds)
+        {
+            if (_logo == null || !_logo) return;
+            if (_logoGroup == null || !_logoGroup) _logoGroup = Group(_logo);
+            var target = shown ? 1f : 0f;
+            if (_logoGroup.alpha != target) _logoGroup.alpha = Mathf.MoveTowards(_logoGroup.alpha, target, seconds / LogoFadeSeconds);
+        }
+
+        /// <summary>
         /// Where the game's own row of title choices starts and the line it sits on, in screen pixels, so
         /// Modstoke's row can take its place exactly.
         /// </summary>
@@ -328,8 +350,9 @@ namespace Modstoke.Loader
         private static void Forget()
         {
             _bound = 0;
-            _bar = null;
+            _bar = _logoGroup = null;
             _barRect = _logo = null;
+            _strip = null;
             Dialogs.Clear();
         }
 

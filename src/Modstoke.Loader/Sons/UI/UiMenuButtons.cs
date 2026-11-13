@@ -69,6 +69,31 @@ namespace Modstoke.Loader
             AddRegistrations(ESonsScene.Game, parent, menu);
         }
 
+        /// <summary>
+        /// The buttons mods registered for the title or pause menu, as they were attached to the game's bar, for
+        /// Modstoke's own menus to list in its place: each one's text and its press.
+        /// </summary>
+        internal static List<(string Label, Action Press)> Registered(ESonsScene scene)
+        {
+            var entries = new List<(string, Action)>();
+            Transform container = null;
+            if (scene == ESonsScene.Title) container = Sui._titleMenuButtonsContainer;
+            else if (scene == ESonsScene.Game && Sui._pauseMenu != null && Sui._pauseMenu)
+                container = Sui._pauseMenu.transform.Find(GameMenuBridge.PauseButtonPath);
+            if (container == null || !container) return entries;
+            foreach (var registration in Sui._registeredMenuButtons.ToArray())
+            {
+                if (registration.Scene != scene) continue;
+                var root = container.Find(registration.Id);
+                var button = root != null ? root.GetComponentInChildren<Button>(true) : null;
+                if (button == null) continue;
+                var text = root.GetComponentInChildren<TMPro.TMP_Text>(true);
+                var label = text != null && !string.IsNullOrWhiteSpace(text.text) ? text.text.Trim() : registration.Id;
+                entries.Add((label, () => button.onClick.Invoke()));
+            }
+            return entries;
+        }
+
         internal static void ClearTitle() => Sui._titleMenuButtonsContainer = null;
         internal static void ClearPause() => Sui._pauseMenu = null;
 

@@ -102,6 +102,7 @@
       "windowMode": { "name": "Fönsterläge", "about": "Om spelet fyller skärmen eller körs i ett fönster." },
       "vsync": { "name": "Vertikal synkronisering", "about": "Anpassar varje bildruta till bildskärmens uppdateringsfrekvens, vilket förhindrar bildrivning. Det kan ge en liten fördröjning av dina kommandon." },
       "maxFps": { "name": "Gräns för bildfrekvens", "about": "Det högsta antalet bildrutor per sekund som spelet ritar. En gräns håller datorn svalare och tystare; ”Max” tar bort den." },
+      "graphicsApi": { "name": "Grafik-API", "about": "Grafikgränssnittet som spelet ritar med. Spelet levereras med DirectX 11. DirectX 12 följer med spelmotorn och kan fungera bättre på nyare grafikkort, men spelet är inte gjort för det, så byt tillbaka om något ser fel ut eller inte fungerar som det ska. En ändring gäller från nästa gång spelet startar." },
       "gamma": { "name": "Gamma", "about": "Gör bildens mellantoner ljusare eller mörkare." },
       "brightness": { "name": "Ljusstyrka", "about": "Höjer eller sänker ljusstyrkan i hela bilden." },
       "dlss": { "name": "NVIDIA DLSS", "about": "Ritar spelet i lägre upplösning och återskapar en skarp bild från den, för fler bildrutor per sekund. Kräver ett NVIDIA RTX-grafikkort." },
@@ -173,6 +174,12 @@
       "textLanguage": { "name": "Modstokes språk", "about": "Språket i Modstokes egna texter, till exempel de här menyerna. ”Följ spelet” använder spelets språk." }
     },
 
+    "graphicsApi": {
+      "running": "Körs nu: {api}",
+      "fellBack": "DirectX 12 startade inte förra gången, så spelets eget val gäller igen.",
+      "launchOptions": "Dina startalternativ i Steam väljer grafik-API:t, så den här inställningen har ingen effekt."
+    },
+
     "value": {
       "on": "På",
       "off": "Av",
@@ -214,6 +221,7 @@
       "quarter": "En fjärdedel",
       "eighth": "En åttondel",
       "max": "Max",
+      "gameDefault": "Spelets standard",
       "spring": "Vår",
       "summer": "Sommar",
       "autumn": "Höst",
@@ -307,6 +315,47 @@
     }
   },
 
+  "lobby": {
+    "headingHost": "Din lobby",
+    "headingJoined": "Lobby",
+    "unnamed": "Lobby",
+    "players": "Spelare",
+    "count": "{count} / {limit}",
+    "openSlots": { "one": "{count} ledig plats", "other": "{count} lediga platser" },
+    "full": "Lobbyn är full.",
+    "openSlot": "Ledig plats",
+    "host": "Värd",
+    "you": "Du",
+    "voice": "Röstchatt",
+    "microphone": "Mikrofon",
+    "micAlwaysOn": "Alltid på",
+    "micPushToTalk": "Tryck för att tala",
+    "leave": "Lämna",
+    "invite": "Bjud in vänner",
+    "remove": "Ta bort",
+    "leaveTitle": "Lämna lobbyn?",
+    "leaveBody": "Lobbyn stängs för alla som är med i den.",
+    "removeTitle": "Ta bort den här spelaren?",
+    "removeBody": "Spelaren ombeds lämna lobbyn.",
+    "creating": "Skapar lobbyn…",
+    "ready": "Allt är klart – starta när du vill. Vänner kan gå med via Steam.",
+    "starting": "Startar spelet…",
+    "waiting": "Väntar på att värden startar spelet.",
+    "joining": "Går med i spelet…"
+  },
+
+  "pause": {
+    "title": "Pausat",
+    "titleOnline": "Meny",
+    "resume": "Fortsätt",
+    "players": "Spelare",
+    "quitTitle": "Avsluta till huvudmenyn",
+    "quitDesktop": "Avsluta till skrivbordet",
+    "quitTitleTitle": "Lämna det här spelet?",
+    "quitTitleBody": "Allt sedan du senast sparade går förlorat.",
+    "quitTitleBodyOnline": "Du lämnar spelet. Om du är värd avslutas det för alla."
+  },
+
   "confirm": {
     "keepDisplayTitle": "Behålla de här bildskärmsinställningarna?",
     "keepDisplayBody": "Om bilden ser fel ut, vänta så kommer de tidigare inställningarna tillbaka av sig själva.",
@@ -315,6 +364,10 @@
     "revertIn": { "one": "Återgår om {count} sekund", "other": "Återgår om {count} sekunder" },
     "quitTitle": "Avsluta spelet?",
     "quitBody": "Sons of the Forest stängs och du kommer tillbaka till skrivbordet.",
+    "restartTitle": "Starta om spelet nu?",
+    "restartBody": "Det nya grafik-API:t börjar gälla när spelet startar igen.",
+    "restart": "Starta om",
+    "later": "Senare",
     "quit": "Avsluta"
   },
 

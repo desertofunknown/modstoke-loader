@@ -20,6 +20,7 @@ namespace Modstoke.Loader
         private sealed class Entry
         {
             internal string Key;
+            internal Func<string> Name;
             internal Action Run;
             internal RectTransform Rect;
             internal TextMeshProUGUI Label;
@@ -39,6 +40,9 @@ namespace Modstoke.Loader
             AddEntry("title.multiplayer", () => Leave(GameMenus.Join));
             AddEntry("title.options", () => FrontEnd.Push(new OptionsScreen()));
             AddEntry("title.mods", MenuController.Show);
+            // Buttons mods added to the game's title bar come next, as the game's bar would have shown them.
+            foreach (var (label, press) in UiMenuButtons.Registered(SonsSdk.ESonsScene.Title))
+                AddEntry("mod:" + label, press, () => label);
             AddEntry("title.exit", () => FrontEnd.Push(new ConfirmScreen("confirm.quitTitle", "confirm.quitBody", "confirm.quit",
                 "common.cancel", Application.Quit, cautious: true)));
             // Over the words' glow, so the dark spill never dims it.
@@ -49,7 +53,7 @@ namespace Modstoke.Loader
         {
             foreach (var entry in _entries)
             {
-                var text = Text[entry.Key].ToUpper(Languages.CultureOf(Languages.Current));
+                var text = entry.Name().ToUpper(Languages.CultureOf(Languages.Current));
                 entry.Label.text = text;
                 entry.Width = entry.Label.GetPreferredValues(text).x + U(36);
             }
@@ -75,6 +79,8 @@ namespace Modstoke.Loader
 
         // The title scene is the backdrop of the title menu itself.
         internal override bool Blurs => false;
+
+        internal override bool ShowsLogo => true;
 
         // The game loads another scene for these; the menu steps aside rather than sit over the fade.
         private static void Leave(Action open)
@@ -119,9 +125,9 @@ namespace Modstoke.Loader
             }
         }
 
-        private void AddEntry(string key, Action run)
+        private void AddEntry(string key, Action run, Func<string> name = null)
         {
-            var entry = new Entry { Key = key, Run = run, Rect = MenuKit.Box(Root, key) };
+            var entry = new Entry { Key = key, Name = name ?? (() => Text[key]), Run = run, Rect = MenuKit.Box(Root, key) };
             MenuKit.GlowBehind(entry.Rect, U(14), 0.5f);
             entry.Label = MenuKit.Text(entry.Rect, "Label", "", U(27), true, MenuKit.Soft, TextAlignmentOptions.Center);
             entry.Label.characterSpacing = 12;

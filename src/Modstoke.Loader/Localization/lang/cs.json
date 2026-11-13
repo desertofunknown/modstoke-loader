@@ -102,6 +102,7 @@
       "windowMode": { "name": "Režim okna", "about": "Zda hra vyplní celou obrazovku, nebo běží v okně." },
       "vsync": { "name": "Vertikální synchronizace", "about": "Sladí každý snímek s obnovovací frekvencí monitoru, čímž zabrání trhání obrazu. Může mírně zpozdit odezvu na vaše ovládání." },
       "maxFps": { "name": "Limit snímků", "about": "Nejvyšší počet snímků za sekundu, které hra vykreslí. Limit udrží váš počítač chladnější a tišší; „Max“ ho ruší." },
+      "graphicsApi": { "name": "Grafické API", "about": "Grafické rozhraní, přes které hra vykresluje obraz. Hra vyšla s DirectX 11. DirectX 12 podporuje její engine a na novějších grafických kartách může běžet lépe, ale hra pro něj nebyla vytvořena, takže pokud něco nevypadá nebo neběží správně, přepněte zpět. Změna se projeví při příštím spuštění hry." },
       "gamma": { "name": "Gama", "about": "Zesvětlí nebo ztmaví střední tóny obrazu." },
       "brightness": { "name": "Jas", "about": "Zvýší nebo sníží jas celého obrazu." },
       "dlss": { "name": "NVIDIA DLSS", "about": "Vykresluje hru v nižším rozlišení a z něj rekonstruuje ostrý obraz, což přidá snímky za sekundu. Vyžaduje grafickou kartu NVIDIA RTX." },
@@ -173,6 +174,12 @@
       "textLanguage": { "name": "Jazyk Modstoke", "about": "Jazyk vlastních textů Modstoke, například těchto nabídek. Volba „Podle hry“ použije jazyk hry." }
     },
 
+    "graphicsApi": {
+      "running": "Nyní běží: {api}",
+      "fellBack": "DirectX 12 se minule nespustil, takže platí opět volba samotné hry.",
+      "launchOptions": "Grafické API určují vaše parametry spuštění ve službě Steam, takže toto nastavení nemá žádný vliv."
+    },
+
     "value": {
       "on": "Zapnuto",
       "off": "Vypnuto",
@@ -214,6 +221,7 @@
       "quarter": "Čtvrtinové",
       "eighth": "Osminové",
       "max": "Max",
+      "gameDefault": "Výchozí nastavení hry",
       "spring": "Jaro",
       "summer": "Léto",
       "autumn": "Podzim",
@@ -307,6 +315,47 @@
     }
   },
 
+  "lobby": {
+    "headingHost": "Vaše lobby",
+    "headingJoined": "Lobby",
+    "unnamed": "Lobby",
+    "players": "Hráči",
+    "count": "{count} / {limit}",
+    "openSlots": { "one": "{count} volné místo", "few": "{count} volná místa", "other": "{count} volných míst" },
+    "full": "Lobby je plné.",
+    "openSlot": "Volné místo",
+    "host": "Hostitel",
+    "you": "Vy",
+    "voice": "Hlasový chat",
+    "microphone": "Mikrofon",
+    "micAlwaysOn": "Stále zapnuto",
+    "micPushToTalk": "Stisknout a mluvit",
+    "leave": "Opustit",
+    "invite": "Pozvat přátele",
+    "remove": "Odebrat",
+    "leaveTitle": "Opustit lobby?",
+    "leaveBody": "Lobby se zavře pro všechny, kdo v něm jsou.",
+    "removeTitle": "Odebrat tohoto hráče?",
+    "removeBody": "Hráč bude požádán, aby lobby opustil.",
+    "creating": "Vytváří se lobby…",
+    "ready": "Vše je připraveno – začněte, až budete chtít. Přátelé se mohou připojit přes Steam.",
+    "starting": "Spouští se hra…",
+    "waiting": "Čeká se, až hostitel spustí hru.",
+    "joining": "Připojování ke hře…"
+  },
+
+  "pause": {
+    "title": "Pozastaveno",
+    "titleOnline": "Nabídka",
+    "resume": "Pokračovat",
+    "players": "Hráči",
+    "quitTitle": "Odejít na hlavní obrazovku",
+    "quitDesktop": "Odejít na plochu",
+    "quitTitleTitle": "Opustit tuto hru?",
+    "quitTitleBody": "Vše od posledního uložení bude ztraceno.",
+    "quitTitleBodyOnline": "Opustíte hru. Pokud ji hostujete, skončí pro všechny."
+  },
+
   "confirm": {
     "keepDisplayTitle": "Ponechat tato nastavení zobrazení?",
     "keepDisplayBody": "Pokud obraz nevypadá správně, počkejte a předchozí nastavení se vrátí samo.",
@@ -315,6 +364,10 @@
     "revertIn": { "one": "Návrat za {count} sekundu", "few": "Návrat za {count} sekundy", "other": "Návrat za {count} sekund" },
     "quitTitle": "Ukončit hru?",
     "quitBody": "Hra Sons of the Forest se zavře a vrátí vás na plochu.",
+    "restartTitle": "Restartovat hru nyní?",
+    "restartBody": "Nové grafické API se projeví po dalším spuštění hry.",
+    "restart": "Restartovat",
+    "later": "Později",
     "quit": "Ukončit"
   },
 
