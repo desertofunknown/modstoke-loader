@@ -1609,3 +1609,18 @@ a loaded ranged-weapon ammunition profile without loading or creating assets.
 `TryReadWeaponTiming` copies the same template's fire delay, magazine and reload
 flags. See [Server ballistic data](BALLISTIC_READS.md) for snapshot lifetime,
 unavailable data and the distinction between initial damage and final health loss.
+
+## PNG textures off the game thread
+
+`PngTextures.DecodeAsync` (or `Decode` on a worker you already own) turns PNG bytes
+into RGBA32 rows with a full mip chain, flipped for Unity, without touching the game
+thread. `PngTextures.Create` then hands the result to the GPU on the game thread and
+returns a non-readable texture. Unity's `ImageConversion.LoadImage` does all of this
+on the game thread and stalls a frame for a few hundred milliseconds per 4K image.
+
+Only 8-bit, non-interlaced grey, grey-alpha, RGB and RGBA images are decoded;
+palette, 16-bit and interlaced files throw `NotSupportedException`, so keep
+`LoadImage` as the fallback for files you don't control. A decoded 4K image holds
+about 90 MB until it is uploaded, so create the texture soon after the task
+finishes and drop the task if the texture is no longer wanted. Upload one large
+texture per frame when several finish together.

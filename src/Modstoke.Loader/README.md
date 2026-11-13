@@ -34,6 +34,7 @@ outside `Sons/`; game-specific code lives inside it.
 | Companions and scheduling | [Sons/Companions](Sons/Companions) |
 | Save lifecycle | [Sons/Saves](Sons/Saves) |
 | Audio, settings and game UI | [Sons/Audio](Sons/Audio), [Sons/Settings](Sons/Settings), [Sons/UI](Sons/UI) |
+| Textures decoded off the game thread | [Sons/Textures](Sons/Textures) |
 | Game diagnostics | [Sons/Diagnostics](Sons/Diagnostics) |
 
 `Sons/Players` contains player ownership and presentation code; `Sons/Server`

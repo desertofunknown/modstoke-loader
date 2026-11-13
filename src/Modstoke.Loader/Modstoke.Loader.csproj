@@ -29,6 +29,7 @@
     <Compile Include="Sons/Diagnostics/WarningCapture.cs" />
     <Compile Include="Sons/Diagnostics/WarningCapture.Native.cs" />
     <Compile Include="Sons/Audio/ImpactAudioPatch.cs" />
+    <Compile Include="Sons/Textures/PngTextures.cs" />
     <Compile Include="Sons/Runtime/GameLifecycleFixes.cs" />
     <Compile Include="Sons/Runtime/GatheringLifecycleFix.cs" />
     <Compile Include="Sons/Server/ServerEvents.cs" />
