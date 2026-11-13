@@ -177,6 +177,7 @@
     "graphicsApi": {
       "running": "目前使用：{api}",
       "fellBack": "上次 DirectX 12 未能啟動，因此已恢復為遊戲預設設定。",
+      "hung": "上次顯示卡在 DirectX 12 下停止回應，因此從下次啟動起恢復為 DirectX 11。",
       "launchOptions": "你的 Steam 啟動選項已指定圖形 API，因此此設定不會生效。"
     },
 
@@ -354,6 +355,8 @@
     "titleOnline": "選單",
     "resume": "繼續",
     "players": "玩家",
+    "day": "第 {day} 天",
+    "playing": { "other": "本局 {count} 名玩家" },
     "quitTitle": "退出至標題畫面",
     "quitDesktop": "退出至桌面",
     "quitTitleTitle": "要離開這場遊戲嗎？",
@@ -544,6 +547,12 @@
     "confirmFirst": "執行前會要求確認。"
   },
 
+  "modpage": {
+    "opensMenu": "將在模組選單中開啟，對應的編輯器在那裡。",
+    "run": "選擇後會立即執行。",
+    "last": "上次結果：{status}"
+  },
+
   "confirm": {
     "keepDisplayTitle": "要保留這些顯示設定嗎？",
     "keepDisplayBody": "如果畫面顯示不正常，請稍候，先前的設定會自動恢復。",
@@ -556,6 +565,8 @@
     "restartBody": "新的圖形 API 會在遊戲重新啟動後生效。",
     "restart": "重新啟動",
     "later": "稍後",
+    "hungTitle": "DirectX 12 停止回應",
+    "hungBody": "上次顯示卡在 DirectX 12 下停止回應，遊戲已關閉。從下次啟動起，遊戲將重新使用其預設的 DirectX 11。",
     "quit": "離開"
   },
 

@@ -177,6 +177,7 @@
     "graphicsApi": {
       "running": "Şu an kullanılan: {api}",
       "fellBack": "DirectX 12 geçen sefer başlatılamadı, bu yüzden oyunun kendi seçimine geri dönüldü.",
+      "hung": "Ekran kartı geçen sefer DirectX 12’de yanıt vermeyi durdurdu, bu yüzden bir sonraki açılıştan itibaren DirectX 11’e dönülür.",
       "launchOptions": "Grafik API’sini Steam başlatma seçenekleriniz belirliyor, bu yüzden bu ayarın bir etkisi yok."
     },
 
@@ -354,6 +355,8 @@
     "titleOnline": "Menü",
     "resume": "Devam et",
     "players": "Oyuncular",
+    "day": "{day}. gün",
+    "playing": { "one": "Bu oyunda {count} oyuncu", "other": "Bu oyunda {count} oyuncu" },
     "quitTitle": "Giriş menüsüne dön",
     "quitDesktop": "Masaüstüne çık",
     "quitTitleTitle": "Bu oyundan ayrılınsın mı?",
@@ -544,6 +547,12 @@
     "confirmFirst": "Çalışmadan önce onay ister."
   },
 
+  "modpage": {
+    "opensMenu": "Bunun düzenleyicisinin bulunduğu Modlar menüsünde açılır.",
+    "run": "Seçildiğinde hemen çalışır.",
+    "last": "Son sonuç: {status}"
+  },
+
   "confirm": {
     "keepDisplayTitle": "Bu ekran ayarları korunsun mu?",
     "keepDisplayBody": "Ekran yanlış görünüyorsa bekleyin; önceki ayarlar kendiliğinden geri gelir.",
@@ -556,6 +565,8 @@
     "restartBody": "Yeni grafik API’si, oyun yeniden başladığında devreye girer.",
     "restart": "Yeniden başlat",
     "later": "Sonra",
+    "hungTitle": "DirectX 12 yanıt vermeyi durdurdu",
+    "hungBody": "Ekran kartı geçen sefer DirectX 12’de yanıt vermeyi durdurdu ve oyun kapandı. Bir sonraki açılıştan itibaren oyun, çıktığı gibi yeniden DirectX 11 kullanır.",
     "quit": "Çık"
   },
 

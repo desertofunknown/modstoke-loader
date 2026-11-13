@@ -177,6 +177,7 @@
     "graphicsApi": {
       "running": "Obecnie w użyciu: {api}",
       "fellBack": "Ostatnim razem DirectX 12 się nie uruchomił, więc przywrócono wybór samej gry.",
+      "hung": "Ostatnim razem karta graficzna przestała odpowiadać w DirectX 12, więc od następnego uruchomienia wraca DirectX 11.",
       "launchOptions": "API grafiki określają twoje opcje uruchamiania w Steam, więc to ustawienie nic nie zmienia."
     },
 
@@ -354,6 +355,8 @@
     "titleOnline": "Menu",
     "resume": "Wznów",
     "players": "Gracze",
+    "day": "Dzień {day}",
+    "playing": { "one": "{count} gracz w tej grze", "few": "{count} gracze w tej grze", "many": "{count} graczy w tej grze", "other": "{count} gracza w tej grze" },
     "quitTitle": "Wyjdź do ekranu tytułowego",
     "quitDesktop": "Wyjdź na pulpit",
     "quitTitleTitle": "Opuścić tę grę?",
@@ -544,6 +547,12 @@
     "confirmFirst": "Przed wykonaniem prosi o potwierdzenie."
   },
 
+  "modpage": {
+    "opensMenu": "Otwiera się w menu Mody, które ma do tego edytor.",
+    "run": "Wybranie od razu to uruchamia.",
+    "last": "Ostatni wynik: {status}"
+  },
+
   "confirm": {
     "keepDisplayTitle": "Zachować te ustawienia wyświetlania?",
     "keepDisplayBody": "Jeśli obraz wygląda źle, zaczekaj, a poprzednie ustawienia wrócą same.",
@@ -556,6 +565,8 @@
     "restartBody": "Nowe API grafiki zacznie działać po ponownym uruchomieniu gry.",
     "restart": "Uruchom ponownie",
     "later": "Później",
+    "hungTitle": "DirectX 12 przestał odpowiadać",
+    "hungBody": "Ostatnim razem karta graficzna przestała odpowiadać w DirectX 12 i gra została zamknięta. Od następnego uruchomienia gra znów korzysta z DirectX 11, tak jak w oryginale.",
     "quit": "Wyjdź"
   },
 

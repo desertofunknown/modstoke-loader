@@ -177,6 +177,7 @@
     "graphicsApi": {
       "running": "Derzeit aktiv: {api}",
       "fellBack": "DirectX 12 ist beim letzten Mal nicht gestartet, daher gilt wieder die Vorgabe des Spiels.",
+      "hung": "Die Grafikkarte hat beim letzten Mal unter DirectX 12 nicht mehr reagiert, daher gilt ab dem nächsten Start wieder DirectX 11.",
       "launchOptions": "Deine Steam-Startoptionen legen die Grafik-API fest, daher hat diese Einstellung keine Wirkung."
     },
 
@@ -354,6 +355,8 @@
     "titleOnline": "Menü",
     "resume": "Fortsetzen",
     "players": "Spieler",
+    "day": "Tag {day}",
+    "playing": { "one": "{count} Spieler in diesem Spiel", "other": "{count} Spieler in diesem Spiel" },
     "quitTitle": "Zurück zum Titel",
     "quitDesktop": "Zurück zum Desktop",
     "quitTitleTitle": "Dieses Spiel verlassen?",
@@ -544,6 +547,12 @@
     "confirmFirst": "Er fragt vor dem Ausführen nach einer Bestätigung."
   },
 
+  "modpage": {
+    "opensMenu": "Öffnet sich im Mods-Menü, das den passenden Editor hat.",
+    "run": "Beim Auswählen wird es sofort ausgeführt.",
+    "last": "Letztes Ergebnis: {status}"
+  },
+
   "confirm": {
     "keepDisplayTitle": "Diese Anzeigeeinstellungen behalten?",
     "keepDisplayBody": "Wenn das Bild falsch aussieht, warte einfach: Die vorherigen Einstellungen kehren von selbst zurück.",
@@ -556,6 +565,8 @@
     "restartBody": "Die neue Grafik-API wird beim nächsten Spielstart wirksam.",
     "restart": "Neu starten",
     "later": "Später",
+    "hungTitle": "DirectX 12 hat nicht mehr reagiert",
+    "hungBody": "Die Grafikkarte hat beim letzten Mal unter DirectX 12 nicht mehr reagiert, und das Spiel wurde beendet. Ab dem nächsten Start läuft das Spiel wieder mit DirectX 11, wie ausgeliefert.",
     "quit": "Beenden"
   },
 

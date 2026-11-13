@@ -3,21 +3,38 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Modstoke.Localization;
+using Modstoke.Sons;
 using Sons.Gameplay.GameSetup;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Modstoke.Loader
 {
     /// <summary>
-    /// The pause menu, in place of the game's: a column of choices on the veil over the game, with what this game
-    /// is beside it. Resume, options, the players of a multiplayer game, mods, and leaving for the title or the
-    /// desktop, each of which asks first.
+    /// The pause menu, in place of the game's: a column of choices on the veil over the game, and beside it where
+    /// the game stands (its day, time of day and season, its mode) and, online, who is playing. Resume, options,
+    /// the players of a multiplayer game, mods, and leaving for the title or the desktop, each of which asks first.
     /// </summary>
     internal sealed class PauseScreen : FrontScreen
     {
         private const float StripHeight = 143, ColumnWidth = 420, EntryHeight = 52, EntryGap = 6;
+        private const float PanelWidth = 440, PlayerHeight = 40, RefreshSeconds = 1f;
+        private const int ShownPlayers = 6;
+
+        private sealed class PlayerView
+        {
+            internal RectTransform Rect;
+            internal RawImage Avatar;
+            internal TextMeshProUGUI Name, Tag;
+        }
+
+        private readonly List<PlayerView> _players = new();
+        private TextMeshProUGUI _day, _clock, _playing, _worldLabel, _playersLabel;
+        private RectTransform _playersBox;
+        private float _nextRefresh;
 
         private sealed class Entry
         {
@@ -66,7 +83,97 @@ namespace Modstoke.Loader
                     FrontEnd.QuitWhenTitleLoads();
                     PauseHost.QuitToTitle();
                 }, cautious: true)));
+            BuildPanel(pad);
             new Cascade(_rects);
+        }
+
+        // Where the game stands: a large day count over the time of day and season, and online a short list
+        // of who is playing.
+        private void BuildPanel(float pad)
+        {
+            _players.Clear();
+            var panel = MenuKit.Box(Root, "Session").Place(1, 0, 1, 1, -(pad + U(PanelWidth)), U(StripHeight), pad, U(160));
+            _rects.Add(panel);
+            MenuKit.Hairline(panel, "Top", 0);
+            _worldLabel = Heading(panel, "World", U(16));
+            _day = MenuKit.Text(panel, "Day", "", U(46), true, MenuKit.Ink);
+            _day.characterSpacing = 4;
+            _day.rectTransform.Strip(U(42), U(58), 0, 0);
+            _clock = MenuKit.Text(panel, "Clock", "", U(20), false, MenuKit.Soft);
+            _clock.rectTransform.Strip(U(102), U(28), 0, 0);
+            if (!PauseHost.Multiplayer) return;
+            MenuKit.Hairline(panel, "PlayersRule", U(150));
+            _playersLabel = Heading(panel, "Players", U(166));
+            _playersBox = MenuKit.Box(panel, "List").Place(0, 0, 1, 1, 0, 0, 0, U(194));
+            for (var i = 0; i < ShownPlayers; i++)
+            {
+                var view = new PlayerView { Rect = MenuKit.Box(_playersBox, "Player " + i).Strip(i * U(PlayerHeight), U(PlayerHeight), 0, 0) };
+                var picture = MenuKit.Box(view.Rect, "Picture").At(0, U((PlayerHeight - 28) / 2), U(28), U(28));
+                MenuKit.Fill(picture, null, MenuKit.Cell);
+                view.Avatar = MenuKit.Box(picture, "Image").Place(0, 0, 1, 1).gameObject.AddComponent<RawImage>();
+                view.Avatar.raycastTarget = false;
+                // Steam's pictures arrive upside down in Unity's texture space.
+                view.Avatar.uvRect = new Rect(0, 1, 1, -1);
+                view.Name = MenuKit.Text(view.Rect, "Name", "", U(18), false, MenuKit.Soft, TextAlignmentOptions.MidlineLeft, true);
+                view.Name.rectTransform.Place(0, 0, 1, 1, U(42), 0, U(90), 0);
+                view.Tag = MenuKit.Text(view.Rect, "Tag", "", U(13), true, MenuKit.Muted, TextAlignmentOptions.MidlineRight);
+                view.Tag.characterSpacing = 14;
+                view.Tag.rectTransform.Place(1, 0, 1, 1, -U(90), 0, 0, 0);
+                _players.Add(view);
+            }
+            _playing = MenuKit.Text(_playersBox, "Count", "", U(15), false, MenuKit.Muted);
+            _playing.rectTransform.Strip(ShownPlayers * U(PlayerHeight) + U(6), U(24), 0, 0);
+        }
+
+        private static TextMeshProUGUI Heading(RectTransform panel, string name, float y)
+        {
+            var heading = MenuKit.Text(panel, name, "", U(13), true, MenuKit.Muted);
+            heading.characterSpacing = 28;
+            heading.rectTransform.Strip(y, U(20), 0, 0);
+            return heading;
+        }
+
+        internal override void Tick()
+        {
+            if (Time.unscaledTime < _nextRefresh) return;
+            _nextRefresh = Time.unscaledTime + RefreshSeconds;
+            PaintPanel();
+        }
+
+        private void PaintPanel()
+        {
+            if (_day == null) return;
+            var culture = Languages.CultureOf(Languages.Current);
+            if (EnvironmentReads.TryReadClock(out var clock, out _))
+            {
+                var time = clock.EffectiveTime;
+                _day.text = Text.Get("pause.day", ("day", time.Days)).ToUpper(culture);
+                var parts = new List<string> { DateTime.Today.Add(new TimeSpan(time.Hours, time.Minutes, 0)).ToString("t", culture) };
+                if (EnvironmentReads.TryReadSeason(out var season, out _) && season.ActiveSeason is { } active)
+                    parts.Add(Text["options.value." + active.ToString().ToLowerInvariant()]);
+                _clock.text = string.Join("  ·  ", parts);
+            }
+            else
+            {
+                _day.text = "";
+                _clock.text = "";
+            }
+            if (_playersBox == null) return;
+            var players = PlayersHost.Players();
+            for (var i = 0; i < _players.Count; i++)
+            {
+                var view = _players[i];
+                var shown = i < players.Count;
+                view.Rect.gameObject.SetActive(shown);
+                if (!shown) continue;
+                var player = players[i];
+                view.Avatar.texture = player.Avatar;
+                view.Avatar.enabled = player.Avatar != null;
+                view.Name.text = player.Name;
+                view.Name.color = player.Self ? MenuKit.Ink : MenuKit.Soft;
+                view.Tag.text = (player.Host ? Text["lobby.host"] : player.Self ? Text["lobby.you"] : "").ToUpper(culture);
+            }
+            _playing.text = Text.Count("pause.playing", players.Count);
         }
 
         private readonly List<RectTransform> _rects = new();
@@ -93,6 +200,9 @@ namespace Modstoke.Loader
             _title.text = Text[PauseHost.Multiplayer ? "pause.titleOnline" : "pause.title"].ToUpper(culture);
             _line.text = ModeLine();
             foreach (var entry in _entries) entry.Label.text = entry.Name().ToUpper(culture);
+            _worldLabel.text = Text["custom.tab.world"].ToUpper(culture);
+            if (_playersLabel != null) _playersLabel.text = Text["lobby.players"].ToUpper(culture);
+            PaintPanel();
         }
 
         internal override void Opened() => Focus(First());

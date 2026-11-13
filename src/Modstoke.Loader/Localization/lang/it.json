@@ -177,6 +177,7 @@
     "graphicsApi": {
       "running": "In uso ora: {api}",
       "fellBack": "L’ultima volta DirectX 12 non si è avviato, quindi è tornata l’impostazione predefinita del gioco.",
+      "hung": "L’ultima volta la scheda grafica ha smesso di rispondere con DirectX 12, quindi dal prossimo avvio torna DirectX 11.",
       "launchOptions": "Le tue opzioni di avvio di Steam impostano già l’API grafica, quindi questa impostazione non ha effetto."
     },
 
@@ -354,6 +355,8 @@
     "titleOnline": "Menu",
     "resume": "Riprendi",
     "players": "Giocatori",
+    "day": "Giorno {day}",
+    "playing": { "one": "{count} giocatore in questa partita", "other": "{count} giocatori in questa partita" },
     "quitTitle": "Torna alla schermata del titolo",
     "quitDesktop": "Esci al desktop",
     "quitTitleTitle": "Abbandonare questa partita?",
@@ -544,6 +547,12 @@
     "confirmFirst": "Chiede una conferma prima di essere eseguito."
   },
 
+  "modpage": {
+    "opensMenu": "Si apre nel menu Mod, che ha l’editor adatto.",
+    "run": "Selezionandolo viene eseguito subito.",
+    "last": "Ultimo risultato: {status}"
+  },
+
   "confirm": {
     "keepDisplayTitle": "Mantenere queste impostazioni dello schermo?",
     "keepDisplayBody": "Se lo schermo non appare corretto, attendi: le impostazioni precedenti torneranno da sole.",
@@ -556,6 +565,8 @@
     "restartBody": "La nuova API grafica avrà effetto al prossimo avvio del gioco.",
     "restart": "Riavvia",
     "later": "Più tardi",
+    "hungTitle": "DirectX 12 ha smesso di rispondere",
+    "hungBody": "L’ultima volta la scheda grafica ha smesso di rispondere con DirectX 12 e il gioco si è chiuso. Dal prossimo avvio il gioco torna a usare DirectX 11, come in origine.",
     "quit": "Esci"
   },
 

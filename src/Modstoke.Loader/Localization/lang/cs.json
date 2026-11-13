@@ -177,6 +177,7 @@
     "graphicsApi": {
       "running": "Nyní běží: {api}",
       "fellBack": "DirectX 12 se minule nespustil, takže platí opět volba samotné hry.",
+      "hung": "Grafická karta minule v DirectX 12 přestala reagovat, takže od dalšího spuštění platí opět DirectX 11.",
       "launchOptions": "Grafické API určují vaše parametry spuštění ve službě Steam, takže toto nastavení nemá žádný vliv."
     },
 
@@ -354,6 +355,8 @@
     "titleOnline": "Nabídka",
     "resume": "Pokračovat",
     "players": "Hráči",
+    "day": "Den {day}",
+    "playing": { "one": "{count} hráč v této hře", "few": "{count} hráči v této hře", "other": "{count} hráčů v této hře" },
     "quitTitle": "Odejít na hlavní obrazovku",
     "quitDesktop": "Odejít na plochu",
     "quitTitleTitle": "Opustit tuto hru?",
@@ -544,6 +547,12 @@
     "confirmFirst": "Před spuštěním žádá o potvrzení."
   },
 
+  "modpage": {
+    "opensMenu": "Otevře se v nabídce Mody, která pro to má editor.",
+    "run": "Výběrem se hned spustí.",
+    "last": "Poslední výsledek: {status}"
+  },
+
   "confirm": {
     "keepDisplayTitle": "Ponechat tato nastavení zobrazení?",
     "keepDisplayBody": "Pokud obraz nevypadá správně, počkejte a předchozí nastavení se vrátí samo.",
@@ -556,6 +565,8 @@
     "restartBody": "Nové grafické API se projeví po dalším spuštění hry.",
     "restart": "Restartovat",
     "later": "Později",
+    "hungTitle": "DirectX 12 přestal reagovat",
+    "hungBody": "Grafická karta minule v DirectX 12 přestala reagovat a hra se zavřela. Od dalšího spuštění hra opět používá DirectX 11, jak byla vydána.",
     "quit": "Ukončit"
   },
 

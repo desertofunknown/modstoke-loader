@@ -177,6 +177,7 @@
     "graphicsApi": {
       "running": "현재 사용 중: {api}",
       "fellBack": "지난번에 DirectX 12가 시작되지 않아 게임 기본값으로 되돌아갔습니다.",
+      "hung": "지난번에 DirectX 12에서 그래픽 카드가 응답하지 않아 다음 실행부터 DirectX 11로 돌아갑니다.",
       "launchOptions": "Steam 시작 옵션에서 그래픽 API를 지정하고 있으므로 이 설정은 적용되지 않습니다."
     },
 
@@ -354,6 +355,8 @@
     "titleOnline": "메뉴",
     "resume": "계속하기",
     "players": "플레이어",
+    "day": "{day}일차",
+    "playing": { "other": "이 게임의 플레이어 {count}명" },
     "quitTitle": "타이틀로 나가기",
     "quitDesktop": "바탕 화면으로 나가기",
     "quitTitleTitle": "이 게임에서 나가시겠습니까?",
@@ -544,6 +547,12 @@
     "confirmFirst": "실행하기 전에 확인을 요청합니다."
   },
 
+  "modpage": {
+    "opensMenu": "모드 메뉴에서 열립니다. 전용 편집기는 그곳에 있습니다.",
+    "run": "선택하면 바로 실행됩니다.",
+    "last": "마지막 결과: {status}"
+  },
+
   "confirm": {
     "keepDisplayTitle": "이 디스플레이 설정을 유지하시겠습니까?",
     "keepDisplayBody": "화면이 이상하게 보이면 기다리세요. 이전 설정으로 자동으로 돌아갑니다.",
@@ -556,6 +565,8 @@
     "restartBody": "새 그래픽 API는 게임을 다시 시작하면 적용됩니다.",
     "restart": "다시 시작",
     "later": "나중에",
+    "hungTitle": "DirectX 12가 응답하지 않았습니다",
+    "hungBody": "지난번에 DirectX 12에서 그래픽 카드가 응답하지 않아 게임이 종료되었습니다. 다음 실행부터는 게임 기본값인 DirectX 11로 다시 그립니다.",
     "quit": "종료"
   },
 

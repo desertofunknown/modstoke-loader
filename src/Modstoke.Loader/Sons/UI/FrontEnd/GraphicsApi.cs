@@ -13,7 +13,9 @@ namespace Modstoke.Loader
     /// carries. Unity picks it from the command line as the game starts, so the choice is stored here and the
     /// native host adds the matching -force-d3d11 or -force-d3d12 at the next start. A start with the setting
     /// leaves a marker the native host writes; the menus clear it once they draw, and a start that never got that
-    /// far, or a DirectX 12 device the engine could not create, puts the setting back to the game's own choice.
+    /// far, or a DirectX 12 device the engine could not create, puts the setting back to the game's own choice. So
+    /// does a start on DirectX 12 that ended with the graphics card no longer responding, which the game does not
+    /// survive.
     /// </summary>
     internal static class GraphicsApi
     {
@@ -34,6 +36,9 @@ namespace Modstoke.Loader
 
         /// <summary>Set when the last start with DirectX 12 did not get going and the setting was put back.</summary>
         internal static bool FellBack { get; private set; }
+
+        /// <summary>Set when the graphics card stopped responding on DirectX 12 last time and the setting was put back.</summary>
+        internal static bool Hung { get; private set; }
 
         internal static bool Write(string value) => RuntimePreferences.WriteText(Key, value, out _);
 
@@ -58,12 +63,30 @@ namespace Modstoke.Loader
                     Write(Default);
                     RuntimeEntryPoint.LogSource?.LogWarning("The chosen graphics API did not start last time; the game's own choice is back.");
                 }
+                if (Choice == "d3d12" && PreviousStartHung())
+                {
+                    Hung = true;
+                    Write(Default);
+                    RuntimeEntryPoint.LogSource?.LogWarning("The graphics card stopped responding on DirectX 12 last time; "
+                        + "the game's own choice is back from the next start.");
+                }
                 RuntimeEntryPoint.LogSource?.LogInfo("Drawing with " + SystemInfo.graphicsDeviceVersion + " (graphicsApi = " + Choice + ").");
             }
             catch (Exception error)
             {
                 RuntimeEntryPoint.LogSource?.LogWarning("The graphics API start check failed: " + error.Message);
             }
+        }
+
+        // The engine's log of the start before this one: on DirectX 12, a device it reports removed means the graphics
+        // card hung (Windows resets it) and the game went down with it.
+        private static bool PreviousStartHung()
+        {
+            var previous = Path.Combine(Application.persistentDataPath, "Player-prev.log");
+            if (!File.Exists(previous)) return false;
+            var log = File.ReadAllText(previous);
+            return log.Contains("Direct3D 12 [level", StringComparison.Ordinal)
+                && log.Contains("Device Remove Reason", StringComparison.Ordinal);
         }
     }
 

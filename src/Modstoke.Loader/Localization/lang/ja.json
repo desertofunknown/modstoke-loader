@@ -177,6 +177,7 @@
     "graphicsApi": {
       "running": "現在使用中：{api}",
       "fellBack": "前回DirectX 12で起動できなかったため、ゲーム標準の設定に戻りました。",
+      "hung": "前回DirectX 12でグラフィックカードが応答しなくなったため、次回の起動からDirectX 11に戻ります。",
       "launchOptions": "Steamの起動オプションでグラフィックAPIが指定されているため、この設定は適用されません。"
     },
 
@@ -354,6 +355,8 @@
     "titleOnline": "メニュー",
     "resume": "再開",
     "players": "プレイヤー",
+    "day": "{day}日目",
+    "playing": { "other": "このゲームのプレイヤー{count}人" },
     "quitTitle": "タイトルに戻る",
     "quitDesktop": "デスクトップに戻る",
     "quitTitleTitle": "タイトルに戻りますか？",
@@ -544,6 +547,12 @@
     "confirmFirst": "実行前に確認を求めます。"
   },
 
+  "modpage": {
+    "opensMenu": "MODメニューで開きます。専用のエディターはそちらにあります。",
+    "run": "選択するとすぐに実行されます。",
+    "last": "前回の結果：{status}"
+  },
+
   "confirm": {
     "keepDisplayTitle": "この表示設定を維持しますか？",
     "keepDisplayBody": "画面が正しく表示されない場合は、そのままお待ちください。元の設定に自動で戻ります。",
@@ -556,6 +565,8 @@
     "restartBody": "新しいグラフィックAPIは、ゲームの再起動後に反映されます。",
     "restart": "再起動",
     "later": "後で",
+    "hungTitle": "DirectX 12が応答しなくなりました",
+    "hungBody": "前回、DirectX 12でグラフィックカードが応答しなくなり、ゲームが終了しました。次回の起動から、ゲームは標準のDirectX 11で描画します。",
     "quit": "終了"
   },
 

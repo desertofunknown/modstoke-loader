@@ -177,6 +177,7 @@
     "graphicsApi": {
       "running": "Running now: {api}",
       "fellBack": "DirectX 12 did not start last time, so the game's own choice is back.",
+      "hung": "The graphics card stopped responding on DirectX 12 last time, so DirectX 11 is back from the next start.",
       "launchOptions": "Your Steam launch options choose the graphics API, so this setting has no effect."
     },
 
@@ -354,6 +355,8 @@
     "titleOnline": "Menu",
     "resume": "Resume",
     "players": "Players",
+    "day": "Day {day}",
+    "playing": { "one": "{count} player in this game", "other": "{count} players in this game" },
     "quitTitle": "Quit to title",
     "quitDesktop": "Quit to desktop",
     "quitTitleTitle": "Leave this game?",
@@ -544,6 +547,12 @@
     "confirmFirst": "It asks you to confirm before it runs."
   },
 
+  "modpage": {
+    "opensMenu": "Opens in the Mods menu, which has the editor for it.",
+    "run": "Selecting it runs it now.",
+    "last": "Last result: {status}"
+  },
+
   "confirm": {
     "keepDisplayTitle": "Keep these display settings?",
     "keepDisplayBody": "If the screen looks wrong, wait and the previous settings come back by themselves.",
@@ -556,6 +565,8 @@
     "restartBody": "The new graphics API takes effect when the game starts again.",
     "restart": "Restart",
     "later": "Later",
+    "hungTitle": "DirectX 12 stopped responding",
+    "hungBody": "The graphics card stopped responding on DirectX 12 last time and the game closed. From its next start the game draws with DirectX 11 again, as it ships.",
     "quit": "Quit"
   },
 

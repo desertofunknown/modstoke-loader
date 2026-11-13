@@ -313,6 +313,7 @@ namespace Modstoke.Loader
             if (row is TextRow) BuildField(view, wide);
             else if (row.Fraction.HasValue) BuildSlider(view);
             else if (row.Open != null) BuildOpen(view);
+            else if (row.ReadOnly) BuildInfo(view);
             else BuildChoice(view);
             // A search box's field is the whole row; its name lives in the details column only.
             if (wide) view.Label.gameObject.SetActive(false);
@@ -360,6 +361,13 @@ namespace Modstoke.Loader
             view.Thumb.sizeDelta = new Vector2(Mathf.Max(2f, U(3)), U(18));
             MenuKit.Fill(view.Thumb, null, MenuKit.Ink);
             view.Slide.Set(view.Row.Fraction ?? 0, true);
+        }
+
+        // A value to read, with nothing to step through.
+        private void BuildInfo(RowView view)
+        {
+            view.Value = MenuKit.Text(view.Control, "Value", "", U(16), false, MenuKit.Ink, TextAlignmentOptions.MidlineRight, true);
+            view.Value.rectTransform.Place(0, 0, 1, 1, 0, 0, U(14), 0);
         }
 
         private void BuildOpen(RowView view)

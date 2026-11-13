@@ -69,6 +69,9 @@ namespace Modstoke.Loader
         /// <summary>The tile's color; null for the usual faint surface.</summary>
         internal virtual Color? MonogramTint => null;
 
+        /// <summary>A value to read only, drawn without the arrows of a choice.</summary>
+        internal virtual bool ReadOnly => false;
+
         internal bool Available
         {
             get

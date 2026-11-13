@@ -168,12 +168,23 @@ namespace Modstoke.Loader
         private static bool NeedsAttention(ModInventoryEntry entry)
             => MenuText.EntryTone(entry) is MenuTone.Bad or MenuTone.Warn;
 
-        // The mod's own page in the Mods menu: its settings, config file, live controls and details.
+        // The mod's own page: its settings, pages, live controls and details. Should Modstoke's screen not manage it, the
+        // Mods menu shows the same page.
         private static void OpenPage(ModInventoryEntry entry)
         {
+            var key = MenuKeys.Mod(entry);
             try
             {
-                MenuController.ShowHandedOver(MenuKeys.Mod(entry));
+                FrontEnd.Push(new ModPageScreen(key, Text["title.mods"]));
+                return;
+            }
+            catch (Exception error)
+            {
+                RuntimeEntryPoint.LogSource?.LogWarning("The page of " + entry.DisplayName + " opens in the Mods menu instead: " + error.Message);
+            }
+            try
+            {
+                MenuController.ShowHandedOver(key);
             }
             catch (Exception error)
             {

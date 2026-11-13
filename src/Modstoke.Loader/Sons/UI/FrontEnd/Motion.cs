@@ -110,6 +110,7 @@ namespace Modstoke.Loader
             {
                 _landed = Time.unscaledTime;
                 _targetGroup = next.GetComponent<CanvasGroup>();
+                if (!_underline) Beneath(next);
             }
             _target = next;
             if (snap) _placed = false;
@@ -152,6 +153,16 @@ namespace Modstoke.Loader
             _group.alpha = alpha;
             // At rest it needs no more frames.
             if (!landing && alpha >= 0.999f && (_min - low).sqrMagnitude < 0.01f && (_max - high).sqrMagnitude < 0.01f) Stop();
+        }
+
+        // The plate is opaque, so it has to draw before the item it marks: a mark made after its item (as one added to
+        // a column once its rows exist) moves itself beneath that item's branch of the container.
+        private void Beneath(RectTransform target)
+        {
+            Transform branch = target;
+            while (branch != null && branch.parent != _container) branch = branch.parent;
+            if (branch == null || _bar.GetSiblingIndex() < branch.GetSiblingIndex()) return;
+            _bar.SetSiblingIndex(branch.GetSiblingIndex());
         }
 
         // The plate lands white and settles to bone; true while it is settling.

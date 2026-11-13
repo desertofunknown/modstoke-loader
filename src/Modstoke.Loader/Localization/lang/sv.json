@@ -177,6 +177,7 @@
     "graphicsApi": {
       "running": "Körs nu: {api}",
       "fellBack": "DirectX 12 startade inte förra gången, så spelets eget val gäller igen.",
+      "hung": "Grafikkortet slutade svara med DirectX 12 förra gången, så DirectX 11 gäller igen från nästa start.",
       "launchOptions": "Dina startalternativ i Steam väljer grafik-API:t, så den här inställningen har ingen effekt."
     },
 
@@ -354,6 +355,8 @@
     "titleOnline": "Meny",
     "resume": "Fortsätt",
     "players": "Spelare",
+    "day": "Dag {day}",
+    "playing": { "one": "{count} spelare i det här spelet", "other": "{count} spelare i det här spelet" },
     "quitTitle": "Avsluta till huvudmenyn",
     "quitDesktop": "Avsluta till skrivbordet",
     "quitTitleTitle": "Lämna det här spelet?",
@@ -544,6 +547,12 @@
     "confirmFirst": "Det ber om bekräftelse innan det körs."
   },
 
+  "modpage": {
+    "opensMenu": "Öppnas i Moddar-menyn, som har redigeraren för det.",
+    "run": "Att välja den kör den direkt.",
+    "last": "Senaste resultat: {status}"
+  },
+
   "confirm": {
     "keepDisplayTitle": "Behålla de här bildskärmsinställningarna?",
     "keepDisplayBody": "Om bilden ser fel ut, vänta så kommer de tidigare inställningarna tillbaka av sig själva.",
@@ -556,6 +565,8 @@
     "restartBody": "Det nya grafik-API:t börjar gälla när spelet startar igen.",
     "restart": "Starta om",
     "later": "Senare",
+    "hungTitle": "DirectX 12 slutade svara",
+    "hungBody": "Grafikkortet slutade svara med DirectX 12 förra gången och spelet stängdes. Från nästa start använder spelet DirectX 11 igen, som det levereras.",
     "quit": "Avsluta"
   },
 

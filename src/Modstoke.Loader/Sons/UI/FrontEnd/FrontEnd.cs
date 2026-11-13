@@ -333,7 +333,7 @@ namespace Modstoke.Loader
         private enum Place { None, Title, Lobby, Pause }
 
         private static Place _place;
-        private static bool _quitAtTitle, _fontsSettled;
+        private static bool _quitAtTitle, _fontsSettled, _hungShown;
 
         // Screens are not built in Unity's plain font while the game's own is a moment away. If it never comes they
         // are built anyway, and built again in the game's font once it does.
@@ -410,6 +410,13 @@ namespace Modstoke.Loader
             GameMenus.KeepStrip();
             if (Stack.Count > 0 && _stackLayout != LayoutVersion) Rebuild();
             if (Stack.Count == 0) Push(new TitleScreen());
+            // After DirectX 12 took the graphics card down last time, the title says so first and offers the restart
+            // that brings DirectX 11 back.
+            if (GraphicsApi.Hung && !_hungShown && Stack.Count == 1)
+            {
+                _hungShown = true;
+                Push(new ConfirmScreen("confirm.hungTitle", "confirm.hungBody", "confirm.restart", "confirm.later", () => GameRestart.Now(null)));
+            }
             if (_hostWanted)
             {
                 // A request the title screen never picked up must not fire on some later visit.

@@ -177,6 +177,7 @@
     "graphicsApi": {
       "running": "Käytössä nyt: {api}",
       "fellBack": "DirectX 12 ei käynnistynyt viime kerralla, joten pelin oma valinta on palautettu.",
+      "hung": "Näytönohjain lakkasi vastaamasta DirectX 12:lla viime kerralla, joten seuraavasta käynnistyksestä alkaen käytössä on taas DirectX 11.",
       "launchOptions": "Steamin käynnistysvalintasi määräävät grafiikka-API:n, joten tällä asetuksella ei ole vaikutusta."
     },
 
@@ -354,6 +355,8 @@
     "titleOnline": "Valikko",
     "resume": "Jatka",
     "players": "Pelaajat",
+    "day": "Päivä {day}",
+    "playing": { "one": "{count} pelaaja tässä pelissä", "other": "{count} pelaajaa tässä pelissä" },
     "quitTitle": "Poistu niminäyttöön",
     "quitDesktop": "Poistu työpöydälle",
     "quitTitleTitle": "Poistutaanko tästä pelistä?",
@@ -544,6 +547,12 @@
     "confirmFirst": "Se pyytää vahvistusta ennen suorittamista."
   },
 
+  "modpage": {
+    "opensMenu": "Avautuu Modit-valikossa, jossa on sitä varten muokkain.",
+    "run": "Valitseminen suorittaa sen heti.",
+    "last": "Viimeisin tulos: {status}"
+  },
+
   "confirm": {
     "keepDisplayTitle": "Säilytetäänkö nämä näyttöasetukset?",
     "keepDisplayBody": "Jos kuva näyttää väärältä, odota, niin aiemmat asetukset palaavat itsestään.",
@@ -556,6 +565,8 @@
     "restartBody": "Uusi grafiikka-API otetaan käyttöön, kun peli käynnistyy uudelleen.",
     "restart": "Käynnistä uudelleen",
     "later": "Myöhemmin",
+    "hungTitle": "DirectX 12 lakkasi vastaamasta",
+    "hungBody": "Näytönohjain lakkasi vastaamasta DirectX 12:lla viime kerralla, ja peli sulkeutui. Seuraavasta käynnistyksestä alkaen peli käyttää taas DirectX 11:tä, kuten se on julkaistu.",
     "quit": "Lopeta"
   },
 

@@ -36,6 +36,7 @@ namespace Modstoke.Loader
             var running = GraphicsApi.Running switch { "d3d12" => "DirectX 12", "d3d11" => "DirectX 11", _ => SystemInfo.graphicsDeviceVersion };
             about += "\n\n" + Text.Get("options.graphicsApi.running", ("api", running));
             if (GraphicsApi.FellBack) about += "\n" + Text["options.graphicsApi.fellBack"];
+            if (GraphicsApi.Hung) about += "\n" + Text["options.graphicsApi.hung"];
             if (LaunchOptionsChooseApi) about += "\n" + Text["options.graphicsApi.launchOptions"];
             return about;
         }

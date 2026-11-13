@@ -940,6 +940,7 @@
     <Compile Include="Sons/UI/FrontEnd/LobbyScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/PauseScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/ModsScreen.cs" />
+    <Compile Include="Sons/UI/FrontEnd/ModPageScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/ActionsScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/PlayersHost.cs" />
     <Compile Include="Sons/UI/FrontEnd/PlayersScreen.cs" />
