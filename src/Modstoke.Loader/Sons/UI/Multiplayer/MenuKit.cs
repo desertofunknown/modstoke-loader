@@ -4,7 +4,6 @@
 using System;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
@@ -16,15 +15,27 @@ namespace Modstoke.Loader
     /// </summary>
     internal static class MenuKit
     {
+        // The game's UI draws color values as linear light, so every color here is written as it should look
+        // (sRGB) and converted once. Overlays are solid colors: a see-through white would render far too bright.
         internal static readonly Color Ink = Hex(0xECEBE6);
-        internal static readonly Color Soft = Hex(0xD9D6CC);
-        internal static readonly Color Muted = Hex(0xA9A69D);
-        internal static readonly Color Faint = Hex(0x8F8C84);
+        internal static readonly Color Soft = Hex(0xCFCCC3);
+        internal static readonly Color Muted = Hex(0x9D9A92);
+        internal static readonly Color Faint = Hex(0x74726C);
         internal static readonly Color Dark = Hex(0x0B0C0C);
-        internal static readonly Color PanelTint = new(0.035f, 0.039f, 0.039f, 0.9f);
         internal static readonly Color Green = Hex(0xA7DCB8);
         internal static readonly Color Amber = Hex(0xF1C674);
         internal static readonly Color Red = Hex(0xF0A08A);
+        internal static readonly Color Cell = Hex(0x222322);
+        internal static readonly Color Line = Hex(0x2A2B29);
+        internal static readonly Color Rule = Hex(0x4A4B47);
+        internal static readonly Color BarOff = Hex(0x3C3D3A);
+        internal static readonly Color RowSelected = Hex(0x3A3B36);
+        internal static readonly Color RowHover = Hex(0x262725);
+        internal static readonly Color ChipOff = Hex(0x242524);
+        internal static readonly Color Field = Hex(0x1E1F1E);
+        internal static readonly Color Disabled = Hex(0x2B2C2A);
+        private static readonly Color PanelPlain = Hex(0x141414, 0.94f);
+        private const int PanelBase = 0x1B1C1B;
 
         private const int UiLayer = 5;
         private static Sprite _brush, _panel;
@@ -36,8 +47,20 @@ namespace Modstoke.Loader
         internal static TMP_FontAsset Regular => LiveFont(ref _regular, MenuTheme.RegularFontName, MenuTheme.BodyFont) ?? Bold;
 
         internal static Color Hex(int rgb, float alpha = 1f)
-            => new(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f, alpha);
+            => new(Linear(((rgb >> 16) & 255) / 255f), Linear(((rgb >> 8) & 255) / 255f), Linear((rgb & 255) / 255f), alpha);
 
+        /// <summary>A solid panel-toned color leaning toward an accent, for notices and tinted boxes.</summary>
+        internal static Color Toned(int accentRgb, float amount)
+        {
+            float Mix(int shift) => Linear(Mathf.Lerp((PanelBase >> shift) & 255, (accentRgb >> shift) & 255, amount) / 255f);
+            return new Color(Mix(16), Mix(8), Mix(0), 1f);
+        }
+
+        // sRGB to linear light.
+        private static float Linear(float value)
+            => value <= 0.04045f ? value / 12.92f : MathF.Pow((value + 0.055f) / 1.055f, 2.4f);
+
+        /// <summary>A color as a rich-text tag value, for text that changes color mid-line.</summary>
         internal static string Html(Color color) => "#" + ColorUtility.ToHtmlStringRGB(color);
 
         internal static RectTransform Box(Transform parent, string name)
@@ -72,6 +95,16 @@ namespace Modstoke.Loader
             return rect;
         }
 
+        /// <summary>A box of fixed size whose top-right corner sits at (x, y) inside its parent's top-right corner.</summary>
+        internal static RectTransform AtRight(this RectTransform rect, float x, float y, float width, float height)
+        {
+            rect.anchorMin = rect.anchorMax = new Vector2(1, 1);
+            rect.pivot = new Vector2(1, 1);
+            rect.anchoredPosition = new Vector2(-x, -y);
+            rect.sizeDelta = new Vector2(width, height);
+            return rect;
+        }
+
         /// <summary>A box of fixed height spanning its parent's width, its top at y, inset left and right.</summary>
         internal static RectTransform Strip(this RectTransform rect, float y, float height, float left = 0, float right = 0)
         {
@@ -83,13 +116,13 @@ namespace Modstoke.Loader
             return rect;
         }
 
-        internal static Image Fill(RectTransform rect, Sprite sprite, Color color, bool raycast = false)
+        internal static Image Fill(RectTransform rect, Sprite sprite, Color color)
         {
             var image = rect.gameObject.AddComponent<Image>();
             image.sprite = sprite;
             image.type = sprite != null && sprite.border != Vector4.zero ? Image.Type.Sliced : Image.Type.Simple;
             image.color = color;
-            image.raycastTarget = raycast;
+            image.raycastTarget = false;
             return image;
         }
 
@@ -105,13 +138,14 @@ namespace Modstoke.Loader
             catch (Exception)
             {
                 image.sprite = Panel;
-                image.color = PanelTint;
+                image.color = PanelPlain;
             }
             return image;
         }
 
+        /// <summary>One line of text. It runs past its box unless <paramref name="ellipsis"/> cuts it with "…".</summary>
         internal static TextMeshProUGUI Text(Transform parent, string name, string text, float size, bool bold, Color color,
-            TextAlignmentOptions align = TextAlignmentOptions.MidlineLeft)
+            TextAlignmentOptions align = TextAlignmentOptions.MidlineLeft, bool ellipsis = false)
         {
             var label = Box(parent, name).gameObject.AddComponent<TextMeshProUGUI>();
             var font = bold ? Bold : Regular;
@@ -122,48 +156,41 @@ namespace Modstoke.Loader
             label.color = color;
             label.alignment = align;
             label.enableWordWrapping = false;
-            label.overflowMode = TextOverflowModes.Ellipsis;
+            // An ellipsis box shorter than a line of text hides the whole line, so it is opt-in.
+            label.overflowMode = ellipsis ? TextOverflowModes.Ellipsis : TextOverflowModes.Overflow;
             label.richText = true;
             label.raycastTarget = false;
             return label;
         }
 
-        /// <summary>A click target over a box; the screen draws focus itself, so the button has no transition.</summary>
-        internal static Button Clickable(RectTransform rect, Action onClick)
-        {
-            var hit = rect.gameObject.GetComponent<Image>();
-            if (hit == null || !hit)
-            {
-                hit = rect.gameObject.AddComponent<Image>();
-                hit.color = new Color(0, 0, 0, 0);
-            }
-            hit.raycastTarget = true;
-            var button = rect.gameObject.AddComponent<Button>();
-            button.transition = Selectable.Transition.None;
-            button.targetGraphic = hit;
-            try
-            {
-                // The screen moves its own focus, so the event system must not walk between these.
-                var navigation = button.navigation;
-                navigation.mode = Navigation.Mode.None;
-                button.navigation = navigation;
-            }
-            catch (Exception)
-            {
-                // Default navigation is harmless: the screen clears the event system's selection each frame.
-            }
-            button.onClick.AddListener((UnityAction)(() => onClick()));
-            return button;
-        }
-
-        /// <summary>A controller button label drawn as a light tag.</summary>
-        internal static RectTransform Glyph(Transform parent, string name, string label, float height)
+        /// <summary>A small light tag naming a button or key, with its width fitted to the label.</summary>
+        internal static (RectTransform Rect, TextMeshProUGUI Label) Tag(Transform parent, string name, string label, float height)
         {
             var rect = Box(parent, name);
             Fill(rect, null, Ink);
             var text = Text(rect, "Label", label, height * 0.5f, true, Dark, TextAlignmentOptions.Center);
             text.rectTransform.Place(0, 0, 1, 1);
-            rect.sizeDelta = new Vector2(Mathf.Max(height, text.preferredWidth + height * 0.6f), height);
+            rect.sizeDelta = new Vector2(TagWidth(text, label, height), height);
+            return (rect, text);
+        }
+
+        internal static float TagWidth(TextMeshProUGUI text, string label, float height)
+            => Mathf.Max(height, text.GetPreferredValues(label).x + height * 0.55f);
+
+        /// <summary>A small "^" drawn from two strokes; flip it with a negative y scale to point down.</summary>
+        internal static RectTransform Chevron(Transform parent, string name, float size, Color color)
+        {
+            var rect = Box(parent, name);
+            rect.sizeDelta = new Vector2(size, size);
+            foreach (var side in new[] { -1f, 1f })
+            {
+                var stroke = Box(rect, side < 0 ? "Left" : "Right");
+                stroke.anchorMin = stroke.anchorMax = stroke.pivot = new Vector2(0.5f, 0.5f);
+                stroke.sizeDelta = new Vector2(size * 0.22f, size * 0.72f);
+                stroke.anchoredPosition = new Vector2(side * size * 0.2f, 0);
+                stroke.localEulerAngles = new Vector3(0, 0, side * 40f);
+                Fill(stroke, null, color);
+            }
             return rect;
         }
 

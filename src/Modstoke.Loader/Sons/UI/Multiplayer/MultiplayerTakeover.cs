@@ -72,15 +72,24 @@ namespace Modstoke.Loader
         internal static void UseClassicBrowser()
         {
             _classicThisVisit = true;
+            MultiplayerScreen.RestoreGameBrowser();
             MultiplayerScreen.Close();
         }
 
-        /// <summary>Leaves the browser for the title screen, which then opens the game's Host choices.</summary>
-        internal static void RequestHost(Button back)
+        /// <summary>
+        /// Leaves the browser for the title screen, which then opens the game's Host choices.
+        /// <paramref name="leave"/> goes back to the title and says whether it could.
+        /// </summary>
+        internal static void RequestHost(Func<bool> leave)
         {
             _hostRequested = true;
-            back.onClick.Invoke();
+            _hostRequestedAt = Time.realtimeSinceStartup;
+            if (!leave()) _hostRequested = false;
         }
+
+        // A request the title screen never picked up must not fire on some later visit.
+        private const float HostRequestSeconds = 20f;
+        private static float _hostRequestedAt;
 
         private static void BindTitle(Scene title)
         {
@@ -102,6 +111,7 @@ namespace Modstoke.Loader
             _titleBound = title.handle;
             // Runtime listeners run after the game's own, which opens its Join/Host choice.
             _multiplayerButton.onClick.AddListener((UnityAction)AfterMultiplayerPressed);
+            if (_hostRequested && Time.realtimeSinceStartup - _hostRequestedAt > HostRequestSeconds) _hostRequested = false;
             // The title's menus settle their online state over the first frames.
             if (_hostRequested) _hostAt = Time.realtimeSinceStartup + HostDelaySeconds;
         }

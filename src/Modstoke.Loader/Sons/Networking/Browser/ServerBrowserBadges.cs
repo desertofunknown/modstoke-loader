@@ -28,8 +28,8 @@ namespace Modstoke.Sons
     /// </summary>
     internal static class ServerBrowserBadges
     {
-        private const int MaxQueries = 3;
-        private const double AnswerSeconds = 4, KeepSeconds = 120, RetrySeconds = 30;
+        private const int MaxQueries = 6;
+        private const double AnswerSeconds = 3, KeepSeconds = 120, RetrySeconds = 30;
         private const string Green = "#9CCB7A", Amber = "#E3B65A", Red = "#E2715E", Dim = "#8C8C8C";
 
         private enum State { Pending, Modstoke, Vanilla, NoAnswer }
@@ -43,6 +43,8 @@ namespace Modstoke.Sons
             internal ServerDetails Details;
             internal double Expires;
             internal bool Started, Done;
+            // Asked again while its last answer still shows.
+            internal bool Stale;
         }
 
         private sealed class Row
@@ -202,7 +204,7 @@ namespace Modstoke.Sons
         {
             answered = false;
             details = null;
-            if (key == null || !Servers.TryGetValue(key, out var server) || !server.Done) return false;
+            if (key == null || !Servers.TryGetValue(key, out var server) || !server.Done && !server.Stale) return false;
             answered = server.State != State.NoAnswer;
             details = server.Details;
             return true;
@@ -210,7 +212,16 @@ namespace Modstoke.Sons
 
         private static void Request(string key, uint ip, ushort port)
         {
-            if (Servers.TryGetValue(key, out var known) && (!known.Done || Now < known.Expires)) return;
+            if (Servers.TryGetValue(key, out var known))
+            {
+                if (!known.Done || Now < known.Expires) return;
+                // An old answer keeps showing until the new one arrives.
+                known.Done = false;
+                known.Started = false;
+                known.Stale = true;
+                Waiting.Enqueue(key);
+                return;
+            }
             Servers[key] = new Server { Key = key, Ip = ip, Port = port };
             Waiting.Enqueue(key);
         }
@@ -234,6 +245,7 @@ namespace Modstoke.Sons
         {
             if (server.Done) return;
             server.Done = true;
+            server.Stale = false;
             _running = Math.Max(0, _running - 1);
             server.Details = ServerDetails.FromRules(rules);
             server.State = rules == null ? State.NoAnswer : server.Details != null ? State.Modstoke : State.Vanilla;

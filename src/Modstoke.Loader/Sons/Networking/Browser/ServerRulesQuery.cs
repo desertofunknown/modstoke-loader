@@ -22,25 +22,46 @@ namespace Modstoke.Sons
     {
         private const byte RulesRequest = 0x56, ChallengeReply = 0x41, RulesReply = 0x45;
         private const int MaxPackets = 32;
+        private static readonly TimeSpan RulesWait = TimeSpan.FromMilliseconds(700);
 
-        /// <summary>The server's rules, or null when it did not answer in time or the answer was malformed.</summary>
+        /// <summary>
+        /// The server's rules; empty when it answered but publishes none, as a server without Modstoke does; null
+        /// when it did not answer at all or the answer was malformed.
+        /// </summary>
         internal static async Task<Dictionary<string, string>> RunAsync(IPAddress address, int port, TimeSpan timeout)
         {
-            using var cancel = new CancellationTokenSource(timeout);
+            using var overall = new CancellationTokenSource(timeout);
             using var socket = new UdpClient(address.AddressFamily);
             var server = new IPEndPoint(address, port);
             try
             {
                 var challenge = -1;
+                var challenged = false;
+                var silences = 0;
                 // A server answers the first request with a challenge, then the rules once it is sent back.
-                for (var attempt = 0; attempt < 3; attempt++)
+                for (var attempt = 0; attempt < 5; attempt++)
                 {
-                    await socket.SendAsync(Request(challenge), server, cancel.Token).ConfigureAwait(false);
-                    var payload = await ReceiveAsync(socket, server, cancel.Token).ConfigureAwait(false);
+                    await socket.SendAsync(Request(challenge), server, overall.Token).ConfigureAwait(false);
+                    byte[] payload;
+                    using (var step = CancellationTokenSource.CreateLinkedTokenSource(overall.Token))
+                    {
+                        // A challenged server that publishes no rules never replies, so that wait is kept short.
+                        if (challenged) step.CancelAfter(RulesWait);
+                        try
+                        {
+                            payload = await ReceiveAsync(socket, server, step.Token).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) when (challenged && !overall.IsCancellationRequested)
+                        {
+                            if (++silences >= 2) return new Dictionary<string, string>(StringComparer.Ordinal);
+                            continue;
+                        }
+                    }
                     if (payload == null || payload.Length < 5) return null;
                     if (payload[4] == ChallengeReply && payload.Length >= 9)
                     {
                         challenge = BinaryPrimitives.ReadInt32LittleEndian(payload.AsSpan(5));
+                        challenged = true;
                         continue;
                     }
                     return payload[4] == RulesReply ? Parse(payload) : null;
@@ -70,7 +91,6 @@ namespace Modstoke.Sons
         private static async Task<byte[]> ReceiveAsync(UdpClient socket, IPEndPoint server, CancellationToken cancel)
         {
             Dictionary<int, byte[]> parts = null;
-            var total = 0;
             while (true)
             {
                 var packet = await socket.ReceiveAsync(cancel).ConfigureAwait(false);
@@ -82,7 +102,7 @@ namespace Modstoke.Sons
                 var id = BinaryPrimitives.ReadInt32LittleEndian(data.AsSpan(4));
                 // A compressed answer sets the id's top bit; servers that publish short rules never need it.
                 if (id < 0) return null;
-                total = data[8];
+                var total = data[8];
                 var number = data[9];
                 if (total == 0 || total > MaxPackets || number >= total) return null;
                 parts ??= new Dictionary<int, byte[]>();

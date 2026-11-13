@@ -14,6 +14,9 @@ namespace Modstoke.Loader
 {
     internal static partial class MultiplayerScreen
     {
+        // Layout in design units: the screen is drawn as if 860 units tall and scaled to the real height.
+        private const float PanelTop = 120, RowsTop = 150, RowHeight = 48, RowGap = 2, TagHeight = 24, FooterHeight = 44;
+
         private sealed class RowView
         {
             internal RectTransform Rect;
@@ -28,221 +31,300 @@ namespace Modstoke.Loader
             internal TextMeshProUGUI Name, Server, Yours;
         }
 
+        private sealed class TabView
+        {
+            internal RectTransform Rect;
+            internal Image Brush;
+            internal TextMeshProUGUI Label;
+            internal float Width;
+            internal bool Hovered;
+        }
+
+        // A filter chip or a sortable column header.
+        private sealed class ToolView
+        {
+            internal RectTransform Rect, Chevron;
+            internal Image Fill, Focus;
+            internal TextMeshProUGUI Label;
+            internal bool Hovered;
+        }
+
+        private sealed class Prompt
+        {
+            internal RectTransform Rect;
+            internal (RectTransform Rect, TextMeshProUGUI Label) Tag;
+            internal TextMeshProUGUI Label;
+            // The button or key shown for each device; null hides the prompt on that device.
+            internal string Pad, Key;
+            internal bool Right;
+        }
+
         private static RowView[] _rows = Array.Empty<RowView>();
-        private static RectTransform _listRect;
-        private static readonly List<(TextMeshProUGUI Label, Image Brush)> TabViews = new();
-        private static TextMeshProUGUI _status, _kind, _name, _sub, _noticeTitle, _noticeText, _modsHeader, _joinLabel;
-        private static readonly TextMeshProUGUI[] StatValues = new TextMeshProUGUI[3];
-        private static Image _noticeBox, _noticeBar, _joinFill;
         private static ModView[] _mods = Array.Empty<ModView>();
+        private static readonly TabView[] TabViews = new TabView[4];
+        private static readonly ToolView[] ChipViews = new ToolView[4];
+        private static readonly ToolView[] HeaderViews = new ToolView[4];
+        private static readonly List<Prompt> Prompts = new();
+        private static readonly TextMeshProUGUI[] StatValues = new TextMeshProUGUI[3];
+        private static RectTransform _listRect, _nav, _modsHeader;
+        private static (RectTransform Rect, TextMeshProUGUI Label) _tabLeft, _tabRight, _navLeft, _navRight, _navJoin, _navHost;
+        private static TextMeshProUGUI _status, _empty, _kind, _name, _sub, _noticeTitle, _noticeText, _joinLabel, _searchText;
+        private static Image _noticeBox, _noticeBar, _joinFill, _searchBox;
+        private static float _bottom;
+        private static int _modstokeCount;
+        private static bool _caretOn;
 
         private static float U(float design) => design * _s;
 
-        private static void Build(RectTransform parent, RectTransform strip)
+        private static void Build(RectTransform parent)
         {
             var root = MenuKit.Box(parent, "ModstokeMultiplayer").Place(0, 0, 1, 1);
             root.SetAsLastSibling();
             _rootObject = root.gameObject;
+            // Its own canvas, so repainting the list never rebuilds the game's menu canvas.
             _canvas = _rootObject.AddComponent<Canvas>();
-            _rootObject.AddComponent<GraphicRaycaster>();
             var height = parent.rect.height;
             _s = height > 1 ? height / DesignHeight : 1f;
-
-            // The game's own bottom strip stays below this screen with its Back and Join by IP buttons.
-            var bottom = U(96);
-            if (strip != null && strip)
-            {
-                var corners = new Il2CppStructArray<Vector3>(4);
-                strip.GetWorldCorners(corners);
-                bottom = Mathf.Clamp(parent.InverseTransformPoint(corners[1]).y - parent.rect.yMin + U(12), U(30), U(220));
-            }
+            _bottom = BottomInset(parent);
+            Hots.Clear();
+            Prompts.Clear();
             var pad = U(60);
             BuildHeader(root, pad);
-            BuildList(root, pad, bottom);
-            BuildDetails(root, pad, bottom);
+            BuildList(root, pad);
+            BuildDetails(root, pad);
+            BuildFooter(root, pad);
+            PaintHints();
+        }
+
+        // The game's own panels end where its bottom strip's artwork begins; this screen ends on the same line.
+        private static float BottomInset(RectTransform parent)
+        {
+            try
+            {
+                var layout = _gameList != null && _gameList ? _gameList.GetComponent<RectTransform>() : null;
+                if (layout != null)
+                {
+                    var corners = new Il2CppStructArray<Vector3>(4);
+                    layout.GetWorldCorners(corners);
+                    var inset = parent.InverseTransformPoint(corners[0]).y - parent.rect.yMin;
+                    if (inset > U(110) && inset < U(220)) return inset;
+                }
+            }
+            catch (Exception)
+            {
+                // Falls back to the strip's usual height below.
+            }
+            return U(143);
         }
 
         private static void BuildHeader(RectTransform root, float pad)
         {
             var section = MenuKit.Text(root, "Section", "MULTIPLAYER", U(14), true, MenuKit.Muted);
             section.characterSpacing = 32;
-            section.rectTransform.At(pad, U(40), U(600), U(18));
-            var title = MenuKit.Text(root, "Title", "JOIN A GAME", U(54), true, MenuKit.Ink);
+            section.rectTransform.At(pad, U(30), U(600), U(18));
+            var title = MenuKit.Text(root, "Title", "JOIN A GAME", U(50), true, MenuKit.Ink);
             title.characterSpacing = 5;
-            title.rectTransform.At(pad, U(56), U(900), U(62));
+            title.rectTransform.At(pad, U(46), U(900), U(66));
 
-            var nav = MenuKit.Box(root, "Nav");
-            nav.anchorMin = nav.anchorMax = nav.pivot = new Vector2(1, 1);
-            nav.anchoredPosition = new Vector2(-pad, -U(66));
-            var x = 0f;
-            var lt = MenuKit.Glyph(nav, "LT", "LT", U(26));
-            var join = NavItem(nav, "JOIN", true, null);
-            var host = NavItem(nav, "HOST", false, Host);
-            var rt = MenuKit.Glyph(nav, "RT", "RT", U(26));
-            foreach (var item in new[] { lt, join, host, rt })
-            {
-                var size = item.sizeDelta;
-                item.At(x, (U(48) - size.y) / 2, size.x, size.y);
-                x += size.x + U(4);
-            }
-            nav.sizeDelta = new Vector2(x, U(48));
+            _nav = MenuKit.Box(root, "Nav");
+            _nav.anchorMin = _nav.anchorMax = _nav.pivot = new Vector2(1, 1);
+            _nav.anchoredPosition = new Vector2(-pad, -U(56));
+            _navLeft = MenuKit.Tag(_nav, "Previous", "LT", U(TagHeight));
+            _navJoin = NavItem("JOIN", true);
+            _navHost = NavItem("HOST", false);
+            _navRight = MenuKit.Tag(_nav, "Next", "RT", U(TagHeight));
+            Add(_navHost.Rect, Host, on => _navHost.Label.color = on ? MenuKit.Ink : MenuKit.Muted);
         }
 
-        private static RectTransform NavItem(RectTransform parent, string text, bool current, Action onClick)
+        private static (RectTransform Rect, TextMeshProUGUI Label) NavItem(string text, bool current)
         {
-            var rect = MenuKit.Box(parent, text);
+            var rect = MenuKit.Box(_nav, text);
             if (current) MenuKit.Fill(rect, MenuKit.Brush, MenuKit.Ink);
             var label = MenuKit.Text(rect, "Label", text, U(21), true, current ? MenuKit.Dark : MenuKit.Muted, TextAlignmentOptions.Center);
             label.characterSpacing = 14;
             label.rectTransform.Place(0, 0, 1, 1);
-            rect.sizeDelta = new Vector2(label.GetPreferredValues(text).x + U(current ? 68 : 52), U(48));
-            if (onClick != null) MenuKit.Clickable(rect, onClick);
-            return rect;
+            rect.sizeDelta = new Vector2(label.GetPreferredValues(text).x + U(current ? 68 : 44), U(48));
+            return (rect, label);
         }
 
-        private static void BuildList(RectTransform root, float pad, float bottom)
+        private static void BuildList(RectTransform root, float pad)
         {
-            var panel = MenuKit.PanelBox(root, "ServerList").rectTransform.Place(0, 0, 1, 1, pad, bottom, pad + U(464), U(130));
+            var panel = MenuKit.PanelBox(root, "ServerList").rectTransform.Place(0, 0, 1, 1, pad, _bottom, pad + U(464), U(PanelTop));
             _listRect = panel;
-            var panelHeight = root.rect.height - bottom - U(130);
+            var panelHeight = root.rect.height - _bottom - U(PanelTop);
 
-            var x = U(28);
-            var lb = MenuKit.Glyph(panel, "LB", "LB", U(26));
-            lb.At(x, U(31), lb.sizeDelta.x, lb.sizeDelta.y);
-            x += lb.sizeDelta.x + U(4);
-            TabViews.Clear();
+            _tabLeft = MenuKit.Tag(panel, "PreviousTab", "LB", U(TagHeight));
             for (var i = 0; i < TabNames.Length; i++)
             {
                 var tab = (Tab)i;
-                var rect = MenuKit.Box(panel, "Tab " + TabNames[i]);
-                var brush = MenuKit.Fill(MenuKit.Box(rect, "Brush").Place(0, 0, 1, 1), MenuKit.Brush, MenuKit.Ink);
-                var label = MenuKit.Text(rect, "Label", TabNames[i], U(15), true, MenuKit.Muted, TextAlignmentOptions.Center);
-                label.characterSpacing = 12;
-                label.rectTransform.Place(0, 0, 1, 1);
-                var width = label.GetPreferredValues(TabNames[i] + " 000").x + U(22);
-                rect.At(x, U(22), width, U(44));
-                MenuKit.Clickable(rect, () => SetTab(tab));
-                TabViews.Add((label, brush));
-                x += width + U(2);
-            }
-            var rb = MenuKit.Glyph(panel, "RB", "RB", U(26));
-            rb.At(x + U(2), U(31), rb.sizeDelta.x, rb.sizeDelta.y);
-
-            var refresh = MenuKit.Box(panel, "Refresh");
-            refresh.anchorMin = refresh.anchorMax = refresh.pivot = new Vector2(1, 1);
-            refresh.anchoredPosition = new Vector2(-U(28), -U(22));
-            refresh.sizeDelta = new Vector2(U(150), U(44));
-            var refreshLabel = MenuKit.Text(refresh, "Label", "REFRESH", U(15), true, MenuKit.Soft, TextAlignmentOptions.MidlineRight);
-            refreshLabel.characterSpacing = 12;
-            refreshLabel.rectTransform.Place(0, 0, 1, 1);
-            MenuKit.Clickable(refresh, Refresh);
-
-            MenuKit.Fill(MenuKit.Box(panel, "Rule").Strip(U(76), U(2), U(28), U(28)), MenuKit.Brush, new Color(MenuKit.Ink.r, MenuKit.Ink.g, MenuKit.Ink.b, 0.22f));
-
-            var header = MenuKit.Box(panel, "Columns").Strip(U(88), U(16), U(28), U(28));
-            Column(header, "SERVER", U(24), U(370), false);
-            Column(header, "MODS", -U(370), U(170), true);
-            Column(header, "PLAYERS", -U(158), U(82), true);
-            Column(header, "PING", -U(70), 0, true);
-
-            const float top = 110, rowHeight = 58, gap = 2;
-            var visible = Mathf.Clamp(Mathf.FloorToInt((panelHeight - U(top) - U(44)) / U(rowHeight + gap)), 3, 14);
-            _rows = new RowView[visible];
-            for (var i = 0; i < visible; i++)
-            {
-                var slot = i;
-                var rect = MenuKit.Box(panel, "Row " + i).Strip(U(top + i * (rowHeight + gap)), U(rowHeight), U(28), U(28));
-                var view = new RowView { Rect = rect };
-                view.Highlight = MenuKit.Fill(MenuKit.Box(rect, "Highlight").Place(0, 0, 1, 1), MenuKit.Brush, new Color(MenuKit.Ink.r, MenuKit.Ink.g, MenuKit.Ink.b, 0.14f));
-                view.Marker = MenuKit.Fill(MenuKit.Box(rect, "Marker").Place(0, 0, 0, 1, U(10), U(15), -U(14), U(15)), null, MenuKit.Faint);
-                view.Name = MenuKit.Text(rect, "Name", "", U(18), true, MenuKit.Ink);
-                view.Name.rectTransform.Place(0, 0.5f, 1, 1, U(24), 0, U(382), U(6));
-                view.Kind = MenuKit.Text(rect, "Kind", "", U(14), false, MenuKit.Muted);
-                view.Kind.rectTransform.Place(0, 0, 1, 0.5f, U(24), U(6), U(382), 0);
-                view.Status = MenuKit.Text(rect, "Status", "", U(15), true, MenuKit.Faint);
-                view.Status.rectTransform.Place(1, 0, 1, 1, -U(370), 0, U(170), 0);
-                view.Players = MenuKit.Text(rect, "Players", "", U(16), false, MenuKit.Ink);
-                view.Players.rectTransform.Place(1, 0, 1, 1, -U(158), 0, U(82), 0);
-                var ping = MenuKit.Box(rect, "Ping").Place(1, 0, 1, 1, -U(70), 0, 0, 0);
-                view.Bars = new Image[3];
-                for (var b = 0; b < 3; b++)
+                var view = new TabView { Rect = MenuKit.Box(panel, "Tab " + TabNames[i]) };
+                view.Brush = MenuKit.Fill(MenuKit.Box(view.Rect, "Brush").Place(0, 0, 1, 1), MenuKit.Brush, MenuKit.Ink);
+                view.Label = MenuKit.Text(view.Rect, "Label", TabNames[i], U(15), true, MenuKit.Muted, TextAlignmentOptions.Center);
+                view.Label.characterSpacing = 12;
+                view.Label.rectTransform.Place(0, 0, 1, 1);
+                view.Width = view.Label.GetPreferredValues(TabNames[i] + " 0000").x + U(24);
+                TabViews[i] = view;
+                Add(view.Rect, () => SetTab(tab), on =>
                 {
-                    var barHeight = U(6 + b * 4);
-                    view.Bars[b] = MenuKit.Fill(MenuKit.Box(ping, "Bar " + b).At(U(b * 6), U(rowHeight / 2 + 7) - barHeight, U(4), barHeight), null, MenuKit.Ink);
-                }
-                view.Ping = MenuKit.Text(ping, "Value", "", U(14), false, MenuKit.Muted);
-                view.Ping.rectTransform.At(U(22), U(rowHeight / 2 - 9), U(48), U(18));
-                MenuKit.Clickable(rect, () => OnRowClicked(slot));
-                _rows[i] = view;
+                    view.Hovered = on;
+                    PaintTabs();
+                });
             }
+            _tabRight = MenuKit.Tag(panel, "NextTab", "RB", U(TagHeight));
+
+            var search = MenuKit.Box(panel, "Search").AtRight(U(28), U(20), U(300), U(40));
+            _searchBox = MenuKit.Fill(search, null, MenuKit.Field);
+            _searchText = MenuKit.Text(search, "Text", "", U(16), false, MenuKit.Faint, TextAlignmentOptions.MidlineLeft, true);
+            _searchText.rectTransform.Place(0, 0, 1, 1, U(14), 0, U(14), 0);
+            _searchHot = Add(search, () => FocusSearch(true));
+
+            MenuKit.Fill(MenuKit.Box(panel, "Rule").Strip(U(70), U(2), U(28), U(28)), MenuKit.Brush, MenuKit.Rule);
+
+            var x = U(28);
+            for (var i = 0; i < ChipNames.Length; i++)
+            {
+                var index = i;
+                var view = new ToolView { Rect = MenuKit.Box(panel, "Filter " + ChipNames[i]) };
+                view.Fill = MenuKit.Fill(view.Rect, null, MenuKit.ChipOff);
+                view.Label = MenuKit.Text(view.Rect, "Label", ChipNames[i], U(12.5f), true, MenuKit.Soft, TextAlignmentOptions.Center);
+                view.Label.characterSpacing = 10;
+                view.Label.rectTransform.Place(0, 0, 1, 1);
+                view.Focus = MenuKit.Fill(MenuKit.Box(view.Rect, "Focus").Place(0, 0, 1, 0, 0, -U(5), 0, U(3)), null, MenuKit.Ink);
+                var width = view.Label.GetPreferredValues(ChipNames[i]).x + U(26);
+                view.Rect.At(x, U(80), width, U(30));
+                x += width + U(6);
+                ChipViews[i] = view;
+                Add(view.Rect, () => ToggleChip(index), on =>
+                {
+                    view.Hovered = on;
+                    PaintTools();
+                });
+            }
+
+            var header = MenuKit.Box(panel, "Columns").Strip(U(118), U(26), U(28), U(28));
+            HeaderViews[0] = Header(header, 0, "SERVER", false, U(24), U(382));
+            HeaderViews[1] = Header(header, 1, "MODS", true, -U(370), U(170));
+            HeaderViews[2] = Header(header, 2, "PLAYERS", true, -U(158), U(76));
+            HeaderViews[3] = Header(header, 3, "PING", true, -U(70), 0);
+
+            var visible = Mathf.Clamp(Mathf.FloorToInt((panelHeight - U(RowsTop) - U(40)) / U(RowHeight + RowGap)), 3, 14);
+            _rows = new RowView[visible];
+            for (var i = 0; i < visible; i++) _rows[i] = Row(panel, i);
+
+            _empty = MenuKit.Text(panel, "Empty", "", U(16), false, MenuKit.Muted, TextAlignmentOptions.Center);
+            _empty.rectTransform.Strip(U(RowsTop + 60), U(26), U(28), U(28));
 
             _status = MenuKit.Text(panel, "Status", "", U(14), false, MenuKit.Muted);
-            _status.rectTransform.Place(0, 0, 1, 0, U(28), U(14), U(240), -U(34));
-            var classic = MenuKit.Box(panel, "Classic").Place(1, 0, 1, 0, -U(220), U(8), U(28), -U(40));
-            var classicLabel = MenuKit.Text(classic, "Label", "GAME'S OWN BROWSER", U(13), true, MenuKit.Soft, TextAlignmentOptions.MidlineRight);
-            classicLabel.characterSpacing = 10;
+            _status.rectTransform.Place(0, 0, 1, 0, U(28), U(10), U(260), -U(32));
+            var classic = MenuKit.Box(panel, "Classic").Place(1, 0, 1, 0, -U(250), U(8), U(28), -U(36));
+            var classicLabel = MenuKit.Text(classic, "Label", "GAME'S OWN BROWSER", U(12), true, MenuKit.Muted, TextAlignmentOptions.MidlineRight);
+            classicLabel.characterSpacing = 12;
             classicLabel.rectTransform.Place(0, 0, 1, 1);
-            MenuKit.Clickable(classic, MultiplayerTakeover.UseClassicBrowser);
+            Add(classic, MultiplayerTakeover.UseClassicBrowser, on => classicLabel.color = on ? MenuKit.Ink : MenuKit.Muted);
         }
 
-        private static void Column(RectTransform header, string text, float left, float right, bool fromRight)
+        private static ToolView Header(RectTransform header, int index, string text, bool fromRight, float left, float right)
         {
-            var label = MenuKit.Text(header, text, text, U(12), true, MenuKit.Muted);
-            label.characterSpacing = 16;
-            if (fromRight) label.rectTransform.Place(1, 0, 1, 1, left, 0, right, 0);
-            else label.rectTransform.Place(0, 0, 1, 1, left, 0, right, 0);
+            var view = new ToolView { Rect = MenuKit.Box(header, text) };
+            if (fromRight) view.Rect.Place(1, 0, 1, 1, left, 0, right, 0);
+            else view.Rect.Place(0, 0, 1, 1, left, 0, right, 0);
+            view.Label = MenuKit.Text(view.Rect, "Label", text, U(12), true, MenuKit.Muted);
+            view.Label.characterSpacing = 16;
+            view.Label.rectTransform.Place(0, 0, 1, 1);
+            var width = view.Label.GetPreferredValues(text).x;
+            view.Chevron = MenuKit.Chevron(view.Rect, "Sort", U(9), MenuKit.Ink);
+            view.Chevron.anchorMin = view.Chevron.anchorMax = new Vector2(0, 0.5f);
+            view.Chevron.pivot = new Vector2(0.5f, 0.5f);
+            view.Chevron.anchoredPosition = new Vector2(width + U(10), 0);
+            view.Focus = MenuKit.Fill(MenuKit.Box(view.Rect, "Focus").At(0, U(23), width, U(2)), null, MenuKit.Ink);
+            Add(view.Rect, () => ToggleSort((SortKey)(index + 1)), on =>
+            {
+                view.Hovered = on;
+                PaintTools();
+            });
+            return view;
         }
 
-        private static void BuildDetails(RectTransform root, float pad, float bottom)
+        private static RowView Row(RectTransform panel, int slot)
         {
-            var panel = MenuKit.PanelBox(root, "Details").rectTransform.Place(1, 0, 1, 1, -(pad + U(440)), bottom, pad, U(130));
+            var rect = MenuKit.Box(panel, "Row " + slot).Strip(U(RowsTop + slot * (RowHeight + RowGap)), U(RowHeight), U(28), U(28));
+            var view = new RowView { Rect = rect };
+            view.Highlight = MenuKit.Fill(MenuKit.Box(rect, "Highlight").Place(0, 0, 1, 1), MenuKit.Brush, MenuKit.RowSelected);
+            view.Marker = MenuKit.Fill(MenuKit.Box(rect, "Marker").Place(0, 0, 0, 1, U(10), U(11), -U(13), U(11)), null, MenuKit.Faint);
+            view.Name = MenuKit.Text(rect, "Name", "", U(17), true, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
+            view.Name.rectTransform.Place(0, 0.5f, 1, 1, U(24), -U(2), U(382), U(3));
+            view.Kind = MenuKit.Text(rect, "Kind", "", U(13), false, MenuKit.Muted, TextAlignmentOptions.MidlineLeft, true);
+            view.Kind.rectTransform.Place(0, 0, 1, 0.5f, U(24), U(4), U(382), U(2));
+            view.Status = MenuKit.Text(rect, "Status", "", U(15), true, MenuKit.Faint);
+            view.Status.rectTransform.Place(1, 0, 1, 1, -U(370), 0, U(170), 0);
+            view.Players = MenuKit.Text(rect, "Players", "", U(16), false, MenuKit.Ink);
+            view.Players.rectTransform.Place(1, 0, 1, 1, -U(158), 0, U(76), 0);
+            var ping = MenuKit.Box(rect, "Ping").Place(1, 0, 1, 1, -U(70), 0, 0, 0);
+            view.Bars = new Image[3];
+            for (var b = 0; b < 3; b++)
+            {
+                var barHeight = U(6 + b * 4);
+                view.Bars[b] = MenuKit.Fill(MenuKit.Box(ping, "Bar " + b).At(U(b * 6), U(RowHeight / 2 + 7) - barHeight, U(4), barHeight), null, MenuKit.Ink);
+            }
+            view.Ping = MenuKit.Text(ping, "Value", "", U(14), false, MenuKit.Muted);
+            view.Ping.rectTransform.At(U(24), U(RowHeight / 2 - 10), U(46), U(20));
+            Add(rect, () => OnRowClicked(slot), on =>
+            {
+                if (on) _hoverRow = slot;
+                else if (_hoverRow == slot) _hoverRow = -1;
+                PaintHighlights();
+            });
+            return view;
+        }
+
+        private static void BuildDetails(RectTransform root, float pad)
+        {
+            var panel = MenuKit.PanelBox(root, "Details").rectTransform.Place(1, 0, 1, 1, -(pad + U(440)), _bottom, pad, U(PanelTop));
+            var panelHeight = root.rect.height - _bottom - U(PanelTop);
             _kind = MenuKit.Text(panel, "Kind", "", U(13), true, MenuKit.Muted);
             _kind.characterSpacing = 18;
-            _kind.rectTransform.Strip(U(24), U(16), U(28), U(28));
-            _name = MenuKit.Text(panel, "Name", "", U(32), true, MenuKit.Ink);
-            _name.rectTransform.Strip(U(42), U(40), U(28), U(28));
+            _kind.rectTransform.Strip(U(22), U(18), U(28), U(28));
+            _name = MenuKit.Text(panel, "Name", "", U(30), true, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
+            _name.rectTransform.Strip(U(42), U(44), U(28), U(28));
             _sub = MenuKit.Text(panel, "Address", "", U(15), false, MenuKit.Soft);
-            _sub.rectTransform.Strip(U(84), U(20), U(28), U(28));
+            _sub.rectTransform.Strip(U(86), U(22), U(28), U(28));
 
-            var stats = MenuKit.Box(panel, "Stats").Strip(U(116), U(56), U(28), U(28));
+            var stats = MenuKit.Box(panel, "Stats").Strip(U(118), U(58), U(28), U(28));
             var names = new[] { "PLAYERS", "PING", "MODSTOKE" };
             for (var i = 0; i < 3; i++)
             {
                 var cell = MenuKit.Box(stats, names[i]).Place(i / 3f, 0, (i + 1) / 3f, 1, i == 0 ? 0 : U(1), 0, i == 2 ? 0 : U(1), 0);
-                MenuKit.Fill(cell, null, new Color(MenuKit.Ink.r, MenuKit.Ink.g, MenuKit.Ink.b, 0.05f));
-                var label = MenuKit.Text(cell, "Label", names[i], U(12), true, MenuKit.Muted);
+                MenuKit.Fill(cell, null, MenuKit.Cell);
+                var label = MenuKit.Text(cell, "Label", names[i], U(11), true, MenuKit.Muted);
                 label.characterSpacing = 14;
-                label.rectTransform.Strip(U(8), U(14), U(10), U(4));
+                label.rectTransform.Strip(U(8), U(16), U(10), U(4));
                 StatValues[i] = MenuKit.Text(cell, "Value", "", U(18), true, MenuKit.Ink);
-                StatValues[i].rectTransform.Strip(U(24), U(24), U(10), U(4));
+                StatValues[i].rectTransform.Strip(U(26), U(26), U(10), U(4));
             }
 
-            var notice = MenuKit.Box(panel, "Notice").Strip(U(186), U(88), U(28), U(28));
-            _noticeBox = MenuKit.Fill(notice, null, MenuKit.Amber);
-            _noticeBar = MenuKit.Fill(MenuKit.Box(notice, "Bar").Place(0, 0, 0, 1, 0, 0, -U(4), 0), null, MenuKit.Amber);
+            var notice = MenuKit.Box(panel, "Notice").Strip(U(188), U(92), U(28), U(28));
+            _noticeBox = MenuKit.Fill(notice, null, MenuKit.Cell);
+            _noticeBar = MenuKit.Fill(MenuKit.Box(notice, "Bar").Place(0, 0, 0, 1, 0, 0, -U(4), 0), null, MenuKit.Faint);
             _noticeTitle = MenuKit.Text(notice, "Title", "", U(17), true, MenuKit.Ink);
-            _noticeTitle.rectTransform.Strip(U(10), U(22), U(18), U(12));
-            _noticeText = MenuKit.Text(notice, "Text", "", U(15), false, MenuKit.Soft, TextAlignmentOptions.TopLeft);
+            _noticeTitle.rectTransform.Strip(U(10), U(24), U(18), U(12));
+            _noticeText = MenuKit.Text(notice, "Text", "", U(14.5f), false, MenuKit.Soft, TextAlignmentOptions.TopLeft);
             _noticeText.enableWordWrapping = true;
             _noticeText.overflowMode = TextOverflowModes.Truncate;
-            _noticeText.rectTransform.Strip(U(34), U(48), U(18), U(12));
+            _noticeText.rectTransform.Strip(U(36), U(50), U(18), U(12));
 
-            var header = MenuKit.Box(panel, "ModColumns").Strip(U(290), U(16), U(28), U(28));
-            _modsHeader = MenuKit.Text(header, "Mod", "MOD", U(12), true, MenuKit.Muted);
-            _modsHeader.characterSpacing = 16;
-            _modsHeader.rectTransform.Place(0, 0, 1, 1, 0, 0, U(190), 0);
-            Column(header, "SERVER", -U(186), U(102), true);
-            Column(header, "YOURS", -U(98), 0, true);
+            _modsHeader = MenuKit.Box(panel, "ModColumns").Strip(U(294), U(18), U(28), U(28));
+            Column(_modsHeader, "MOD", false, 0, U(190));
+            Column(_modsHeader, "SERVER", true, -U(186), U(102));
+            Column(_modsHeader, "YOURS", true, -U(98), 0);
             // As many mod rows as fit between the column header and the Join button.
-            var panelHeight = root.rect.height - bottom - U(130);
-            var modRows = Mathf.Clamp(Mathf.FloorToInt((panelHeight - U(310) - U(92)) / U(38)), 1, 10);
+            var modRows = Mathf.Clamp(Mathf.FloorToInt((panelHeight - U(316) - U(92)) / U(38)), 1, 10);
             _mods = new ModView[modRows];
             for (var i = 0; i < modRows; i++)
             {
-                var rect = MenuKit.Box(panel, "Mod " + i).Strip(U(310 + i * 38), U(36), U(28), U(28));
-                MenuKit.Fill(MenuKit.Box(rect, "Line").Place(0, 0, 1, 0, 0, 0, 0, -U(1)), null, new Color(MenuKit.Ink.r, MenuKit.Ink.g, MenuKit.Ink.b, 0.08f));
+                var rect = MenuKit.Box(panel, "Mod " + i).Strip(U(316 + i * 38), U(36), U(28), U(28));
+                MenuKit.Fill(MenuKit.Box(rect, "Line").Place(0, 0, 1, 0, 0, 0, 0, -U(1)), null, MenuKit.Line);
                 var view = new ModView { Rect = rect };
-                view.Name = MenuKit.Text(rect, "Name", "", U(16), false, MenuKit.Ink);
+                view.Name = MenuKit.Text(rect, "Name", "", U(16), false, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
                 view.Name.rectTransform.Place(0, 0, 1, 1, 0, 0, U(190), 0);
                 view.Server = MenuKit.Text(rect, "Server", "", U(15), false, MenuKit.Soft);
                 view.Server.rectTransform.Place(1, 0, 1, 1, -U(186), 0, U(102), 0);
@@ -252,32 +334,196 @@ namespace Modstoke.Loader
             }
 
             var join = MenuKit.Box(panel, "Join").Place(0, 0, 1, 0, U(28), U(20), U(28), -U(78));
-            _joinFill = MenuKit.Fill(join, MenuKit.Brush, MenuKit.Ink, true);
+            _joinFill = MenuKit.Fill(join, MenuKit.Brush, MenuKit.Ink);
             _joinLabel = MenuKit.Text(join, "Label", "JOIN", U(21), true, MenuKit.Dark, TextAlignmentOptions.Center);
             _joinLabel.characterSpacing = 16;
             _joinLabel.rectTransform.Place(0, 0, 1, 1);
-            MenuKit.Clickable(join, Join);
+            Add(join, Join);
+        }
+
+        private static void Column(RectTransform header, string text, bool fromRight, float left, float right)
+        {
+            var label = MenuKit.Text(header, text, text, U(12), true, MenuKit.Muted);
+            label.characterSpacing = 16;
+            if (fromRight) label.rectTransform.Place(1, 0, 1, 1, left, 0, right, 0);
+            else label.rectTransform.Place(0, 0, 1, 1, left, 0, right, 0);
+        }
+
+        // The prompt bar over the game's bottom strip artwork: what each button or key does on this screen.
+        private static void BuildFooter(RectTransform root, float pad)
+        {
+            var footer = MenuKit.Box(root, "Prompts").Place(0, 0, 1, 0, pad, U(30), pad, -U(30 + FooterHeight));
+            AddPrompt(footer, "BACK", "B", "ESC", false, () => BackOut());
+            AddPrompt(footer, "JOIN BY IP", "Y", "F2", false, JoinByIp);
+            AddPrompt(footer, "SEARCH", null, "F3", false, () => FocusSearch(true));
+            AddPrompt(footer, "JOIN", "A", "ENTER", true, Activate);
+            AddPrompt(footer, "REFRESH", "X", "F5", true, Refresh);
+        }
+
+        private static void AddPrompt(RectTransform footer, string text, string pad, string key, bool right, Action click)
+        {
+            var prompt = new Prompt { Rect = MenuKit.Box(footer, text), Pad = pad, Key = key, Right = right };
+            prompt.Tag = MenuKit.Tag(prompt.Rect, "Key", key ?? pad ?? "", U(TagHeight));
+            prompt.Label = MenuKit.Text(prompt.Rect, "Label", text, U(19), true, MenuKit.Soft);
+            prompt.Label.characterSpacing = 14;
+            Prompts.Add(prompt);
+            Add(prompt.Rect, click, on => prompt.Label.color = on ? MenuKit.Ink : MenuKit.Soft);
+        }
+
+        // Shows controller buttons while a controller is the device in use, keys otherwise.
+        private static void PaintHints()
+        {
+            if (_rootObject == null || !_rootObject) return;
+            SetTag(_tabLeft, _pad ? "LB" : "Q");
+            SetTag(_tabRight, _pad ? "RB" : "E");
+            SetTag(_navLeft, _pad ? "LT" : "");
+            SetTag(_navRight, _pad ? "RT" : "TAB");
+            foreach (var prompt in Prompts)
+            {
+                var text = _pad ? prompt.Pad : prompt.Key;
+                prompt.Rect.gameObject.SetActive(text != null);
+                if (text != null) SetTag(prompt.Tag, text);
+            }
+
+            var x = U(28);
+            foreach (var item in new[] { _tabLeft.Rect, TabViews[0].Rect, TabViews[1].Rect, TabViews[2].Rect, TabViews[3].Rect, _tabRight.Rect })
+            {
+                var tab = Array.Find(TabViews, view => view.Rect == item);
+                var width = tab != null ? tab.Width : item.sizeDelta.x;
+                var height = tab != null ? U(44) : U(TagHeight);
+                item.At(x, U(18) + (U(44) - height) / 2, width, height);
+                x += width + U(tab != null ? 2 : 6);
+            }
+
+            x = 0;
+            foreach (var item in new[] { _navLeft.Rect, _navJoin.Rect, _navHost.Rect, _navRight.Rect })
+            {
+                if (!item.gameObject.activeSelf) continue;
+                var size = item.sizeDelta;
+                item.At(x, (U(48) - size.y) / 2, size.x, size.y);
+                x += size.x + U(6);
+            }
+            _nav.sizeDelta = new Vector2(Mathf.Max(0, x - U(6)), U(48));
+
+            float left = 0, right = 0;
+            foreach (var prompt in Prompts)
+            {
+                if (!prompt.Rect.gameObject.activeSelf) continue;
+                var tagWidth = prompt.Tag.Rect.sizeDelta.x;
+                var labelWidth = prompt.Label.GetPreferredValues(prompt.Label.text).x + U(4);
+                var width = tagWidth + U(10) + labelWidth;
+                prompt.Tag.Rect.At(0, (U(FooterHeight) - U(TagHeight)) / 2, tagWidth, U(TagHeight));
+                prompt.Label.rectTransform.At(tagWidth + U(10), 0, labelWidth, U(FooterHeight));
+                if (prompt.Right)
+                {
+                    prompt.Rect.AtRight(right, 0, width, U(FooterHeight));
+                    right += width + U(38);
+                }
+                else
+                {
+                    prompt.Rect.At(left, 0, width, U(FooterHeight));
+                    left += width + U(38);
+                }
+            }
+        }
+
+        private static void SetTag((RectTransform Rect, TextMeshProUGUI Label) tag, string text)
+        {
+            tag.Rect.gameObject.SetActive(text.Length > 0);
+            if (text.Length == 0) return;
+            tag.Label.text = text;
+            tag.Rect.sizeDelta = new Vector2(MenuKit.TagWidth(tag.Label, text, U(TagHeight)), U(TagHeight));
         }
 
         private static void Paint()
         {
             if (_rootObject == null || !_rootObject) return;
-            for (var i = 0; i < TabViews.Count; i++)
-            {
-                var on = i == (int)_tab;
-                TabViews[i].Brush.enabled = on;
-                TabViews[i].Label.color = on ? MenuKit.Dark : MenuKit.Muted;
-                TabViews[i].Label.text = on && Entries.Count > 0 ? TabNames[i] + " <alpha=#99>" + Entries.Count : TabNames[i];
-            }
+            PaintTabs();
+            PaintTools();
+            PaintSearch();
             for (var i = 0; i < _rows.Length; i++) PaintRow(_rows[i], _top + i);
+            PaintHighlights();
             PaintDetails();
+
             var refreshing = false;
-            try { refreshing = _gui.ActiveBrowser != null && _gui.ActiveBrowser.RefreshInProgress; }
-            catch (Exception) { /* The browser reports nothing between refreshes. */ }
-            var modstoke = Entries.Count(entry => Read(entry, out _, out var details) && details != null);
-            _status.text = (Entries.Count == 1 ? "1 server" : Entries.Count + " servers")
-                + (modstoke > 0 ? " · " + modstoke + " running Modstoke" : "")
+            try { refreshing = _gui._dedicatedBrowser.RefreshInProgress || _gui._lobbyBrowser.RefreshInProgress; }
+            catch (Exception) { /* The browsers report nothing between refreshes. */ }
+            var filtered = Entries.Count != Listed.Count;
+            _empty.text = Entries.Count > 0 ? ""
+                : filtered ? "No servers match your search and filters."
+                : refreshing ? "Looking for servers…"
+                : _tab == Tab.Lan ? "No servers on your network." : "No servers found.";
+            _status.text = (filtered ? Entries.Count.ToString("N0") + " of " + Listed.Count.ToString("N0") : Listed.Count.ToString("N0"))
+                + (Listed.Count == 1 ? " server" : " servers")
+                + (_modstokeCount > 0 ? " · " + _modstokeCount + " running Modstoke" : "")
                 + (refreshing ? " · refreshing" : "");
+        }
+
+        private static void PaintTabs()
+        {
+            for (var i = 0; i < TabViews.Length; i++)
+            {
+                var view = TabViews[i];
+                var on = i == (int)_tab;
+                view.Brush.enabled = on;
+                view.Label.color = on ? MenuKit.Dark : view.Hovered ? MenuKit.Ink : MenuKit.Muted;
+                view.Label.text = on && Listed.Count > 0
+                    ? TabNames[i] + " <color=" + MenuKit.Html(MenuKit.Faint) + ">" + Listed.Count + "</color>"
+                    : TabNames[i];
+            }
+        }
+
+        private static void PaintTools()
+        {
+            for (var i = 0; i < ChipViews.Length; i++)
+            {
+                var view = ChipViews[i];
+                view.Fill.color = Chips[i] ? MenuKit.Ink : view.Hovered ? MenuKit.RowSelected : MenuKit.ChipOff;
+                view.Label.color = Chips[i] ? MenuKit.Dark : MenuKit.Soft;
+                view.Focus.enabled = _zone == Zone.Chips && _tool == i;
+            }
+            for (var i = 0; i < HeaderViews.Length; i++)
+            {
+                var view = HeaderViews[i];
+                var sorted = (int)_sort == i + 1;
+                view.Label.color = sorted ? MenuKit.Ink : view.Hovered ? MenuKit.Soft : MenuKit.Muted;
+                view.Chevron.gameObject.SetActive(sorted);
+                // Points up for ascending and down for descending.
+                view.Chevron.localScale = new Vector3(1, _descending ? -1 : 1, 1);
+                view.Focus.enabled = _zone == Zone.Headers && _tool == i;
+            }
+        }
+
+        private static void PaintSearch()
+        {
+            if (_searchText == null || !_searchText) return;
+            _searchBox.color = _searching ? MenuKit.RowSelected : MenuKit.Field;
+            var empty = _search.Length == 0 && !_searching;
+            _searchText.color = empty ? MenuKit.Faint : MenuKit.Ink;
+            _searchText.text = empty ? "Search servers" : _search + (_searching && _caretOn ? "|" : "");
+        }
+
+        private static void PaintCaret()
+        {
+            if (!_searching) return;
+            var on = (int)(Time.unscaledTime * 2f) % 2 == 0;
+            if (on == _caretOn) return;
+            _caretOn = on;
+            PaintSearch();
+        }
+
+        private static void PaintHighlights()
+        {
+            for (var i = 0; i < _rows.Length; i++)
+            {
+                var index = _top + i;
+                if (index >= Entries.Count) continue;
+                var selected = index == _selected;
+                var view = _rows[i];
+                view.Highlight.enabled = selected || i == _hoverRow;
+                // The selection dims while the controller is up in the filters or column headers.
+                view.Highlight.color = selected && _zone == Zone.List ? MenuKit.RowSelected : MenuKit.RowHover;
+            }
         }
 
         private static void PaintRow(RowView view, int index)
@@ -286,37 +532,63 @@ namespace Modstoke.Loader
             if (view.Rect.gameObject.activeSelf != shown) view.Rect.gameObject.SetActive(shown);
             if (!shown) return;
             var entry = Entries[index];
-            Ask(entry);
-            var (status, color) = Status(entry);
-            view.Highlight.enabled = index == _selected;
+            var state = StateOf(entry, out var details);
+            var (status, color) = Describe(state, details);
             view.Name.text = entry.Name;
-            view.Kind.text = Kind(entry);
+            view.Kind.text = Kind(entry, details);
             view.Status.text = status;
             view.Status.color = color;
             view.Marker.color = color;
             view.Players.text = entry.Limit > 0 ? entry.Players + " / " + entry.Limit : entry.Players.ToString();
             var bars = entry.Ping <= 0 ? 0 : entry.Ping < 60 ? 3 : entry.Ping < 110 ? 2 : 1;
-            for (var b = 0; b < 3; b++) view.Bars[b].color = b < bars ? MenuKit.Ink : new Color(MenuKit.Ink.r, MenuKit.Ink.g, MenuKit.Ink.b, 0.2f);
-            view.Ping.text = entry.Ping > 0 ? entry.Ping.ToString() : "—";
+            for (var b = 0; b < 3; b++) view.Bars[b].color = b < bars ? MenuKit.Ink : MenuKit.BarOff;
+            view.Ping.text = entry.Ping > 0 ? entry.Ping.ToString() : "";
+        }
+
+        private static string Kind(Entry entry, ServerDetails details)
+        {
+            var parts = new List<string> { entry.Dedicated != null ? "Dedicated" : "Hosted" };
+            if (details != null) parts.Add("Modstoke " + details.Loader);
+            if (entry.Mode.Length > 0) parts.Add(entry.Mode);
+            if (entry.Password) parts.Add("Password");
+            return string.Join(" · ", parts);
+        }
+
+        private static (string Text, Color Color) Describe(ModState state, ServerDetails details)
+        {
+            switch (state)
+            {
+                case ModState.Match: return ("Mods match", MenuKit.Green);
+                case ModState.Needs:
+                    var missing = ServerBrowserBadges.Missing(details).Count();
+                    return (missing == 1 ? "Needs 1 mod" : "Needs " + missing + " mods", MenuKit.Amber);
+                case ModState.AddsItems: return ("Your mods add items", MenuKit.Amber);
+                case ModState.Differs: return ("Mods differ", MenuKit.Red);
+                case ModState.Modded: return ("Modded", MenuKit.Muted);
+                case ModState.Checking: return ("Checking", MenuKit.Faint);
+                case ModState.Vanilla: return ("Vanilla", MenuKit.Faint);
+                case ModState.OtherVersion: return ("Other version", MenuKit.Red);
+                default: return ("—", MenuKit.Faint);
+            }
         }
 
         private static void PaintDetails()
         {
-            var has = _selected >= 0 && _selected < Entries.Count;
-            var entry = has ? Entries[_selected] : null;
+            var entry = _selected >= 0 && _selected < Entries.Count ? Entries[_selected] : null;
             if (entry == null)
             {
                 _kind.text = "";
-                _name.text = "No servers yet";
-                _sub.text = "Servers appear here as the list refreshes.";
+                _name.text = "No server selected";
+                _sub.text = "";
                 foreach (var value in StatValues) value.text = "—";
-                ShowNotice(null, null, MenuKit.Faint);
+                ShowNotice(null, null, 0);
                 ShowMods(null);
                 SetJoin(false, "JOIN");
                 return;
             }
+            // The selected server is always asked, so a Modstoke server is found even without a marked name.
             Ask(entry);
-            Read(entry, out var answered, out var details);
+            var state = StateOf(entry, out var details);
             _kind.text = (entry.Dedicated != null ? "DEDICATED" : "HOSTED") + (entry.Mode.Length > 0 ? " · " + entry.Mode.ToUpperInvariant() : "")
                 + (entry.Password ? " · PASSWORD" : "");
             _name.text = entry.Name;
@@ -324,67 +596,72 @@ namespace Modstoke.Loader
             StatValues[0].text = entry.Limit > 0 ? entry.Players + " / " + entry.Limit : entry.Players.ToString();
             StatValues[1].text = entry.Ping > 0 ? entry.Ping + " ms" : "—";
             StatValues[2].text = details != null ? (details.Loader.Length > 0 ? details.Loader : "Yes")
-                : entry.Dedicated == null || answered || entry.LegacyModded ? (entry.LegacyModded ? "Older" : "No") : "…";
+                : state switch
+                {
+                    ModState.Checking => "…",
+                    ModState.Modded => "Unknown",
+                    ModState.Hosted => "—",
+                    _ => "No"
+                };
 
-            var (title, text, color) = Notice(entry, answered, details);
-            ShowNotice(title, text, color);
+            var (title, text, accent) = Notice(state, details);
+            ShowNotice(title, text, accent);
             ShowMods(details);
             var full = entry.Limit > 0 && entry.Players >= entry.Limit;
             SetJoin(entry.VersionMatch && !full, !entry.VersionMatch ? "OTHER VERSION" : full ? "FULL" : "JOIN");
         }
 
-        private static (string Title, string Text, Color Color) Notice(Entry entry, bool answered, ServerDetails details)
-        {
-            if (!entry.VersionMatch)
-                return ("Different game version", "This server runs another version of Sons of the Forest.", MenuKit.Red);
-            if (entry.Dedicated == null)
-                return ("Hosted game", "Hosted games don't list their mods yet; a Modstoke host checks them when you join.", MenuKit.Faint);
-            if (!Read(entry, out _, out _))
-                return ("Checking the server", "Asking it which mods it runs.", MenuKit.Faint);
-            if (details == null)
-                return answered
-                    ? entry.LegacyModded
-                        ? ("Older Modstoke", "This server runs a Modstoke version that doesn't list its mods.", MenuKit.Faint)
-                        : ("No Modstoke", "This server runs no Modstoke, so mods with their own items won't work there.", MenuKit.Faint)
-                    : ("No details", "The server didn't answer the details query.", MenuKit.Faint);
+        private const int GreyAccent = 0x74726C, GreenAccent = 0xA7DCB8, AmberAccent = 0xF1C674, RedAccent = 0xF0A08A;
 
-            var mine = ContentAgreement.Fingerprint;
-            var local = ServerDetails.LocalMods();
-            var missing = ServerBrowserBadges.Missing(details).Select(mod => mod.Id).ToArray();
-            if (details.Content.Length > 0 && details.Content != mine)
+        private static (string Title, string Text, int Accent) Notice(ModState state, ServerDetails details)
+        {
+            switch (state)
             {
-                var extra = local.Where(own => own.Client == "required"
-                    && !details.Mods.Any(mod => string.Equals(mod.Id, own.Id, StringComparison.OrdinalIgnoreCase)))
-                    .Select(own => own.Id).ToArray();
-                var steps = new List<string>();
-                if (missing.Length > 0) steps.Add("Add " + string.Join(", ", missing) + ".");
-                if (extra.Length > 0) steps.Add("Turn off " + string.Join(", ", extra) + ".");
-                if (steps.Count == 0) steps.Add("Match the versions in the list below.");
-                return ("You'd be refused", "Its mods with their own items differ from yours. " + string.Join(" ", steps), MenuKit.Red);
+                case ModState.OtherVersion:
+                    return ("Different game version", "This server runs another version of Sons of the Forest.", RedAccent);
+                case ModState.Hosted:
+                    return ("Hosted game", "Hosted games don't list their mods yet; a Modstoke host checks them when you join.", GreyAccent);
+                case ModState.Checking:
+                    return ("Checking the server", "Asking it which mods it runs.", GreyAccent);
+                case ModState.Modded:
+                    return ("Modded server", "It doesn't list its mods. It may run another loader or an older Modstoke.", GreyAccent);
+                case ModState.Vanilla:
+                    return ("No Modstoke", "This server runs no Modstoke, so mods with their own items won't work there.", GreyAccent);
+                case ModState.Match:
+                    return ("Your mods match", "You can join with the mods you have.", GreenAccent);
+                case ModState.AddsItems:
+                    return ("Your mods add items", "This server has no mods with their own items, so yours won't exist there.", AmberAccent);
             }
-            if (missing.Length > 0)
-                return (missing.Length == 1 ? "Needs 1 mod" : "Needs " + missing.Length + " mods", "Add " + string.Join(", ", missing) + " to join.", MenuKit.Amber);
-            if (details.Content.Length == 0 && mine.Length > 0)
-                return ("Your mods add items", "This server has no mods with their own items, so yours won't exist there.", MenuKit.Amber);
-            return ("Your mods match", "You can join with the mods you have.", MenuKit.Green);
+            var missing = ServerBrowserBadges.Missing(details).Select(mod => mod.Id).ToArray();
+            if (state == ModState.Needs)
+                return (missing.Length == 1 ? "Needs 1 mod" : "Needs " + missing.Length + " mods", "Add " + string.Join(", ", missing) + " to join.", AmberAccent);
+            var local = ServerDetails.LocalMods();
+            var extra = local.Where(own => own.Client == "required"
+                && !details.Mods.Any(mod => string.Equals(mod.Id, own.Id, StringComparison.OrdinalIgnoreCase)))
+                .Select(own => own.Id).ToArray();
+            var steps = new List<string>();
+            if (missing.Length > 0) steps.Add("Add " + string.Join(", ", missing) + ".");
+            if (extra.Length > 0) steps.Add("Turn off " + string.Join(", ", extra) + ".");
+            if (steps.Count == 0) steps.Add("Match the versions in the list below.");
+            return ("You'd be refused", "Its mods with their own items differ from yours. " + string.Join(" ", steps), RedAccent);
         }
 
-        private static void ShowNotice(string title, string text, Color color)
+        private static void ShowNotice(string title, string text, int accent)
         {
             var shown = title != null;
             _noticeBox.gameObject.SetActive(shown);
             if (!shown) return;
-            _noticeBox.color = new Color(color.r, color.g, color.b, 0.13f);
-            _noticeBar.color = color;
+            _noticeBox.color = MenuKit.Toned(accent, 0.2f);
+            _noticeBar.color = MenuKit.Hex(accent);
             _noticeTitle.text = title;
-            _noticeTitle.color = Color.Lerp(color, MenuKit.Ink, 0.45f);
+            _noticeTitle.color = accent == GreyAccent ? MenuKit.Ink : MenuKit.Hex(accent);
             _noticeText.text = text;
         }
 
         private static void ShowMods(ServerDetails details)
         {
             var mods = details?.Mods ?? Array.Empty<ServerDetails.Mod>();
-            _modsHeader.transform.parent.gameObject.SetActive(mods.Count > 0);
+            _modsHeader.gameObject.SetActive(mods.Count > 0);
             var local = ServerDetails.LocalMods();
             for (var i = 0; i < _mods.Length; i++)
             {
@@ -393,10 +670,14 @@ namespace Modstoke.Loader
                 view.Rect.gameObject.SetActive(shown);
                 if (!shown) continue;
                 var mod = mods[i];
+                if (i == _mods.Length - 1 && details.ModCount > _mods.Length)
+                {
+                    view.Name.text = "and " + (details.ModCount - _mods.Length + 1) + " more";
+                    view.Server.text = view.Yours.text = "";
+                    continue;
+                }
                 var own = local.FirstOrDefault(entry => string.Equals(entry.Id, mod.Id, StringComparison.OrdinalIgnoreCase));
-                view.Name.text = i == _mods.Length - 1 && details.ModCount > _mods.Length
-                    ? "and " + (details.ModCount - _mods.Length + 1) + " more"
-                    : mod.Id;
+                view.Name.text = mod.Id;
                 view.Server.text = mod.Version.Length > 0 ? mod.Version : "?";
                 if (own != null)
                 {
@@ -413,37 +694,9 @@ namespace Modstoke.Loader
 
         private static void SetJoin(bool enabled, string text)
         {
-            _joinFill.color = enabled ? MenuKit.Ink : new Color(MenuKit.Ink.r, MenuKit.Ink.g, MenuKit.Ink.b, 0.1f);
+            _joinFill.color = enabled ? MenuKit.Ink : MenuKit.Disabled;
             _joinLabel.color = enabled ? MenuKit.Dark : MenuKit.Faint;
             _joinLabel.text = text;
-        }
-
-        private static string Kind(Entry entry)
-        {
-            var parts = new List<string> { entry.Dedicated != null ? "Dedicated" : "Hosted" };
-            if (Read(entry, out _, out var details) && details != null) parts.Add("Modstoke " + details.Loader);
-            if (entry.Mode.Length > 0) parts.Add(entry.Mode);
-            if (entry.Password) parts.Add("password");
-            return string.Join(" · ", parts);
-        }
-
-        private static (string Text, Color Color) Status(Entry entry)
-        {
-            if (!entry.VersionMatch) return ("Other version", MenuKit.Red);
-            if (entry.Dedicated == null) return ("Not listed yet", MenuKit.Faint);
-            if (!Read(entry, out var answered, out var details)) return ("Checking", MenuKit.Faint);
-            if (details == null)
-                return answered ? (entry.LegacyModded ? "Older Modstoke" : "Vanilla", MenuKit.Muted) : ("No details", MenuKit.Faint);
-            var (hex, verdict) = ServerBrowserBadges.Judge(details);
-            var color = ColorUtility.TryParseHtmlString(hex, out var parsed) ? parsed : MenuKit.Ink;
-            return (char.ToUpperInvariant(verdict[0]) + verdict.Substring(1), color);
-        }
-
-        private static bool Read(Entry entry, out bool answered, out ServerDetails details)
-        {
-            answered = false;
-            details = null;
-            return entry?.Key != null && ServerBrowserBadges.TryRead(entry.Key, out answered, out details);
         }
     }
 }
