@@ -489,6 +489,14 @@ unsafe fn hostfxr_bootstrap() -> Result<(), BootstrapError> {
     set_env_path("DOORSTOP_MANAGED_FOLDER_DIR", managed_folder);
     set_env("DOORSTOP_DLL_SEARCH_DIRS", &app_paths);
 
+    // Wine backs .NET's write-xor-execute memory with a file in /tmp, and game hosts cap /tmp
+    // (Wings gives a server 100 MB). A modded server compiles more code than that and dies
+    // with "Internal CLR error", so under Wine compiled code goes in ordinary memory.
+    if running_under_wine() && std::env::var_os("DOTNET_EnableWriteXorExecute").is_none() {
+        set_env("DOTNET_EnableWriteXorExecute", "0");
+        log_line("Running under Wine: DOTNET_EnableWriteXorExecute=0");
+    }
+
     let hostfxr_w = wide_path(&config.hostfxr_path);
     let hostfxr_module = LoadLibraryW(hostfxr_w.as_ptr());
     if hostfxr_module.is_null() {
@@ -1006,6 +1014,13 @@ fn set_env(name: &str, value: &str) {
 
 fn set_env_path(name: &str, value: &Path) {
     set_env(name, &value.display().to_string());
+}
+
+fn running_under_wine() -> bool {
+    unsafe {
+        let ntdll = GetModuleHandleW(wide_null("ntdll.dll").as_ptr());
+        !ntdll.is_null() && !GetProcAddress(ntdll, b"wine_get_version\0".as_ptr().cast()).is_null()
+    }
 }
 
 fn clear_env(name: &str) {
