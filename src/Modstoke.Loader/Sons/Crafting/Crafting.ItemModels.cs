@@ -69,7 +69,7 @@ namespace Modstoke.Sons
         {
             private readonly ItemData _item;
             private readonly ItemModel _model;
-            private bool _ingredient, _result, _abandoned;
+            private bool _ingredient, _result, _abandoned, _reported;
             private float _retryAt;
             private string _status;
 
@@ -83,8 +83,9 @@ namespace Modstoke.Sons
 
             internal void Forget()
             {
-                _ingredient = _result = _abandoned = false;
+                _ingredient = _result = _abandoned = _reported = false;
                 _retryAt = 0;
+                _status = null;
             }
 
             internal void Update(CraftingSystem system)
@@ -183,11 +184,19 @@ namespace Modstoke.Sons
                 }
             }
 
+            // The first try often lands while the inventory is still opening, so a wait is only reported once
+            // it has repeated.
             private void Wait(string status)
             {
                 _retryAt = Math.Max(_retryAt, Time.unscaledTime + 2);
-                if (status == _status) return;
-                _status = status;
+                if (status != _status)
+                {
+                    _status = status;
+                    _reported = false;
+                    return;
+                }
+                if (_reported) return;
+                _reported = true;
                 RuntimeEntryPoint.LogSource?.LogWarning("Item " + _item._id + " is waiting for the crafting mat: " + status);
             }
         }
