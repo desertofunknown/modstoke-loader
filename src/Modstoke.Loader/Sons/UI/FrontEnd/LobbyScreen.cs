@@ -12,9 +12,9 @@ using UnityEngine.UI;
 namespace Modstoke.Loader
 {
     /// <summary>
-    /// The multiplayer lobby, in place of the game's: who is in, with their Steam pictures and an open place for
-    /// each free slot, the microphone mode, and for the host the start. A player who joined waits here for the
-    /// host. The game's own lobby keeps running underneath and does the work.
+    /// The multiplayer lobby, in place of the game's: who is in, with their Steam pictures, an open place for each
+    /// free slot (the first of them invites a friend), the microphone mode, and for the host the start. A player
+    /// who joined waits here for the host. The game's own lobby keeps running underneath and does the work.
     /// </summary>
     internal sealed class LobbyScreen : FrontScreen
     {
@@ -27,9 +27,11 @@ namespace Modstoke.Loader
             internal RectTransform Rect;
             internal RawImage Avatar;
             internal Image Placeholder;
-            internal TextMeshProUGUI Name, Tag;
+            internal TextMeshProUGUI Name, Tag, Plus;
             internal Focusable Focus;
             internal LobbyMember Member;
+            /// <summary>The first open place, which invites a friend into it.</summary>
+            internal bool Invite;
         }
 
         private readonly List<SlotView> _slots = new();
@@ -84,12 +86,15 @@ namespace Modstoke.Loader
             view.Avatar.raycastTarget = false;
             // Steam's pictures arrive upside down in Unity's texture space.
             view.Avatar.uvRect = new Rect(0, 1, 1, -1);
+            view.Plus = MenuKit.Text(picture, "Plus", "+", U(30), false, MenuKit.Soft, TextAlignmentOptions.Center);
+            view.Plus.rectTransform.Place(0, 0, 1, 1, 0, U(3), 0, 0);
             view.Name = MenuKit.Text(rect, "Name", "", U(20), true, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
             view.Name.rectTransform.Place(0, 0, 1, 1, U(AvatarSize + 32), 0, U(150), 0);
             view.Tag = MenuKit.Text(rect, "Tag", "", U(14), true, MenuKit.Muted, TextAlignmentOptions.MidlineRight);
             view.Tag.characterSpacing = 14;
             view.Tag.rectTransform.Place(1, 0, 1, 1, -U(150), 0, U(16), 0);
-            view.Focus = Add(rect, () => ShowProfile(view), focused => PaintSlot(view, focused), enabled: () => view.Member != null);
+            view.Focus = Add(rect, () => ActivateSlot(view), focused => PaintSlot(view, focused),
+                enabled: () => view.Member != null || view.Invite);
             view.Focus.Mark = _mark;
             view.Focus.Flash = Flashing(view.Name);
             return view;
@@ -250,6 +255,7 @@ namespace Modstoke.Loader
                 {
                     var slot = _slots[i];
                     slot.Member = i < members.Count ? members[i] : null;
+                    slot.Invite = i == members.Count && i < limit;
                     slot.Rect.gameObject.SetActive(i < limit);
                     PaintSlot(slot, ReferenceEquals(slot.Focus, Focused));
                 }
@@ -286,6 +292,12 @@ namespace Modstoke.Loader
             _facts.text = string.Join(" · ", facts);
         }
 
+        private void ActivateSlot(SlotView view)
+        {
+            if (view.Member != null) ShowProfile(view);
+            else if (view.Invite) OnAlt2();
+        }
+
         private void ShowProfile(SlotView view)
         {
             if (view.Member == null) return;
@@ -305,9 +317,11 @@ namespace Modstoke.Loader
             var member = view.Member;
             view.Avatar.texture = member?.Avatar;
             view.Avatar.enabled = member?.Avatar != null;
-            view.Placeholder.color = member == null ? MenuKit.Faded(0.04f) : MenuKit.Cell;
-            view.Name.text = member?.Name ?? Text["lobby.openSlot"];
-            view.Name.color = member == null ? MenuKit.Faint : focused ? MenuKit.Ink : MenuKit.Soft;
+            view.Plus.enabled = member == null && view.Invite;
+            view.Plus.color = focused ? MenuKit.Ink : MenuKit.Soft;
+            view.Placeholder.color = member != null ? MenuKit.Cell : view.Invite ? MenuKit.Faded(0.08f) : MenuKit.Faded(0.03f);
+            view.Name.text = member?.Name ?? Text[view.Invite ? "lobby.invite" : "lobby.openSlot"];
+            view.Name.color = member == null && !view.Invite ? MenuKit.Faint : focused ? MenuKit.Ink : MenuKit.Soft;
             view.Tag.text = member == null ? "" : (member.Host ? Text["lobby.host"] : member.Self ? Text["lobby.you"] : "")
                 .ToUpper(Languages.CultureOf(Languages.Current));
         }

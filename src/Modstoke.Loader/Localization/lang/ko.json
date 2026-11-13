@@ -364,6 +364,7 @@
   "mods": {
     "search": "검색",
     "searchAbout": "이름, ID 또는 제작자를 입력해 모드를 찾습니다. Enter를 누르면 검색어가 유지되고, Esc를 누르면 이전 검색어로 돌아갑니다.",
+    "searchHint": "이름, 제작자 또는 ID로 검색",
     "by": "제작자: {author}",
     "count": { "other": "모드 {count}개" },
     "issues": { "other": "확인 필요 {count}개" },
@@ -411,6 +412,20 @@
       "redloader": "RedLoader 모드",
       "redloaderLibrary": "RedLoader 라이브러리",
       "other": "모드"
+    },
+
+    "fact": {
+      "author": "제작자",
+      "version": "버전",
+      "kind": "종류",
+      "status": "상태",
+      "settings": "설정"
+    },
+
+    "settings": {
+      "live": "게임 내 실시간",
+      "file": "설정 파일",
+      "none": "없음"
     }
   },
 
@@ -458,6 +473,75 @@
       "guestAbout": "이 게임의 게스트입니다.",
       "bannedAbout": "이 게임에서 차단되었습니다."
     }
+  },
+
+  "console": {
+    "title": "콘솔",
+    "ready": "준비됨",
+    "starting": "시작 중",
+    "mods": { "other": "모드 {count}개" },
+    "close": "닫기",
+
+    "level": {
+      "all": "전체",
+      "errors": "오류",
+      "warnings": "경고",
+      "info": "정보",
+      "debug": "디버그"
+    },
+
+    "badge": {
+      "error": "오류",
+      "fatal": "치명적",
+      "warning": "경고",
+      "info": "정보",
+      "debug": "디버그"
+    },
+    "sourceHint": "출처",
+    "searchHint": "로그 검색",
+    "pause": "일시 정지",
+    "resume": "재개",
+    "follow": "따라가기",
+    "clear": "지우기",
+
+    "column": {
+      "time": "시간",
+      "level": "수준",
+      "source": "출처",
+      "message": "메시지"
+    },
+    "latest": "최신으로",
+    "lines": { "other": "{count}줄" },
+    "paused": "일시 정지됨",
+    "dropped": { "other": "오래된 줄 {count}개 삭제됨" },
+    "empty": "일치하는 로그가 없습니다.",
+    "emptyLog": "아직 기록된 내용이 없습니다.",
+
+    "tab": {
+      "message": "메시지",
+      "commands": "명령"
+    },
+    "messageHint": "로그에서 줄을 선택하면 전체 내용을 볼 수 있습니다.",
+    "copy": "복사",
+    "copied": "클립보드에 복사했습니다.",
+    "commands": { "other": "명령 {count}개" },
+    "noCommands": "일치하는 명령이 없습니다.",
+    "confirmBadge": "확인 필요",
+    "unavailableBadge": "사용 불가",
+    "inputHint": "명령 입력 · Tab으로 자동 완성 · 위아래 키로 기록 보기",
+    "run": "실행",
+    "cancel": "취소",
+    "confirmTitle": "이 명령을 실행할까요?",
+    "intro": "목록에 있는 명령만 실행할 수 있습니다.",
+    "historyMoved": "콘솔이 닫혀 있는 동안 로그가 진행되었습니다. 이제 #{id}부터 시작합니다.",
+    "pausedNotice": "일시 정지되었습니다. 줄은 계속 수집되며 재개하면 표시됩니다. 가장 오래된 줄은 삭제될 수 있습니다.",
+    "resumed": "재개했습니다.",
+    "cleared": "화면을 지웠습니다. 공유 로그는 그대로입니다.",
+    "unknown": "알 수 없는 명령입니다. 목록에서 선택하세요.",
+    "unavailable": "지금은 이 명령을 사용할 수 없습니다.",
+    "noArguments": "이 명령은 인수를 받지 않습니다.",
+    "changed": "명령이 바뀌었습니다. 목록을 확인하고 다시 실행하세요.",
+    "confirmFirst": "실행하기 전에 확인을 요청합니다."
   },
 
   "confirm": {

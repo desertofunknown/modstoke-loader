@@ -364,6 +364,7 @@
   "mods": {
     "search": "Buscar",
     "searchAbout": "Digite para encontrar um mod pelo nome, ID ou autor. Enter mantém a busca e Esc volta para a anterior.",
+    "searchHint": "Buscar por nome, autor ou ID",
     "by": "por {author}",
     "count": { "one": "{count} mod", "other": "{count} mods" },
     "issues": { "one": "{count} precisa de atenção", "other": "{count} precisam de atenção" },
@@ -411,6 +412,20 @@
       "redloader": "Mod do RedLoader",
       "redloaderLibrary": "Biblioteca do RedLoader",
       "other": "Mod"
+    },
+
+    "fact": {
+      "author": "Autor",
+      "version": "Versão",
+      "kind": "Tipo",
+      "status": "Status",
+      "settings": "Configurações"
+    },
+
+    "settings": {
+      "live": "Ao vivo no jogo",
+      "file": "Arquivo de configuração",
+      "none": "Nenhuma"
     }
   },
 
@@ -458,6 +473,75 @@
       "guestAbout": "Um convidado nesta partida.",
       "bannedAbout": "Banido desta partida."
     }
+  },
+
+  "console": {
+    "title": "Console",
+    "ready": "Pronto",
+    "starting": "Iniciando",
+    "mods": { "one": "{count} mod", "other": "{count} mods" },
+    "close": "Fechar",
+
+    "level": {
+      "all": "Tudo",
+      "errors": "Erros",
+      "warnings": "Avisos",
+      "info": "Info",
+      "debug": "Depuração"
+    },
+
+    "badge": {
+      "error": "Erro",
+      "fatal": "Fatal",
+      "warning": "Aviso",
+      "info": "Info",
+      "debug": "Debug"
+    },
+    "sourceHint": "Origem",
+    "searchHint": "Buscar no log",
+    "pause": "Pausar",
+    "resume": "Retomar",
+    "follow": "Acompanhar",
+    "clear": "Limpar",
+
+    "column": {
+      "time": "Hora",
+      "level": "Nível",
+      "source": "Origem",
+      "message": "Mensagem"
+    },
+    "latest": "Ir para o mais recente",
+    "lines": { "one": "{count} linha", "other": "{count} linhas" },
+    "paused": "Pausado",
+    "dropped": { "one": "{count} linha antiga descartada", "other": "{count} linhas antigas descartadas" },
+    "empty": "Nada no log corresponde.",
+    "emptyLog": "Nada foi registrado ainda.",
+
+    "tab": {
+      "message": "Mensagem",
+      "commands": "Comandos"
+    },
+    "messageHint": "Selecione uma linha do log para lê-la por inteiro.",
+    "copy": "Copiar",
+    "copied": "Copiado para a área de transferência.",
+    "commands": { "one": "{count} comando", "other": "{count} comandos" },
+    "noCommands": "Nenhum comando corresponde.",
+    "confirmBadge": "Confirmar",
+    "unavailableBadge": "Indisponível",
+    "inputHint": "Digite um comando · Tab completa · Cima e Baixo para o histórico",
+    "run": "Executar",
+    "cancel": "Cancelar",
+    "confirmTitle": "Executar este comando?",
+    "intro": "Só os comandos da lista podem ser executados.",
+    "historyMoved": "O log avançou enquanto o console estava fechado. Agora ele começa em #{id}.",
+    "pausedNotice": "Pausado. As linhas continuam sendo coletadas e aparecem quando você retomar; as mais antigas podem ser descartadas.",
+    "resumed": "Retomado.",
+    "cleared": "Visualização limpa. O log compartilhado não muda.",
+    "unknown": "Comando desconhecido. Escolha um da lista.",
+    "unavailable": "Esse comando não está disponível agora.",
+    "noArguments": "Esse comando não aceita argumentos.",
+    "changed": "O comando mudou. Confira a lista e execute-o de novo.",
+    "confirmFirst": "Ele pede confirmação antes de ser executado."
   },
 
   "confirm": {

@@ -364,6 +364,7 @@
   "mods": {
     "search": "Suchen",
     "searchAbout": "Tippe, um Mods nach Name, ID oder Autor zu finden. Mit Enter übernimmst du die Suche, mit Esc kehrt die vorherige zurück.",
+    "searchHint": "Nach Name, Autor oder ID suchen",
     "by": "von {author}",
     "count": { "one": "{count} Mod", "other": "{count} Mods" },
     "issues": { "one": "{count} benötigt Aufmerksamkeit", "other": "{count} benötigen Aufmerksamkeit" },
@@ -411,6 +412,20 @@
       "redloader": "RedLoader-Mod",
       "redloaderLibrary": "RedLoader-Bibliothek",
       "other": "Mod"
+    },
+
+    "fact": {
+      "author": "Autor",
+      "version": "Version",
+      "kind": "Typ",
+      "status": "Status",
+      "settings": "Einstellungen"
+    },
+
+    "settings": {
+      "live": "Live im Spiel",
+      "file": "Konfigurationsdatei",
+      "none": "Keine"
     }
   },
 
@@ -458,6 +473,75 @@
       "guestAbout": "Ein Gast in diesem Spiel.",
       "bannedAbout": "Für dieses Spiel gesperrt."
     }
+  },
+
+  "console": {
+    "title": "Konsole",
+    "ready": "Bereit",
+    "starting": "Startet",
+    "mods": { "one": "{count} Mod", "other": "{count} Mods" },
+    "close": "Schließen",
+
+    "level": {
+      "all": "Alle",
+      "errors": "Fehler",
+      "warnings": "Warnungen",
+      "info": "Info",
+      "debug": "Debug"
+    },
+
+    "badge": {
+      "error": "Fehler",
+      "fatal": "Fatal",
+      "warning": "Warnung",
+      "info": "Info",
+      "debug": "Debug"
+    },
+    "sourceHint": "Quelle",
+    "searchHint": "Im Log suchen",
+    "pause": "Pause",
+    "resume": "Fortsetzen",
+    "follow": "Mitlaufen",
+    "clear": "Leeren",
+
+    "column": {
+      "time": "Zeit",
+      "level": "Stufe",
+      "source": "Quelle",
+      "message": "Meldung"
+    },
+    "latest": "Zum Neuesten",
+    "lines": { "one": "{count} Zeile", "other": "{count} Zeilen" },
+    "paused": "Pausiert",
+    "dropped": { "one": "{count} ältere Zeile verworfen", "other": "{count} ältere Zeilen verworfen" },
+    "empty": "Nichts im Log passt dazu.",
+    "emptyLog": "Bisher wurde nichts protokolliert.",
+
+    "tab": {
+      "message": "Meldung",
+      "commands": "Befehle"
+    },
+    "messageHint": "Wähle eine Zeile im Log aus, um sie vollständig zu lesen.",
+    "copy": "Kopieren",
+    "copied": "In die Zwischenablage kopiert.",
+    "commands": { "one": "{count} Befehl", "other": "{count} Befehle" },
+    "noCommands": "Kein Befehl passt.",
+    "confirmBadge": "Bestätigen",
+    "unavailableBadge": "Nicht verfügbar",
+    "inputHint": "Befehl eingeben · Tab vervollständigt · Pfeil hoch und runter für den Verlauf",
+    "run": "Ausführen",
+    "cancel": "Abbrechen",
+    "confirmTitle": "Diesen Befehl ausführen?",
+    "intro": "Nur Befehle aus der Liste können ausgeführt werden.",
+    "historyMoved": "Das Log ist weitergelaufen, während die Konsole geschlossen war. Es beginnt jetzt bei #{id}.",
+    "pausedNotice": "Pausiert. Zeilen werden weiter gesammelt und erscheinen beim Fortsetzen; die ältesten können verworfen werden.",
+    "resumed": "Fortgesetzt.",
+    "cleared": "Ansicht geleert. Das gemeinsame Log bleibt unverändert.",
+    "unknown": "Unbekannter Befehl. Wähle einen aus der Liste.",
+    "unavailable": "Dieser Befehl ist gerade nicht verfügbar.",
+    "noArguments": "Dieser Befehl nimmt keine Argumente an.",
+    "changed": "Der Befehl hat sich geändert. Prüfe die Liste und führe ihn erneut aus.",
+    "confirmFirst": "Er fragt vor dem Ausführen nach einer Bestätigung."
   },
 
   "confirm": {

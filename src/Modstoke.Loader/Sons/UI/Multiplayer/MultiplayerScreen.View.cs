@@ -508,6 +508,7 @@ namespace Modstoke.Loader
             }
             if (_paintedTab == _tab) return;
             var first = (int)_paintedTab < 0;
+            if (!first) TabViews[(int)_paintedTab].Flash.Release();
             _paintedTab = _tab;
             var open = TabViews[(int)_tab];
             _tabMark.Target(open.Under, first);
@@ -571,10 +572,11 @@ namespace Modstoke.Loader
             _rowMark.Target(mark);
             _rowMark.Follow();
             if (selectedView == null || _selectedId == _paintedSelection) return;
-            // A newly selected server flashes as it is reached, not when the list merely redraws.
+            // A newly selected server splits as it is reached, not when the list merely redraws. The rows are reused
+            // as the list scrolls, so the split closes up by itself rather than staying on a row.
             var moved = _paintedSelection != IntPtr.Zero;
             _paintedSelection = _selectedId;
-            if (moved) selectedView.Flash.Pulse();
+            if (moved) selectedView.Flash.Pulse(false);
         }
 
         private static void PaintRow(RowView view, int index)

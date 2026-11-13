@@ -364,6 +364,7 @@
   "mods": {
     "search": "Hae",
     "searchAbout": "Kirjoita, niin löydät modin sen nimen, ID:n tai tekijän perusteella. Enter säilyttää haun ja Escape palauttaa edellisen.",
+    "searchHint": "Hae nimellä, tekijällä tai tunnuksella",
     "by": "tekijä: {author}",
     "count": { "one": "{count} modi", "other": "{count} modia" },
     "issues": { "one": "{count} vaatii huomiota", "other": "{count} vaativat huomiota" },
@@ -411,6 +412,20 @@
       "redloader": "RedLoader-modi",
       "redloaderLibrary": "RedLoader-kirjasto",
       "other": "Modi"
+    },
+
+    "fact": {
+      "author": "Tekijä",
+      "version": "Versio",
+      "kind": "Tyyppi",
+      "status": "Tila",
+      "settings": "Asetukset"
+    },
+
+    "settings": {
+      "live": "Suoraan pelissä",
+      "file": "Asetustiedosto",
+      "none": "Ei mitään"
     }
   },
 
@@ -458,6 +473,75 @@
       "guestAbout": "Vieras tässä pelissä.",
       "bannedAbout": "Porttikielto tähän peliin."
     }
+  },
+
+  "console": {
+    "title": "Konsoli",
+    "ready": "Valmis",
+    "starting": "Käynnistyy",
+    "mods": { "one": "{count} modi", "other": "{count} modia" },
+    "close": "Sulje",
+
+    "level": {
+      "all": "Kaikki",
+      "errors": "Virheet",
+      "warnings": "Varoitukset",
+      "info": "Tiedot",
+      "debug": "Debug"
+    },
+
+    "badge": {
+      "error": "Virhe",
+      "fatal": "Vakava",
+      "warning": "Varoitus",
+      "info": "Tieto",
+      "debug": "Debug"
+    },
+    "sourceHint": "Lähde",
+    "searchHint": "Hae lokista",
+    "pause": "Tauko",
+    "resume": "Jatka",
+    "follow": "Seuraa",
+    "clear": "Tyhjennä",
+
+    "column": {
+      "time": "Aika",
+      "level": "Taso",
+      "source": "Lähde",
+      "message": "Viesti"
+    },
+    "latest": "Uusimpiin",
+    "lines": { "one": "{count} rivi", "other": "{count} riviä" },
+    "paused": "Tauolla",
+    "dropped": { "one": "{count} vanhempi rivi poistettu", "other": "{count} vanhempaa riviä poistettu" },
+    "empty": "Lokista ei löydy osumia.",
+    "emptyLog": "Mitään ei ole vielä kirjattu.",
+
+    "tab": {
+      "message": "Viesti",
+      "commands": "Komennot"
+    },
+    "messageHint": "Valitse lokista rivi, niin voit lukea sen kokonaan.",
+    "copy": "Kopioi",
+    "copied": "Kopioitu leikepöydälle.",
+    "commands": { "one": "{count} komento", "other": "{count} komentoa" },
+    "noCommands": "Mikään komento ei täsmää.",
+    "confirmBadge": "Vahvistus",
+    "unavailableBadge": "Ei käytettävissä",
+    "inputHint": "Kirjoita komento · Tab täydentää · Ylä- ja alanuoli selaavat historiaa",
+    "run": "Suorita",
+    "cancel": "Peruuta",
+    "confirmTitle": "Suoritetaanko tämä komento?",
+    "intro": "Vain luettelon komentoja voi suorittaa.",
+    "historyMoved": "Loki eteni konsolin ollessa suljettuna. Se alkaa nyt kohdasta #{id}.",
+    "pausedNotice": "Tauolla. Rivejä kerätään edelleen, ja ne näkyvät, kun jatkat; vanhimmat voivat poistua.",
+    "resumed": "Jatketaan.",
+    "cleared": "Näkymä tyhjennetty. Jaettu loki ei muuttunut.",
+    "unknown": "Tuntematon komento. Valitse jokin luettelosta.",
+    "unavailable": "Komento ei ole nyt käytettävissä.",
+    "noArguments": "Komento ei ota argumentteja.",
+    "changed": "Komento muuttui. Tarkista luettelo ja suorita se uudelleen.",
+    "confirmFirst": "Se pyytää vahvistusta ennen suorittamista."
   },
 
   "confirm": {

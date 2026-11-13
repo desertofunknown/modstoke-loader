@@ -364,6 +364,7 @@
   "mods": {
     "search": "検索",
     "searchAbout": "名前、ID、作者名を入力してMODを探します。Enterで検索を確定し、Escで直前の検索に戻します。",
+    "searchHint": "名前・作者・IDで検索",
     "by": "作者：{author}",
     "count": { "other": "{count}個のMOD" },
     "issues": { "other": "要確認 {count}件" },
@@ -411,6 +412,20 @@
       "redloader": "RedLoader MOD",
       "redloaderLibrary": "RedLoaderライブラリ",
       "other": "MOD"
+    },
+
+    "fact": {
+      "author": "作者",
+      "version": "バージョン",
+      "kind": "種類",
+      "status": "状態",
+      "settings": "設定"
+    },
+
+    "settings": {
+      "live": "ゲーム内で変更可能",
+      "file": "設定ファイル",
+      "none": "なし"
     }
   },
 
@@ -458,6 +473,75 @@
       "guestAbout": "このゲームのゲストです。",
       "bannedAbout": "このゲームからBANされています。"
     }
+  },
+
+  "console": {
+    "title": "コンソール",
+    "ready": "準備完了",
+    "starting": "起動中",
+    "mods": { "other": "{count}個のMOD" },
+    "close": "閉じる",
+
+    "level": {
+      "all": "すべて",
+      "errors": "エラー",
+      "warnings": "警告",
+      "info": "情報",
+      "debug": "デバッグ"
+    },
+
+    "badge": {
+      "error": "エラー",
+      "fatal": "致命的",
+      "warning": "警告",
+      "info": "情報",
+      "debug": "デバッグ"
+    },
+    "sourceHint": "ソース",
+    "searchHint": "ログを検索",
+    "pause": "一時停止",
+    "resume": "再開",
+    "follow": "追従",
+    "clear": "クリア",
+
+    "column": {
+      "time": "時刻",
+      "level": "レベル",
+      "source": "ソース",
+      "message": "メッセージ"
+    },
+    "latest": "最新へ",
+    "lines": { "other": "{count}行" },
+    "paused": "一時停止中",
+    "dropped": { "other": "古い行を{count}行破棄" },
+    "empty": "一致するログはありません。",
+    "emptyLog": "まだ何も記録されていません。",
+
+    "tab": {
+      "message": "メッセージ",
+      "commands": "コマンド"
+    },
+    "messageHint": "ログの行を選択すると全文を表示します。",
+    "copy": "コピー",
+    "copied": "クリップボードにコピーしました。",
+    "commands": { "other": "{count}個のコマンド" },
+    "noCommands": "一致するコマンドはありません。",
+    "confirmBadge": "要確認",
+    "unavailableBadge": "使用不可",
+    "inputHint": "コマンドを入力 · Tabで補完 · 上下キーで履歴",
+    "run": "実行",
+    "cancel": "キャンセル",
+    "confirmTitle": "このコマンドを実行しますか？",
+    "intro": "実行できるのは一覧にあるコマンドだけです。",
+    "historyMoved": "コンソールを閉じている間にログが進みました。現在は#{id}から始まります。",
+    "pausedNotice": "一時停止中です。行は引き続き収集され、再開すると表示されます。古いものは破棄されることがあります。",
+    "resumed": "再開しました。",
+    "cleared": "表示をクリアしました。共有ログは変わりません。",
+    "unknown": "不明なコマンドです。一覧から選んでください。",
+    "unavailable": "このコマンドは現在使用できません。",
+    "noArguments": "このコマンドは引数を取りません。",
+    "changed": "コマンドが変更されました。一覧を確認してもう一度実行してください。",
+    "confirmFirst": "実行前に確認を求めます。"
   },
 
   "confirm": {

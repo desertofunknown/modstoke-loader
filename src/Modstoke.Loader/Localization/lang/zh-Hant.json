@@ -364,6 +364,7 @@
   "mods": {
     "search": "搜尋",
     "searchAbout": "輸入名稱、ID 或作者來尋找模組。按 Enter 保留搜尋，按 Esc 恢復上一次的搜尋。",
+    "searchHint": "依名稱、作者或 ID 搜尋",
     "by": "作者：{author}",
     "count": { "other": "{count} 個模組" },
     "issues": { "other": "{count} 個需要處理" },
@@ -411,6 +412,20 @@
       "redloader": "RedLoader 模組",
       "redloaderLibrary": "RedLoader 函式庫",
       "other": "模組"
+    },
+
+    "fact": {
+      "author": "作者",
+      "version": "版本",
+      "kind": "類型",
+      "status": "狀態",
+      "settings": "設定"
+    },
+
+    "settings": {
+      "live": "遊戲內即時調整",
+      "file": "設定檔",
+      "none": "無"
     }
   },
 
@@ -458,6 +473,75 @@
       "guestAbout": "這場遊戲的訪客。",
       "bannedAbout": "已被禁止加入這場遊戲。"
     }
+  },
+
+  "console": {
+    "title": "主控台",
+    "ready": "就緒",
+    "starting": "正在啟動",
+    "mods": { "other": "{count} 個模組" },
+    "close": "關閉",
+
+    "level": {
+      "all": "全部",
+      "errors": "錯誤",
+      "warnings": "警告",
+      "info": "資訊",
+      "debug": "偵錯"
+    },
+
+    "badge": {
+      "error": "錯誤",
+      "fatal": "致命",
+      "warning": "警告",
+      "info": "資訊",
+      "debug": "偵錯"
+    },
+    "sourceHint": "來源",
+    "searchHint": "搜尋記錄",
+    "pause": "暫停",
+    "resume": "繼續",
+    "follow": "跟隨",
+    "clear": "清除",
+
+    "column": {
+      "time": "時間",
+      "level": "層級",
+      "source": "來源",
+      "message": "訊息"
+    },
+    "latest": "跳到最新",
+    "lines": { "other": "{count} 行" },
+    "paused": "已暫停",
+    "dropped": { "other": "已捨棄 {count} 行舊記錄" },
+    "empty": "沒有符合的記錄。",
+    "emptyLog": "目前還沒有任何記錄。",
+
+    "tab": {
+      "message": "訊息",
+      "commands": "指令"
+    },
+    "messageHint": "在記錄中選取一行即可查看完整內容。",
+    "copy": "複製",
+    "copied": "已複製到剪貼簿。",
+    "commands": { "other": "{count} 個指令" },
+    "noCommands": "沒有符合的指令。",
+    "confirmBadge": "需確認",
+    "unavailableBadge": "無法使用",
+    "inputHint": "輸入指令 · Tab 自動完成 · 上下鍵瀏覽歷史記錄",
+    "run": "執行",
+    "cancel": "取消",
+    "confirmTitle": "要執行此指令嗎？",
+    "intro": "只能執行清單中的指令。",
+    "historyMoved": "主控台關閉期間記錄已繼續前進，現在從 #{id} 開始。",
+    "pausedNotice": "已暫停。記錄仍在收集，繼續後就會顯示；最舊的幾行可能會被捨棄。",
+    "resumed": "已繼續。",
+    "cleared": "畫面已清除。共用記錄不受影響。",
+    "unknown": "未知的指令。請從清單中選擇。",
+    "unavailable": "這個指令目前無法使用。",
+    "noArguments": "這個指令不接受參數。",
+    "changed": "指令已變更。請檢查清單後再執行一次。",
+    "confirmFirst": "執行前會要求確認。"
   },
 
   "confirm": {

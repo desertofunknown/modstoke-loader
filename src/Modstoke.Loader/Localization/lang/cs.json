@@ -364,6 +364,7 @@
   "mods": {
     "search": "Hledat",
     "searchAbout": "Psaním vyhledáte mod podle názvu, ID nebo autora. Enter hledání ponechá a Escape vrátí to předchozí.",
+    "searchHint": "Hledat podle názvu, autora nebo ID",
     "by": "autor: {author}",
     "count": { "one": "{count} mod", "few": "{count} mody", "other": "{count} modů" },
     "issues": { "one": "{count} vyžaduje pozornost", "few": "{count} vyžadují pozornost", "other": "{count} vyžaduje pozornost" },
@@ -411,6 +412,20 @@
       "redloader": "Mod pro RedLoader",
       "redloaderLibrary": "Knihovna pro RedLoader",
       "other": "Mod"
+    },
+
+    "fact": {
+      "author": "Autor",
+      "version": "Verze",
+      "kind": "Typ",
+      "status": "Stav",
+      "settings": "Nastavení"
+    },
+
+    "settings": {
+      "live": "Živě ve hře",
+      "file": "Konfigurační soubor",
+      "none": "Žádné"
     }
   },
 
@@ -458,6 +473,75 @@
       "guestAbout": "Host v této hře.",
       "bannedAbout": "Zablokovaný v této hře."
     }
+  },
+
+  "console": {
+    "title": "Konzole",
+    "ready": "Připraveno",
+    "starting": "Spouštění",
+    "mods": { "one": "{count} mod", "few": "{count} mody", "other": "{count} modů" },
+    "close": "Zavřít",
+
+    "level": {
+      "all": "Vše",
+      "errors": "Chyby",
+      "warnings": "Varování",
+      "info": "Info",
+      "debug": "Ladění"
+    },
+
+    "badge": {
+      "error": "Chyba",
+      "fatal": "Fatální",
+      "warning": "Varování",
+      "info": "Info",
+      "debug": "Ladění"
+    },
+    "sourceHint": "Zdroj",
+    "searchHint": "Hledat v logu",
+    "pause": "Pozastavit",
+    "resume": "Pokračovat",
+    "follow": "Sledovat",
+    "clear": "Vymazat",
+
+    "column": {
+      "time": "Čas",
+      "level": "Úroveň",
+      "source": "Zdroj",
+      "message": "Zpráva"
+    },
+    "latest": "Na nejnovější",
+    "lines": { "one": "{count} řádek", "few": "{count} řádky", "other": "{count} řádků" },
+    "paused": "Pozastaveno",
+    "dropped": { "one": "{count} starší řádek zahozen", "few": "{count} starší řádky zahozeny", "other": "{count} starších řádků zahozeno" },
+    "empty": "V logu nic neodpovídá.",
+    "emptyLog": "Zatím nebylo nic zaznamenáno.",
+
+    "tab": {
+      "message": "Zpráva",
+      "commands": "Příkazy"
+    },
+    "messageHint": "Vyberte řádek v logu a přečtěte si ho celý.",
+    "copy": "Kopírovat",
+    "copied": "Zkopírováno do schránky.",
+    "commands": { "one": "{count} příkaz", "few": "{count} příkazy", "other": "{count} příkazů" },
+    "noCommands": "Žádný příkaz neodpovídá.",
+    "confirmBadge": "Potvrzení",
+    "unavailableBadge": "Nedostupné",
+    "inputHint": "Napište příkaz · Tab doplní · Šipky nahoru a dolů procházejí historii",
+    "run": "Spustit",
+    "cancel": "Zrušit",
+    "confirmTitle": "Spustit tento příkaz?",
+    "intro": "Spustit lze jen příkazy ze seznamu.",
+    "historyMoved": "Log se posunul, zatímco byla konzole zavřená. Nyní začíná u #{id}.",
+    "pausedNotice": "Pozastaveno. Řádky se dál sbírají a zobrazí se po obnovení; ty nejstarší se mohou zahodit.",
+    "resumed": "Obnoveno.",
+    "cleared": "Zobrazení vymazáno. Sdílený log se nemění.",
+    "unknown": "Neznámý příkaz. Vyberte jeden ze seznamu.",
+    "unavailable": "Tento příkaz teď není dostupný.",
+    "noArguments": "Tento příkaz nepřijímá argumenty.",
+    "changed": "Příkaz se změnil. Zkontrolujte seznam a spusťte ho znovu.",
+    "confirmFirst": "Před spuštěním žádá o potvrzení."
   },
 
   "confirm": {

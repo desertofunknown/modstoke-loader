@@ -364,6 +364,7 @@
   "mods": {
     "search": "Search",
     "searchAbout": "Type to find a mod by its name, ID or author. Enter keeps the search and Escape puts the last one back.",
+    "searchHint": "Search by name, author or ID",
     "by": "by {author}",
     "count": { "one": "{count} mod", "other": "{count} mods" },
     "issues": { "one": "{count} needs attention", "other": "{count} need attention" },
@@ -411,6 +412,20 @@
       "redloader": "RedLoader mod",
       "redloaderLibrary": "RedLoader library",
       "other": "Mod"
+    },
+
+    "fact": {
+      "author": "Author",
+      "version": "Version",
+      "kind": "Type",
+      "status": "Status",
+      "settings": "Settings"
+    },
+
+    "settings": {
+      "live": "Live in game",
+      "file": "Config file",
+      "none": "None"
     }
   },
 
@@ -458,6 +473,75 @@
       "guestAbout": "A guest in this game.",
       "bannedAbout": "Banned from this game."
     }
+  },
+
+  "console": {
+    "title": "Console",
+    "ready": "Ready",
+    "starting": "Starting",
+    "mods": { "one": "{count} mod", "other": "{count} mods" },
+    "close": "Close",
+
+    "level": {
+      "all": "All",
+      "errors": "Errors",
+      "warnings": "Warnings",
+      "info": "Info",
+      "debug": "Debug"
+    },
+
+    "badge": {
+      "error": "Error",
+      "fatal": "Fatal",
+      "warning": "Warning",
+      "info": "Info",
+      "debug": "Debug"
+    },
+    "sourceHint": "Source",
+    "searchHint": "Search the log",
+    "pause": "Pause",
+    "resume": "Resume",
+    "follow": "Follow",
+    "clear": "Clear",
+
+    "column": {
+      "time": "Time",
+      "level": "Level",
+      "source": "Source",
+      "message": "Message"
+    },
+    "latest": "Jump to latest",
+    "lines": { "one": "{count} line", "other": "{count} lines" },
+    "paused": "Paused",
+    "dropped": { "one": "{count} older line dropped", "other": "{count} older lines dropped" },
+    "empty": "Nothing in the log matches.",
+    "emptyLog": "Nothing has been logged yet.",
+
+    "tab": {
+      "message": "Message",
+      "commands": "Commands"
+    },
+    "messageHint": "Select a line in the log to read it in full.",
+    "copy": "Copy",
+    "copied": "Copied to the clipboard.",
+    "commands": { "one": "{count} command", "other": "{count} commands" },
+    "noCommands": "No command matches.",
+    "confirmBadge": "Confirm",
+    "unavailableBadge": "Unavailable",
+    "inputHint": "Type a command · Tab completes · Up and Down for history",
+    "run": "Run",
+    "cancel": "Cancel",
+    "confirmTitle": "Run this command?",
+    "intro": "Only commands in the list can run.",
+    "historyMoved": "The log moved on while the console was closed. It now starts at #{id}.",
+    "pausedNotice": "Paused. Lines are still collected and show when you resume; the oldest may be dropped.",
+    "resumed": "Resumed.",
+    "cleared": "View cleared. The shared log is unchanged.",
+    "unknown": "Unknown command. Pick one from the list.",
+    "unavailable": "That command is unavailable right now.",
+    "noArguments": "That command takes no arguments.",
+    "changed": "The command changed. Check the list and run it again.",
+    "confirmFirst": "It asks you to confirm before it runs."
   },
 
   "confirm": {

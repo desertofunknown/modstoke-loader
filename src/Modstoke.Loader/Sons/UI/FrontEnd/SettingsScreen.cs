@@ -19,20 +19,27 @@ namespace Modstoke.Loader
     /// </summary>
     internal abstract class SettingsScreen : FrontScreen
     {
-        private const float StripHeight = 143, TabsTop = 126, RowHeight = 44, SectionHeight = 44, ControlWidth = 380;
-        private const float DetailsWidth = 400, TagHeight = 24, RefreshSeconds = 0.5f, CaretBlink = 0.53f;
+        private const float StripHeight = 143, TabsTop = 126, RowHeight = 44, TallHeight = 62, SectionHeight = 44, ControlWidth = 380;
+        private const float DetailsWidth = 400, TagHeight = 24, FactHeight = 32, RefreshSeconds = 0.5f, CaretBlink = 0.53f;
 
         private sealed class RowView
         {
             internal OptionRow Row;
             internal RectTransform Rect, Track, Thumb, Fill, Pips, Control, Caret;
-            internal TextMeshProUGUI Label, Value;
+            internal TextMeshProUGUI Label, Value, Detail, Hint;
             internal Image[] Left, Right;
-            internal Image Changed, Underline;
+            internal Image Changed, Underline, Field;
             internal RawImage Picture;
             internal Image[] PipMarks;
             internal Focusable Focus;
+            internal float Height;
             internal readonly Ease Slide = new(22f);
+        }
+
+        private sealed class FactView
+        {
+            internal RectTransform Rect;
+            internal TextMeshProUGUI Label, Value;
         }
 
         private sealed class TabView
@@ -46,9 +53,10 @@ namespace Modstoke.Loader
 
         private readonly List<TabView> _tabs = new();
         private readonly List<RowView> _rows = new();
+        private readonly List<FactView> _facts = new();
         private readonly Ease _scroll = new(16f);
         private int _tab, _focusIndex;
-        private RectTransform _viewport, _content;
+        private RectTransform _viewport, _content, _details;
         private KeyTag _tabLeft, _tabRight;
         private TextMeshProUGUI _heading, _title, _name, _about, _default, _empty, _note, _primaryLabel;
         private Glitch _titleFlash;
@@ -58,7 +66,7 @@ namespace Modstoke.Loader
         private RowView _drag, _editing;
         private TMP_InputField _padField;
         private string _draft, _padText, _problem;
-        private float _nextRefresh, _contentHeight, _editStart;
+        private float _nextRefresh, _contentHeight, _editStart, _foot;
         private bool _built;
 
         protected SettingsScreen(int tab = 0) => _tab = tab;
@@ -80,6 +88,12 @@ namespace Modstoke.Loader
         protected abstract string ItemName(OptionRow row);
 
         protected abstract string ItemAbout(OptionRow row);
+
+        /// <summary>
+        /// Short facts about the focused row, as label and value, set out as a table under its name; null for none.
+        /// A value may carry color tags.
+        /// </summary>
+        protected virtual IReadOnlyList<(string Label, string Value)> ItemFacts(OptionRow row) => null;
 
         /// <summary>The main action at the foot of the details column, or null for a screen without one.</summary>
         protected virtual string PrimaryLabel => null;
@@ -165,15 +179,16 @@ namespace Modstoke.Loader
 
         private void BuildDetails(float pad, float top)
         {
-            var details = MenuKit.Box(Root, "Details").Place(1, 0, 1, 1, -(pad + U(DetailsWidth)), U(StripHeight), pad, U(top));
+            var details = _details = MenuKit.Box(Root, "Details").Place(1, 0, 1, 1, -(pad + U(DetailsWidth)), U(StripHeight), pad, U(top));
             MenuKit.Hairline(details, "Top", 0);
+            _facts.Clear();
             _name = MenuKit.Text(details, "Name", "", U(28), true, MenuKit.Ink, TextAlignmentOptions.TopLeft);
             _name.enableWordWrapping = true;
             _name.rectTransform.Strip(U(22), U(76), 0, 0);
             _about = MenuKit.Text(details, "About", "", U(17), false, MenuKit.Soft, TextAlignmentOptions.TopLeft);
             _about.enableWordWrapping = true;
             _about.lineSpacing = 6;
-            _about.rectTransform.Strip(U(104), U(220), 0, 0);
+            _about.rectTransform.Strip(U(104), U(260), 0, 0);
 
             // From the foot up: the main action, a line about it, then the focused setting's default.
             var foot = 12f;
@@ -192,7 +207,7 @@ namespace Modstoke.Loader
                 foot = 146;
             }
             _default = MenuKit.Text(details, "Default", "", U(15), false, MenuKit.Muted);
-            _default.rectTransform.Place(0, 0, 1, 0, 0, U(foot), 0, -U(foot + 24));
+            _foot = U(foot + 24);
         }
 
         private void BuildTabs(float pad)
@@ -240,10 +255,10 @@ namespace Modstoke.Loader
                 y += y == 0 ? U(SectionHeight) - U(6) : U(SectionHeight);
                 foreach (var row in section.Rows)
                 {
-                    var view = BuildRow(row, y);
+                    var view = BuildRow(row, y, U(row.Detail != null ? TallHeight : RowHeight));
                     _rows.Add(view);
                     arriving.Add(view.Rect);
-                    y += U(RowHeight);
+                    y += view.Height;
                 }
             }
             // The list reads in from the top, as it does each time a tab opens.
@@ -256,31 +271,55 @@ namespace Modstoke.Loader
             PaintRows();
         }
 
-        private RowView BuildRow(OptionRow row, float y)
+        private RowView BuildRow(OptionRow row, float y, float height)
         {
-            var view = new RowView { Row = row, Rect = MenuKit.Box(_content, "Row " + row.Id).Strip(y, U(RowHeight), 0, 0) };
+            var view = new RowView { Row = row, Height = height, Rect = MenuKit.Box(_content, "Row " + row.Id).Strip(y, height, 0, 0) };
             view.Changed = MenuKit.Fill(MenuKit.Box(view.Rect, "Changed").Place(0, 0.5f, 0, 0.5f, U(6), -U(3), -U(12), -U(3)), null, MenuKit.Muted);
-            var labelLeft = 20f;
-            if (row.HasPicture)
+            var wide = row is TextRow { Placeholder: not null };
+            var labelLeft = U(20);
+            // A picture or a lettered tile leads the row, a little larger on a row with a second line.
+            var tile = U(row.Detail != null ? 40 : 32);
+            if (row.HasPicture || row.Monogram != null)
             {
-                var frame = MenuKit.Box(view.Rect, "Picture").At(U(20), U((RowHeight - 32) / 2), U(32), U(32));
-                MenuKit.Fill(frame, null, MenuKit.Cell);
-                view.Picture = MenuKit.Box(frame, "Image").Place(0, 0, 1, 1).gameObject.AddComponent<RawImage>();
-                view.Picture.raycastTarget = false;
-                view.Picture.uvRect = new Rect(0, 1, 1, -1);
-                labelLeft += 44;
+                var frame = MenuKit.Box(view.Rect, "Picture").At(labelLeft, (height - tile) / 2, tile, tile);
+                MenuKit.Fill(frame, null, row.MonogramTint ?? MenuKit.Cell);
+                if (row.HasPicture)
+                {
+                    view.Picture = MenuKit.Box(frame, "Image").Place(0, 0, 1, 1).gameObject.AddComponent<RawImage>();
+                    view.Picture.raycastTarget = false;
+                    view.Picture.uvRect = new Rect(0, 1, 1, -1);
+                }
+                else
+                {
+                    var letters = MenuKit.Text(frame, "Letters", row.Monogram, tile * 0.42f, true, MenuKit.Ink, TextAlignmentOptions.Center);
+                    letters.characterSpacing = 4;
+                    letters.rectTransform.Place(0, 0, 1, 1);
+                }
+                labelLeft += tile + U(14);
             }
             view.Label = MenuKit.Text(view.Rect, "Label", ItemName(row), U(18), false, MenuKit.Soft, TextAlignmentOptions.MidlineLeft, true);
-            view.Label.rectTransform.Place(0, 0, 1, 1, U(labelLeft), 0, U(ControlWidth + 28), 0);
-            view.Control = MenuKit.Box(view.Rect, "Control").Place(1, 0, 1, 1, -U(ControlWidth + 12), 0, U(12), 0);
-            if (row is TextRow) BuildField(view);
+            var labelRight = U(ControlWidth + 28);
+            if (row.Detail != null)
+            {
+                // The name over its second line, the pair centered in the row.
+                view.Label.rectTransform.Place(0, 0.5f, 1, 1, labelLeft, -U(1), labelRight, U(7));
+                view.Detail = MenuKit.Text(view.Rect, "Detail", row.Detail, U(14), false, MenuKit.Muted, TextAlignmentOptions.MidlineLeft, true);
+                view.Detail.rectTransform.Place(0, 0, 1, 0.5f, labelLeft, U(8), labelRight, U(1));
+            }
+            else view.Label.rectTransform.Place(0, 0, 1, 1, labelLeft, 0, labelRight, 0);
+            view.Control = wide
+                ? MenuKit.Box(view.Rect, "Control").Place(0, 0, 1, 1, U(12), 0, U(12), 0)
+                : MenuKit.Box(view.Rect, "Control").Place(1, 0, 1, 1, -U(ControlWidth + 12), 0, U(12), 0);
+            if (row is TextRow) BuildField(view, wide);
             else if (row.Fraction.HasValue) BuildSlider(view);
             else if (row.Open != null) BuildOpen(view);
             else BuildChoice(view);
+            // A search box's field is the whole row; its name lives in the details column only.
+            if (wide) view.Label.gameObject.SetActive(false);
             view.Focus = Add(view.Rect, () => Activate(view), focused => PaintRow(view, focused), direction => Adjust(view, direction),
                 () => view.Row.Available);
             view.Focus.Mark = _rowMark;
-            view.Focus.Flash = new Glitch(view.Label);
+            view.Focus.Flash = new Glitch(wide ? view.Value : view.Label);
             view.Focus.Clip = _viewport;
             return view;
         }
@@ -325,19 +364,28 @@ namespace Modstoke.Loader
 
         private void BuildOpen(RowView view)
         {
-            view.Value = MenuKit.Text(view.Control, "Value", "", U(16), true, MenuKit.Soft, TextAlignmentOptions.MidlineRight);
-            view.Value.characterSpacing = 12;
+            view.Value = MenuKit.Text(view.Control, "Value", "", U(14), true, MenuKit.Soft, TextAlignmentOptions.MidlineRight);
+            view.Value.characterSpacing = 18;
             view.Value.rectTransform.Place(0, 0, 1, 1, 0, 0, U(30), 0);
             view.Right = Arrow(view.Control, "Right", true);
         }
 
-        // Typed text on a rule, with a caret while it is being edited.
-        private void BuildField(RowView view)
+        // Typed text on a rule, with a caret while it is being edited. A search box sits in a faint field of its own
+        // across the row, with its hint in it while it is empty.
+        private void BuildField(RowView view, bool wide)
         {
-            view.Value = MenuKit.Text(view.Control, "Value", "", U(17), true, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
-            view.Value.rectTransform.Place(0, 0, 1, 1, U(10), U(4), U(10), 0);
-            view.Underline = MenuKit.Fill(MenuKit.Box(view.Control, "Rule").Place(0, 0, 1, 0, U(10), U(7), U(10), -(U(7) + Mathf.Max(1f, U(1.5f)))),
-                null, MenuKit.Rule);
+            if (wide)
+            {
+                view.Field = MenuKit.Fill(MenuKit.Box(view.Control, "Field").Place(0, 0, 1, 1, 0, U(6), 0, U(6)), null, MenuKit.Field);
+                view.Hint = MenuKit.Text(view.Control, "Hint", ((TextRow)view.Row).Placeholder, U(17), false, MenuKit.Faint,
+                    TextAlignmentOptions.MidlineLeft, true);
+                view.Hint.rectTransform.Place(0, 0, 1, 1, U(18), U(4), U(18), 0);
+            }
+            var inset = U(wide ? 18 : 10);
+            view.Value = MenuKit.Text(view.Control, "Value", "", U(17), !wide, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
+            view.Value.rectTransform.Place(0, 0, 1, 1, inset, U(4), inset, 0);
+            view.Underline = MenuKit.Fill(MenuKit.Box(view.Control, "Rule").Place(0, 0, 1, 0, U(wide ? 0 : 10), U(wide ? 6 : 7), U(wide ? 0 : 10),
+                -(U(wide ? 6 : 7) + Mathf.Max(1f, U(1.5f)))), null, MenuKit.Rule);
             view.Caret = MenuKit.Box(view.Value.rectTransform, "Caret");
             view.Caret.anchorMin = view.Caret.anchorMax = new Vector2(0, 0.5f);
             view.Caret.pivot = new Vector2(0, 0.5f);
@@ -521,7 +569,7 @@ namespace Modstoke.Loader
             _drag = null;
             BuildRows();
             _title.text = Title.ToUpper(Languages.CultureOf(Languages.Current));
-            _titleFlash.Pulse();
+            _titleFlash.Pulse(false);
             LayoutTabs();
             FocusRow(0, 1);
             PaintDetails();
@@ -724,13 +772,13 @@ namespace Modstoke.Loader
         private void Reveal(bool snap)
         {
             if (_focusIndex < 0 || _focusIndex >= _rows.Count) return;
-            var rect = _rows[_focusIndex].Rect;
-            var top = -rect.offsetMax.y;
-            var bottom = top + U(RowHeight);
+            var view = _rows[_focusIndex];
+            var top = -view.Rect.offsetMax.y;
+            var bottom = top + view.Height;
             var height = _viewport.rect.height;
             var goal = _scroll.Goal;
-            if (top - U(RowHeight) < goal) goal = top - U(_focusIndex == 0 ? SectionHeight : RowHeight);
-            else if (bottom + U(RowHeight) > goal + height) goal = bottom + U(RowHeight) - height;
+            if (top - view.Height < goal) goal = top - (_focusIndex == 0 ? U(SectionHeight) : view.Height);
+            else if (bottom + view.Height > goal + height) goal = bottom + view.Height - height;
             _scroll.Set(Mathf.Clamp(goal, 0, MaxScroll), snap);
             ApplyScroll();
         }
@@ -800,6 +848,11 @@ namespace Modstoke.Loader
             }
             // A setting that another has switched off stays in view, dimmed, and focus passes over it.
             view.Label.color = !available ? MenuKit.Faint : focused ? MenuKit.Ink : MenuKit.Soft;
+            if (view.Detail != null)
+            {
+                view.Detail.text = row.Detail ?? "";
+                view.Detail.color = !available ? MenuKit.Faint : focused ? MenuKit.Soft : MenuKit.Muted;
+            }
             view.Value.text = row.Open != null ? value.ToUpper(Languages.CultureOf(Languages.Current)) : value;
             view.Value.color = !available ? MenuKit.Faint : row.Tint ?? (focused || row.Open == null ? MenuKit.Ink : MenuKit.Soft);
             // A dot beside a setting that is not at its default.
@@ -807,6 +860,8 @@ namespace Modstoke.Loader
             if (view.Underline != null)
             {
                 view.Underline.color = editing ? MenuKit.Ink : focused ? MenuKit.Soft : MenuKit.Rule;
+                if (view.Hint != null) view.Hint.enabled = !editing && string.IsNullOrEmpty(value);
+                if (view.Field != null) view.Field.color = editing ? MenuKit.Faded(0.11f) : MenuKit.Field;
                 // While typing, the end of a long text stays in view.
                 var wide = editing && view.Value.GetPreferredValues(value + " ").x > view.Value.rectTransform.rect.width;
                 view.Value.alignment = wide ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
@@ -866,10 +921,15 @@ namespace Modstoke.Loader
             if (view == null)
             {
                 _name.text = _about.text = _default.text = "";
+                LayoutDetails(null);
                 return;
             }
             _name.text = ItemName(view.Row);
             _about.text = ItemAbout(view.Row);
+            IReadOnlyList<(string Label, string Value)> facts;
+            try { facts = ItemFacts(view.Row); }
+            catch (Exception) { facts = null; }
+            LayoutDetails(facts);
             string defaultValue;
             try { defaultValue = view.Row.DefaultValue; }
             catch (Exception) { defaultValue = ""; }
@@ -877,6 +937,45 @@ namespace Modstoke.Loader
             var plain = defaultValue.Length == 0 || view.Row is TextRow
                 || string.Equals(defaultValue, Text["options.value.default"], StringComparison.CurrentCultureIgnoreCase);
             _default.text = plain ? "" : Text.Get("options.default", ("value", defaultValue));
+        }
+
+        // The name as tall as its lines, the facts in a ruled table under it, and what the item does below them.
+        private void LayoutDetails(IReadOnlyList<(string Label, string Value)> facts)
+        {
+            var width = _details.rect.width;
+            var nameHeight = string.IsNullOrEmpty(_name.text) ? 0 : _name.GetPreferredValues(_name.text, width, 0).y;
+            var y = U(22) + Mathf.Max(U(34), nameHeight) + U(16);
+            var count = facts?.Count ?? 0;
+            while (_facts.Count < count) _facts.Add(BuildFact());
+            for (var i = 0; i < _facts.Count; i++)
+            {
+                var fact = _facts[i];
+                var shown = i < count;
+                fact.Rect.gameObject.SetActive(shown);
+                if (!shown) continue;
+                fact.Rect.Strip(y, U(FactHeight), 0, 0);
+                fact.Label.text = facts[i].Label.ToUpper(Languages.CultureOf(Languages.Current));
+                fact.Value.text = facts[i].Value ?? "";
+                y += U(FactHeight);
+            }
+            if (count > 0) y += U(18);
+            _about.rectTransform.Strip(y, U(260), 0, 0);
+            // The default sits just under what the setting does, clear of the main action at the foot.
+            var aboutHeight = string.IsNullOrEmpty(_about.text) ? 0 : _about.GetPreferredValues(_about.text, width, 0).y;
+            var below = y + Mathf.Min(aboutHeight, U(260)) + U(16);
+            _default.rectTransform.Strip(Mathf.Max(0, Mathf.Min(below, _details.rect.height - _foot)), U(24), 0, 0);
+        }
+
+        private FactView BuildFact()
+        {
+            var view = new FactView { Rect = MenuKit.Box(_details, "Fact") };
+            view.Label = MenuKit.Text(view.Rect, "Label", "", U(13), true, MenuKit.Muted, TextAlignmentOptions.MidlineLeft, true);
+            view.Label.characterSpacing = 18;
+            view.Label.rectTransform.Place(0, 0, 0.38f, 1);
+            view.Value = MenuKit.Text(view.Rect, "Value", "", U(17), false, MenuKit.Soft, TextAlignmentOptions.MidlineLeft, true);
+            view.Value.rectTransform.Place(0.38f, 0, 1, 1, U(8), 0, 0, 0);
+            MenuKit.Fill(MenuKit.Box(view.Rect, "Rule").Place(0, 0, 1, 0, 0, 0, 0, -Mathf.Max(1f, U(1))), null, MenuKit.Line);
+            return view;
         }
 
         private void PaintNote()

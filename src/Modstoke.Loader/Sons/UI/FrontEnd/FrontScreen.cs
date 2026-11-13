@@ -22,7 +22,7 @@ namespace Modstoke.Loader
         internal Func<bool> Enabled;
         /// <summary>The focus mark this item is shown with, or null for an item that draws its own.</summary>
         internal Glide Mark;
-        /// <summary>The text that flashes the split colors when focus lands here.</summary>
+        /// <summary>The text that splits into the game's colors while this holds focus.</summary>
         internal Glitch Flash;
         /// <summary>For an item in a scrolling list: the visible part of the list, outside which the mouse misses it.</summary>
         internal RectTransform Clip;
@@ -41,11 +41,12 @@ namespace Modstoke.Loader
     /// One full screen of the front end. A screen builds its layout once, registers what can hold focus, and
     /// the base class moves focus between those by direction for keyboard and controller, and by pointer for the
     /// mouse, so every screen behaves the same on all three. Focus is shown one way everywhere: a light mark
-    /// glides to the item and its text brightens, with a short flash of the game's split colors as it lands.
+    /// glides to the item and its text brightens and splits into the game's colors as it lands, keeping a slight
+    /// fringe of them while it holds focus.
     /// </summary>
     internal abstract class FrontScreen
     {
-        private const float AppearSeconds = 0.18f, Rise = 12f;
+        private const float AppearSeconds = 0.22f, Rise = 14f;
         private readonly List<Focusable> _items = new();
         private CanvasGroup _group;
         private float _appearStart = -1;
@@ -69,12 +70,12 @@ namespace Modstoke.Loader
             Retext();
         }
 
-        /// <summary>Starts the short fade and rise a screen arrives with.</summary>
-        internal void Appear()
+        /// <summary>Starts the short fade and rise a screen arrives with, after <paramref name="delay"/> seconds unseen.</summary>
+        internal void Appear(float delay = 0f)
         {
             _leaving?.Cancel();
             _leaving = null;
-            _appearStart = Time.unscaledTime;
+            _appearStart = Time.unscaledTime + delay;
             Animate();
         }
 
@@ -175,8 +176,9 @@ namespace Modstoke.Loader
             previous?.Paint?.Invoke(false);
             if (previous?.Mark != null && !ReferenceEquals(previous.Mark, item?.Mark)) previous.Mark.Target(null);
             item?.Paint?.Invoke(true);
-            // The mark glides from where it was; one that was hidden appears in place.
+            // The mark glides from where it was; one that was hidden opens out in place.
             item?.Mark?.Target(item.Rect, previous?.Mark == null || !ReferenceEquals(previous.Mark, item.Mark));
+            previous?.Flash?.Release();
             item?.Flash?.Pulse();
             FocusChanged(previous, item);
         }
@@ -281,7 +283,7 @@ namespace Modstoke.Loader
             return null;
         }
 
-        /// <summary>A text that flashes the split colors when focus lands on its item.</summary>
+        /// <summary>A text that splits into the game's colors while its item holds focus.</summary>
         protected static Glitch Flashing(TextMeshProUGUI text) => new(text);
 
         // The usable item most directly in that direction: distance along it, with sideways drift counted double.

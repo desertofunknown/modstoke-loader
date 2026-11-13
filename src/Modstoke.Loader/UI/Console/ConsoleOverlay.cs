@@ -6,6 +6,7 @@ using System.Reflection;
 using HarmonyLib;
 using Il2CppInterop.Runtime;
 using Modstoke.Diagnostics;
+using Modstoke.Localization;
 using Sons.Input;
 using SonsSdk;
 using TheForest;
@@ -17,9 +18,15 @@ using UnityEngine.SceneManagement;
 
 namespace Modstoke.Loader
 {
+    /// <summary>
+    /// The in-game console: a panel that drops from the top of the screen with the shared log and the registered
+    /// commands, drawn in the same language as Modstoke's menus. It reads the same history and runs the same
+    /// commands as the desktop console.
+    /// </summary>
     internal static partial class ConsoleOverlay
     {
         private const string KeybindId = "modstoke.loader.console";
+        private const float OpenSeconds = 0.16f, CloseSeconds = 0.12f, RefreshSeconds = 0.2f;
         private static readonly HarmonyLib.Harmony Patches = new("modstoke.loader.console-input");
         private static readonly UnityAction<Scene> SceneUnloaded = new Action<Scene>(OnSceneUnloaded);
         private static readonly UiEventSystem EventSystemLease = new UiEventSystem("Modstoke Console Event System");
@@ -31,10 +38,13 @@ namespace Modstoke.Loader
         private static EventSystem _eventSystem;
         private static bool _initialized;
         private static bool _visible;
+        private static bool _closing;
+        private static bool _retext;
         private static bool _cursorVisible;
         private static CursorLockMode _cursorLock;
         private static int _sceneHandle;
         private static float _nextRefresh;
+        private static float _motionStart;
         private static int _releaseFrame = -1;
 
         /// <summary>Whether the console is open and taking the keyboard.</summary>
@@ -58,6 +68,7 @@ namespace Modstoke.Loader
                 SceneManager.sceneUnloaded = ReferenceEquals(SceneManager.sceneUnloaded, null)
                     ? SceneUnloaded
                     : Il2CppSystem.Delegate.Combine(SceneManager.sceneUnloaded, SceneUnloaded).Cast<UnityAction<Scene>>();
+                Languages.Changed += () => _retext = true;
                 _initialized = true;
                 var key = InputBindings.Snapshot().TryGetValue(KeybindId, out var keybind) ? keybind.KeyName : KeyCode.F5.ToString();
                 ConsoleHub.Append("Info", "Console", "Press " + key
@@ -82,6 +93,7 @@ namespace Modstoke.Loader
                     if (_visible) Hide();
                     else Show();
                 }
+                if (_closing) Slide();
                 if (!_visible) return;
                 if (_root == null || _capture == null || !_capture.activeSelf
                     || !InputSystem.GetState(InputState.Console) || _eventSystem == null || !_eventSystem.isActiveAndEnabled
@@ -96,11 +108,22 @@ namespace Modstoke.Loader
                     else Hide();
                     return;
                 }
-                UpdateSize();
-                UpdateHistory();
-                if (Time.unscaledTime < _nextRefresh) return;
-                _nextRefresh = Time.unscaledTime + 0.2f;
-                RefreshSnapshot();
+                if (_retext)
+                {
+                    _retext = false;
+                    ApplyText();
+                }
+                Slide();
+                UpdateLayout();
+                HandlePointer();
+                HandleCommandKeys();
+                if (Time.unscaledTime >= _nextRefresh)
+                {
+                    _nextRefresh = Time.unscaledTime + RefreshSeconds;
+                    RefreshSnapshot();
+                }
+                ScrollLog(Time.unscaledDeltaTime);
+                UpdateSuggestions();
             }
             catch (Exception error)
             {
@@ -124,6 +147,8 @@ namespace Modstoke.Loader
             }
             try
             {
+                // A view built before the game's fonts loaded is built again with them.
+                if (_viewReady && _fallbackFont && MenuKit.Bold != null) DestroyView();
                 EnsureView();
                 if (_capture == null)
                 {
@@ -142,23 +167,29 @@ namespace Modstoke.Loader
                 _cursorVisible = Cursor.visible;
                 _cursorLock = Cursor.lockState;
                 _visible = true;
+                _closing = false;
+                _motionStart = Time.unscaledTime;
+                _rootGroup.interactable = _rootGroup.blocksRaycasts = true;
                 _capture.SetActive(true);
                 _root.SetActive(true);
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
+                if (_retext)
+                {
+                    _retext = false;
+                    ApplyText();
+                }
+                UpdateLayout();
+                Slide();
                 RefreshSnapshot();
-                RenderRows();
-                _command.Select();
-                _command.ActivateInputField();
+                _rowsDirty = true;
+                ScrollLog(0f);
+                FocusCommand();
             }
             catch
             {
                 Hide();
-                if (!_viewReady && _root != null)
-                {
-                    UnityEngine.Object.Destroy(_root);
-                    _root = null;
-                }
+                if (!_viewReady) DestroyView();
                 throw;
             }
         }
@@ -167,7 +198,7 @@ namespace Modstoke.Loader
         {
             var wasVisible = _visible;
             _visible = false;
-            _resizing = false;
+            _dragging = false;
             _pendingCommand = null;
             var focus = _focus;
             _focus = null;
@@ -178,7 +209,20 @@ namespace Modstoke.Loader
                 {
                     if (_confirmation != null) _confirmation.SetActive(false);
                     if (_panelInteraction != null) _panelInteraction.interactable = true;
-                    if (_root != null) _root.SetActive(false);
+                    if (_suggestions != null) _suggestions.gameObject.SetActive(false);
+                    _suggestFor = Unknown;
+                    if (_command != null) _command.DeactivateInputField();
+                    if (_root != null)
+                    {
+                        // It slides away rather than vanishing; input is already released.
+                        if (wasVisible && _root.activeSelf && _panel != null)
+                        {
+                            _closing = true;
+                            _motionStart = Time.unscaledTime;
+                            _rootGroup.interactable = _rootGroup.blocksRaycasts = false;
+                        }
+                        else _root.SetActive(false);
+                    }
                     var system = _eventSystem;
                     if (system != null && system == EventSystem.current)
                     {
@@ -212,6 +256,23 @@ namespace Modstoke.Loader
             }
         }
 
+        // The panel eases down from above the screen as it opens and back up as it closes, the scrim with it.
+        private static void Slide()
+        {
+            if (_panel == null || _root == null)
+            {
+                _closing = false;
+                return;
+            }
+            var t = Mathf.Clamp01((Time.unscaledTime - _motionStart) / (_closing ? CloseSeconds : OpenSeconds));
+            var shown = _closing ? 1f - t * t : 1f - (1f - t) * (1f - t) * (1f - t);
+            _panel.anchoredPosition = new Vector2(0f, (_panel.sizeDelta.y + ShadowHeight) * (1f - shown));
+            _scrim.color = new Color(0f, 0f, 0f, ScrimAlpha * shown);
+            if (!_closing || t < 1f) return;
+            _closing = false;
+            _root.SetActive(false);
+        }
+
         private static void OnSceneUnloaded(Scene scene)
         {
             if (!_visible || scene.handle != _sceneHandle) return;
@@ -240,10 +301,7 @@ namespace Modstoke.Loader
             _consoleKeys = null;
             if (_capture != null) UnityEngine.Object.Destroy(_capture);
             _capture = null;
-            if (_root != null) UnityEngine.Object.Destroy(_root);
-            _root = null;
-            _viewReady = false;
-            Rows.Clear();
+            DestroyView();
             Entries.Clear();
             Filtered.Clear();
             _cursor = 0;

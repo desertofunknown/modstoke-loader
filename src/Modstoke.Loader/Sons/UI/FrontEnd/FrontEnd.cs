@@ -26,6 +26,8 @@ namespace Modstoke.Loader
         // Under the mods menu (4600), so it opens over these screens.
         private const int SortingOrder = 4500;
         private const float PromptHeight = 44f, TagHeight = 24f;
+        // The game's fonts follow its title scene by a moment; the first screen waits up to this long for them.
+        private const float FontWaitSeconds = 3f;
 
         private sealed class PromptView
         {
@@ -42,8 +44,8 @@ namespace Modstoke.Loader
         private static int _width, _height, _stackLayout;
         private static bool _failed, _pad, _retext, _subscribed, _promptsDirty, _shown, _hostWanted;
         private static long _nextSettingRead;
-        private static bool _classic;
-        private static float _asideUntil, _hostWantedAt;
+        private static bool _classic, _plainFonts;
+        private static float _asideUntil, _hostWantedAt, _fontWaitStart = -1;
         private static PromptView _hoverPrompt;
 
         internal static float S { get; private set; } = 1f;
@@ -89,11 +91,14 @@ namespace Modstoke.Loader
         {
             var canvas = Canvas();
             if (Stack.Count == 0) _stackLayout = LayoutVersion;
+            // A full screen arrives once the one it replaces has faded, so the two are never seen through each other;
+            // a dialog comes straight in over the screen it belongs to.
+            var replacing = Stack.Count > 0 && !screen.Overlay && _shown;
             screen.Create(canvas);
             Stack.Add(screen);
             ApplyVisibility(true);
             screen.Opened();
-            screen.Appear();
+            screen.Appear(replacing ? Fading.Seconds : 0f);
             FrontInput.Pause();
             _promptsDirty = true;
         }
@@ -110,7 +115,7 @@ namespace Modstoke.Loader
             ApplyVisibility();
             top.DeviceChanged();
             // Under a dialog the screen never left, so it does not arrive again.
-            if (!overlay) top.Appear();
+            if (!overlay) top.Appear(Fading.Seconds);
             FrontInput.Pause(0.15f);
             _promptsDirty = true;
         }
@@ -156,7 +161,48 @@ namespace Modstoke.Loader
         /// Hides this layer while the game loads what was just asked for (a save, another scene), so the menu
         /// is not left drawn over the game's fade. It returns by itself if nothing ends up loading.
         /// </summary>
-        internal static void StepAside(float seconds = 6f) => _asideUntil = Time.unscaledTime + seconds;
+        internal static void StepAside(float seconds = 6f)
+        {
+            _asideStart = Time.unscaledTime;
+            _asideUntil = _asideStart + seconds;
+        }
+
+        private const float BusyDelay = 0.25f, BusyFade = 0.2f, BusySweep = 1.1f;
+        private static RectTransform _busy, _busyBand;
+        private static CanvasGroup _busyGroup;
+        private static float _asideStart;
+
+        // While the game loads what was just asked for, a light runs along a line near the foot of the screen, so the
+        // moment before the next screen reads as work going on rather than a stall. A quick change never shows it.
+        private static void PaintBusy()
+        {
+            var now = Time.unscaledTime;
+            var busy = _place == Place.Title && now < _asideUntil && !GameMenus.OtherSceneOpen && !GameMenus.DialogOpen;
+            if (!busy)
+            {
+                if (_busy != null && _busy && _busy.gameObject.activeSelf) _busy.gameObject.SetActive(false);
+                return;
+            }
+            if (_busy == null || !_busy)
+            {
+                _busy = MenuKit.Box(Canvas(), "Busy").Place(0, 0, 1, 0, U(60), U(30), U(60), -(U(30) + Mathf.Max(2f, U(2))));
+                _busyGroup = _busy.gameObject.AddComponent<CanvasGroup>();
+                MenuKit.Fill(_busy, null, MenuKit.Faded(0.1f));
+                _busy.gameObject.AddComponent<RectMask2D>();
+                _busyBand = MenuKit.Box(_busy, "Light");
+                _busyBand.anchorMin = Vector2.zero;
+                _busyBand.anchorMax = new Vector2(0, 1);
+                _busyBand.pivot = new Vector2(0, 0.5f);
+                MenuKit.Fill(_busyBand, MenuKit.Bump, MenuKit.Ink);
+            }
+            if (!_busy.gameObject.activeSelf) _busy.gameObject.SetActive(true);
+            _busyGroup.alpha = Mathf.Clamp01((now - _asideStart - BusyDelay) / BusyFade);
+            var width = _busy.rect.width;
+            var band = width * 0.22f;
+            var t = (now - _asideStart) % BusySweep / BusySweep;
+            _busyBand.sizeDelta = new Vector2(band, 0);
+            _busyBand.anchoredPosition = new Vector2(Mathf.Lerp(-band, width, t * t * (3f - 2f * t)), 0);
+        }
 
         /// <summary>Opens the Host screen as soon as the title scene is back, for Host chosen on the Join screen.</summary>
         internal static void HostWhenTitleLoads()
@@ -252,6 +298,7 @@ namespace Modstoke.Loader
                 Languages.Changed += () => _retext = true;
             }
             Measure();
+            _fontsSettled = FontsSettled();
             // A lobby can open while the title scene is still loaded underneath, and comes first.
             var place = LobbyHost.Open ? Place.Lobby : title ? Place.Title : PauseHost.Open ? Place.Pause : Place.None;
             if (place != _place)
@@ -280,12 +327,40 @@ namespace Modstoke.Loader
                     RunElsewhere(place);
                     break;
             }
+            PaintBusy();
         }
 
         private enum Place { None, Title, Lobby, Pause }
 
         private static Place _place;
-        private static bool _quitAtTitle;
+        private static bool _quitAtTitle, _fontsSettled;
+
+        // Screens are not built in Unity's plain font while the game's own is a moment away. If it never comes they
+        // are built anyway, and built again in the game's font once it does.
+        private static bool FontsSettled()
+        {
+            if (MenuKit.FontsReady)
+            {
+                if (_plainFonts)
+                {
+                    _plainFonts = false;
+                    LayoutVersion++;
+                }
+                return true;
+            }
+            if (_fontWaitStart < 0) _fontWaitStart = Time.unscaledTime;
+            if (Time.unscaledTime - _fontWaitStart < FontWaitSeconds) return false;
+            _plainFonts = true;
+            return true;
+        }
+
+        // Whether the place's first screen can be built yet; until then nothing of these menus shows.
+        private static bool ReadyToBuild()
+        {
+            if (Stack.Count > 0 || _fontsSettled) return true;
+            Show(false);
+            return false;
+        }
 
         /// <summary>Whether the screens showing belong to the title, rather than a lobby or a game in progress.</summary>
         internal static bool AtTitle => _place == Place.Title;
@@ -304,6 +379,7 @@ namespace Modstoke.Loader
                 FrontInput.Pause();
                 return;
             }
+            if (!ReadyToBuild()) return;
             Canvas();
             if (Stack.Count > 0 && _stackLayout != LayoutVersion) Rebuild();
             if (Stack.Count == 0) Push(place == Place.Lobby ? new LobbyScreen() : new PauseScreen());
@@ -329,6 +405,7 @@ namespace Modstoke.Loader
                 FrontInput.Pause();
                 return;
             }
+            if (!ReadyToBuild()) return;
             Canvas();
             GameMenus.KeepStrip();
             if (Stack.Count > 0 && _stackLayout != LayoutVersion) Rebuild();
@@ -432,6 +509,9 @@ namespace Modstoke.Loader
             if (_prompts != null && _prompts) Object.Destroy(_prompts.gameObject);
             _prompts = null;
             _promptsDirty = true;
+            // The loading line is laid out at the old size too; it is made again when next needed.
+            if (_busy != null && _busy) Object.Destroy(_busy.gameObject);
+            _busy = null;
         }
 
         private static void Show(bool shown)
@@ -469,6 +549,7 @@ namespace Modstoke.Loader
             {
                 Clear();
                 _shown = false;
+                if (_busy != null && _busy) _busy.gameObject.SetActive(false);
                 GameMenus.HideBar(false);
                 GameMenus.FadeLogo(true, 1f);
                 LobbyHost.Release();

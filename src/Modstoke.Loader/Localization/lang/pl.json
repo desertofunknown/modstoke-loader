@@ -364,6 +364,7 @@
   "mods": {
     "search": "Szukaj",
     "searchAbout": "Wpisz nazwę, ID lub autora moda, aby go znaleźć. Enter zachowuje wyszukiwanie, a Escape przywraca poprzednie.",
+    "searchHint": "Szukaj po nazwie, autorze lub ID",
     "by": "autor: {author}",
     "count": { "one": "{count} mod", "few": "{count} mody", "many": "{count} modów", "other": "{count} moda" },
     "issues": { "one": "{count} wymaga uwagi", "few": "{count} wymagają uwagi", "many": "{count} wymaga uwagi", "other": "{count} wymaga uwagi" },
@@ -411,6 +412,20 @@
       "redloader": "Mod RedLoader",
       "redloaderLibrary": "Biblioteka RedLoader",
       "other": "Mod"
+    },
+
+    "fact": {
+      "author": "Autor",
+      "version": "Wersja",
+      "kind": "Typ",
+      "status": "Stan",
+      "settings": "Ustawienia"
+    },
+
+    "settings": {
+      "live": "Na żywo w grze",
+      "file": "Plik konfiguracyjny",
+      "none": "Brak"
     }
   },
 
@@ -458,6 +473,75 @@
       "guestAbout": "Gość w tej grze.",
       "bannedAbout": "Ma bana w tej grze."
     }
+  },
+
+  "console": {
+    "title": "Konsola",
+    "ready": "Gotowe",
+    "starting": "Uruchamianie",
+    "mods": { "one": "{count} mod", "few": "{count} mody", "many": "{count} modów", "other": "{count} moda" },
+    "close": "Zamknij",
+
+    "level": {
+      "all": "Wszystko",
+      "errors": "Błędy",
+      "warnings": "Ostrzeżenia",
+      "info": "Info",
+      "debug": "Debug"
+    },
+
+    "badge": {
+      "error": "Błąd",
+      "fatal": "Fatalny",
+      "warning": "Uwaga",
+      "info": "Info",
+      "debug": "Debug"
+    },
+    "sourceHint": "Źródło",
+    "searchHint": "Szukaj w logu",
+    "pause": "Wstrzymaj",
+    "resume": "Wznów",
+    "follow": "Śledź",
+    "clear": "Wyczyść",
+
+    "column": {
+      "time": "Czas",
+      "level": "Poziom",
+      "source": "Źródło",
+      "message": "Wiadomość"
+    },
+    "latest": "Przejdź do najnowszych",
+    "lines": { "one": "{count} wiersz", "few": "{count} wiersze", "many": "{count} wierszy", "other": "{count} wiersza" },
+    "paused": "Wstrzymano",
+    "dropped": { "one": "Odrzucono {count} starszy wiersz", "few": "Odrzucono {count} starsze wiersze", "many": "Odrzucono {count} starszych wierszy", "other": "Odrzucono {count} starszego wiersza" },
+    "empty": "Nic w logu nie pasuje.",
+    "emptyLog": "Na razie nic nie zapisano w logu.",
+
+    "tab": {
+      "message": "Wiadomość",
+      "commands": "Polecenia"
+    },
+    "messageHint": "Wybierz wiersz w logu, aby przeczytać go w całości.",
+    "copy": "Kopiuj",
+    "copied": "Skopiowano do schowka.",
+    "commands": { "one": "{count} polecenie", "few": "{count} polecenia", "many": "{count} poleceń", "other": "{count} polecenia" },
+    "noCommands": "Żadne polecenie nie pasuje.",
+    "confirmBadge": "Potwierdzenie",
+    "unavailableBadge": "Niedostępne",
+    "inputHint": "Wpisz polecenie · Tab uzupełnia · Strzałki w górę i w dół przeglądają historię",
+    "run": "Wykonaj",
+    "cancel": "Anuluj",
+    "confirmTitle": "Wykonać to polecenie?",
+    "intro": "Można wykonywać tylko polecenia z listy.",
+    "historyMoved": "Log przesunął się, gdy konsola była zamknięta. Zaczyna się teraz od #{id}.",
+    "pausedNotice": "Wstrzymano. Wiersze są nadal zbierane i pojawią się po wznowieniu; najstarsze mogą zostać odrzucone.",
+    "resumed": "Wznowiono.",
+    "cleared": "Widok wyczyszczony. Wspólny log się nie zmienił.",
+    "unknown": "Nieznane polecenie. Wybierz je z listy.",
+    "unavailable": "To polecenie jest teraz niedostępne.",
+    "noArguments": "To polecenie nie przyjmuje argumentów.",
+    "changed": "Polecenie się zmieniło. Sprawdź listę i wykonaj je ponownie.",
+    "confirmFirst": "Przed wykonaniem prosi o potwierdzenie."
   },
 
   "confirm": {

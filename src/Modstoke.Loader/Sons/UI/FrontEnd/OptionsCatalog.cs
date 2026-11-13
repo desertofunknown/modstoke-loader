@@ -60,6 +60,15 @@ namespace Modstoke.Loader
         /// <summary>The picture, once it is there; Steam's pictures arrive upside down and are drawn flipped.</summary>
         internal virtual Texture Picture => null;
 
+        /// <summary>A second, quieter line under the name, for a row that stands for a thing rather than a setting.</summary>
+        internal virtual string Detail => null;
+
+        /// <summary>Letters for a small tile at the start of the row, for things that have no picture of their own.</summary>
+        internal virtual string Monogram => null;
+
+        /// <summary>The tile's color; null for the usual faint surface.</summary>
+        internal virtual Color? MonogramTint => null;
+
         internal bool Available
         {
             get
@@ -183,6 +192,8 @@ namespace Modstoke.Loader
         internal int MaxLength { get; }
         /// <summary>Opens Steam's on-screen keyboard for a controller and returns the field it types into, or null.</summary>
         internal Func<string, TMPro.TMP_InputField> PadKeyboard { get; set; }
+        /// <summary>A search box: the field runs the row's whole width, with this hint in it while it is empty.</summary>
+        internal string Placeholder { get; set; }
         internal override string Value => _read() ?? "";
         internal override string DefaultValue => _default ?? "";
         internal override bool IsDefault => _default == null || Value == _default;

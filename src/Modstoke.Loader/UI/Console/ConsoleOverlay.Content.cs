@@ -4,35 +4,39 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
 using Modstoke.Diagnostics;
+using Modstoke.Localization;
+using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.UI;
 
 namespace Modstoke.Loader
 {
     internal static partial class ConsoleOverlay
     {
-        private const int RetainedEntries = 4096;
+        private const int RetainedEntries = 4096, CatchUpReads = 16;
         private static readonly List<ConsoleEntry> Entries = new(RetainedEntries);
         private static readonly List<ConsoleEntry> Filtered = new(RetainedEntries);
-        private static readonly List<string> History = new();
-        private static readonly string[] Levels = { "All", "Debug", "Info", "Warning", "Error", "Fatal" };
-        private static ConsoleCommandInfo[] _commands = Array.Empty<ConsoleCommandInfo>();
+        private static readonly List<LogRow> Rows = new();
+        // All, errors (with fatal), warnings, info, debug: the chips' counts under the source and search filters.
+        private static readonly int[] Counts = new int[5];
         private static string _sessionId;
-        private static string _catalogSignature;
-        private static ConsoleCommandInfo _pendingCommand;
-        private static string _pendingArguments = "";
-        private static string _historyDraft = "";
         private static ConsoleEntry _selectedEntry;
-        private static long _cursor;
-        private static long _dropped;
-        private static long _firstId;
-        private static int _level;
-        private static int _offset;
-        private static int _historyIndex;
-        private static int _submitFrame = -1;
-        private static bool _paused;
-        private static bool _follow = true;
+        private static long _cursor, _dropped, _firstId;
+        private static int _level, _hoverIndex = -1;
+        private static float _scroll, _scrollGoal;
+        private static bool _paused, _follow = true, _rowsDirty, _paintDirty;
+
+        /// <summary>One pooled line of the log; the pool covers the visible height and is reused as it scrolls.</summary>
+        private sealed class LogRow
+        {
+            internal RectTransform Rect;
+            internal Image Back, Edge, BadgeBack;
+            internal TextMeshProUGUI Time, Badge, Source, Message;
+            internal long EntryId;
+            internal int Index = -1;
+        }
 
         private static void RefreshSnapshot()
         {
@@ -44,145 +48,310 @@ namespace Modstoke.Loader
                 Entries.Clear();
                 Filtered.Clear();
                 _cursor = 0;
-                _offset = 0;
+                _scroll = _scrollGoal = 0f;
                 _selectedEntry = null;
-                _detail.text = "";
+                ShowEntry();
                 CancelConfirmation();
                 if (!_paused) snapshot = ConsoleHub.Read(0, 256);
             }
             var dropped = _dropped != snapshot.Dropped;
             _dropped = snapshot.Dropped;
             _firstId = snapshot.FirstId;
-            _status.text = (snapshot.Ready ? "READY" : "STARTING") + "  /  " + snapshot.Phase
-                + "  /  " + snapshot.Mods.Length.ToString(CultureInfo.InvariantCulture) + " mods  /  " + snapshot.Summary;
+            ShowStatus(snapshot);
             RefreshCatalog(snapshot.Commands);
             if (_paused || snapshot.Entries.Length == 0)
             {
-                // Filters, paging and selection render on their own; the rows only change here on a reset or eviction.
-                if (reset || dropped) RenderRows();
+                // Filters, scrolling and selection render on their own; the rows only change here on a reset or eviction.
+                if (reset || dropped) FilterEntries();
                 return;
             }
             if (_cursor > 0 && _firstId > _cursor + 1)
-                _notice.text = "Log history advanced while this view was idle. Shared history now starts at #" + _firstId + ".";
-            var anchor = !_follow && _offset < Filtered.Count ? Filtered[_offset].Id : 0;
-            foreach (var entry in snapshot.Entries)
+                _notice.text = Text.Get("console.historyMoved", ("id", _firstId));
+            // Reading back, the line at the top of the view stays where it is as lines arrive and old ones leave.
+            var anchor = !_follow ? TopEntry() : null;
+            for (var read = 1; ; read++)
             {
-                if (entry.Id <= _cursor) continue;
-                Entries.Add(entry);
-                _cursor = entry.Id;
+                foreach (var entry in snapshot.Entries)
+                {
+                    if (entry.Id <= _cursor) continue;
+                    Entries.Add(entry);
+                    _cursor = entry.Id;
+                }
+                // A full batch means more is waiting, as when the console opens on a long log.
+                if (snapshot.Entries.Length < 256 || read == CatchUpReads) break;
+                snapshot = ConsoleHub.Read(_cursor, 256);
             }
-            // LastId can be beyond this batch; only consumed entries advance the cursor.
             if (Entries.Count > RetainedEntries) Entries.RemoveRange(0, Entries.Count - RetainedEntries);
+            var before = anchor != null ? Filtered.IndexOf(anchor) : -1;
             FilterEntries();
-            if (anchor != 0)
-            {
-                var index = Filtered.FindIndex(entry => entry.Id >= anchor);
-                _offset = Math.Max(0, index);
-            }
-            RenderRows();
+            if (anchor == null) return;
+            var after = Filtered.FindIndex(entry => entry.Id >= anchor.Id);
+            if (before < 0 || after < 0) return;
+            var shift = (after - before) * RowHeight;
+            _scroll += shift;
+            _scrollGoal += shift;
         }
 
-        private static void CycleLevel()
+        private static ConsoleEntry TopEntry()
         {
-            _level = (_level + 1) % Levels.Length;
-            _levelLabel.text = "Level: " + Levels[_level];
+            var index = Mathf.FloorToInt(_scroll / RowHeight);
+            return index >= 0 && index < Filtered.Count ? Filtered[index] : null;
+        }
+
+        private static void ShowStatus(ConsoleSnapshot snapshot)
+        {
+            var status = (snapshot.Ready ? Text["console.ready"] : Text["console.starting"]) + "  ·  " + snapshot.Phase
+                + "  ·  " + Text.Count("console.mods", snapshot.Mods.Length) + "  ·  " + snapshot.Summary;
+            if (_status.text != status) _status.text = status;
+            _statusDot.color = snapshot.Ready ? MenuKit.Green : MenuKit.Amber;
+        }
+
+        private static void SetLevel(int level)
+        {
+            if (level == _level) return;
+            _level = level;
+            foreach (var chip in Chips) chip.Paint(chip);
             ApplyFilters();
         }
 
         private static void ApplyFilters()
         {
-            _offset = 0;
             FilterEntries();
-            RenderRows();
+            if (!_follow) _scrollGoal = _scroll = 0f;
         }
 
         private static void FilterEntries()
         {
             Filtered.Clear();
+            Array.Clear(Counts, 0, Counts.Length);
             var source = _source.text.Trim();
             var search = _search.text.Trim();
             foreach (var entry in Entries)
             {
-                if (_level != 0 && !MatchesLevel(entry.Level, Levels[_level])) continue;
                 if (source.Length != 0 && entry.Source.IndexOf(source, StringComparison.OrdinalIgnoreCase) < 0) continue;
                 if (search.Length != 0 && entry.Message.IndexOf(search, StringComparison.OrdinalIgnoreCase) < 0) continue;
-                Filtered.Add(entry);
+                var group = Group(entry.Level);
+                Counts[0]++;
+                Counts[group]++;
+                if (_level == 0 || group == _level) Filtered.Add(entry);
             }
+            var culture = Languages.CultureOf(Languages.Current);
+            for (var i = 0; i < Chips.Length; i++)
+            {
+                Chips[i].Count.text = Counts[i].ToString("N0", culture);
+                Chips[i].Count.color = Counts[i] > 0 && i == 1 ? MenuKit.Red : Counts[i] > 0 && i == 2 ? MenuKit.Amber : MenuKit.Faint;
+            }
+            LayoutHeader(CanvasSize().x - 2f * Pad);
+            _rowsDirty = true;
         }
 
-        private static bool MatchesLevel(string actual, string filter)
+        private static int Group(string level)
         {
-            if (string.Equals(actual, filter, StringComparison.OrdinalIgnoreCase)) return true;
-            return (filter == "Warning" && actual.Equals("Warn", StringComparison.OrdinalIgnoreCase))
-                || (filter == "Info" && actual.Equals("Message", StringComparison.OrdinalIgnoreCase))
-                || (filter == "Debug" && actual.Equals("Trace", StringComparison.OrdinalIgnoreCase));
+            if (Is(level, "Error") || Is(level, "Fatal")) return 1;
+            if (Is(level, "Warning") || Is(level, "Warn")) return 2;
+            if (Is(level, "Debug") || Is(level, "Trace")) return 4;
+            return 3;
+        }
+
+        private static bool Is(string level, string name) => string.Equals(level, name, StringComparison.OrdinalIgnoreCase);
+
+        // The level as a short word in its color; a level the console does not know shows as it was logged.
+        private static (string Text, Color Color) Badge(string level)
+        {
+            if (Is(level, "Fatal")) return (Upper(Text["console.badge.fatal"]), MenuKit.Red);
+            if (Is(level, "Error")) return (Upper(Text["console.badge.error"]), MenuKit.Red);
+            if (Is(level, "Warning") || Is(level, "Warn")) return (Upper(Text["console.badge.warning"]), MenuKit.Amber);
+            if (Is(level, "Debug") || Is(level, "Trace")) return (Upper(Text["console.badge.debug"]), MenuKit.Faint);
+            if (Is(level, "Info") || Is(level, "Message")) return (Upper(Text["console.badge.info"]), MenuKit.Soft);
+            return (Upper(level), MenuKit.Muted);
+        }
+
+        private static float MaxScroll => Mathf.Max(0f, Filtered.Count * RowHeight - _viewportHeight);
+
+        private static void ScrollBy(float delta)
+        {
+            _scrollGoal = Mathf.Clamp(_scrollGoal + delta, 0f, MaxScroll);
+            // Scrolling up stops following; scrolling back to the end picks it up again.
+            SetFollow(_scrollGoal >= MaxScroll - 0.5f);
+        }
+
+        private static void SetFollow(bool follow)
+        {
+            if (follow == _follow) return;
+            _follow = follow;
+            _followToggle.Paint(_followToggle);
+            _rowsDirty = true;
+        }
+
+        private static void ToggleFollow() => SetFollow(!_follow);
+
+        private static void JumpToLatest() => SetFollow(true);
+
+        private static void ScrollLog(float dt)
+        {
+            var max = MaxScroll;
+            if (_follow) _scrollGoal = max;
+            _scrollGoal = Mathf.Clamp(_scrollGoal, 0f, max);
+            // A filter that leaves fewer lines brings the view to them at once rather than easing over empty space.
+            if (_scroll > max) _scroll = max;
+            var scroll = dt <= 0f || Mathf.Abs(_scroll - _scrollGoal) < 0.5f
+                ? _scrollGoal
+                : Mathf.Lerp(_scroll, _scrollGoal, 1f - Mathf.Exp(-18f * dt));
+            if (!Mathf.Approximately(scroll, _scroll))
+            {
+                _scroll = scroll;
+                _paintDirty = true;
+            }
+            if (_rowsDirty || _paintDirty) RenderRows();
         }
 
         private static void RenderRows()
         {
-            if (_root == null) return;
-            var lastOffset = Math.Max(0, Filtered.Count - _pageSize);
-            _offset = _follow ? lastOffset : Math.Min(_offset, lastOffset);
+            if (_logViewport == null) return;
+            var first = Mathf.Max(0, Mathf.FloorToInt(_scroll / RowHeight));
+            var offset = _scroll - first * RowHeight;
             for (var i = 0; i < Rows.Count; i++)
             {
                 var row = Rows[i];
-                var index = _offset + i;
-                var active = i < _pageSize && index < Filtered.Count;
-                row.Image.gameObject.SetActive(active);
-                if (!active) continue;
+                var index = first + i;
+                var y = i * RowHeight - offset;
+                var active = index < Filtered.Count && y < _viewportHeight;
+                if (row.Rect.gameObject.activeSelf != active) row.Rect.gameObject.SetActive(active);
+                if (!active)
+                {
+                    row.Index = -1;
+                    continue;
+                }
+                row.Rect.anchoredPosition = new Vector2(0f, -y);
                 var entry = Filtered[index];
-                row.EntryId = entry.Id;
-                row.Image.color = _selectedEntry?.Id == entry.Id ? new Color(0.11f, 0.26f, 0.32f, 1f)
-                    : i % 2 == 0 ? Surface : Background;
-                row.Text.color = MatchesLevel(entry.Level, "Error") || MatchesLevel(entry.Level, "Fatal")
-                    ? new Color(1f, 0.55f, 0.53f, 1f)
-                    : MatchesLevel(entry.Level, "Warning") ? new Color(1f, 0.78f, 0.40f, 1f) : Foreground;
-                var message = entry.Message;
-                if (message.Length > 300) message = message.Substring(0, 300) + "…";
-                row.Text.text = entry.Timestamp.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture)
-                    + "  " + entry.Level + "  [" + entry.Source + "]  " + message.Replace('\r', ' ').Replace('\n', ' ');
+                if (_rowsDirty || row.Index != index || row.EntryId != entry.Id) Fill(row, entry);
+                row.Index = index;
+                var selected = _selectedEntry != null && _selectedEntry.Id == entry.Id;
+                row.Back.color = selected ? MenuKit.Faded(0.12f) : index == _hoverIndex ? MenuKit.Faded(0.07f)
+                    : index % 2 == 0 ? MenuKit.Faded(0.022f) : Clear;
+                row.Edge.enabled = selected;
             }
-            var start = Filtered.Count == 0 ? 0 : _offset + 1;
-            var end = Math.Min(Filtered.Count, _offset + _pageSize);
-            _counter.text = start + "–" + end + " of " + Filtered.Count
-                + (_paused ? "  / paused" : "") + (_dropped > 0 ? "  / evicted: " + _dropped : "");
+            var latest = !_follow && MaxScroll - _scrollGoal > RowHeight;
+            if (_latest.Rect.gameObject.activeSelf != latest)
+            {
+                _latest.Rect.gameObject.SetActive(latest);
+                _latest.Rect.sizeDelta = new Vector2(Preferred(_latest.Label) + 44f, 28f);
+            }
+            if (_rowsDirty)
+            {
+                _empty.text = Filtered.Count > 0 ? "" : Text[Entries.Count == 0 ? "console.emptyLog" : "console.empty"];
+                var counter = Text.Count("console.lines", Filtered.Count);
+                if (_paused) counter += "  ·  " + Text["console.paused"];
+                if (_dropped > 0) counter += "  ·  " + Text.Count("console.dropped", _dropped);
+                _counter.text = counter;
+            }
+            _rowsDirty = _paintDirty = false;
+        }
+
+        private static void Fill(LogRow row, ConsoleEntry entry)
+        {
+            row.EntryId = entry.Id;
+            row.Time.text = entry.Timestamp.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+            var (badge, color) = Badge(entry.Level);
+            row.Badge.text = badge;
+            row.Badge.color = color;
+            row.BadgeBack.color = new Color(color.r, color.g, color.b, 0.13f);
+            row.Source.text = entry.Source;
+            var message = entry.Message;
+            if (message.Length > 300) message = message.Substring(0, 300) + "…";
+            row.Message.text = message.Replace('\r', ' ').Replace('\n', ' ');
+            row.Message.color = Group(entry.Level) switch
+            {
+                1 => MenuKit.Red,
+                2 => MenuKit.Amber,
+                4 => MenuKit.Muted,
+                _ => MenuKit.Ink
+            };
+        }
+
+        // Enough rows to cover the visible height and one more for the part-row a smooth scroll shows.
+        private static void EnsureRows(int count)
+        {
+            while (Rows.Count < count)
+            {
+                var row = new LogRow { Rect = Box("Row", _logViewport) };
+                row.Rect.anchorMin = new Vector2(0f, 1f);
+                row.Rect.anchorMax = Vector2.one;
+                row.Rect.pivot = new Vector2(0.5f, 1f);
+                row.Rect.sizeDelta = new Vector2(0f, RowHeight);
+                row.Back = row.Rect.gameObject.AddComponent<Image>();
+                row.Back.color = Clear;
+                var button = row.Rect.gameObject.AddComponent<Button>();
+                button.transition = Selectable.Transition.None;
+                button.targetGraphic = row.Back;
+                NoNavigation(button);
+                button.onClick.AddListener((UnityAction)new Action(() => SelectEntry(row.EntryId)));
+                row.Edge = Image("Edge", row.Rect, MenuKit.Ink);
+                row.Edge.raycastTarget = false;
+                Region(row.Edge.rectTransform, Vector2.zero, new Vector2(0f, 1f), Vector2.zero, new Vector2(2f, 0f));
+                row.Edge.enabled = false;
+                row.Time = Label(row.Rect, "Time", 13f, false, MenuKit.Muted);
+                row.BadgeBack = Image("Level", row.Rect, Clear);
+                row.BadgeBack.raycastTarget = false;
+                row.Badge = Label(row.BadgeBack.rectTransform, "Text", 10f, true, MenuKit.Soft, TextAlignmentOptions.Center);
+                row.Badge.characterSpacing = 6f;
+                Fill(row.Badge.rectTransform);
+                row.Source = Label(row.Rect, "Source", 13f, false, MenuKit.Soft);
+                row.Message = Label(row.Rect, "Message", 14f, false, MenuKit.Ink);
+                PlaceColumns(row, _sourceLeft, _sourceWidth, _messageLeft);
+                row.Rect.gameObject.SetActive(false);
+                Rows.Add(row);
+            }
         }
 
         private static void SelectEntry(long id)
         {
-            _selectedEntry = Entries.Find(entry => entry.Id == id);
-            if (_selectedEntry == null) return;
+            var entry = Entries.Find(candidate => candidate.Id == id);
+            if (entry == null) return;
+            _selectedEntry = entry;
+            ShowTab(0);
+            ShowEntry();
+            _paintDirty = true;
+        }
+
+        private static void ShowEntry()
+        {
             var entry = _selectedEntry;
-            _detail.text = entry.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff zzz", CultureInfo.InvariantCulture)
-                + "\n" + entry.Level + "  /  " + entry.Source + "  /  #" + entry.Id + "\n\n" + entry.Message;
+            _copy.Rect.gameObject.SetActive(entry != null);
+            _detailBadge.gameObject.SetActive(entry != null);
+            if (entry == null)
+            {
+                _detailSource.text = _detailMeta.text = "";
+                _detail.text = "";
+                return;
+            }
+            var (badge, color) = Badge(entry.Level);
+            _detailBadgeText.text = badge;
+            _detailBadgeText.color = color;
+            _detailBadge.GetComponent<Image>().color = new Color(color.r, color.g, color.b, 0.13f);
+            _detailSource.text = entry.Source;
+            _detailMeta.text = entry.Timestamp.ToLocalTime().ToString("yyyy-MM-dd  HH:mm:ss.fff  zzz", CultureInfo.InvariantCulture)
+                + "  ·  #" + entry.Id.ToString(CultureInfo.InvariantCulture);
+            _detail.text = entry.Message;
             _detail.caretPosition = 0;
-            _notice.text = "Selected message can be scrolled, selected and copied.";
-            RenderRows();
+        }
+
+        private static void CopyEntry()
+        {
+            var entry = _selectedEntry;
+            if (entry == null) return;
+            GUIUtility.systemCopyBuffer = entry.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture)
+                + " " + entry.Level + " [" + entry.Source + "] " + entry.Message;
+            _notice.text = Text["console.copied"];
         }
 
         private static void TogglePause()
         {
             _paused = !_paused;
-            _pauseLabel.text = _paused ? "Resume" : "Pause";
-            _notice.text = _paused ? "Log display paused. Collection continues; older entries may be evicted."
-                : "Log display resumed.";
+            _notice.text = Text[_paused ? "console.pausedNotice" : "console.resumed"];
+            PaintToggles();
             if (!_paused) RefreshSnapshot();
-            RenderRows();
-        }
-
-        private static void ToggleFollow()
-        {
-            _follow = !_follow;
-            _followLabel.text = _follow ? "Follow: On" : "Follow: Off";
-            RenderRows();
-        }
-
-        private static void ChangePage(int direction)
-        {
-            _follow = false;
-            _followLabel.text = "Follow: Off";
-            _offset = Math.Max(0, _offset + direction * _pageSize);
-            RenderRows();
+            _rowsDirty = true;
         }
 
         private static void ClearView()
@@ -190,143 +359,11 @@ namespace Modstoke.Loader
             var snapshot = ConsoleHub.Read(long.MaxValue, 1);
             _cursor = snapshot.LastId;
             Entries.Clear();
-            Filtered.Clear();
             _selectedEntry = null;
-            _detail.text = "";
-            _offset = 0;
-            _notice.text = "View cleared. Shared log history is unchanged.";
-            RenderRows();
-        }
-
-        private static void RefreshCatalog(ConsoleCommandInfo[] commands)
-        {
-            _commands = commands;
-            var signature = new StringBuilder();
-            foreach (var command in commands)
-                signature.Append(command.Name).Append('\0').Append(command.Description).Append('\0')
-                    .Append(command.Enabled).Append(command.RequiresConfirmation).Append('\n');
-            var current = signature.ToString();
-            if (current == _catalogSignature) return;
-            _catalogSignature = current;
-            var selected = _eventSystem?.currentSelectedGameObject;
-            if (selected != null && selected.transform.IsChildOf(_catalogContent)) _command.Select();
-            for (var i = _catalogContent.childCount - 1; i >= 0; i--)
-            {
-                var child = _catalogContent.GetChild(i).gameObject;
-                child.SetActive(false);
-                UnityEngine.Object.Destroy(child);
-            }
-            _catalogContent.sizeDelta = new Vector2(0f, commands.Length * 72f);
-            for (var i = 0; i < commands.Length; i++)
-            {
-                var command = commands[i];
-                var button = Button(_catalogContent, command.Name, () =>
-                {
-                    _command.text = command.Name;
-                    _command.Select();
-                    _command.ActivateInputField();
-                    _notice.text = command.Description + (command.RequiresConfirmation ? " Confirmation required." : "");
-                }, out var label);
-                button.interactable = command.Enabled;
-                TopStretch(button.GetComponent<RectTransform>(), 2f, i * 72f, 2f, 68f);
-                label.text = command.Name + (command.Enabled ? "" : "  / unavailable")
-                    + (command.RequiresConfirmation ? "  / confirm" : "") + "\n" + command.Description;
-                label.enableWordWrapping = true;
-                label.fontSize = 13f;
-                label.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
-                Fill(label.rectTransform, 8f, 4f, 8f, 4f);
-            }
-        }
-
-        private static ConsoleCommandInfo FindCommand(string value)
-            => Array.Find(_commands, command => string.Equals(command.Name, value, StringComparison.Ordinal));
-
-        private static void PrepareCommand()
-        {
-            if (!_visible || _pendingCommand != null || _submitFrame == Time.frameCount) return;
-            _submitFrame = Time.frameCount;
-            var value = _command.text.Trim();
-            if (value.Length == 0) return;
-            var split = value.IndexOfAny(new[] { ' ', '\t' });
-            var name = split < 0 ? value : value[..split];
-            var arguments = split < 0 ? "" : value[(split + 1)..].Trim();
-            var command = FindCommand(name);
-            if (command == null || !command.Enabled)
-            {
-                _notice.text = command == null ? "Unknown command. Choose a command from the catalog." : "This command is unavailable.";
-                return;
-            }
-            if (arguments.Length != 0 && !command.AcceptsArguments)
-            {
-                _notice.text = "This command does not take arguments.";
-                return;
-            }
-            if (command.RequiresConfirmation)
-            {
-                _pendingCommand = command;
-                _pendingArguments = arguments;
-                _confirmationText.text = command.Name + (arguments.Length == 0 ? "" : " " + arguments)
-                    + "\n\n" + command.Description + "\n\nRun this command now?";
-                _command.DeactivateInputField();
-                _panelInteraction.interactable = false;
-                _confirmation.SetActive(true);
-                _cancelButton.Select();
-                return;
-            }
-            SubmitCommand(command.Name, arguments, false);
-        }
-
-        private static void ConfirmCommand()
-        {
-            var command = _pendingCommand;
-            var arguments = _pendingArguments;
-            if (command == null) return;
-            CancelConfirmation();
-            if (!command.Equals(FindCommand(command.Name)))
-            {
-                _notice.text = "The command changed. Review the catalog and submit again.";
-                return;
-            }
-            SubmitCommand(command.Name, arguments, true);
-        }
-
-        private static void CancelConfirmation()
-        {
-            _pendingCommand = null;
-            _pendingArguments = "";
-            if (_confirmation != null) _confirmation.SetActive(false);
-            if (_panelInteraction != null) _panelInteraction.interactable = true;
-            if (_visible && _command != null)
-            {
-                _command.Select();
-                _command.ActivateInputField();
-            }
-        }
-
-        private static void SubmitCommand(string command, string arguments, bool confirmed)
-        {
-            var accepted = ConsoleHub.TrySubmit(command, arguments, confirmed, ConsoleOrigin.InGameConsole, out var detail);
-            _notice.text = detail;
-            if (!accepted) return;
-            var line = arguments.Length == 0 ? command : command + " " + arguments;
-            if (History.Count == 0 || History[History.Count - 1] != line) History.Add(line);
-            if (History.Count > 64) History.RemoveAt(0);
-            _historyIndex = History.Count;
-            _historyDraft = "";
-            _command.text = "";
-            _command.Select();
-            _command.ActivateInputField();
-        }
-
-        private static void UpdateHistory()
-        {
-            if (_pendingCommand != null || !_command.isFocused || History.Count == 0) return;
-            var direction = Input.GetKeyDown(KeyCode.UpArrow) ? -1 : Input.GetKeyDown(KeyCode.DownArrow) ? 1 : 0;
-            if (direction == 0) return;
-            if (_historyIndex == History.Count) _historyDraft = _command.text;
-            _historyIndex = Mathf.Clamp(_historyIndex + direction, 0, History.Count);
-            _command.text = _historyIndex == History.Count ? _historyDraft : History[_historyIndex];
-            _command.caretPosition = _command.text.Length;
+            ShowEntry();
+            _scroll = _scrollGoal = 0f;
+            _notice.text = Text["console.cleared"];
+            FilterEntries();
         }
     }
 }

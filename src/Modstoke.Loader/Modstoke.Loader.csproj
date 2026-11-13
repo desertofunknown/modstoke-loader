@@ -774,6 +774,7 @@
     <Compile Include="UI/Console/ConsoleOverlay.cs" />
     <Compile Include="UI/Console/ConsoleOverlay.View.cs" />
     <Compile Include="UI/Console/ConsoleOverlay.Content.cs" />
+    <Compile Include="UI/Console/ConsoleOverlay.Commands.cs" />
     <Compile Include="Diagnostics/RuntimeConsole.cs" />
     <Compile Include="Diagnostics/ServerConsoleInput.cs" />
     <Compile Include="Diagnostics/BoltWidths.cs" />

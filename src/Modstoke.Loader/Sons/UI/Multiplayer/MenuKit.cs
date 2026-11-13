@@ -40,35 +40,66 @@ namespace Modstoke.Loader
         internal static readonly Color Disabled = Faded(0.14f);
         internal static readonly Color Scrim = Hex(0x050606, 0.76f);
         private const int UiLayer = 5;
-        private static Sprite _brush, _fade, _glow;
+        private const float FontSearchSeconds = 0.25f;
+        private static Sprite _brush, _fade, _across, _bump, _glow;
         private static TMP_FontAsset _bold, _regular;
+        private static float _nextFontSearch;
 
         internal static Sprite Brush => Live(ref _brush, "Brush Wide");
         /// <summary>The game's soft round brush: a dark one behind a word keeps it readable over the bright world.</summary>
         internal static Sprite Glow => Live(ref _glow, "Brush Radial");
-        internal static TMP_FontAsset Bold => LiveFont(ref _bold, MenuTheme.BoldFontName, MenuTheme.HeadingFont);
-        internal static TMP_FontAsset Regular => LiveFont(ref _regular, MenuTheme.RegularFontName, MenuTheme.BodyFont) ?? Bold;
 
-        /// <summary>White that fades from solid at its top edge to clear at its bottom, for soft edges.</summary>
-        internal static Sprite Fade
+        internal static TMP_FontAsset Bold
         {
             get
             {
-                if (_fade != null && _fade) return _fade;
-                const int steps = 64;
-                var texture = new Texture2D(1, steps, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
-                texture.hideFlags = HideFlags.HideAndDontSave;
-                for (var y = 0; y < steps; y++)
-                {
-                    // Eased, so the edge has no visible start or end.
-                    var t = y / (steps - 1f);
-                    texture.SetPixel(0, y, new Color(1, 1, 1, t * t * (3f - 2f * t)));
-                }
-                texture.Apply(false, true);
-                _fade = Sprite.Create(texture, new Rect(0, 0, 1, steps), new Vector2(0.5f, 0.5f));
-                _fade.hideFlags = HideFlags.HideAndDontSave;
-                return _fade;
+                FindFonts();
+                return _bold != null && _bold ? _bold : null;
             }
+        }
+
+        internal static TMP_FontAsset Regular
+        {
+            get
+            {
+                FindFonts();
+                return _regular != null && _regular ? _regular : Bold;
+            }
+        }
+
+        /// <summary>
+        /// Whether the game's Roboto Condensed is loaded. It arrives with the title scene's interface a moment after
+        /// the scene itself, and text made before then is drawn in Unity's plain default font.
+        /// </summary>
+        internal static bool FontsReady => Bold != null;
+
+        /// <summary>White that fades from solid at its top edge to clear at its bottom, for soft edges.</summary>
+        internal static Sprite Fade => Ramp(ref _fade, true, t => t * t * (3f - 2f * t));
+
+        /// <summary>White that fades from solid at its left edge to clear at its right.</summary>
+        internal static Sprite Across => Ramp(ref _across, false, t => 1f - t * t * (3f - 2f * t));
+
+        /// <summary>A soft band of white across its width, clear at both ends, for a sheen passing over a surface.</summary>
+        internal static Sprite Bump => Ramp(ref _bump, false, t => Mathf.Sin(t * Mathf.PI) * Mathf.Sin(t * Mathf.PI));
+
+        // A one-pixel strip of white whose opacity follows the curve along it, eased so it has no visible start or end.
+        private static Sprite Ramp(ref Sprite cached, bool vertical, Func<float, float> alpha)
+        {
+            if (cached != null && cached) return cached;
+            const int steps = 64;
+            var texture = new Texture2D(vertical ? 1 : steps, vertical ? steps : 1, TextureFormat.RGBA32, false)
+                { wrapMode = TextureWrapMode.Clamp };
+            texture.hideFlags = HideFlags.HideAndDontSave;
+            for (var i = 0; i < steps; i++)
+            {
+                var color = new Color(1, 1, 1, alpha(i / (steps - 1f)));
+                if (vertical) texture.SetPixel(0, i, color);
+                else texture.SetPixel(i, 0, color);
+            }
+            texture.Apply(false, true);
+            cached = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+            cached.hideFlags = HideFlags.HideAndDontSave;
+            return cached;
         }
 
         internal static Color Hex(int rgb, float alpha = 1f)
@@ -225,13 +256,20 @@ namespace Modstoke.Loader
             return null;
         }
 
-        private static TMP_FontAsset LiveFont(ref TMP_FontAsset cached, string name, TMP_FontAsset themed)
+        // Both fonts in one pass over what is loaded, a few times a second at most until the bold one is found; the
+        // regular one loads with it, and without it text falls back to the bold.
+        private static void FindFonts()
         {
-            if (cached != null && cached) return cached;
-            if (themed != null && themed && themed.name == name) return cached = themed;
+            if (_bold != null && _bold) return;
+            var now = Time.unscaledTime;
+            if (now < _nextFontSearch) return;
+            _nextFontSearch = now + FontSearchSeconds;
             foreach (var font in Resources.FindObjectsOfTypeAll<TMP_FontAsset>())
-                if (font != null && font.name == name) return cached = font;
-            return themed != null && themed ? cached = themed : null;
+            {
+                if (font == null || !font) continue;
+                if (font.name == MenuTheme.BoldFontName) _bold = font;
+                else if (font.name == MenuTheme.RegularFontName) _regular = font;
+            }
         }
     }
 }

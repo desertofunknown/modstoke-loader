@@ -364,6 +364,7 @@
   "mods": {
     "search": "搜索",
     "searchAbout": "输入名称、ID 或作者来查找模组。按 Enter 保留搜索，按 Esc 恢复上一次的搜索。",
+    "searchHint": "按名称、作者或 ID 搜索",
     "by": "作者：{author}",
     "count": { "other": "{count} 个模组" },
     "issues": { "other": "{count} 个需要处理" },
@@ -411,6 +412,20 @@
       "redloader": "RedLoader 模组",
       "redloaderLibrary": "RedLoader 库",
       "other": "模组"
+    },
+
+    "fact": {
+      "author": "作者",
+      "version": "版本",
+      "kind": "类型",
+      "status": "状态",
+      "settings": "设置"
+    },
+
+    "settings": {
+      "live": "游戏内实时调整",
+      "file": "配置文件",
+      "none": "无"
     }
   },
 
@@ -458,6 +473,75 @@
       "guestAbout": "这局游戏的访客。",
       "bannedAbout": "已被禁止加入这局游戏。"
     }
+  },
+
+  "console": {
+    "title": "控制台",
+    "ready": "就绪",
+    "starting": "正在启动",
+    "mods": { "other": "{count} 个模组" },
+    "close": "关闭",
+
+    "level": {
+      "all": "全部",
+      "errors": "错误",
+      "warnings": "警告",
+      "info": "信息",
+      "debug": "调试"
+    },
+
+    "badge": {
+      "error": "错误",
+      "fatal": "致命",
+      "warning": "警告",
+      "info": "信息",
+      "debug": "调试"
+    },
+    "sourceHint": "来源",
+    "searchHint": "搜索日志",
+    "pause": "暂停",
+    "resume": "继续",
+    "follow": "跟随",
+    "clear": "清空",
+
+    "column": {
+      "time": "时间",
+      "level": "级别",
+      "source": "来源",
+      "message": "消息"
+    },
+    "latest": "跳到最新",
+    "lines": { "other": "{count} 行" },
+    "paused": "已暂停",
+    "dropped": { "other": "已丢弃 {count} 行旧记录" },
+    "empty": "没有匹配的日志。",
+    "emptyLog": "还没有任何日志。",
+
+    "tab": {
+      "message": "消息",
+      "commands": "命令"
+    },
+    "messageHint": "在日志中选择一行即可查看完整内容。",
+    "copy": "复制",
+    "copied": "已复制到剪贴板。",
+    "commands": { "other": "{count} 条命令" },
+    "noCommands": "没有匹配的命令。",
+    "confirmBadge": "需确认",
+    "unavailableBadge": "不可用",
+    "inputHint": "输入命令 · Tab 补全 · 上下键查看历史",
+    "run": "运行",
+    "cancel": "取消",
+    "confirmTitle": "运行此命令？",
+    "intro": "只能运行列表中的命令。",
+    "historyMoved": "控制台关闭期间日志已继续推进，现在从 #{id} 开始。",
+    "pausedNotice": "已暂停。日志行仍在收集，继续后会显示；最早的行可能会被丢弃。",
+    "resumed": "已继续。",
+    "cleared": "视图已清空。共享日志不受影响。",
+    "unknown": "未知命令。请从列表中选择。",
+    "unavailable": "该命令当前不可用。",
+    "noArguments": "该命令不接受参数。",
+    "changed": "命令已更改。请检查列表后重新运行。",
+    "confirmFirst": "运行前会要求确认。"
   },
 
   "confirm": {

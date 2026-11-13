@@ -364,6 +364,7 @@
   "mods": {
     "search": "Ara",
     "searchAbout": "Bir modu adına, ID’sine veya yazarına göre bulmak için yazın. Enter aramayı korur, Escape ise bir önceki aramayı geri getirir.",
+    "searchHint": "Ada, yapımcıya veya kimliğe göre ara",
     "by": "{author} tarafından",
     "count": { "one": "{count} mod", "other": "{count} mod" },
     "issues": { "one": "{count} tanesi dikkat gerektiriyor", "other": "{count} tanesi dikkat gerektiriyor" },
@@ -411,6 +412,20 @@
       "redloader": "RedLoader modu",
       "redloaderLibrary": "RedLoader kütüphanesi",
       "other": "Mod"
+    },
+
+    "fact": {
+      "author": "Yapımcı",
+      "version": "Sürüm",
+      "kind": "Tür",
+      "status": "Durum",
+      "settings": "Ayarlar"
+    },
+
+    "settings": {
+      "live": "Oyun içinde canlı",
+      "file": "Yapılandırma dosyası",
+      "none": "Yok"
     }
   },
 
@@ -458,6 +473,75 @@
       "guestAbout": "Bu oyunda misafir.",
       "bannedAbout": "Bu oyundan yasaklı."
     }
+  },
+
+  "console": {
+    "title": "Konsol",
+    "ready": "Hazır",
+    "starting": "Başlatılıyor",
+    "mods": { "one": "{count} mod", "other": "{count} mod" },
+    "close": "Kapat",
+
+    "level": {
+      "all": "Tümü",
+      "errors": "Hatalar",
+      "warnings": "Uyarılar",
+      "info": "Bilgi",
+      "debug": "Hata ayıklama"
+    },
+
+    "badge": {
+      "error": "Hata",
+      "fatal": "Ölümcül",
+      "warning": "Uyarı",
+      "info": "Bilgi",
+      "debug": "Debug"
+    },
+    "sourceHint": "Kaynak",
+    "searchHint": "Günlükte ara",
+    "pause": "Duraklat",
+    "resume": "Sürdür",
+    "follow": "Takip et",
+    "clear": "Temizle",
+
+    "column": {
+      "time": "Saat",
+      "level": "Düzey",
+      "source": "Kaynak",
+      "message": "İleti"
+    },
+    "latest": "En yeniye git",
+    "lines": { "one": "{count} satır", "other": "{count} satır" },
+    "paused": "Duraklatıldı",
+    "dropped": { "one": "{count} eski satır atıldı", "other": "{count} eski satır atıldı" },
+    "empty": "Günlükte eşleşen bir şey yok.",
+    "emptyLog": "Henüz hiçbir şey kaydedilmedi.",
+
+    "tab": {
+      "message": "İleti",
+      "commands": "Komutlar"
+    },
+    "messageHint": "Tamamını okumak için günlükten bir satır seçin.",
+    "copy": "Kopyala",
+    "copied": "Panoya kopyalandı.",
+    "commands": { "one": "{count} komut", "other": "{count} komut" },
+    "noCommands": "Eşleşen komut yok.",
+    "confirmBadge": "Onay",
+    "unavailableBadge": "Kullanılamaz",
+    "inputHint": "Bir komut yazın · Tab tamamlar · Yukarı ve Aşağı geçmiş içindir",
+    "run": "Çalıştır",
+    "cancel": "İptal",
+    "confirmTitle": "Bu komut çalıştırılsın mı?",
+    "intro": "Yalnızca listedeki komutlar çalıştırılabilir.",
+    "historyMoved": "Konsol kapalıyken günlük ilerledi. Artık #{id} ile başlıyor.",
+    "pausedNotice": "Duraklatıldı. Satırlar toplanmaya devam eder ve sürdürdüğünüzde görünür; en eskileri atılabilir.",
+    "resumed": "Sürdürüldü.",
+    "cleared": "Görünüm temizlendi. Paylaşılan günlük değişmedi.",
+    "unknown": "Bilinmeyen komut. Listeden birini seçin.",
+    "unavailable": "Bu komut şu anda kullanılamıyor.",
+    "noArguments": "Bu komut argüman almaz.",
+    "changed": "Komut değişti. Listeyi kontrol edip yeniden çalıştırın.",
+    "confirmFirst": "Çalışmadan önce onay ister."
   },
 
   "confirm": {

@@ -364,6 +364,7 @@
   "mods": {
     "search": "Rechercher",
     "searchAbout": "Saisissez du texte pour trouver un mod par son nom, son identifiant ou son auteur. Entrée valide la recherche et Échap rétablit la précédente.",
+    "searchHint": "Rechercher par nom, auteur ou ID",
     "by": "par {author}",
     "count": { "one": "{count} mod", "other": "{count} mods" },
     "issues": { "one": "{count} à vérifier", "other": "{count} à vérifier" },
@@ -411,6 +412,20 @@
       "redloader": "Mod RedLoader",
       "redloaderLibrary": "Bibliothèque RedLoader",
       "other": "Mod"
+    },
+
+    "fact": {
+      "author": "Auteur",
+      "version": "Version",
+      "kind": "Type",
+      "status": "État",
+      "settings": "Réglages"
+    },
+
+    "settings": {
+      "live": "En direct en jeu",
+      "file": "Fichier de configuration",
+      "none": "Aucun"
     }
   },
 
@@ -458,6 +473,75 @@
       "guestAbout": "Un invité de cette partie.",
       "bannedAbout": "Banni de cette partie."
     }
+  },
+
+  "console": {
+    "title": "Console",
+    "ready": "Prêt",
+    "starting": "Démarrage",
+    "mods": { "one": "{count} mod", "other": "{count} mods" },
+    "close": "Fermer",
+
+    "level": {
+      "all": "Tout",
+      "errors": "Erreurs",
+      "warnings": "Avertissements",
+      "info": "Infos",
+      "debug": "Débogage"
+    },
+
+    "badge": {
+      "error": "Erreur",
+      "fatal": "Fatal",
+      "warning": "Alerte",
+      "info": "Info",
+      "debug": "Debug"
+    },
+    "sourceHint": "Source",
+    "searchHint": "Rechercher dans le journal",
+    "pause": "Pause",
+    "resume": "Reprendre",
+    "follow": "Suivre",
+    "clear": "Effacer",
+
+    "column": {
+      "time": "Heure",
+      "level": "Niveau",
+      "source": "Source",
+      "message": "Message"
+    },
+    "latest": "Aller au plus récent",
+    "lines": { "one": "{count} ligne", "other": "{count} lignes" },
+    "paused": "En pause",
+    "dropped": { "one": "{count} ancienne ligne supprimée", "other": "{count} anciennes lignes supprimées" },
+    "empty": "Aucune ligne du journal ne correspond.",
+    "emptyLog": "Rien n’a encore été journalisé.",
+
+    "tab": {
+      "message": "Message",
+      "commands": "Commandes"
+    },
+    "messageHint": "Sélectionnez une ligne du journal pour la lire en entier.",
+    "copy": "Copier",
+    "copied": "Copié dans le presse-papiers.",
+    "commands": { "one": "{count} commande", "other": "{count} commandes" },
+    "noCommands": "Aucune commande ne correspond.",
+    "confirmBadge": "Confirmation",
+    "unavailableBadge": "Indisponible",
+    "inputHint": "Saisissez une commande · Tab complète · Haut et Bas pour l’historique",
+    "run": "Exécuter",
+    "cancel": "Annuler",
+    "confirmTitle": "Exécuter cette commande ?",
+    "intro": "Seules les commandes de la liste peuvent être exécutées.",
+    "historyMoved": "Le journal a avancé pendant que la console était fermée. Il commence maintenant à #{id}.",
+    "pausedNotice": "En pause. Les lignes sont toujours collectées et s’afficheront à la reprise ; les plus anciennes peuvent être supprimées.",
+    "resumed": "Reprise.",
+    "cleared": "Affichage effacé. Le journal partagé n’est pas modifié.",
+    "unknown": "Commande inconnue. Choisissez-en une dans la liste.",
+    "unavailable": "Cette commande n’est pas disponible pour le moment.",
+    "noArguments": "Cette commande ne prend pas d’arguments.",
+    "changed": "La commande a changé. Vérifiez la liste et relancez-la.",
+    "confirmFirst": "Elle demande une confirmation avant de s’exécuter."
   },
 
   "confirm": {

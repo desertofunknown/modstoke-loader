@@ -364,6 +364,7 @@
   "mods": {
     "search": "Sök",
     "searchAbout": "Skriv för att hitta en modd efter namn, ID eller skapare. Enter behåller sökningen och Escape tar tillbaka den förra.",
+    "searchHint": "Sök efter namn, skapare eller ID",
     "by": "av {author}",
     "count": { "one": "{count} modd", "other": "{count} moddar" },
     "issues": { "one": "{count} behöver ses över", "other": "{count} behöver ses över" },
@@ -411,6 +412,20 @@
       "redloader": "RedLoader-modd",
       "redloaderLibrary": "RedLoader-bibliotek",
       "other": "Modd"
+    },
+
+    "fact": {
+      "author": "Skapare",
+      "version": "Version",
+      "kind": "Typ",
+      "status": "Status",
+      "settings": "Inställningar"
+    },
+
+    "settings": {
+      "live": "Direkt i spelet",
+      "file": "Konfigurationsfil",
+      "none": "Inga"
     }
   },
 
@@ -458,6 +473,75 @@
       "guestAbout": "En gäst i det här spelet.",
       "bannedAbout": "Bannad från det här spelet."
     }
+  },
+
+  "console": {
+    "title": "Konsol",
+    "ready": "Redo",
+    "starting": "Startar",
+    "mods": { "one": "{count} modd", "other": "{count} moddar" },
+    "close": "Stäng",
+
+    "level": {
+      "all": "Alla",
+      "errors": "Fel",
+      "warnings": "Varningar",
+      "info": "Info",
+      "debug": "Felsökning"
+    },
+
+    "badge": {
+      "error": "Fel",
+      "fatal": "Kritisk",
+      "warning": "Varning",
+      "info": "Info",
+      "debug": "Felsök"
+    },
+    "sourceHint": "Källa",
+    "searchHint": "Sök i loggen",
+    "pause": "Pausa",
+    "resume": "Fortsätt",
+    "follow": "Följ",
+    "clear": "Rensa",
+
+    "column": {
+      "time": "Tid",
+      "level": "Nivå",
+      "source": "Källa",
+      "message": "Meddelande"
+    },
+    "latest": "Till det senaste",
+    "lines": { "one": "{count} rad", "other": "{count} rader" },
+    "paused": "Pausad",
+    "dropped": { "one": "{count} äldre rad borttagen", "other": "{count} äldre rader borttagna" },
+    "empty": "Inget i loggen matchar.",
+    "emptyLog": "Inget har loggats än.",
+
+    "tab": {
+      "message": "Meddelande",
+      "commands": "Kommandon"
+    },
+    "messageHint": "Välj en rad i loggen för att läsa hela.",
+    "copy": "Kopiera",
+    "copied": "Kopierat till urklipp.",
+    "commands": { "one": "{count} kommando", "other": "{count} kommandon" },
+    "noCommands": "Inget kommando matchar.",
+    "confirmBadge": "Bekräfta",
+    "unavailableBadge": "Ej tillgängligt",
+    "inputHint": "Skriv ett kommando · Tab fyller i · Upp och Ned för historiken",
+    "run": "Kör",
+    "cancel": "Avbryt",
+    "confirmTitle": "Köra det här kommandot?",
+    "intro": "Bara kommandon i listan kan köras.",
+    "historyMoved": "Loggen gick vidare medan konsolen var stängd. Den börjar nu vid #{id}.",
+    "pausedNotice": "Pausad. Rader samlas fortfarande in och visas när du fortsätter; de äldsta kan tas bort.",
+    "resumed": "Fortsätter.",
+    "cleared": "Vyn rensad. Den delade loggen är oförändrad.",
+    "unknown": "Okänt kommando. Välj ett i listan.",
+    "unavailable": "Det kommandot är inte tillgängligt just nu.",
+    "noArguments": "Det kommandot tar inga argument.",
+    "changed": "Kommandot har ändrats. Kontrollera listan och kör det igen.",
+    "confirmFirst": "Det ber om bekräftelse innan det körs."
   },
 
   "confirm": {
