@@ -127,8 +127,29 @@ namespace Modstoke.Sons
             if (state == Status.Agreed) return null;
             var differs = state == Status.Differs;
             if (!differs && !_requireClients) return null;
-            return Fit((differs ? "Your mods don't match this server's. " : "This server uses mods with their own items. ")
-                + "Install the same mods to join: " + _local.Summary + ".");
+            return Notice(differs, _local.Summary);
+        }
+
+        // Server and client build the same text from the server's summary, so a client can show it (below).
+        private static string Notice(bool differs, string serverSummary)
+            => Fit((differs ? "Your mods don't match this server's. " : "This server uses mods with their own items. ")
+                + "Install the same mods to join: " + serverSummary + ".");
+
+        // The game shows a kick message by looking it up as a localization key and falls back to a generic line.
+        // A Modstoke client that learned it differs adds the exact notice as a key, beside HOST_KICKED_YOU in
+        // every loaded table that has it, so the refusal screen shows the reason.
+        private static void PrepareKickScreen(string notice)
+        {
+            try
+            {
+                foreach (var table in UnityEngine.Resources.FindObjectsOfTypeAll<UnityEngine.Localization.Tables.StringTable>())
+                    if (table && table.GetEntry("HOST_KICKED_YOU") != null && table.GetEntry(notice) == null)
+                        table.AddEntry(notice, notice);
+            }
+            catch (Exception error)
+            {
+                RuntimeEntryPoint.LogSource?.LogWarning("The refusal reason could not be prepared for the kick screen: " + error.Message);
+            }
         }
 
         internal static void Tick()
@@ -189,6 +210,7 @@ namespace Modstoke.Sons
                 Peers[peer.PeerId] = new Peer { Control = peer, State = Status.Differs, RemoteSummary = remote.Summary };
                 RuntimeEntryPoint.LogSource?.LogWarning("This server's mod content differs from yours, so it will refuse you. "
                     + "The server has: " + remote.Summary + ". You have: " + _local.Summary + ".");
+                PrepareKickScreen(Notice(true, remote.Summary));
             }
             return true;
         }
