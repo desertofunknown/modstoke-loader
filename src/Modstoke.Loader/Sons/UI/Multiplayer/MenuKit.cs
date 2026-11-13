@@ -39,6 +39,13 @@ namespace Modstoke.Loader
         internal static readonly Color Field = Faded(0.07f);
         internal static readonly Color Disabled = Faded(0.14f);
         internal static readonly Color Scrim = Hex(0x050606, 0.76f);
+        // What holds focus sits on a bone plate edged in the logo's red, with its text dark on it.
+        internal static readonly Color Plate = Hex(0xE9E7E1, 0.97f);
+        internal static readonly Color Accent = Hex(0xD9262C);
+        internal static readonly Color OnPlate = Hex(0x111212);
+        internal static readonly Color OnPlateSoft = Hex(0x33332F);
+        internal static readonly Color OnPlateMuted = Hex(0x5F5D57);
+        internal static readonly Color OnPlateTrack = Hex(0x111212, 0.22f);
         private const int UiLayer = 5;
         private const float FontSearchSeconds = 0.25f;
         private static Sprite _brush, _fade, _across, _bump, _glow;

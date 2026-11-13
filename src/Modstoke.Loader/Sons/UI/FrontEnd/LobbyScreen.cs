@@ -55,7 +55,7 @@ namespace Modstoke.Loader
             _heading.rectTransform.At(pad, U(30), U(900), U(18));
             _title = MenuKit.Text(Root, "Title", "", U(50), true, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
             _title.characterSpacing = 5;
-            _title.rectTransform.At(pad, U(46), U(1100), U(66));
+            _title.rectTransform.At(pad, U(39), U(1100), U(80));
             _line = MenuKit.Text(Root, "Line", "", U(17), false, MenuKit.Soft);
             _line.rectTransform.At(pad, U(112), U(1100), U(26));
 
@@ -127,7 +127,11 @@ namespace Modstoke.Loader
             _micValue = MenuKit.Text(mic, "Value", "", U(17), true, MenuKit.Ink, TextAlignmentOptions.MidlineRight);
             _micValue.rectTransform.Place(1, 0, 1, 1, -U(220), 0, U(18), 0);
             var micMark = new Glide(details, false);
-            _mic = Add(mic, ToggleMic, focused => micLabel.color = focused ? MenuKit.Ink : MenuKit.Soft);
+            _mic = Add(mic, ToggleMic, focused =>
+            {
+                micLabel.color = focused ? MenuKit.OnPlate : MenuKit.Soft;
+                _micValue.color = focused ? MenuKit.OnPlate : MenuKit.Ink;
+            });
             _mic.Mark = micMark;
             _mic.Flash = Flashing(micLabel);
 
@@ -318,10 +322,13 @@ namespace Modstoke.Loader
             view.Avatar.texture = member?.Avatar;
             view.Avatar.enabled = member?.Avatar != null;
             view.Plus.enabled = member == null && view.Invite;
-            view.Plus.color = focused ? MenuKit.Ink : MenuKit.Soft;
-            view.Placeholder.color = member != null ? MenuKit.Cell : view.Invite ? MenuKit.Faded(0.08f) : MenuKit.Faded(0.03f);
+            view.Plus.color = focused ? MenuKit.OnPlate : MenuKit.Soft;
+            view.Placeholder.color = member != null ? MenuKit.Cell : view.Invite
+                ? focused ? MenuKit.OnPlateTrack : MenuKit.Faded(0.08f)
+                : MenuKit.Faded(0.03f);
             view.Name.text = member?.Name ?? Text[view.Invite ? "lobby.invite" : "lobby.openSlot"];
-            view.Name.color = member == null && !view.Invite ? MenuKit.Faint : focused ? MenuKit.Ink : MenuKit.Soft;
+            view.Name.color = member == null && !view.Invite ? MenuKit.Faint : focused ? MenuKit.OnPlate : MenuKit.Soft;
+            view.Tag.color = focused ? MenuKit.OnPlateMuted : MenuKit.Muted;
             view.Tag.text = member == null ? "" : (member.Host ? Text["lobby.host"] : member.Self ? Text["lobby.you"] : "")
                 .ToUpper(Languages.CultureOf(Languages.Current));
         }

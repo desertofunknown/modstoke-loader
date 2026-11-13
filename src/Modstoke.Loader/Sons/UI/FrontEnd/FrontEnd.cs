@@ -422,10 +422,11 @@ namespace Modstoke.Loader
             Drive();
         }
 
-        // The mods menu has a veil of its own; behind it the world shows, blurred, rather than these screens.
+        // The mods menu and a mod's own screen (opened from its page, as a character editor is) have a veil of their
+        // own; behind them the world shows, blurred, rather than these screens.
         private static bool CoveredByModsMenu()
         {
-            if (!MenuController.IsVisible) return false;
+            if (!MenuController.IsVisible && !ScreenHost.IsOpen) return false;
             Show(false);
             WorldBlur.Want(true);
             FrontInput.Pause();

@@ -61,7 +61,7 @@ namespace Modstoke.Loader
                 label.characterSpacing = 12;
                 label.rectTransform.Place(0, 0, 1, 1, U(18), 0, U(12), 0);
                 label.text = action.Label.ToUpper(Languages.CultureOf(Languages.Current));
-                var item = Add(rect, () => Choose(action), focused => label.color = focused ? MenuKit.Ink : MenuKit.Soft);
+                var item = Add(rect, () => Choose(action), focused => label.color = focused ? MenuKit.OnPlate : MenuKit.Soft);
                 item.Mark = mark;
                 item.Flash = Flashing(label);
                 rows.Add(rect);

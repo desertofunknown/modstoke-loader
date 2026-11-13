@@ -41,7 +41,7 @@ namespace Modstoke.Loader
             _heading.rectTransform.At(pad, U(30), U(900), U(18));
             _title = MenuKit.Text(Root, "Title", "", U(50), true, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
             _title.characterSpacing = 5;
-            _title.rectTransform.At(pad, U(46), U(1100), U(66));
+            _title.rectTransform.At(pad, U(39), U(1100), U(80));
             _line = MenuKit.Text(Root, "Line", "", U(17), false, MenuKit.Soft);
             _line.rectTransform.At(pad, U(112), U(1100), U(26));
 
@@ -80,7 +80,7 @@ namespace Modstoke.Loader
             entry.Label.characterSpacing = 12;
             entry.Label.rectTransform.Place(0, 0, 1, 1, U(20), 0, U(16), 0);
             _entries.Add(entry);
-            var item = Add(rect, () => Run(entry), focused => entry.Label.color = focused ? MenuKit.Ink : MenuKit.Soft);
+            var item = Add(rect, () => Run(entry), focused => entry.Label.color = focused ? MenuKit.OnPlate : MenuKit.Soft);
             item.Mark = mark;
             item.Flash = Flashing(entry.Label);
         }

@@ -85,7 +85,7 @@ namespace Modstoke.Loader
             _section.rectTransform.At(pad, U(30), U(700), U(18));
             _title = MenuKit.Text(Root, "Title", "", U(50), true, MenuKit.Ink);
             _title.characterSpacing = 5;
-            _title.rectTransform.At(pad, U(46), U(1000), U(66));
+            _title.rectTransform.At(pad, U(39), U(1000), U(80));
             _sections = null;
             if (_host)
             {
@@ -200,7 +200,7 @@ namespace Modstoke.Loader
                 view.Label.rectTransform.Place(0, 0, 1, 1, U(18), 0, U(16), 0);
                 view.Focus = Add(rect, () => StartNew(mode), focused =>
                 {
-                    view.Label.color = focused ? MenuKit.Ink : MenuKit.Soft;
+                    view.Label.color = focused ? MenuKit.OnPlate : MenuKit.Soft;
                     if (focused) _modeAbout.text = Text["mode.about." + KeyOf(mode)];
                 });
                 view.Focus.Mark = mark;
@@ -564,8 +564,12 @@ namespace Modstoke.Loader
             for (var i = 0; i < _rows.Length; i++)
             {
                 var view = _rows[i];
-                // The focus mark covers the focused row; the selection shows only while focus is elsewhere.
-                view.Highlight.enabled = _top + i == _selected && !ReferenceEquals(view.Focus, Focused);
+                var focused = ReferenceEquals(view.Focus, Focused);
+                // The focus plate covers the focused row, its text dark on it; the selection shows only while focus
+                // is elsewhere.
+                view.Highlight.enabled = _top + i == _selected && !focused;
+                view.Title.color = view.Plus.color = focused ? MenuKit.OnPlate : MenuKit.Ink;
+                view.Detail.color = focused ? MenuKit.OnPlateMuted : MenuKit.Muted;
             }
             _rowMark.Follow();
         }

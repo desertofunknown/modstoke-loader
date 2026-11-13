@@ -78,7 +78,7 @@ namespace Modstoke.Loader
             var label = MenuKit.Text(rect, "Label", "", U(18), true, MenuKit.Soft);
             label.characterSpacing = 12;
             label.rectTransform.Place(0, 0, 1, 1, U(18), 0, U(12), 0);
-            var item = Add(rect, run, focused => label.color = focused ? MenuKit.Ink : MenuKit.Soft);
+            var item = Add(rect, run, focused => label.color = focused ? MenuKit.OnPlate : MenuKit.Soft);
             item.Flash = Flashing(label);
             return (item, label);
         }

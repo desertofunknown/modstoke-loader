@@ -8,6 +8,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
+using Random = UnityEngine.Random;
 
 namespace Modstoke.Loader
 {
@@ -51,18 +52,22 @@ namespace Modstoke.Loader
     }
 
     /// <summary>
-    /// The focus mark: a light plate that glides to whatever holds focus. As a fill it covers the item, brightest
-    /// at a solid edge on its left and fading toward the right, and a soft sheen crosses it each time it lands; as
-    /// an underline it runs under the item.
+    /// The focus mark, gliding to whatever holds focus. As a fill it is a bone plate across the item with a red edge
+    /// on its left, the item's text turning dark on it; it opens out from that edge when it first appears and lands
+    /// white before settling to bone. As an underline it runs under the item. Over rows that are still fading in,
+    /// it fades in with them.
     /// </summary>
     internal sealed class Glide : Moving
     {
-        private const float Speed = 20f, SheenSeconds = 0.7f, SheenWidth = 0.32f;
-        private readonly RectTransform _container, _bar, _sheen;
+        private const float Speed = 22f, LandSeconds = 0.3f;
+        private readonly RectTransform _container, _bar;
+        private readonly CanvasGroup _group;
+        private readonly Image _plate;
         private readonly bool _underline;
         private RectTransform _target;
+        private CanvasGroup _targetGroup;
         private Vector2 _min, _max;
-        private float _sheenStart = -1;
+        private float _landed = -1;
         private bool _placed;
 
         /// <summary>The bar draws where it is created: after what it sits on, before what it sits under.</summary>
@@ -73,25 +78,17 @@ namespace Modstoke.Loader
             _bar = MenuKit.Box(container, underline ? "Underline" : "Focus");
             _bar.anchorMin = _bar.anchorMax = Vector2.zero;
             _bar.pivot = Vector2.zero;
+            _group = _bar.gameObject.AddComponent<CanvasGroup>();
+            _group.interactable = false;
+            _group.blocksRaycasts = false;
             if (underline)
             {
                 MenuKit.Fill(_bar, null, MenuKit.Ink);
             }
             else
             {
-                // A faint even wash with a brighter one that falls away from the edge, so the item reads as lit
-                // from its left rather than boxed in grey.
-                MenuKit.Fill(_bar, null, MenuKit.Faded(0.045f));
-                MenuKit.Fill(MenuKit.Box(_bar, "Light").Place(0, 0, 1, 1), MenuKit.Across, MenuKit.Faded(0.17f));
-                var clip = MenuKit.Box(_bar, "Sheen").Place(0, 0, 1, 1);
-                clip.gameObject.AddComponent<RectMask2D>();
-                _sheen = MenuKit.Box(clip, "Band");
-                _sheen.anchorMin = Vector2.zero;
-                _sheen.anchorMax = new Vector2(0, 1);
-                _sheen.pivot = new Vector2(0, 0.5f);
-                MenuKit.Fill(_sheen, MenuKit.Bump, MenuKit.Faded(0.11f));
-                _sheen.gameObject.SetActive(false);
-                MenuKit.Fill(MenuKit.Box(_bar, "Edge").Place(0, 0, 0, 1, 0, 0, -Mathf.Max(2f, FrontEnd.U(3)), 0), null, MenuKit.Ink);
+                _plate = MenuKit.Fill(_bar, null, MenuKit.Plate);
+                MenuKit.Fill(MenuKit.Box(_bar, "Edge").Place(0, 0, 0, 1, 0, 0, -Mathf.Max(3f, FrontEnd.U(4)), 0), null, MenuKit.Accent);
             }
             _bar.gameObject.SetActive(false);
         }
@@ -109,7 +106,11 @@ namespace Modstoke.Loader
                 _placed = false;
                 return;
             }
-            if (!ReferenceEquals(next, _target)) _sheenStart = Time.unscaledTime;
+            if (!ReferenceEquals(next, _target))
+            {
+                _landed = Time.unscaledTime;
+                _targetGroup = next.GetComponent<CanvasGroup>();
+            }
             _target = next;
             if (snap) _placed = false;
             _bar.gameObject.SetActive(true);
@@ -146,28 +147,25 @@ namespace Modstoke.Loader
             _max = Vector2.Lerp(_max, high, k);
             _bar.anchoredPosition = _min;
             _bar.sizeDelta = _max - _min;
-            var sweeping = Sweep();
+            var landing = Land();
+            var alpha = _targetGroup != null && _targetGroup ? _targetGroup.alpha : 1f;
+            _group.alpha = alpha;
             // At rest it needs no more frames.
-            if (!sweeping && (_min - low).sqrMagnitude < 0.01f && (_max - high).sqrMagnitude < 0.01f) Stop();
+            if (!landing && alpha >= 0.999f && (_min - low).sqrMagnitude < 0.01f && (_max - high).sqrMagnitude < 0.01f) Stop();
         }
 
-        // The sheen runs once across the plate, left to right, easing in and out; true while it is still crossing.
-        private bool Sweep()
+        // The plate lands white and settles to bone; true while it is settling.
+        private bool Land()
         {
-            if (_sheen == null || _sheenStart < 0) return false;
-            var t = (Time.unscaledTime - _sheenStart) / SheenSeconds;
+            if (_plate == null || _landed < 0) return false;
+            var t = (Time.unscaledTime - _landed) / LandSeconds;
             if (t >= 1f)
             {
-                _sheenStart = -1;
-                _sheen.gameObject.SetActive(false);
+                _plate.color = MenuKit.Plate;
+                _landed = -1;
                 return false;
             }
-            var width = _bar.sizeDelta.x;
-            var band = Mathf.Max(FrontEnd.U(60), width * SheenWidth);
-            var eased = t * t * (3f - 2f * t);
-            if (!_sheen.gameObject.activeSelf) _sheen.gameObject.SetActive(true);
-            _sheen.sizeDelta = new Vector2(band, 0);
-            _sheen.anchoredPosition = new Vector2(Mathf.Lerp(-band, width, eased), 0);
+            _plate.color = Color.Lerp(Color.white, MenuKit.Plate, EaseOut(t));
             return true;
         }
 
@@ -179,104 +177,71 @@ namespace Modstoke.Loader
     }
 
     /// <summary>
-    /// The game's split-color lettering on the text that holds focus. As focus lands, green and magenta copies of
-    /// the text jolt apart behind it in a few hard steps, then ease back to a slight fringe that stays for as long
-    /// as the item keeps focus, flickering apart again now and then as the game's own lettering does. It closes
-    /// up and fades when focus moves on.
+    /// The game's split-color lettering, as a glitch on the text that takes focus. For a moment the text is cut into
+    /// bands that jump sideways independently, in hard steps rather than smoothly, while green and magenta copies
+    /// of it tear apart behind; the jolt dies down within half a second and the text settles clean. While the item
+    /// keeps focus it glitches again briefly every few seconds. Moving focus away ends it at once.
     /// </summary>
     internal sealed class Glitch : Moving
     {
-        private const float Burst = 0.14f, Settle = 0.5f, Fade = 0.18f, Flicker = 0.1f;
-        private const float Spread = 0.13f, Rest = 0.035f, RestAlpha = 0.6f;
-        private static readonly Color Green = new(0.42f, 0.78f, 0.29f, 0.95f);
-        private static readonly Color Magenta = new(0.84f, 0.12f, 0.52f, 0.95f);
-        // The jolt: where each copy stands, as a share of the full spread, through the burst's few hard steps.
-        private static readonly float[] Jolt = { 1f, -0.45f, 0.8f, 0.15f, 0.65f, 0.4f };
-        private readonly TextMeshProUGUI _text, _left, _right;
-        private float _start, _released = -1, _flicker = -1, _nextFlicker, _releasedAlpha;
-        private bool _hold;
+        private const int Bands = 4;
+        // The whole jolt, its hardest opening part, the rate the cuts jump at, and a later flicker's length.
+        private const float Burst = 0.42f, Hit = 0.08f, Frame = 1f / 30f, Flicker = 0.14f;
+        // How far bands jump and the colors tear, in ems of the text; a flicker is a smaller jolt.
+        private const float Shear = 0.24f, Split = 0.14f, FlickerAmount = 0.45f;
+        private static readonly Color Green = new(0.42f, 0.78f, 0.29f, 1f);
+        private static readonly Color Magenta = new(0.84f, 0.12f, 0.52f, 1f);
+        private readonly TextMeshProUGUI _text;
+        private readonly RectTransform[] _bands = new RectTransform[Bands];
+        private readonly TextMeshProUGUI[] _cuts = new TextMeshProUGUI[Bands];
+        private readonly float[] _shift = new float[Bands];
+        private readonly float[] _edges = new float[Bands + 1];
+        private RectTransform _rig;
+        private TextMeshProUGUI _left, _right;
+        private float _start, _flicker = -1, _nextFlicker, _nextFrame, _tear, _lift;
+        private bool _hold, _running, _shown;
 
-        internal Glitch(TextMeshProUGUI text)
-        {
-            _text = text;
-            _left = Ghost("Green", Green);
-            _right = Ghost("Magenta", Magenta);
-        }
+        internal Glitch(TextMeshProUGUI text) => _text = text;
 
-        protected override bool Alive => _text != null && _text && _left != null && _left;
+        protected override bool Alive => _text != null && _text;
 
         /// <summary>
-        /// Splits the text as focus lands on it or its value changes. With <paramref name="hold"/> the fringe stays
-        /// until <see cref="Release"/>; without, as for a heading that just changed, it closes up by itself.
+        /// Glitches the text as focus lands on it or its value changes. With <paramref name="hold"/> it keeps
+        /// flickering now and then until <see cref="Release"/>; without, as for a heading that changed, it is one jolt.
         /// </summary>
         internal void Pulse(bool hold = true)
         {
             if (!Alive || !_text.isActiveAndEnabled || string.IsNullOrEmpty(_text.text)) return;
-            foreach (var ghost in new[] { _left, _right })
-            {
-                Copy(ghost);
-                var rect = ghost.rectTransform;
-                var source = _text.rectTransform;
-                rect.anchorMin = source.anchorMin;
-                rect.anchorMax = source.anchorMax;
-                rect.pivot = source.pivot;
-                rect.sizeDelta = source.sizeDelta;
-                rect.anchoredPosition = source.anchoredPosition;
-                ghost.enabled = true;
-            }
+            if (_rig == null || !_rig) Build();
             _hold = hold;
             _start = Time.unscaledTime;
-            _released = _flicker = -1;
-            _nextFlicker = _start + Burst + Settle + NextGap();
+            _flicker = -1;
+            _nextFrame = 0;
+            _nextFlicker = _start + Burst + NextGap();
+            _running = true;
             Start();
             Step(0);
         }
 
-        /// <summary>Closes the split up, as focus moves on.</summary>
+        /// <summary>Ends the glitch and shows the text plainly, as focus moves on.</summary>
         internal void Release()
         {
-            if (!Alive || _released >= 0 || !_left.enabled) return;
-            _released = Time.unscaledTime;
-            _releasedAlpha = _left.color.a / Green.a;
-            Start();
+            if (!_running) return;
+            _running = false;
+            Settle();
+            Stop();
         }
 
         protected override void Step(float dt)
         {
-            var now = Time.unscaledTime;
-            // On a screen out of view the split waits as it is, for when the screen comes back.
-            if (!_text.isActiveAndEnabled) return;
-            if (_left.text != _text.text)
+            // On a screen out of view the glitch waits as it is, for when the screen comes back.
+            if (!_running || !_text.isActiveAndEnabled) return;
+            try
             {
-                Copy(_left);
-                Copy(_right);
-            }
-            float spread, alpha;
-            if (_released >= 0)
-            {
-                var t = (now - _released) / Fade;
-                if (t >= 1f)
-                {
-                    Hide();
-                    return;
-                }
-                spread = Rest * (1f - t);
-                alpha = _releasedAlpha * (1f - t) * (1f - t);
-            }
-            else
-            {
+                var now = Time.unscaledTime;
                 var age = now - _start;
-                if (age < Burst)
-                {
-                    spread = Spread * Jolt[Mathf.Min(Jolt.Length - 1, (int)(age / Burst * Jolt.Length))];
-                    alpha = 1f;
-                }
-                else if (age < Burst + Settle)
-                {
-                    var t = EaseOut((age - Burst) / Settle);
-                    spread = Mathf.Lerp(Spread * Jolt[Jolt.Length - 1], Rest, t);
-                    alpha = Mathf.Lerp(1f, RestAlpha, t);
-                }
+                float amount;
+                if (age < Burst) amount = age < Hit ? 1f : Mathf.Pow(1f - (age - Hit) / (Burst - Hit), 1.6f);
                 else if (!_hold)
                 {
                     Release();
@@ -284,73 +249,174 @@ namespace Modstoke.Loader
                 }
                 else
                 {
-                    spread = Rest;
-                    alpha = RestAlpha;
-                    // Now and then the fringe jumps apart for an instant and snaps back.
-                    if (_flicker < 0 && now >= _nextFlicker) _flicker = now;
-                    if (_flicker >= 0)
+                    if (_flicker < 0 && now >= _nextFlicker)
                     {
-                        var t = (now - _flicker) / Flicker;
-                        if (t >= 1f)
+                        _flicker = now;
+                        _nextFrame = 0;
+                    }
+                    if (_flicker < 0 || now - _flicker >= Flicker)
+                    {
+                        if (_flicker >= 0)
                         {
                             _flicker = -1;
                             _nextFlicker = now + NextGap();
                         }
-                        else
-                        {
-                            spread = Spread * (t < 0.5f ? 0.55f : -0.3f);
-                            alpha = 0.9f;
-                        }
+                        Settle();
+                        return;
                     }
+                    amount = FlickerAmount;
+                }
+                if (now >= _nextFrame)
+                {
+                    _nextFrame = now + Frame;
+                    Jolt(amount);
                 }
             }
-            Place(spread, alpha);
+            catch (Exception)
+            {
+                // The text never stays hidden behind a glitch that failed.
+                Settle();
+                throw;
+            }
         }
 
-        // Each copy stands off to its own side by the spread, in ems of the text, never closer than a pixel and a half
-        // so the fringe shows on small text too.
-        private void Place(float spread, float alpha)
+        // A new arrangement of cuts: band edges wander a little across the letters, every band jumps by its own amount
+        // (one of them always hard), and the colored copies tear apart with a slight lift.
+        private void Jolt(float amount)
         {
-            var source = _text.rectTransform.anchoredPosition;
-            var em = _text.fontSize * spread;
-            if (Mathf.Abs(em) < 1.5f) em = em < 0 ? -1.5f : 1.5f;
-            _left.rectTransform.anchoredPosition = source + new Vector2(-em, em * 0.25f);
-            _right.rectTransform.anchoredPosition = source + new Vector2(em, -em * 0.3f);
-            var fade = alpha * _text.color.a;
-            _left.color = new Color(Green.r, Green.g, Green.b, Green.a * fade);
-            _right.color = new Color(Magenta.r, Magenta.g, Magenta.b, Magenta.a * fade);
+            Sync();
+            var source = _text.rectTransform.rect;
+            var bounds = _text.textBounds;
+            var low = source.height > 0 ? Mathf.Clamp01((bounds.min.y - source.yMin) / source.height) : 0.2f;
+            var high = source.height > 0 ? Mathf.Clamp01((bounds.max.y - source.yMin) / source.height) : 0.8f;
+            if (high - low < 0.05f)
+            {
+                low = 0.2f;
+                high = 0.8f;
+            }
+            _edges[0] = 0;
+            _edges[Bands] = 1;
+            for (var i = 1; i < Bands; i++)
+                _edges[i] = Mathf.Lerp(low, high, (i + Random.Range(-0.35f, 0.35f)) / Bands);
+            var hard = Random.Range(0, Bands);
+            for (var i = 0; i < Bands; i++)
+            {
+                var size = i == hard ? 1f : Random.value * Random.value;
+                _shift[i] = (Random.value < 0.5f ? -1f : 1f) * size * amount;
+            }
+            _tear = amount * Random.Range(0.6f, 1f);
+            _lift = amount * Random.Range(-0.25f, 0.25f);
+            Place();
         }
 
-        private void Hide()
+        private void Place()
         {
-            _left.enabled = _right.enabled = false;
-            _released = -1;
-            Stop();
+            var em = _text.fontSize;
+            var height = _rig.rect.height;
+            var margin = em * 2f;
+            for (var i = 0; i < Bands; i++)
+            {
+                var band = _bands[i];
+                band.anchorMin = new Vector2(0, _edges[i]);
+                band.anchorMax = new Vector2(1, _edges[i + 1]);
+                band.offsetMin = new Vector2(-margin, 0);
+                band.offsetMax = new Vector2(margin, 0);
+                // Each cut is the whole text laid out as the original, seen through its band and moved sideways.
+                var dx = _shift[i] * Shear * em;
+                var cut = _cuts[i].rectTransform;
+                cut.offsetMin = new Vector2(margin + dx, -_edges[i] * height);
+                cut.offsetMax = new Vector2(-margin + dx, (1 - _edges[i + 1]) * height);
+            }
+            var tear = Mathf.Max(2f, _tear * Split * em);
+            var lift = _lift * em * 0.3f;
+            _left.rectTransform.offsetMin = _left.rectTransform.offsetMax = new Vector2(-tear, lift);
+            _right.rectTransform.offsetMin = _right.rectTransform.offsetMax = new Vector2(tear, -lift);
+            if (_shown) return;
+            _shown = true;
+            _rig.gameObject.SetActive(true);
+            Conceal(true);
         }
 
-        private void Copy(TextMeshProUGUI ghost)
+        // The original text is hidden while its cuts stand in for it, with the parts drawn from fallback fonts (as
+        // Chinese, Japanese and Korean letters are), which render on meshes of their own.
+        private void Conceal(bool hidden)
         {
-            ghost.text = _text.text;
-            ghost.font = _text.font;
-            ghost.fontSize = _text.fontSize;
-            ghost.characterSpacing = _text.characterSpacing;
-            ghost.alignment = _text.alignment;
-            ghost.enableWordWrapping = _text.enableWordWrapping;
-            ghost.overflowMode = _text.overflowMode;
+            var alpha = hidden ? 0f : 1f;
+            _text.canvasRenderer.SetAlpha(alpha);
+            foreach (var part in _text.GetComponentsInChildren<TMP_SubMeshUI>(true))
+                if (part != null && part) part.canvasRenderer.SetAlpha(alpha);
         }
 
-        private static float NextGap() => UnityEngine.Random.Range(2.6f, 5.2f);
-
-        private TextMeshProUGUI Ghost(string name, Color color)
+        // The cuts and copies follow the text: where it sits, what it says, and how it looks right now.
+        private void Sync()
         {
-            var parent = _text.rectTransform.parent;
-            var ghost = MenuKit.Text(parent, _text.name + " " + name, "", _text.fontSize, true, color, _text.alignment);
-            ghost.font = _text.font;
-            // Behind the text it splits from.
-            ghost.rectTransform.SetSiblingIndex(_text.rectTransform.GetSiblingIndex());
-            ghost.enabled = false;
+            var source = _text.rectTransform;
+            _rig.anchorMin = source.anchorMin;
+            _rig.anchorMax = source.anchorMax;
+            _rig.pivot = source.pivot;
+            _rig.anchoredPosition = source.anchoredPosition;
+            _rig.sizeDelta = source.sizeDelta;
+            var color = _text.color;
+            foreach (var cut in _cuts)
+            {
+                Copy(cut);
+                cut.color = color;
+            }
+            Copy(_left);
+            Copy(_right);
+            _left.color = new Color(Green.r, Green.g, Green.b, 0.9f * color.a);
+            _right.color = new Color(Magenta.r, Magenta.g, Magenta.b, 0.9f * color.a);
+        }
+
+        private void Settle()
+        {
+            if (!_shown) return;
+            _shown = false;
+            if (_rig != null && _rig) _rig.gameObject.SetActive(false);
+            if (_text != null && _text) Conceal(false);
+        }
+
+        private void Build()
+        {
+            _rig = MenuKit.Box(_text.rectTransform.parent, _text.name + " Glitch");
+            // Over the text it stands in for, so the cuts cover where the letters were.
+            _rig.SetSiblingIndex(_text.rectTransform.GetSiblingIndex() + 1);
+            _left = Ghost("Green");
+            _right = Ghost("Magenta");
+            for (var i = 0; i < Bands; i++)
+            {
+                var band = _bands[i] = MenuKit.Box(_rig, "Band " + i);
+                band.gameObject.AddComponent<RectMask2D>();
+                _cuts[i] = MenuKit.Text(band, "Cut", "", _text.fontSize, true, _text.color, _text.alignment);
+                _cuts[i].rectTransform.anchorMin = Vector2.zero;
+                _cuts[i].rectTransform.anchorMax = Vector2.one;
+            }
+            _rig.gameObject.SetActive(false);
+            _shown = false;
+        }
+
+        private TextMeshProUGUI Ghost(string name)
+        {
+            var ghost = MenuKit.Text(_rig, name, "", _text.fontSize, true, Color.clear, _text.alignment);
+            ghost.rectTransform.anchorMin = Vector2.zero;
+            ghost.rectTransform.anchorMax = Vector2.one;
             return ghost;
         }
+
+        private void Copy(TextMeshProUGUI target)
+        {
+            if (target.text != _text.text) target.text = _text.text;
+            target.font = _text.font;
+            target.fontSize = _text.fontSize;
+            target.fontStyle = _text.fontStyle;
+            target.characterSpacing = _text.characterSpacing;
+            target.alignment = _text.alignment;
+            target.enableWordWrapping = _text.enableWordWrapping;
+            target.overflowMode = _text.overflowMode;
+            target.margin = _text.margin;
+        }
+
+        private static float NextGap() => Random.Range(3.2f, 6.5f);
     }
 
     /// <summary>A screen on its way out: it fades over a moment, then is put away or removed.</summary>

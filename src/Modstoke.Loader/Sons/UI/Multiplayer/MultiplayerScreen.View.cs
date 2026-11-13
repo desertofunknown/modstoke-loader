@@ -135,7 +135,7 @@ namespace Modstoke.Loader
             section.rectTransform.At(pad, U(30), U(600), U(18));
             var title = MenuKit.Text(root, "Title", Upper(T["multiplayer.joinTitle"]), U(50), true, MenuKit.Ink);
             title.characterSpacing = 5;
-            title.rectTransform.At(pad, U(46), U(900), U(66));
+            title.rectTransform.At(pad, U(39), U(900), U(80));
             _sections = new SectionNav(root, pad, U(56), false);
             Add(_sections.Other, Host, _sections.Hover);
         }
@@ -567,6 +567,7 @@ namespace Modstoke.Loader
                 view.Highlight.enabled = i == _hoverRow && index != _selected;
                 // The selection dims while the controller is up in the filters or column headers.
                 view.Highlight.color = MenuKit.RowHover;
+                PaintSelection(view, index);
             }
             var mark = selectedView != null && _zone == Zone.List ? selectedView.Rect : null;
             _rowMark.Target(mark);
@@ -593,9 +594,23 @@ namespace Modstoke.Loader
             view.Status.color = color;
             view.Marker.color = color;
             view.Players.text = entry.Limit > 0 ? entry.Players + " / " + entry.Limit : entry.Players.ToString();
-            var bars = entry.Ping <= 0 ? 0 : entry.Ping < 60 ? 3 : entry.Ping < 110 ? 2 : 1;
-            for (var b = 0; b < 3; b++) view.Bars[b].color = b < bars ? MenuKit.Ink : MenuKit.BarOff;
             view.Ping.text = entry.Ping > 0 ? entry.Ping.ToString() : "";
+            PaintSelection(view, index);
+        }
+
+        // The selected row is under the focus plate, so its text and ping bars turn dark there.
+        private static void PaintSelection(RowView view, int index)
+        {
+            if (index >= Entries.Count) return;
+            var entry = Entries[index];
+            var on = index == _selected && _zone == Zone.List;
+            view.Name.color = view.Players.color = view.Ping.color = on ? MenuKit.OnPlate : MenuKit.Ink;
+            view.Kind.color = on ? MenuKit.OnPlateMuted : MenuKit.Muted;
+            if (on) view.Status.color = MenuKit.OnPlateSoft;
+            else view.Status.color = Describe(StateOf(entry, out var details), details).Color;
+            var bars = entry.Ping <= 0 ? 0 : entry.Ping < 60 ? 3 : entry.Ping < 110 ? 2 : 1;
+            for (var b = 0; b < 3; b++)
+                view.Bars[b].color = b < bars ? on ? MenuKit.OnPlate : MenuKit.Ink : on ? MenuKit.OnPlateTrack : MenuKit.BarOff;
         }
 
         private static string NameOf(Entry entry) => entry.Name.Length > 0 ? entry.Name : T["multiplayer.unnamed"];

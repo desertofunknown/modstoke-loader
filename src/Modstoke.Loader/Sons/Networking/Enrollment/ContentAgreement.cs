@@ -9,6 +9,8 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Modstoke.Loader;
+using Sons.Multiplayer;
+using Steamworks;
 
 namespace Modstoke.Sons
 {
@@ -17,7 +19,8 @@ namespace Modstoke.Sons
     /// ranges mods reserve at startup, which decide item ids, pickup prefab ids and weapon attachments. A server
     /// with content refuses clients that differ, and by default also clients that never take part (vanilla),
     /// with a reason in the disconnect notice. Setting allowVanillaClients=true in the loader settings lets
-    /// vanilla clients in; Modstoke clients are still checked. Servers without content are unaffected.
+    /// vanilla clients in; Modstoke clients are still checked. Servers without content are unaffected, and a
+    /// client joins a server that declares no content (a vanilla one among them) exactly as the game does.
     /// </summary>
     public static class ContentAgreement
     {
@@ -25,12 +28,19 @@ namespace Modstoke.Sons
         public const ulong Capability = 1UL << 61;
 
         private const string AllowVanillaKey = "allowVanillaClients";
+        // The Steam lobby key a hosting Modstoke game puts its content fingerprint under, as a dedicated server's rules do.
+        private const string LobbyContentKey = "ms_content";
         private const double AnswerSeconds = 15;
         private const double RetrySeconds = 1;
+        private const double JoiningSeconds = 300;
+        private const double LobbySeconds = 1;
         private const int MaxSends = 8;
         private static readonly Dictionary<Guid, Peer> Peers = new();
         private static Declaration _local;
         private static bool _server, _requireClients, _active;
+        private static string _joining, _labelledContent;
+        private static double _joiningAt, _nextLobbyCheck;
+        private static ulong _labelledLobby;
 
         public enum Status { NotChecked, Pending, Agreed, Differs }
 
@@ -94,6 +104,13 @@ namespace Modstoke.Sons
             _local = Capture();
             if (_local.Count == 0) return;
             _server = server;
+            // A client takes part only with a server that runs the check too. One that declares no content has no
+            // channel for it, so the connection is left exactly as the game makes it.
+            if (!_server && !ServerDeclaresContent())
+            {
+                RuntimeEntryPoint.LogSource?.LogInfo("This server declares no Modstoke mod content; joining it as the game does.");
+                return;
+            }
             _requireClients = _server && !RuntimePreferences.ReadBoolean(AllowVanillaKey, false);
             if (!ControlTransport.SelectForStart() || !ClientEnrollment.AddContentForStart(_server, _requireClients))
             {
@@ -104,6 +121,66 @@ namespace Modstoke.Sons
             RuntimeEntryPoint.LogSource?.LogInfo((_server
                 ? _requireClients ? "Clients must match this server's mod content: " : "Modstoke clients must match this server's mod content (vanilla clients allowed): "
                 : "Checking mod content with the server: ") + _local.Summary + ".");
+        }
+
+        /// <summary>
+        /// The content a dedicated server declared in the rules the server browser read, as the player joins it: its
+        /// fingerprint, "" for a server that declares none, or null when the browser did not know.
+        /// </summary>
+        internal static void Joining(string declared)
+        {
+            _joining = declared;
+            _joiningAt = Now;
+        }
+
+        // A hosted game is joined through its host's Steam lobby, which a Modstoke host labels with its content; a
+        // dedicated server through the browser, which read its rules. A server neither says anything about is taken
+        // to have none.
+        private static bool ServerDeclaresContent()
+        {
+            var lobby = LobbyContent();
+            if (lobby != null) return lobby.Length > 0;
+            return !string.IsNullOrEmpty(_joining) && Now - _joiningAt < JoiningSeconds;
+        }
+
+        // The content label of the Steam lobby this game is in, "" when it has none, or null outside a lobby.
+        private static string LobbyContent()
+        {
+            try
+            {
+                var lobby = CoopLobbyManager.GetActiveInstance();
+                return lobby == null ? null : SteamMatchmaking.GetLobbyData(lobby.LobbyId, LobbyContentKey) ?? "";
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Labels the Steam lobby this game hosts with its content fingerprint, so a joining Modstoke client knows
+        /// before Bolt starts whether the host runs the check. Runs every frame; looks once a second.
+        /// </summary>
+        internal static void LabelHostedLobby()
+        {
+            var now = Now;
+            if (now < _nextLobbyCheck) return;
+            _nextLobbyCheck = now + LobbySeconds;
+            try
+            {
+                var lobby = CoopLobbyManager.GetActiveInstance();
+                if (lobby == null || !lobby.IsOwner) return;
+                var id = lobby.LobbyId.m_SteamID;
+                var content = Fingerprint;
+                if (id == _labelledLobby && content == _labelledContent) return;
+                if (!SteamMatchmaking.SetLobbyData(lobby.LobbyId, LobbyContentKey, content)) return;
+                _labelledLobby = id;
+                _labelledContent = content;
+            }
+            catch (Exception)
+            {
+                // Without the label a Modstoke client joins as it would join a vanilla host; it is tried again shortly.
+            }
         }
 
         internal static void Enrolled(ControlPeer peer, ulong offered)

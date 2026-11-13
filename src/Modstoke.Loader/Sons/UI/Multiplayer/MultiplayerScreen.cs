@@ -728,6 +728,8 @@ namespace Modstoke.Loader
                 var row = JoinRow();
                 row.Setup(entry.Info, index, all, browser);
                 MenuSound.Play(MenuCue.Activate);
+                // A hosted game's lobby says for itself whether its host runs the content check.
+                ContentAgreement.Joining(entry.Dedicated != null ? DeclaredContent(entry) : null);
                 row.DoJoin();
                 RuntimeEntryPoint.LogSource?.LogInfo("Joining " + entry.Name + ".");
             }
@@ -957,6 +959,14 @@ namespace Modstoke.Loader
             if (details.Content.Length > 0 && details.Content != _mine) return ModState.Differs;
             if (ServerBrowserBadges.Missing(details).Any()) return ModState.Needs;
             return details.Content.Length == 0 && _mine.Length > 0 ? ModState.AddsItems : ModState.Match;
+        }
+
+        // The content fingerprint a dedicated server published, "" for one that publishes none (a vanilla server
+        // answers without Modstoke details), or null while its rules are not in yet.
+        private static string DeclaredContent(Entry entry)
+        {
+            if (entry.Key == null || !ServerBrowserBadges.TryRead(entry.Key, out _, out var details)) return null;
+            return details?.Content ?? "";
         }
 
         private static void Ask(Entry entry)

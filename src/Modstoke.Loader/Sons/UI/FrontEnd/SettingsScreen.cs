@@ -152,7 +152,7 @@ namespace Modstoke.Loader
             _heading.rectTransform.At(pad, U(30), U(900), U(18));
             _title = MenuKit.Text(Root, "Title", "", U(50), true, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
             _title.characterSpacing = 5;
-            _title.rectTransform.At(pad, U(46), U(1100), U(66));
+            _title.rectTransform.At(pad, U(39), U(1100), U(80));
             _titleFlash = new Glitch(_title);
 
             var tabbed = TabIds.Count > 1;
@@ -846,22 +846,30 @@ namespace Modstoke.Loader
                 view.Picture.texture = picture;
                 view.Picture.enabled = picture != null;
             }
-            // A setting that another has switched off stays in view, dimmed, and focus passes over it.
-            view.Label.color = !available ? MenuKit.Faint : focused ? MenuKit.Ink : MenuKit.Soft;
+            // A setting that another has switched off stays in view, dimmed, and focus passes over it. On the focus
+            // plate everything on the row turns dark.
+            var plate = focused && available;
+            view.Label.color = !available ? MenuKit.Faint : plate ? MenuKit.OnPlate : MenuKit.Soft;
             if (view.Detail != null)
             {
                 view.Detail.text = row.Detail ?? "";
-                view.Detail.color = !available ? MenuKit.Faint : focused ? MenuKit.Soft : MenuKit.Muted;
+                view.Detail.color = !available ? MenuKit.Faint : plate ? MenuKit.OnPlateMuted : MenuKit.Muted;
             }
             view.Value.text = row.Open != null ? value.ToUpper(Languages.CultureOf(Languages.Current)) : value;
-            view.Value.color = !available ? MenuKit.Faint : row.Tint ?? (focused || row.Open == null ? MenuKit.Ink : MenuKit.Soft);
+            view.Value.color = !available ? MenuKit.Faint : plate ? MenuKit.OnPlate : row.Tint ?? (row.Open == null ? MenuKit.Ink : MenuKit.Soft);
             // A dot beside a setting that is not at its default.
             view.Changed.enabled = row.Open == null && !SafeDefault(row);
+            view.Changed.color = plate ? MenuKit.OnPlateMuted : MenuKit.Muted;
             if (view.Underline != null)
             {
-                view.Underline.color = editing ? MenuKit.Ink : focused ? MenuKit.Soft : MenuKit.Rule;
-                if (view.Hint != null) view.Hint.enabled = !editing && string.IsNullOrEmpty(value);
-                if (view.Field != null) view.Field.color = editing ? MenuKit.Faded(0.11f) : MenuKit.Field;
+                view.Underline.color = plate ? (editing ? MenuKit.OnPlate : MenuKit.OnPlateMuted) : editing ? MenuKit.Ink : MenuKit.Rule;
+                if (view.Caret != null) view.Caret.GetComponent<Image>().color = plate ? MenuKit.OnPlate : MenuKit.Ink;
+                if (view.Hint != null)
+                {
+                    view.Hint.enabled = !editing && string.IsNullOrEmpty(value);
+                    view.Hint.color = plate ? MenuKit.OnPlateMuted : MenuKit.Faint;
+                }
+                if (view.Field != null) view.Field.color = plate ? MenuKit.Hex(0x111212, 0.08f) : MenuKit.Field;
                 // While typing, the end of a long text stays in view.
                 var wide = editing && view.Value.GetPreferredValues(value + " ").x > view.Value.rectTransform.rect.width;
                 view.Value.alignment = wide ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
@@ -871,23 +879,26 @@ namespace Modstoke.Loader
             }
             if (view.Track != null)
             {
-                view.Fill.GetComponent<Image>().color = focused ? MenuKit.Ink : MenuKit.Soft;
+                view.Track.GetComponent<Image>().color = plate ? MenuKit.OnPlateTrack : MenuKit.BarOff;
+                view.Fill.GetComponent<Image>().color = plate ? MenuKit.OnPlate : MenuKit.Soft;
+                view.Thumb.GetComponent<Image>().color = plate ? MenuKit.OnPlate : MenuKit.Ink;
                 view.Slide.Set(row.Fraction ?? 0);
                 PlaceThumb(view);
                 return;
             }
             var index = row.Index;
-            var lit = focused && available;
             if (view.Left != null)
             {
                 // An end of the list greys out its arrow, as there is nothing further that way.
-                Tint(view.Left, !lit ? MenuKit.Faint : index <= 0 ? MenuKit.Disabled : MenuKit.Ink);
-                Tint(view.Right, !lit ? MenuKit.Faint : index >= row.Count - 1 && row.Count > 0 ? MenuKit.Disabled : MenuKit.Ink);
+                Tint(view.Left, !plate ? MenuKit.Faint : index <= 0 ? MenuKit.OnPlateTrack : MenuKit.OnPlate);
+                Tint(view.Right, !plate ? MenuKit.Faint : index >= row.Count - 1 && row.Count > 0 ? MenuKit.OnPlateTrack : MenuKit.OnPlate);
             }
-            else Tint(view.Right, lit ? MenuKit.Ink : MenuKit.Faint);
+            else Tint(view.Right, plate ? MenuKit.OnPlate : MenuKit.Faint);
             if (view.PipMarks == null) return;
             for (var i = 0; i < view.PipMarks.Length; i++)
-                view.PipMarks[i].color = i == index ? (lit ? MenuKit.Ink : available ? MenuKit.Soft : MenuKit.Faint) : MenuKit.BarOff;
+                view.PipMarks[i].color = i == index
+                    ? (plate ? MenuKit.OnPlate : available ? MenuKit.Soft : MenuKit.Faint)
+                    : plate ? MenuKit.OnPlateTrack : MenuKit.BarOff;
         }
 
         private void PaintCaret(RowView view)
