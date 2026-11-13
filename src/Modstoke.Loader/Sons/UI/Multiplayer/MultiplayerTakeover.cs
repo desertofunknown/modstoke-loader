@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Alex Cooper
 
 using System;
-using Sons.Gui.Multiplayer;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
@@ -20,10 +19,15 @@ namespace Modstoke.Loader
     {
         private const string TitleScene = "SonsTitleScene";
         private const string BrowserScene = "MultiplayerMenu";
+        private const string ChoiceDialog = "MultiPlayerModeDialog";
         private const string ClassicKey = "classicMultiplayerMenu";
+        private const float HostDelaySeconds = 0.6f;
         private static int _titleBound, _browserBound;
-        private static bool _hostRequested, _classicThisVisit;
+        private static bool _hostRequested, _wantHost, _classicThisVisit;
         private static Button _multiplayerButton;
+        private static CanvasGroup _choiceVeil;
+        private static string _pendingChoice;
+        private static float _pendingUntil, _veilUntil, _hostAt;
 
         internal static bool Enabled => !RuntimePreferences.ReadBoolean(ClassicKey, false);
 
@@ -36,7 +40,8 @@ namespace Modstoke.Loader
                 if (title.IsValid() && title.isLoaded)
                 {
                     if (title.handle != _titleBound) BindTitle(title);
-                    TickHostRequest(title);
+                    TickHostRequest();
+                    TickChoice(title);
                 }
                 var browser = SceneManager.GetSceneByName(BrowserScene);
                 if (browser.IsValid() && browser.isLoaded)
@@ -57,9 +62,9 @@ namespace Modstoke.Loader
             }
             catch (Exception error)
             {
-                RuntimeEntryPoint.LogSource?.LogWarning("The Modstoke multiplayer screen stopped: " + error.Message);
+                // The screen stays closed for this visit; the game's own browser shows instead.
+                RuntimeEntryPoint.LogSource?.LogWarning("The Modstoke multiplayer screen stopped: " + error);
                 MultiplayerScreen.Close();
-                _browserBound = -1;
             }
         }
 
@@ -79,66 +84,105 @@ namespace Modstoke.Loader
 
         private static void BindTitle(Scene title)
         {
-            _multiplayerButton = Find(title, "MultiplayerButton");
+            _multiplayerButton = null;
+            _choiceVeil = null;
+            _pendingChoice = null;
+            foreach (var root in title.GetRootGameObjects())
+            {
+                foreach (var button in root.GetComponentsInChildren<Button>(true))
+                    if (button != null && button.name == "MultiplayerButton") _multiplayerButton = button;
+                foreach (var transform in root.GetComponentsInChildren<Transform>(true))
+                {
+                    if (transform == null || transform.name != ChoiceDialog) continue;
+                    _choiceVeil = transform.GetComponent<CanvasGroup>();
+                    if (_choiceVeil == null || !_choiceVeil) _choiceVeil = transform.gameObject.AddComponent<CanvasGroup>();
+                }
+            }
             if (_multiplayerButton == null) return;
             _titleBound = title.handle;
+            // Runtime listeners run after the game's own, which opens its Join/Host choice.
             _multiplayerButton.onClick.AddListener((UnityAction)AfterMultiplayerPressed);
             // The title's menus settle their online state over the first frames.
             if (_hostRequested) _hostAt = Time.realtimeSinceStartup + HostDelaySeconds;
         }
 
-        private const float HostDelaySeconds = 0.6f;
-        private static float _hostAt;
-        private static bool _openingHost;
-
-        private static void TickHostRequest(Scene title)
+        private static void TickHostRequest()
         {
-            if (!_hostRequested || _multiplayerButton == null || Time.realtimeSinceStartup < _hostAt) return;
+            if (!_hostRequested || _multiplayerButton == null || !_multiplayerButton || Time.realtimeSinceStartup < _hostAt) return;
             _hostRequested = false;
-            _openingHost = true;
-            try
-            {
-                // The game's own listener opens its Join/Host choice; Host is pressed for the player.
-                _multiplayerButton.onClick.Invoke();
-                Press(title, "MultiPlayerModeDialog", "HostButton");
-            }
-            finally
-            {
-                _openingHost = false;
-            }
+            _wantHost = true;
+            _multiplayerButton.onClick.Invoke();
+            _wantHost = false;
         }
 
-        // Runs after the game's own listener has opened its Join/Host choice.
         private static void AfterMultiplayerPressed()
         {
-            if (!Enabled || _openingHost) return;
-            var title = SceneManager.GetSceneByName(TitleScene);
-            if (!Press(title, "MultiPlayerModeDialog", "JoinButton"))
-                RuntimeEntryPoint.LogSource?.LogInfo("Multiplayer opened the game's own menu: its Join choice is not available.");
+            try
+            {
+                if (!_wantHost && !Enabled) return;
+                // The game's choice is answered for the player, so it stays out of sight while that happens.
+                _pendingChoice = _wantHost ? "HostButton" : "JoinButton";
+                _pendingUntil = Time.realtimeSinceStartup + (_wantHost ? 2f : 0.75f);
+                _veilUntil = _pendingUntil;
+                if (_choiceVeil != null && _choiceVeil) _choiceVeil.alpha = 0;
+                TickChoice(SceneManager.GetSceneByName(TitleScene));
+            }
+            catch (Exception error)
+            {
+                RuntimeEntryPoint.LogSource?.LogWarning("Multiplayer opened the game's own menu: " + error.Message);
+                _pendingChoice = null;
+                Unveil();
+            }
         }
 
-        private static bool Press(Scene scene, string dialogName, string buttonName)
+        // The game's Join can be unavailable for a few frames while it checks Steam, so the press is retried briefly.
+        private static void TickChoice(Scene title)
         {
-            foreach (var root in scene.GetRootGameObjects())
+            var now = Time.realtimeSinceStartup;
+            if (_pendingChoice != null)
             {
-                if (root.name != dialogName) continue;
+                if (Press(title, _pendingChoice))
+                {
+                    // Join loads the browser scene, so the choice stays hidden until this scene goes.
+                    _veilUntil = _pendingChoice == "JoinButton" ? now + 6f : now;
+                    _pendingChoice = null;
+                }
+                else if (now >= _pendingUntil)
+                {
+                    RuntimeEntryPoint.LogSource?.LogInfo("Multiplayer opened the game's own menu: its "
+                        + (_pendingChoice == "JoinButton" ? "Join" : "Host") + " choice is not available.");
+                    _pendingChoice = null;
+                    _veilUntil = now;
+                }
+            }
+            if (_pendingChoice == null && now >= _veilUntil) Unveil();
+        }
+
+        private static void Unveil()
+        {
+            if (_choiceVeil != null && _choiceVeil && _choiceVeil.alpha < 1) _choiceVeil.alpha = 1;
+        }
+
+        private static bool Press(Scene scene, string buttonName)
+        {
+            if (!scene.IsValid() || !scene.isLoaded) return false;
+            foreach (var root in scene.GetRootGameObjects())
                 foreach (var button in root.GetComponentsInChildren<Button>(true))
                 {
                     // Offline, the game makes Join unavailable and its own choice stays open.
-                    if (button == null || button.name != buttonName || !button.interactable) continue;
+                    if (button == null || button.name != buttonName || !button.interactable
+                        || !button.gameObject.activeInHierarchy || !Under(button.transform, ChoiceDialog)) continue;
                     button.onClick.Invoke();
                     return true;
                 }
-            }
             return false;
         }
 
-        private static Button Find(Scene scene, string name)
+        private static bool Under(Transform transform, string ancestor)
         {
-            foreach (var root in scene.GetRootGameObjects())
-                foreach (var button in root.GetComponentsInChildren<Button>(true))
-                    if (button != null && button.name == name) return button;
-            return null;
+            for (var parent = transform.parent; parent != null; parent = parent.parent)
+                if (parent.name == ancestor) return true;
+            return false;
         }
     }
 }

@@ -14,8 +14,6 @@ namespace Modstoke.Loader
 {
     internal static partial class MultiplayerScreen
     {
-        private const int ModRows = 6;
-
         private sealed class RowView
         {
             internal RectTransform Rect;
@@ -235,8 +233,11 @@ namespace Modstoke.Loader
             _modsHeader.rectTransform.Place(0, 0, 1, 1, 0, 0, U(190), 0);
             Column(header, "SERVER", -U(186), U(102), true);
             Column(header, "YOURS", -U(98), 0, true);
-            _mods = new ModView[ModRows];
-            for (var i = 0; i < ModRows; i++)
+            // As many mod rows as fit between the column header and the Join button.
+            var panelHeight = root.rect.height - bottom - U(130);
+            var modRows = Mathf.Clamp(Mathf.FloorToInt((panelHeight - U(310) - U(92)) / U(38)), 1, 10);
+            _mods = new ModView[modRows];
+            for (var i = 0; i < modRows; i++)
             {
                 var rect = MenuKit.Box(panel, "Mod " + i).Strip(U(310 + i * 38), U(36), U(28), U(28));
                 MenuKit.Fill(MenuKit.Box(rect, "Line").Place(0, 0, 1, 0, 0, 0, 0, -U(1)), null, new Color(MenuKit.Ink.r, MenuKit.Ink.g, MenuKit.Ink.b, 0.08f));

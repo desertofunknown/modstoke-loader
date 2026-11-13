@@ -93,8 +93,22 @@ namespace Modstoke.Loader
             return image;
         }
 
+        /// <summary>A brush-edged panel drawn with the same sprite and material as the mods menu's panels.</summary>
         internal static Image PanelBox(Transform parent, string name)
-            => Fill(Box(parent, name), Panel, PanelTint);
+        {
+            var image = Box(parent, name).gameObject.AddComponent<Image>();
+            image.raycastTarget = false;
+            try
+            {
+                MenuTheme.ApplyPanelBackground(image);
+            }
+            catch (Exception)
+            {
+                image.sprite = Panel;
+                image.color = PanelTint;
+            }
+            return image;
+        }
 
         internal static TextMeshProUGUI Text(Transform parent, string name, string text, float size, bool bold, Color color,
             TextAlignmentOptions align = TextAlignmentOptions.MidlineLeft)
@@ -127,16 +141,26 @@ namespace Modstoke.Loader
             var button = rect.gameObject.AddComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.targetGraphic = hit;
-            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            try
+            {
+                // The screen moves its own focus, so the event system must not walk between these.
+                var navigation = button.navigation;
+                navigation.mode = Navigation.Mode.None;
+                button.navigation = navigation;
+            }
+            catch (Exception)
+            {
+                // Default navigation is harmless: the screen clears the event system's selection each frame.
+            }
             button.onClick.AddListener((UnityAction)(() => onClick()));
             return button;
         }
 
-        /// <summary>A controller button label drawn as a light pill, like the game's prompt glyphs.</summary>
+        /// <summary>A controller button label drawn as a light tag.</summary>
         internal static RectTransform Glyph(Transform parent, string name, string label, float height)
         {
             var rect = Box(parent, name);
-            Fill(rect, Brush, Ink);
+            Fill(rect, null, Ink);
             var text = Text(rect, "Label", label, height * 0.5f, true, Dark, TextAlignmentOptions.Center);
             text.rectTransform.Place(0, 0, 1, 1);
             rect.sizeDelta = new Vector2(Mathf.Max(height, text.preferredWidth + height * 0.6f), height);
