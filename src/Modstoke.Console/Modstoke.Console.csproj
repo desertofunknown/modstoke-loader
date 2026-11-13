@@ -4,7 +4,7 @@
     <OutputType>WinExe</OutputType>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
-    <RuntimeFrameworkVersion>11.0.0-rc.3.26522.148</RuntimeFrameworkVersion>
+    <RuntimeFrameworkVersion>11.0.0</RuntimeFrameworkVersion>
     <AssemblyName>Modstoke.Console</AssemblyName>
     <RootNamespace>Modstoke.Diagnostics</RootNamespace>
     <Title>Modstoke Console</Title>

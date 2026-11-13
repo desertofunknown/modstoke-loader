@@ -32,8 +32,8 @@ namespace Modstoke.Loader
 
     /// <summary>
     /// Checks a manifest's <c>minLoaderVersion</c>. Versions are major.minor.patch with an optional -prerelease
-    /// and +build. A minimum without a prerelease ignores the Loader's own prerelease tag, so "0.4.2" accepts
-    /// "0.4.2-net11-preview"; a minimum with one follows SemVer precedence.
+    /// and +build. A minimum without a prerelease ignores the Loader's own prerelease tag, so "0.4.3" accepts
+    /// "0.4.3-dev"; a minimum with one follows SemVer precedence.
     /// </summary>
     internal static class LoaderVersionRequirement
     {

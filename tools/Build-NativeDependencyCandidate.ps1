@@ -13,7 +13,7 @@ Failure leaves logs and partial output for inspection. Never reuse that director
 param(
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$OutputDirectory,
     [string]$ForkRoot = (Join-Path $PSScriptRoot '..\..\Forks\ReleaseDependencies'),
-    [string]$DotNet = (Join-Path $PSScriptRoot '..\.tools\dotnet-11-rc3\dotnet.exe'),
+    [string]$DotNet = (Get-Command dotnet -ErrorAction Stop).Source,
     [string]$Cargo = 'cargo',
     [string]$Rustc = 'rustc',
     [string]$Linker = 'lld-link.exe',
@@ -24,7 +24,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $utf8 = [Text.UTF8Encoding]::new($false)
 $target = 'x86_64-pc-windows-msvc'
-$sdkVersion = '11.0.100-rc.3.26522.148'
+$sdkVersion = '11.0.100'
 
 function Get-FullPath([string]$Path) {
     return [IO.Path]::TrimEndingDirectorySeparator($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path))
@@ -440,7 +440,7 @@ try {
     }
     $projectPath = Join-Path $jsonBuild 'Alt.Json.csproj'
     Write-NewText $projectPath $project.OuterXml
-    Write-NewJson (Join-Path $output 'global.json') @{ sdk = @{ version = $sdkVersion; rollForward = 'disable'; allowPrerelease = $true } }
+    Write-NewJson (Join-Path $output 'global.json') @{ sdk = @{ version = $sdkVersion; rollForward = 'disable' } }
     $nugetConfig = Join-Path $output 'NuGet.offline.config'
     Write-NewText $nugetConfig '<configuration><packageSources><clear /></packageSources></configuration>'
     $generated = @(Get-ChildItem -LiteralPath $jsonBuild -File -Recurse | Sort-Object FullName | ForEach-Object {

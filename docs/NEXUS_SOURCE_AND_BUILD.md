@@ -54,7 +54,7 @@ The current Windows build environment used by OpenACAI is:
 - Git
 - PowerShell 7 or Windows PowerShell
 - Visual Studio 2022 Build Tools with the Desktop C++ workload and Windows SDK
-- .NET SDK `11.0.100-rc.3.26522.148`
+- .NET SDK `11.0.100`
 - .NET SDK `8.0.x` and `6.0.x` are useful for transitional upstream/forked
   projects that still contain older target frameworks
 - Rust/Cargo `1.96.0`, needed for the Modstoke Native Host and the

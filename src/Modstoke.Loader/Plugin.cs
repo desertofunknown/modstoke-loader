@@ -42,7 +42,7 @@ namespace Modstoke.Loader
     {
         public const string PluginGuid = "com.openacai.sotf.endnightloader";
         public const string PluginName = "Modstoke Loader Core";
-        public const string Version = "0.4.3-net11-preview";
+        public const string Version = "0.4.3";
         private const string EnableSonsMenuHarmonyEnvVar = "OPENACAI_ENABLE_SONS_MENU_HARMONY";
         private const string DisableSonsMenuHarmonyEnvVar = "OPENACAI_DISABLE_SONS_MENU_HARMONY";
 
@@ -554,7 +554,7 @@ namespace Modstoke.Loader
                         var root = !string.IsNullOrWhiteSpace(Paths.GameRootPath)
                             ? Paths.GameRootPath
                             : Path.GetDirectoryName(Paths.ExecutablePath);
-                        var path = Path.Combine(root ?? Environment.CurrentDirectory, "openacai-redloader-compat-net11-preview.log");
+                        var path = Path.Combine(root ?? Environment.CurrentDirectory, "openacai-redloader-compat.log");
                         var stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
                         _traceWriter = new StreamWriter(stream) { AutoFlush = true };
                     }

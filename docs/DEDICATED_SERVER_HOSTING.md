@@ -93,7 +93,7 @@ console.
 A native mod may set `description` and `minLoaderVersion` in its manifest. A
 mod whose `minLoaderVersion` is newer than the Loader is not loaded
 (`loader-too-old`). A minimum without a prerelease tag ignores the Loader's own
-tag, so `0.4.2` accepts `0.4.2-net11-preview`.
+tag, so `0.4.3` accepts a `0.4.3-dev` build.
 
 `help` lists every command, including those added by mods.
 

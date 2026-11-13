@@ -19,7 +19,7 @@ The current local install is an IL2CPP Unity player.
 | IL2CPP metadata | `SonsOfTheForest_Data\il2cpp_data\Metadata\global-metadata.dat`, metadata version `29` |
 | Boot config | `gfx-enable-gfx-jobs=1`, `gfx-enable-native-gfx-jobs=1`, `gc-max-time-slice=3` |
 | Doorstop | `.doorstop_version` is `4.5.0` |
-| Loader runtime | The active build targets `.NET 11.0.0-rc.3.26522.148`; the LTS package line remains on `openacai-net10-port` |
+| Loader runtime | The active build targets `.NET 11.0.0`; the LTS package line remains on `openacai-net10-port` |
 | BepInEx | `BepInEx 6.0.0` compatibility runtime, OpenACAI fork source includes IL2CPP hook-state diagnostics, atomic interop generation, and Modstoke Loader version branding |
 | Il2CppInterop | OpenACAI BepInEx fork source builds with `1.5.2-ci.1063` |
 | HarmonyX | Preview baseline `2.16.1` |

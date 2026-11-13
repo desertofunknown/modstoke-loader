@@ -2,7 +2,7 @@
 param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$ForkRoot = (Join-Path $PSScriptRoot '..\..\Forks\ReleaseDependencies'),
-    [string]$DotNet = (Join-Path $PSScriptRoot '..\.tools\dotnet-11-rc3\dotnet.exe')
+    [string]$DotNet = (Get-Command dotnet -ErrorAction Stop).Source
 )
 
 $ErrorActionPreference = 'Stop'

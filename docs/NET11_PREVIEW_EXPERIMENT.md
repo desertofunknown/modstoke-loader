@@ -2,6 +2,10 @@
 
 Developer: Alex Cooper
 
+.NET 11.0.0 was released on November 10, 2026. The loader now builds with SDK
+`11.0.100` and runs on the 11.0.0 runtime; this page records the preview and RC work
+that led there.
+
 This branch is an experiment, not the public stable loader line. The current
 stable modernization branch remains `openacai-net10-port` because .NET 10 is an
 LTS release supported until November 2028. The experimental branch now targets

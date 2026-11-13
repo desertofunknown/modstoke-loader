@@ -4,26 +4,26 @@
   "name": "Modstoke Loader",
   "publisher": "OpenACAI",
   "description": "Modstoke Loader by OpenACAI. Independent mod loader and SDK for Sons of the Forest.",
-  "version": "0.4.3-net11-preview",
+  "version": "0.4.3",
   "developer": "Alex Cooper",
   "license": "GPL-3.0-or-later",
   "game": "Sons Of The Forest",
   "bootstrap": "Modstoke Native Host plus Modstoke bootstrap/preloader orchestration with transitional BepInEx.Unity.IL2CPP compatibility APIs",
   "runtime": {
     "targetFramework": "net11.0",
-    "dotnetRuntime": "11.0.0-rc.3.26522.148",
+    "dotnetRuntime": "11.0.0",
     "hosting": "hostfxr",
     "nativeHost": "Modstoke Native Host",
     "runtimeConfig": "Modstoke/Runtime/Modstoke.Loader.runtimeconfig.json",
     "targetAssembly": "Modstoke/Runtime/Modstoke.Bootstrap.dll",
     "preloaderAssembly": "Modstoke/Runtime/Modstoke.Preloader.dll",
     "targetAssemblyCompatibilityBridge": "BepInEx/core/BepInEx.Unity.IL2CPP.dll",
-    "note": "Experimental loader branch targeting .NET 11 RC3. The runtime release candidate does not establish loader or mod compatibility; verify startup and in-game behavior in Sons Of The Forest before release."
+    "note": "Runs on the bundled .NET 11 runtime; verify startup and in-game behavior in Sons Of The Forest before release."
   },
   "redLoaderCompatibility": {
     "component": "Modstoke Loader Core",
     "coreAssembly": "Modstoke.Loader.dll",
-    "version": "0.4.3-net11-preview",
+    "version": "0.4.3",
     "mode": "openacai-endnight-runtime-hostfxr"
   },
   "installLayout": {
