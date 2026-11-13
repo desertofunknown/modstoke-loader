@@ -48,8 +48,7 @@
     "newGameHint": "最初から始める",
     "chooseMode": "遊び方を選んでください。",
     "continue": "続ける",
-    "delete": "削除",
-    "deleteConfirm": "もう一度押すと削除",
+    "deleteHold": "長押しで削除",
     "saves": { "other": "{count}件のセーブデータ" },
     "reading": "セーブデータを読み込み中…",
     "none": "セーブデータはまだありません。",
@@ -169,6 +168,7 @@
       "voiceCount": { "name": "サウンドチャンネル数", "about": "同時に再生できる音の数です。音が途切れる場合は下げてください。" },
       "proximityChat": { "name": "ボイスチャット", "about": "マルチプレイでのマイクの動作を、プッシュトゥトークか常時オンから選びます。" },
       "menus": { "name": "メニュー", "about": "Modstokeのメニューか、元のままのゲーム本来のメニューを使います。戻すには、Modstoke/UserData/openacai-loader.settings.cfg で classicMenus = false に設定してください。" },
+      "menuSize": { "name": "メニューのサイズ", "about": "Modstokeのメニューとその文字のサイズです。" },
       "textLanguage": { "name": "Modstokeの言語", "about": "このメニューなど、Modstoke独自のテキストの言語です。「ゲームに合わせる」ではゲームの言語を使います。" }
     },
 
@@ -217,6 +217,17 @@
       "modstokeMenus": "Modstoke",
       "gameMenus": "ゲーム本来のメニュー"
     }
+  },
+
+  "confirm": {
+    "keepDisplayTitle": "この表示設定を維持しますか？",
+    "keepDisplayBody": "画面が正しく表示されない場合は、そのままお待ちください。元の設定に自動で戻ります。",
+    "keep": "維持する",
+    "revert": "元に戻す",
+    "revertIn": { "other": "{count}秒後に元に戻ります" },
+    "quitTitle": "ゲームを終了しますか？",
+    "quitBody": "Sons of the Forestを終了し、デスクトップに戻ります。",
+    "quit": "終了"
   },
 
   "multiplayer": {

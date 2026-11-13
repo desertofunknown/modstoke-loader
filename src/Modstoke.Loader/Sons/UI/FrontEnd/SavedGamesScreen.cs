@@ -20,7 +20,7 @@ namespace Modstoke.Loader
     internal sealed class SavedGamesScreen : FrontScreen
     {
         private const float PanelTop = 120, StripHeight = 143, RowsTop = 22, RowHeight = 78, RowGap = 4;
-        private const float DetailsWidth = 440, DoubleClickSeconds = 0.4f, DeleteArmedSeconds = 4f;
+        private const float DetailsWidth = 440, DoubleClickSeconds = 0.4f, HoldSeconds = 1.1f;
         private static readonly string[] Modes = { "Normal", "Hard", "HardSurvival", "Peaceful", "Creative", "Custom" };
 
         private sealed class Save
@@ -59,14 +59,14 @@ namespace Modstoke.Loader
         private SectionNav _sections;
         private TextMeshProUGUI _section, _title, _count, _note;
         private TextMeshProUGUI _saveTitle, _saveLine, _saveWhen, _newTitle, _newHint, _modeAbout, _continueLabel, _deleteLabel;
-        private RectTransform _savePane, _newPane, _scrollThumb;
+        private RectTransform _savePane, _newPane, _scrollThumb, _holdFill;
         private RawImage _bigThumbnail;
         private Focusable _delete;
         // Row 0 is the new game; saves follow.
         private int _top, _selected, _lastClickSlot = -1;
-        private float _deleteArmedUntil, _lastClick, _trackHeight;
+        private float _lastClick, _trackHeight, _hold;
         private string _problem;
-        private bool _listed, _built;
+        private bool _listed, _built, _holdingButton, _awaitRelease;
 
         internal SavedGamesScreen(SaveGameType type)
         {
@@ -153,11 +153,18 @@ namespace Modstoke.Loader
             _saveWhen = MenuKit.Text(_savePane, "When", "", U(15), false, MenuKit.Muted);
             _saveWhen.rectTransform.Strip(y + U(66), U(22), 0, 0);
 
+            // Deleting is held, not pressed: a bar fills while the button is down and letting go early cancels.
             var delete = MenuKit.Box(_savePane, "Delete").Place(0, 0, 1, 0, 0, U(86), 0, -U(126));
+            _holdFill = MenuKit.Box(delete, "Hold").Place(0, 0, 0, 1);
+            MenuKit.Fill(_holdFill, null, MenuKit.Hex(0xF0A08A, 0.28f));
             _deleteLabel = MenuKit.Text(delete, "Label", "", U(14), true, MenuKit.Muted, TextAlignmentOptions.Center);
             _deleteLabel.characterSpacing = 12;
             _deleteLabel.rectTransform.Place(0, 0, 1, 1);
-            _delete = Add(delete, DeleteSelected, _ => PaintDelete());
+            _delete = Add(delete, () =>
+            {
+                _holdingButton = true;
+                MenuSound.Play(MenuCue.Move);
+            }, _ => PaintDelete());
 
             var go = MenuKit.Box(_savePane, "Continue").Place(0, 0, 1, 0, 0, U(20), 0, -U(78));
             var fill = MenuKit.Fill(go, MenuKit.Brush, MenuKit.Soft);
@@ -237,7 +244,7 @@ namespace Modstoke.Loader
                     new(Text["common.back"], "B", "ESC", () => FrontEnd.Pop()),
                     new(Text["common.select"], "A", "ENTER", null)
                 };
-                if (SelectedSave() != null) prompts.Add(new PromptSpec(Text["games.delete"], "X", "DEL", DeleteSelected));
+                if (SelectedSave() != null) prompts.Add(new PromptSpec(Text["games.deleteHold"], "X", "DEL", null));
                 return prompts;
             }
         }
@@ -247,11 +254,10 @@ namespace Modstoke.Loader
         {
             if (Focused == null || SlotOf(Focused) >= 0 || _sections != null && ReferenceEquals(Focused.Rect, _sections.Other))
                 return false;
+            MenuSound.Play(MenuCue.Back);
             FocusSelectedRow();
             return true;
         }
-
-        internal override void OnAlt1() => DeleteSelected();
 
         internal override void OnSection(int step)
         {
@@ -275,11 +281,7 @@ namespace Modstoke.Loader
                 Paint();
             }
             else LoadOneThumbnail();
-            if (_deleteArmedUntil > 0 && Time.unscaledTime >= _deleteArmedUntil)
-            {
-                _deleteArmedUntil = 0;
-                PaintDelete();
-            }
+            TickHold();
             if (FrontInput.Scroll != 0 && Count > _rows.Length)
             {
                 _top = Mathf.Clamp(_top - Math.Sign(FrontInput.Scroll), 0, Count - _rows.Length);
@@ -319,7 +321,7 @@ namespace Modstoke.Loader
         private void Select(int index)
         {
             _selected = index;
-            _deleteArmedUntil = 0;
+            _hold = 0;
             _problem = null;
             PaintHighlights();
             PaintDetails();
@@ -445,6 +447,7 @@ namespace Modstoke.Loader
                 // Custom settings and host options are the game's own pages, which this layer already steps
                 // aside for; anything else is now loading.
                 if (!GameMenus.DialogOpen) FrontEnd.StepAside();
+                MenuSound.Play(MenuCue.Activate);
                 RuntimeEntryPoint.LogSource?.LogInfo("The menu asked the game to " + what + ".");
             }
             catch (Exception error)
@@ -462,6 +465,7 @@ namespace Modstoke.Loader
             {
                 GameMenus.Join();
                 FrontEnd.StepAside();
+                MenuSound.Play(MenuCue.Forward);
             }
             catch (Exception error)
             {
@@ -469,18 +473,32 @@ namespace Modstoke.Loader
             }
         }
 
-        // The first press arms it and says so; the second deletes.
-        private void DeleteSelected()
+        // X or Delete held, or the button held after a press or click on it, fills the bar; full, the save goes.
+        private void TickHold()
+        {
+            if (_holdingButton && !FrontInput.ConfirmHeld && !FrontInput.Held) _holdingButton = false;
+            var holding = SelectedSave() != null && (FrontInput.Alt1Held || _holdingButton);
+            // After a deletion the button must be let go before the next one can start.
+            if (!holding) _awaitRelease = false;
+            if (_awaitRelease) holding = false;
+            var before = _hold;
+            _hold = holding ? _hold + Time.unscaledDeltaTime / HoldSeconds : Mathf.MoveTowards(_hold, 0, Time.unscaledDeltaTime * 4f);
+            if (_hold >= 1f)
+            {
+                _hold = 0;
+                _awaitRelease = true;
+                _holdingButton = false;
+                DeleteNow();
+            }
+            if (holding && before == 0) MenuSound.Play(MenuCue.Move);
+            if (before != _hold) PaintDelete();
+        }
+
+        private void DeleteNow()
         {
             var save = SelectedSave();
             if (save == null) return;
-            if (Time.unscaledTime >= _deleteArmedUntil)
-            {
-                _deleteArmedUntil = Time.unscaledTime + DeleteArmedSeconds;
-                PaintDelete();
-                return;
-            }
-            _deleteArmedUntil = 0;
+            MenuSound.Play(MenuCue.Off);
             try
             {
                 SaveGameManager.Delete(_type, (int)save.Id);
@@ -565,9 +583,10 @@ namespace Modstoke.Loader
         private void PaintDelete()
         {
             if (!_built) return;
-            var armed = Time.unscaledTime < _deleteArmedUntil;
-            _deleteLabel.text = Text[armed ? "games.deleteConfirm" : "games.delete"].ToUpper(Languages.CultureOf(Languages.Current));
-            _deleteLabel.color = armed ? MenuKit.Red : ReferenceEquals(Focused, _delete) ? MenuKit.Ink : MenuKit.Muted;
+            var holding = _hold > 0;
+            _holdFill.anchorMax = new Vector2(Mathf.Clamp01(_hold), 1);
+            _deleteLabel.text = Text["games.deleteHold"].ToUpper(Languages.CultureOf(Languages.Current));
+            _deleteLabel.color = holding ? MenuKit.Red : ReferenceEquals(Focused, _delete) ? MenuKit.Ink : MenuKit.Muted;
         }
 
         // A hosted game carries the name it was hosted under; other saves are known by mode and day.

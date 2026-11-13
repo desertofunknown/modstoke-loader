@@ -30,7 +30,7 @@ namespace Modstoke.Loader
         private sealed class PromptView
         {
             internal RectTransform Rect;
-            internal (RectTransform Rect, TextMeshProUGUI Label) Tag;
+            internal KeyTag Tag;
             internal TextMeshProUGUI Label;
             internal PromptSpec Spec;
         }
@@ -88,27 +88,65 @@ namespace Modstoke.Loader
         internal static void Push(FrontScreen screen)
         {
             var canvas = Canvas();
-            if (Stack.Count > 0) Stack[Stack.Count - 1].Root.gameObject.SetActive(false);
-            else _stackLayout = LayoutVersion;
+            if (Stack.Count == 0) _stackLayout = LayoutVersion;
             screen.Create(canvas);
             Stack.Add(screen);
+            ApplyVisibility(true);
             screen.Opened();
             screen.Appear();
             FrontInput.Pause();
             _promptsDirty = true;
         }
 
-        internal static void Pop()
+        /// <summary>Closes the top screen; <paramref name="quiet"/> when the caller has played a sound of its own.</summary>
+        internal static void Pop(bool quiet = false)
         {
             // The first screen is the title menu, which has nowhere to go back to.
             if (Stack.Count <= 1) return;
-            Remove(Stack.Count - 1);
+            if (!quiet) MenuSound.Play(MenuCue.Back);
+            var overlay = Stack[Stack.Count - 1].Overlay;
+            Remove(Stack.Count - 1, true);
             var top = Stack[Stack.Count - 1];
-            top.Root.gameObject.SetActive(_shown);
+            ApplyVisibility();
             top.DeviceChanged();
-            top.Appear();
+            // Under a dialog the screen never left, so it does not arrive again.
+            if (!overlay) top.Appear();
             FrontInput.Pause(0.15f);
             _promptsDirty = true;
+        }
+
+        /// <summary>The menu text size from the Loader settings changed; every layout is built again at it.</summary>
+        internal static void ScaleChanged()
+        {
+            _width = _height = 0;
+            ReadScale();
+        }
+
+        private static float _scale = 1f;
+
+        private static void ReadScale()
+        {
+            var text = RuntimePreferences.ReadText("menuScale", "1");
+            _scale = float.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value)
+                ? Mathf.Clamp(value, 0.8f, 1.3f)
+                : 1f;
+        }
+
+        // The top screen shows; a dialog on top keeps the screen under it in view. With <paramref name="animate"/>
+        // a screen going out of view fades rather than vanishing, as when another opens over it.
+        private static void ApplyVisibility(bool animate = false)
+        {
+            var top = Stack.Count - 1;
+            for (var i = 0; i < Stack.Count; i++)
+            {
+                var root = Stack[i].Root;
+                if (root == null || !root) continue;
+                var visible = _shown && (i == top || i == top - 1 && Stack[top].Overlay);
+                if (root.gameObject.activeSelf == visible) continue;
+                if (visible) root.gameObject.SetActive(true);
+                else if (animate) Stack[i].Leave(false);
+                else root.gameObject.SetActive(false);
+            }
         }
 
         /// <summary>A screen's prompts changed, for instance with what is selected.</summary>
@@ -135,7 +173,9 @@ namespace Modstoke.Loader
             try
             {
                 Moving.TickAll();
+                WorldBlur.Want(false);
                 Run();
+                WorldBlur.Tick();
             }
             catch (Exception error)
             {
@@ -208,6 +248,7 @@ namespace Modstoke.Loader
             }
             if (_promptsDirty) BuildPrompts(top);
             top.Animate();
+            WorldBlur.Want(top.Blurs);
 
             // The mods menu and the console draw over this layer and take input while open.
             if (MenuController.IsVisible || ConsoleOverlay.IsVisible)
@@ -238,9 +279,10 @@ namespace Modstoke.Loader
         private static void Measure()
         {
             if (Screen.width == _width && Screen.height == _height) return;
+            if (_width == 0) ReadScale();
             _width = Screen.width;
             _height = Screen.height;
-            S = Mathf.Max(0.25f, _height / DesignHeight);
+            S = Mathf.Max(0.25f, _height / DesignHeight * _scale);
             LayoutVersion++;
         }
 
@@ -257,7 +299,7 @@ namespace Modstoke.Loader
             top.Root.gameObject.SetActive(true);
             // Focus goes back where the screen keeps it.
             top.Opened();
-            top.Root.gameObject.SetActive(_shown);
+            ApplyVisibility();
             if (_prompts != null && _prompts) Object.Destroy(_prompts.gameObject);
             _prompts = null;
             _promptsDirty = true;
@@ -267,18 +309,21 @@ namespace Modstoke.Loader
         {
             if (_shown == shown) return;
             _shown = shown;
-            if (Stack.Count > 0) Stack[Stack.Count - 1].Root.gameObject.SetActive(shown);
+            ApplyVisibility();
+            // Coming back from the game's own pages, the menu fades in rather than popping up.
+            if (shown && Stack.Count > 0) Stack[Stack.Count - 1].Appear();
             if (_prompts != null && _prompts) _prompts.gameObject.SetActive(shown);
             if (shown) FrontInput.Pause();
         }
 
-        private static void Remove(int index)
+        private static void Remove(int index, bool animate = false)
         {
             var screen = Stack[index];
             Stack.RemoveAt(index);
             try { screen.Closed(); }
             catch (Exception error) { RuntimeEntryPoint.LogSource?.LogWarning("A menu screen did not close cleanly: " + error.Message); }
-            if (screen.Root != null && screen.Root) Object.Destroy(screen.Root.gameObject);
+            if (animate) screen.Leave(true);
+            else if (screen.Root != null && screen.Root) Object.Destroy(screen.Root.gameObject);
         }
 
         private static void Clear()
@@ -328,13 +373,14 @@ namespace Modstoke.Loader
                 // A prompt with no button on this device is not shown.
                 if (key == null) continue;
                 var view = new PromptView { Rect = MenuKit.Box(_prompts, spec.Label), Spec = spec };
-                view.Tag = MenuKit.Tag(view.Rect, "Key", key, U(TagHeight));
+                view.Tag = new KeyTag(view.Rect, "Key", U(TagHeight)).Set(key, _pad);
                 view.Label = MenuKit.Text(view.Rect, "Label", spec.Label.ToUpper(Languages.CultureOf(Languages.Current)), U(19), true, MenuKit.Soft);
                 view.Label.characterSpacing = 14;
-                var tagWidth = view.Tag.Rect.sizeDelta.x;
+                var tag = view.Tag.Size;
                 var labelWidth = view.Label.GetPreferredValues(view.Label.text).x + U(4);
-                var width = tagWidth + U(10) + labelWidth;
-                view.Tag.Rect.At(0, (U(PromptHeight) - U(TagHeight)) / 2, tagWidth, U(TagHeight));
+                var width = tag.x + U(10) + labelWidth;
+                view.Tag.Rect.At(0, (U(PromptHeight) - tag.y) / 2, tag.x, tag.y);
+                var tagWidth = tag.x;
                 view.Label.rectTransform.At(tagWidth + U(10), 0, labelWidth, U(PromptHeight));
                 // Back sits on the left as in the game; everything else on the right.
                 if (PromptViews.Count == 0)
@@ -362,10 +408,16 @@ namespace Modstoke.Loader
             {
                 if (_hoverPrompt != null && _hoverPrompt.Label) _hoverPrompt.Label.color = MenuKit.Soft;
                 _hoverPrompt = over;
-                if (over != null) over.Label.color = MenuKit.Ink;
+                if (over != null)
+                {
+                    over.Label.color = MenuKit.Ink;
+                    if (over.Spec.Click != null) MenuSound.Play(MenuCue.Move);
+                }
             }
             if (!FrontInput.Click || over?.Spec.Click == null) return false;
+            var before = MenuSound.Played;
             over.Spec.Click();
+            if (MenuSound.Played == before) MenuSound.Play(MenuCue.Forward);
             return true;
         }
     }

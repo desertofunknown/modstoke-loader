@@ -209,8 +209,6 @@ namespace Modstoke.Loader
 
         internal static void Options() => PressBar("SettingsButton");
 
-        internal static void Exit() => PressBar("ExitButton");
-
         internal static List<uint> SaveIds(SaveGameType type)
         {
             var ids = new List<uint>();

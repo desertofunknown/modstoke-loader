@@ -92,7 +92,7 @@ namespace Modstoke.Loader
         private static readonly List<Hot> Hots = new();
         private static readonly HashSet<string> FailedInputs = new();
         private static readonly Dictionary<string, string> ModeNames = new(StringComparer.OrdinalIgnoreCase);
-        private static readonly bool[] PadDown = new bool[8];
+        private static readonly bool[] PadDown = new bool[9];
         private static Hot _hover, _searchHot;
         private static string _search = "", _mine = "", _steerDevice;
         private static int _selected, _top, _tool, _hoverRow = -1, _repeatDir, _lastClickRow = -1, _scan, _layout;
@@ -365,7 +365,10 @@ namespace Modstoke.Loader
             bool refresh = Pressed(4, pad.buttonWest.isPressed), direct = Pressed(5, pad.buttonNorth.isPressed);
             bool left = Pressed(6, pad.dpad.left.isPressed || pad.leftStick.left.isPressed);
             bool right = Pressed(7, pad.dpad.right.isPressed || pad.leftStick.right.isPressed);
+            var back = Pressed(8, pad.buttonEast.isPressed);
             if (!_acting) return;
+            // The game's own Back handler leaves the screen on B; the sound is Modstoke's.
+            if (back) MenuSound.Play(MenuCue.Back);
             Steer("pad", pad.dpad.up.isPressed || pad.leftStick.up.isPressed, pad.dpad.down.isPressed || pad.leftStick.down.isPressed);
             if (left) Sideways(-1);
             if (right) Sideways(1);
@@ -392,6 +395,7 @@ namespace Modstoke.Loader
                 TypeSearch();
                 return;
             }
+            if (UnityEngine.Input.GetKeyDown(KeyCode.Escape)) MenuSound.Play(MenuCue.Back);
             Steer("keys", UnityEngine.Input.GetKey(KeyCode.UpArrow), UnityEngine.Input.GetKey(KeyCode.DownArrow));
             if (UnityEngine.Input.GetKeyDown(KeyCode.LeftArrow)) Sideways(-1);
             if (UnityEngine.Input.GetKeyDown(KeyCode.RightArrow)) Sideways(1);
@@ -480,6 +484,7 @@ namespace Modstoke.Loader
                 _hover?.Hover?.Invoke(false);
                 _hover = over;
                 over?.Hover?.Invoke(true);
+                if (over != null) MenuSound.Play(MenuCue.Move);
             }
             if (UnityEngine.Input.GetMouseButtonDown(0))
             {
@@ -530,6 +535,7 @@ namespace Modstoke.Loader
 
         private static void SetTab(Tab tab)
         {
+            if (_rootObject != null && tab != _tab) MenuSound.Play(MenuCue.Forward);
             _tab = tab;
             _top = 0;
             _selected = 0;
@@ -557,6 +563,7 @@ namespace Modstoke.Loader
 
         private static void Refresh()
         {
+            MenuSound.Play(MenuCue.Forward);
             try
             {
                 _gui.Refresh();
@@ -571,6 +578,7 @@ namespace Modstoke.Loader
 
         private static void JoinByIp()
         {
+            MenuSound.Play(MenuCue.Forward);
             try
             {
                 _gui.DirectJoin();
@@ -584,6 +592,7 @@ namespace Modstoke.Loader
         // Hosting is set up on the title scene, so this leaves for it and the Host screen opens there.
         private static void Host()
         {
+            MenuSound.Play(MenuCue.Forward);
             FrontEnd.HostWhenTitleLoads();
             if (!BackOut()) FrontEnd.CancelHost();
         }
@@ -635,12 +644,14 @@ namespace Modstoke.Loader
             else if (_descending == natural) _descending = !natural;
             else _sort = SortKey.None;
             _filterDirty = true;
+            MenuSound.Play(MenuCue.Move);
         }
 
         private static void ToggleChip(int index)
         {
             Chips[index] = !Chips[index];
             _filterDirty = true;
+            MenuSound.Play(Chips[index] ? MenuCue.On : MenuCue.Off);
         }
 
         private static void Move(int step)
@@ -665,12 +676,15 @@ namespace Modstoke.Loader
         private static void Sideways(int step)
         {
             if (_zone == Zone.List) return;
-            _tool = Mathf.Clamp(_tool + step, 0, 3);
+            var tool = Mathf.Clamp(_tool + step, 0, 3);
+            if (tool != _tool) MenuSound.Play(MenuCue.Move);
+            _tool = tool;
             Paint();
         }
 
         private static void SetZone(Zone zone)
         {
+            if (zone != _zone) MenuSound.Play(MenuCue.Move);
             _zone = zone;
             _tool = Mathf.Clamp(_tool, 0, 3);
             Paint();
@@ -679,6 +693,7 @@ namespace Modstoke.Loader
         private static void Select(int index)
         {
             if (index < 0 || index >= Entries.Count) return;
+            if (index != _selected || _zone != Zone.List) MenuSound.Play(MenuCue.Move);
             _zone = Zone.List;
             _selected = index;
             _selectedId = Entries[index].Id;
@@ -712,6 +727,7 @@ namespace Modstoke.Loader
                     if (ElementAddress(all, i) == entry.Id) index = i;
                 var row = JoinRow();
                 row.Setup(entry.Info, index, all, browser);
+                MenuSound.Play(MenuCue.Activate);
                 row.DoJoin();
                 RuntimeEntryPoint.LogSource?.LogInfo("Joining " + entry.Name + ".");
             }

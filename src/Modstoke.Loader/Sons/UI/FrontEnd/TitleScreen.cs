@@ -39,7 +39,8 @@ namespace Modstoke.Loader
             AddEntry("title.multiplayer", () => Leave(GameMenus.Join));
             AddEntry("title.options", () => FrontEnd.Push(new OptionsScreen()));
             AddEntry("title.mods", MenuController.Show);
-            AddEntry("title.exit", GameMenus.Exit);
+            AddEntry("title.exit", () => FrontEnd.Push(new ConfirmScreen("confirm.quitTitle", "confirm.quitBody", "confirm.quit",
+                "common.cancel", Application.Quit, cautious: true)));
             // Over the words' glow, so the dark spill never dims it.
             _underline = new Glide(Root, true);
         }
@@ -71,6 +72,9 @@ namespace Modstoke.Loader
 
         // The title menu is the first screen; Back has nowhere to go.
         internal override bool OnBack() => true;
+
+        // The title scene is the backdrop of the title menu itself.
+        internal override bool Blurs => false;
 
         // The game loads another scene for these; the menu steps aside rather than sit over the fade.
         private static void Leave(Action open)

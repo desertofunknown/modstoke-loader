@@ -48,8 +48,7 @@
     "newGameHint": "Aloita alusta",
     "chooseMode": "Valitse, miten haluat pelata.",
     "continue": "Jatka",
-    "delete": "Poista",
-    "deleteConfirm": "Poista painamalla uudelleen",
+    "deleteHold": "Poista pitämällä painettuna",
     "saves": { "one": "{count} tallennettu peli", "other": "{count} tallennettua peliä" },
     "reading": "Luetaan tallennettuja pelejä…",
     "none": "Ei vielä tallennettuja pelejä.",
@@ -169,6 +168,7 @@
       "voiceCount": { "name": "Äänikanavat", "about": "Kuinka monta ääntä voi soida yhtä aikaa. Laske sitä, jos ääni pätkii." },
       "proximityChat": { "name": "Puhechat", "about": "Miten mikrofonisi toimii moninpelissä: paina puhuaksesi tai aina päällä." },
       "menus": { "name": "Valikot", "about": "Modstoken valikot tai pelin omat valikot sellaisina kuin ne olivat. Palaa takaisin asettamalla classicMenus = false tiedostossa Modstoke/UserData/openacai-loader.settings.cfg." },
+      "menuSize": { "name": "Valikoiden koko", "about": "Modstoken valikoiden ja niiden tekstin koko." },
       "textLanguage": { "name": "Modstoken kieli", "about": "Modstoken omien tekstien, kuten näiden valikoiden, kieli. ”Seuraa peliä” käyttää pelin kieltä." }
     },
 
@@ -217,6 +217,17 @@
       "modstokeMenus": "Modstoke",
       "gameMenus": "Pelin omat"
     }
+  },
+
+  "confirm": {
+    "keepDisplayTitle": "Säilytetäänkö nämä näyttöasetukset?",
+    "keepDisplayBody": "Jos kuva näyttää väärältä, odota, niin aiemmat asetukset palaavat itsestään.",
+    "keep": "Säilytä",
+    "revert": "Palauta",
+    "revertIn": { "one": "Palautetaan {count} sekunnin kuluttua", "other": "Palautetaan {count} sekunnin kuluttua" },
+    "quitTitle": "Lopetetaanko peli?",
+    "quitBody": "Sons of the Forest sulkeutuu, ja palaat työpöydälle.",
+    "quit": "Lopeta"
   },
 
   "multiplayer": {

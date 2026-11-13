@@ -72,8 +72,28 @@ namespace Modstoke.Loader
         /// <summary>Starts the short fade and rise a screen arrives with.</summary>
         internal void Appear()
         {
+            _leaving?.Cancel();
+            _leaving = null;
             _appearStart = Time.unscaledTime;
             Animate();
+        }
+
+        private Fading _leaving;
+
+        /// <summary>Fades the screen out, then hides it, or removes it with <paramref name="destroy"/>.</summary>
+        internal void Leave(bool destroy)
+        {
+            if (Root == null || !Root) return;
+            _appearStart = -1;
+            if (!Root.gameObject.activeSelf)
+            {
+                if (destroy) UnityEngine.Object.Destroy(Root.gameObject);
+                return;
+            }
+            // A screen already fading out of view keeps going, unless it now has to be removed for good.
+            if (_leaving != null && !destroy) return;
+            _leaving?.Cancel();
+            _leaving = new Fading(Root, _group, destroy).Begin();
         }
 
         internal void Animate()
@@ -117,6 +137,12 @@ namespace Modstoke.Loader
         /// <summary>A step to the previous (-1) or next (1) section of the menu this screen belongs to.</summary>
         internal virtual void OnSection(int step) { }
 
+        /// <summary>Whether the live world behind this screen is blurred; full-screen menus are, the title row is not.</summary>
+        internal virtual bool Blurs => true;
+
+        /// <summary>A dialog over the screen below it, which stays in view, dimmed, while it is open.</summary>
+        internal virtual bool Overlay => false;
+
         /// <summary>The prompts to show for this screen, left group first.</summary>
         internal virtual IReadOnlyList<PromptSpec> Prompts => Array.Empty<PromptSpec>();
 
@@ -141,6 +167,8 @@ namespace Modstoke.Loader
             if (ReferenceEquals(item, Focused)) return;
             var previous = Focused;
             Focused = item;
+            // Only the player's own moves tick; focus set by the screen itself stays quiet.
+            if (_steering && previous != null && item != null) MenuSound.Play(MenuCue.Move);
             previous?.Paint?.Invoke(false);
             if (previous?.Mark != null && !ReferenceEquals(previous.Mark, item?.Mark)) previous.Mark.Target(null);
             item?.Paint?.Invoke(true);
@@ -162,7 +190,7 @@ namespace Modstoke.Loader
             }
             if (dx != 0 && Focused.Adjust != null)
             {
-                Focused.Adjust(dx);
+                Sounding(MenuCue.Move, () => Focused.Adjust(dx));
                 return;
             }
             var next = Nearest(Focused, dx, dy);
@@ -176,28 +204,41 @@ namespace Modstoke.Loader
                 if (item.Usable && item.Under(FrontInput.Pointer))
                     over = item;
             // The pointer takes focus only when it moves, so it does not fight the keyboard or controller.
-            FromPointer = true;
+            FromPointer = _steering = true;
             try
             {
                 if (over != null && FrontInput.PointerMoved) Focus(over);
                 if (FrontInput.Click && over != null)
                 {
                     Focus(over);
-                    over.Activate?.Invoke();
+                    var clicked = over;
+                    Sounding(MenuCue.Forward, () => clicked.Activate?.Invoke());
                     return;
                 }
                 Pointer(over);
             }
             finally
             {
-                FromPointer = false;
+                FromPointer = _steering = false;
             }
             var move = FrontInput.Move;
-            if (move != Vector2Int.zero) Navigate(move.x, move.y);
+            _steering = true;
+            try
+            {
+                if (move != Vector2Int.zero) Navigate(move.x, move.y);
+            }
+            finally
+            {
+                _steering = false;
+            }
             if (FrontInput.Confirm)
             {
                 if (Focused == null || !Focused.Usable) Focus(First());
-                else Focused.Activate?.Invoke();
+                else
+                {
+                    var focused = Focused;
+                    Sounding(MenuCue.Forward, () => focused.Activate?.Invoke());
+                }
             }
             else if (FrontInput.Back)
             {
@@ -208,6 +249,16 @@ namespace Modstoke.Loader
             else if (FrontInput.PreviousTab) OnTab(-1);
             else if (FrontInput.NextTab) OnTab(1);
             else if (FrontInput.Section != 0) OnSection(FrontInput.Section);
+        }
+
+        private bool _steering;
+
+        /// <summary>Runs an action and plays <paramref name="cue"/> unless the action played a sound of its own.</summary>
+        protected static void Sounding(MenuCue cue, Action action)
+        {
+            var before = MenuSound.Played;
+            action();
+            if (MenuSound.Played == before) MenuSound.Play(cue);
         }
 
         /// <summary>Mouse handling beyond clicks and hover, such as dragging a slider.</summary>

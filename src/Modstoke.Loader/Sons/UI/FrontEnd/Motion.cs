@@ -222,6 +222,54 @@ namespace Modstoke.Loader
         }
     }
 
+    /// <summary>A screen on its way out: it fades over a moment, then is put away or removed.</summary>
+    internal sealed class Fading : Moving
+    {
+        private const float Seconds = 0.12f;
+        private readonly RectTransform _rect;
+        private readonly CanvasGroup _group;
+        private readonly bool _destroy;
+        private float _start;
+        private bool _cancelled;
+
+        internal Fading(RectTransform rect, CanvasGroup group, bool destroy)
+        {
+            _rect = rect;
+            _group = group;
+            _destroy = destroy;
+        }
+
+        protected override bool Alive => !_cancelled && _rect != null && _rect && _group != null && _group;
+
+        internal Fading Begin()
+        {
+            _start = Time.unscaledTime;
+            Start();
+            return this;
+        }
+
+        /// <summary>The screen is wanted again before it finished leaving.</summary>
+        internal void Cancel()
+        {
+            _cancelled = true;
+            Stop();
+        }
+
+        protected override void Step(float dt)
+        {
+            var t = Mathf.Clamp01((Time.unscaledTime - _start) / Seconds);
+            _group.alpha = (1f - t) * (1f - t);
+            if (t < 1f) return;
+            Stop();
+            if (_destroy) Object.Destroy(_rect.gameObject);
+            else
+            {
+                _rect.gameObject.SetActive(false);
+                _group.alpha = 1f;
+            }
+        }
+    }
+
     /// <summary>A number that eases toward its target, for slider fills and scroll positions.</summary>
     internal sealed class Ease
     {

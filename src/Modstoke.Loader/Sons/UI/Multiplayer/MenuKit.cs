@@ -193,17 +193,7 @@ namespace Modstoke.Loader
             return label;
         }
 
-        /// <summary>A small light tag naming a button or key, with its width fitted to the label.</summary>
-        internal static (RectTransform Rect, TextMeshProUGUI Label) Tag(Transform parent, string name, string label, float height)
-        {
-            var rect = Box(parent, name);
-            Fill(rect, null, Ink);
-            var text = Text(rect, "Label", label, height * 0.5f, true, Dark, TextAlignmentOptions.Center);
-            text.rectTransform.Place(0, 0, 1, 1);
-            rect.sizeDelta = new Vector2(TagWidth(text, label, height), height);
-            return (rect, text);
-        }
-
+        /// <summary>The width of a key's tag: its name's width with some room, never narrower than it is tall.</summary>
         internal static float TagWidth(TextMeshProUGUI text, string label, float height)
             => Mathf.Max(height, text.GetPreferredValues(label).x + height * 0.55f);
 

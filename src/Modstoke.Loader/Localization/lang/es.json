@@ -48,8 +48,7 @@
     "newGameHint": "Empezar desde el principio",
     "chooseMode": "Elige cómo quieres jugar.",
     "continue": "Continuar",
-    "delete": "Eliminar",
-    "deleteConfirm": "Pulsa otra vez para eliminar",
+    "deleteHold": "Mantén para eliminar",
     "saves": { "one": "{count} partida guardada", "other": "{count} partidas guardadas" },
     "reading": "Leyendo partidas guardadas…",
     "none": "Aún no hay partidas guardadas.",
@@ -169,6 +168,7 @@
       "voiceCount": { "name": "Canales de sonido", "about": "Cuántos sonidos pueden reproducirse a la vez. Bájalo si el sonido se entrecorta." },
       "proximityChat": { "name": "Chat de voz", "about": "Cómo funciona tu micrófono en multijugador: pulsar para hablar o siempre activo." },
       "menus": { "name": "Menús", "about": "Los menús de Modstoke o los del propio juego tal como eran. Para volver, pon classicMenus = false en Modstoke/UserData/openacai-loader.settings.cfg." },
+      "menuSize": { "name": "Tamaño de los menús", "about": "El tamaño de los menús de Modstoke y de su texto." },
       "textLanguage": { "name": "Idioma de Modstoke", "about": "El idioma de los textos propios de Modstoke, como estos menús. «Seguir al juego» usa el idioma del juego." }
     },
 
@@ -217,6 +217,17 @@
       "modstokeMenus": "Modstoke",
       "gameMenus": "Los del juego"
     }
+  },
+
+  "confirm": {
+    "keepDisplayTitle": "¿Mantener esta configuración de pantalla?",
+    "keepDisplayBody": "Si la pantalla se ve mal, espera y la configuración anterior volverá sola.",
+    "keep": "Mantener",
+    "revert": "Revertir",
+    "revertIn": { "one": "Se revertirá en {count} segundo", "other": "Se revertirá en {count} segundos" },
+    "quitTitle": "¿Salir del juego?",
+    "quitBody": "Sons of the Forest se cerrará y volverás al escritorio.",
+    "quit": "Salir"
   },
 
   "multiplayer": {

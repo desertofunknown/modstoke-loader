@@ -917,6 +917,9 @@
     <Compile Include="Sons/UI/Multiplayer/MultiplayerScreen.cs" />
     <Compile Include="Sons/UI/Multiplayer/MultiplayerScreen.View.cs" />
     <Compile Include="Sons/UI/FrontEnd/Motion.cs" />
+    <Compile Include="Sons/UI/FrontEnd/MenuSound.cs" />
+    <Compile Include="Sons/UI/FrontEnd/Glyphs.cs" />
+    <Compile Include="Sons/UI/FrontEnd/WorldBlur.cs" />
     <Compile Include="Sons/UI/FrontEnd/FrontInput.cs" />
     <Compile Include="Sons/UI/FrontEnd/FrontScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/GameMenus.cs" />
@@ -926,6 +929,7 @@
     <Compile Include="Sons/UI/FrontEnd/SavedGamesScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/OptionsCatalog.cs" />
     <Compile Include="Sons/UI/FrontEnd/OptionsScreen.cs" />
+    <Compile Include="Sons/UI/FrontEnd/ConfirmScreen.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.UiData.cs" />
     <Compile Include="Sons/Inventory/Items.cs" />
     <Compile Include="Sons/Inventory/Items.Pages.cs" />

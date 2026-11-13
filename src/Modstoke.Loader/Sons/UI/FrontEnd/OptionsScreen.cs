@@ -49,7 +49,7 @@ namespace Modstoke.Loader
         private readonly Ease _scroll = new(16f);
         private int _tab, _focusIndex;
         private RectTransform _viewport, _content;
-        private (RectTransform Rect, TextMeshProUGUI Label) _tabLeft, _tabRight;
+        private KeyTag _tabLeft, _tabRight;
         private TextMeshProUGUI _section, _title, _name, _about, _default, _empty;
         private Glitch _titleFlash;
         private Glide _rowMark, _tabMark;
@@ -109,7 +109,7 @@ namespace Modstoke.Loader
         private void BuildTabs(float pad)
         {
             var bar = MenuKit.Box(Root, "Tabs").Strip(U(126), U(44), pad, pad);
-            _tabLeft = MenuKit.Tag(bar, "Previous", "LB", U(TagHeight));
+            _tabLeft = new KeyTag(bar, "Previous", U(TagHeight));
             foreach (var id in OptionsCatalog.TabIds)
             {
                 var view = new TabView { Id = id, Rect = MenuKit.Box(bar, id) };
@@ -122,7 +122,7 @@ namespace Modstoke.Loader
                 _tabs.Add(view);
                 Add(view.Rect, () => SetTab(index), focused => PaintTab(view, focused)).Flash = view.Flash;
             }
-            _tabRight = MenuKit.Tag(bar, "Next", "RB", U(TagHeight));
+            _tabRight = new KeyTag(bar, "Next", U(TagHeight));
             _tabMark = new Glide(bar, true);
         }
 
@@ -324,6 +324,7 @@ namespace Modstoke.Loader
         private void SetTab(int index)
         {
             if (index == _tab || index < 0 || index >= _tabs.Count) return;
+            MenuSound.Play(MenuCue.Forward);
             _tab = _lastTab = index;
             _focusIndex = 0;
             _drag = null;
@@ -342,6 +343,7 @@ namespace Modstoke.Loader
             if (row.Open != null)
             {
                 SaveNow();
+                MenuSound.Play(MenuCue.Forward);
                 row.Open();
                 return;
             }
@@ -356,13 +358,33 @@ namespace Modstoke.Loader
             var direction = 1;
             if (FromPointer && RectTransformUtility.ScreenPointToLocalPointInRectangle(view.Control, FrontInput.Pointer, null, out var local))
                 direction = local.x < view.Control.rect.center.x ? -1 : 1;
-            Changed(view, row.Step(direction, !FromPointer));
+            var wrap = !FromPointer;
+            Change(view, () => row.Step(direction, wrap));
         }
 
         private void Adjust(RowView view, int direction)
         {
             if (view.Row.Open != null) return;
-            Changed(view, view.Row.Step(direction, false));
+            Change(view, () => view.Row.Step(direction, false));
+        }
+
+        // A change of resolution or window mode can leave the screen unreadable; it is kept only when confirmed.
+        private static readonly HashSet<string> DisplayRows = new() { "resolution", "windowMode" };
+
+        private void Change(RowView view, Func<bool> change)
+        {
+            var row = view.Row;
+            var before = DisplayRows.Contains(row.Id) ? row.Snapshot() : null;
+            var changed = change();
+            Changed(view, changed);
+            if (!changed || before == null) return;
+            FrontEnd.Push(new ConfirmScreen("confirm.keepDisplayTitle", "confirm.keepDisplayBody", "confirm.keep", "confirm.revert",
+                SaveNow, () =>
+                {
+                    row.Restore(before);
+                    SaveNow();
+                    PaintRows();
+                }, seconds: 15f));
         }
 
         private void SetFromPointer(RowView view)
@@ -375,13 +397,16 @@ namespace Modstoke.Loader
         private void ResetFocused()
         {
             var view = _rows.FirstOrDefault(row => ReferenceEquals(row.Focus, Focused));
-            if (view != null) Changed(view, view.Row.Reset());
+            if (view != null) Change(view, view.Row.Reset);
         }
 
         private void Changed(RowView view, bool changed)
         {
             if (!changed) return;
             _saveAt = Time.unscaledTime + SaveDelay;
+            // Something switched on or off sounds like a switch; a step along a list or slider ticks.
+            var row = view.Row;
+            MenuSound.Play(row.Count == 2 ? (row.Index == 1 ? MenuCue.On : MenuCue.Off) : MenuCue.Move);
             view.Focus.Flash?.Pulse();
             // Other rows may follow this one, as the graphics options follow the preset.
             PaintRows();
@@ -428,13 +453,13 @@ namespace Modstoke.Loader
         {
             if (_tabs.Count == 0) return;
             var pad = FrontEnd.PadActive;
-            SetTag(_tabLeft, pad ? "LB" : "Q");
-            SetTag(_tabRight, pad ? "RB" : "E");
+            _tabLeft.Set(pad ? "LB" : "Q", pad);
+            _tabRight.Set(pad ? "RB" : "E", pad);
             var x = 0f;
             var height = U(44);
-            var items = new List<(RectTransform Rect, float Width, float Height)> { (_tabLeft.Rect, _tabLeft.Rect.sizeDelta.x, U(TagHeight)) };
+            var items = new List<(RectTransform Rect, float Width, float Height)> { (_tabLeft.Rect, _tabLeft.Size.x, _tabLeft.Size.y) };
             items.AddRange(_tabs.Select(tab => (tab.Rect, tab.Width, height)));
-            items.Add((_tabRight.Rect, _tabRight.Rect.sizeDelta.x, U(TagHeight)));
+            items.Add((_tabRight.Rect, _tabRight.Size.x, _tabRight.Size.y));
             foreach (var (rect, width, itemHeight) in items)
             {
                 rect.At(x, (height - itemHeight) / 2, width, itemHeight);
@@ -443,12 +468,6 @@ namespace Modstoke.Loader
             for (var i = 0; i < _tabs.Count; i++) PaintTab(_tabs[i], ReferenceEquals(Focused?.Rect, _tabs[i].Rect));
             _tabMark.Target(_tabs[_tab].Under, false);
             _tabMark.Follow();
-        }
-
-        private void SetTag((RectTransform Rect, TextMeshProUGUI Label) tag, string text)
-        {
-            tag.Label.text = text;
-            tag.Rect.sizeDelta = new Vector2(MenuKit.TagWidth(tag.Label, text, U(TagHeight)), U(TagHeight));
         }
 
         private void PaintTab(TabView view, bool focused)

@@ -36,6 +36,10 @@ namespace Modstoke.Loader
         internal static bool Click { get; private set; }
         /// <summary>The left mouse button is down, for dragging.</summary>
         internal static bool Held { get; private set; }
+        /// <summary>The first extra action's button is held down: X on a controller, Delete on a keyboard.</summary>
+        internal static bool Alt1Held { get; private set; }
+        /// <summary>The confirm button is held down: A on a controller, Enter or Space on a keyboard.</summary>
+        internal static bool ConfirmHeld { get; private set; }
         internal static float Scroll { get; private set; }
 
         /// <summary>Whether a controller is the device in use, by the game's own flag.</summary>
@@ -71,6 +75,10 @@ namespace Modstoke.Loader
             bool confirm = false, back = false, alt1 = false, alt2 = false, previous = false, next = false;
             var section = 0;
             ReadPad(ref held, ref confirm, ref back, ref alt1, ref alt2, ref previous, ref next, ref section);
+            // Index 0 and 2 of the pad's tracked buttons are its confirm and X buttons, held or not.
+            Alt1Held = acting && (UnityEngine.Input.GetKey(KeyCode.Delete) || PadDown[2]);
+            ConfirmHeld = acting && (UnityEngine.Input.GetKey(KeyCode.Return) || UnityEngine.Input.GetKey(KeyCode.KeypadEnter)
+                || UnityEngine.Input.GetKey(KeyCode.Space) || PadDown[0]);
 
             // One axis at a time, vertical first, so a diagonal stick does not skip sideways.
             if (held.y != 0) held.x = 0;

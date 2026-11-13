@@ -48,8 +48,7 @@
     "newGameHint": "從頭開始",
     "chooseMode": "選擇你想要的玩法。",
     "continue": "繼續",
-    "delete": "刪除",
-    "deleteConfirm": "再按一次即可刪除",
+    "deleteHold": "按住以刪除",
     "saves": { "other": "{count} 個存檔" },
     "reading": "正在讀取存檔……",
     "none": "還沒有存檔。",
@@ -169,6 +168,7 @@
       "voiceCount": { "name": "音訊聲道", "about": "可同時播放的聲音數量。如果聲音斷斷續續，請調低此項。" },
       "proximityChat": { "name": "語音聊天", "about": "多人遊戲中麥克風的運作方式：按鍵通話或一律開啟。" },
       "menus": { "name": "選單", "about": "使用 Modstoke 的選單，或遊戲原本的選單。如需改回，請在 Modstoke/UserData/openacai-loader.settings.cfg 中設定 classicMenus = false。" },
+      "menuSize": { "name": "選單大小", "about": "Modstoke 選單及其文字的大小。" },
       "textLanguage": { "name": "Modstoke 語言", "about": "Modstoke 本身文字（例如這些選單）的語言。選擇「跟隨遊戲」時會使用遊戲的語言。" }
     },
 
@@ -217,6 +217,17 @@
       "modstokeMenus": "Modstoke",
       "gameMenus": "遊戲原版"
     }
+  },
+
+  "confirm": {
+    "keepDisplayTitle": "要保留這些顯示設定嗎？",
+    "keepDisplayBody": "如果畫面顯示不正常，請稍候，先前的設定會自動恢復。",
+    "keep": "保留",
+    "revert": "還原",
+    "revertIn": { "other": "{count} 秒後還原" },
+    "quitTitle": "要離開遊戲嗎？",
+    "quitBody": "Sons of the Forest 將會關閉，並返回桌面。",
+    "quit": "離開"
   },
 
   "multiplayer": {

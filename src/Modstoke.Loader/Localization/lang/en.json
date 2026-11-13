@@ -48,8 +48,7 @@
     "newGameHint": "Start from the beginning",
     "chooseMode": "Choose how you want to play.",
     "continue": "Continue",
-    "delete": "Delete",
-    "deleteConfirm": "Press again to delete",
+    "deleteHold": "Hold to delete",
     "saves": { "one": "{count} saved game", "other": "{count} saved games" },
     "reading": "Reading saved games…",
     "none": "No saved games yet.",
@@ -169,6 +168,7 @@
       "voiceCount": { "name": "Sound channels", "about": "How many sounds can play at once. Lower it if the sound stutters." },
       "proximityChat": { "name": "Voice chat", "about": "How your microphone works in multiplayer: push to talk, or always on." },
       "menus": { "name": "Menus", "about": "Modstoke's menus, or the game's own as they were. To come back, set classicMenus = false in Modstoke/UserData/openacai-loader.settings.cfg." },
+      "menuSize": { "name": "Menu size", "about": "The size of Modstoke's menus and their text." },
       "textLanguage": { "name": "Modstoke language", "about": "The language of Modstoke's own text, such as these menus. Following the game uses the game's language." }
     },
 
@@ -217,6 +217,17 @@
       "modstokeMenus": "Modstoke",
       "gameMenus": "The game's own"
     }
+  },
+
+  "confirm": {
+    "keepDisplayTitle": "Keep these display settings?",
+    "keepDisplayBody": "If the screen looks wrong, wait and the previous settings come back by themselves.",
+    "keep": "Keep",
+    "revert": "Revert",
+    "revertIn": { "one": "Going back in {count} second", "other": "Going back in {count} seconds" },
+    "quitTitle": "Quit the game?",
+    "quitBody": "Sons of the Forest will close and return you to the desktop.",
+    "quit": "Quit"
   },
 
   "multiplayer": {

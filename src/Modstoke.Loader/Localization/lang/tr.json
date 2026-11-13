@@ -48,8 +48,7 @@
     "newGameHint": "En baştan başlayın",
     "chooseMode": "Nasıl oynamak istediğinizi seçin.",
     "continue": "Devam et",
-    "delete": "Sil",
-    "deleteConfirm": "Silmek için tekrar basın",
+    "deleteHold": "Silmek için basılı tutun",
     "saves": { "one": "{count} kayıtlı oyun", "other": "{count} kayıtlı oyun" },
     "reading": "Kayıtlı oyunlar okunuyor…",
     "none": "Henüz kayıtlı oyun yok.",
@@ -169,6 +168,7 @@
       "voiceCount": { "name": "Ses kanalları", "about": "Aynı anda kaç sesin çalabileceği. Ses takılıyorsa düşürün." },
       "proximityChat": { "name": "Sesli sohbet", "about": "Çok oyunculu oyunda mikrofonunuzun nasıl çalıştığı: bas-konuş veya her zaman açık." },
       "menus": { "name": "Menüler", "about": "Modstoke menüleri veya oyunun eskisi gibi kendi menüleri. Geri dönmek için Modstoke/UserData/openacai-loader.settings.cfg dosyasında classicMenus = false ayarını yapın." },
+      "menuSize": { "name": "Menü boyutu", "about": "Modstoke menülerinin ve metinlerinin boyutu." },
       "textLanguage": { "name": "Modstoke dili", "about": "Bu menüler gibi Modstoke’un kendi metinlerinin dili. “Oyunla aynı” seçeneği oyunun dilini kullanır." }
     },
 
@@ -217,6 +217,17 @@
       "modstokeMenus": "Modstoke",
       "gameMenus": "Oyunun kendi menüleri"
     }
+  },
+
+  "confirm": {
+    "keepDisplayTitle": "Bu ekran ayarları korunsun mu?",
+    "keepDisplayBody": "Ekran yanlış görünüyorsa bekleyin; önceki ayarlar kendiliğinden geri gelir.",
+    "keep": "Koru",
+    "revert": "Geri al",
+    "revertIn": { "one": "{count} saniye sonra geri alınacak", "other": "{count} saniye sonra geri alınacak" },
+    "quitTitle": "Oyundan çıkılsın mı?",
+    "quitBody": "Sons of the Forest kapanacak ve masaüstüne döneceksiniz.",
+    "quit": "Çık"
   },
 
   "multiplayer": {

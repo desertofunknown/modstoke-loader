@@ -56,7 +56,7 @@ namespace Modstoke.Loader
         private sealed class Prompt
         {
             internal RectTransform Rect;
-            internal (RectTransform Rect, TextMeshProUGUI Label) Tag;
+            internal KeyTag Tag;
             internal TextMeshProUGUI Label;
             // The button or key shown for each device; null hides the prompt on that device.
             internal string Pad, Key;
@@ -75,7 +75,7 @@ namespace Modstoke.Loader
         private static Tab _paintedTab = (Tab)(-1);
         private static IntPtr _paintedSelection;
         private static RectTransform _listRect, _modsHeader, _progress;
-        private static (RectTransform Rect, TextMeshProUGUI Label) _tabLeft, _tabRight;
+        private static KeyTag _tabLeft, _tabRight;
         private static TextMeshProUGUI _status, _empty, _kind, _name, _sub, _noticeTitle, _noticeText, _joinLabel, _searchText;
         private static Image _noticeBox, _noticeBar, _joinFill, _searchBox;
         private static float _bottom, _nextProgress;
@@ -148,7 +148,7 @@ namespace Modstoke.Loader
             MenuKit.Hairline(panel, "Top", 0, U(28), U(28));
             var panelHeight = root.rect.height - _bottom - U(PanelTop);
 
-            _tabLeft = MenuKit.Tag(panel, "PreviousTab", "LB", U(TagHeight));
+            _tabLeft = new KeyTag(panel, "PreviousTab", U(TagHeight));
             for (var i = 0; i < TabKeys.Length; i++)
             {
                 var tab = (Tab)i;
@@ -167,7 +167,7 @@ namespace Modstoke.Loader
                     PaintTabs();
                 });
             }
-            _tabRight = MenuKit.Tag(panel, "NextTab", "RB", U(TagHeight));
+            _tabRight = new KeyTag(panel, "NextTab", U(TagHeight));
             _tabMark = new Glide(panel, true);
 
             var search = MenuKit.Box(panel, "Search").AtRight(U(28), U(20), U(300), U(40));
@@ -361,7 +361,11 @@ namespace Modstoke.Loader
         private static void BuildFooter(RectTransform root, float pad)
         {
             var footer = MenuKit.Box(root, "Prompts").Place(0, 0, 1, 0, pad, U(30), pad, -U(30 + FooterHeight));
-            AddPrompt(footer, "common.back", "B", "ESC", false, () => BackOut());
+            AddPrompt(footer, "common.back", "B", "ESC", false, () =>
+            {
+                MenuSound.Play(MenuCue.Back);
+                BackOut();
+            });
             AddPrompt(footer, "multiplayer.joinByIp", "Y", "F2", false, JoinByIp);
             AddPrompt(footer, "common.search", null, "F3", false, () => FocusSearch(true));
             AddPrompt(footer, "common.join", "A", "ENTER", true, Activate);
@@ -371,7 +375,7 @@ namespace Modstoke.Loader
         private static void AddPrompt(RectTransform footer, string key, string pad, string keyboard, bool right, Action click)
         {
             var prompt = new Prompt { Rect = MenuKit.Box(footer, key), Pad = pad, Key = keyboard, Right = right };
-            prompt.Tag = MenuKit.Tag(prompt.Rect, "Key", keyboard ?? pad ?? "", U(TagHeight));
+            prompt.Tag = new KeyTag(prompt.Rect, "Key", U(TagHeight));
             prompt.Label = MenuKit.Text(prompt.Rect, "Label", Upper(T[key]), U(19), true, MenuKit.Soft);
             prompt.Label.characterSpacing = 14;
             Prompts.Add(prompt);
@@ -382,14 +386,14 @@ namespace Modstoke.Loader
         private static void PaintHints()
         {
             if (_rootObject == null || !_rootObject) return;
-            SetTag(_tabLeft, _pad ? "LB" : "Q");
-            SetTag(_tabRight, _pad ? "RB" : "E");
+            _tabLeft.Set(_pad ? "LB" : "Q", _pad);
+            _tabRight.Set(_pad ? "RB" : "E", _pad);
             _sections.Paint(_pad);
             foreach (var prompt in Prompts)
             {
                 var text = _pad ? prompt.Pad : prompt.Key;
                 prompt.Rect.gameObject.SetActive(text != null);
-                if (text != null) SetTag(prompt.Tag, text);
+                if (text != null) prompt.Tag.Set(text, _pad);
             }
 
             var x = U(28);
@@ -397,7 +401,7 @@ namespace Modstoke.Loader
             {
                 var tab = Array.Find(TabViews, view => view.Rect == item);
                 var width = tab != null ? tab.Width : item.sizeDelta.x;
-                var height = tab != null ? U(44) : U(TagHeight);
+                var height = tab != null ? U(44) : item.sizeDelta.y;
                 item.At(x, U(18) + (U(44) - height) / 2, width, height);
                 x += width + U(tab != null ? 2 : 6);
             }
@@ -406,10 +410,11 @@ namespace Modstoke.Loader
             foreach (var prompt in Prompts)
             {
                 if (!prompt.Rect.gameObject.activeSelf) continue;
-                var tagWidth = prompt.Tag.Rect.sizeDelta.x;
+                var tag = prompt.Tag.Size;
+                var tagWidth = tag.x;
                 var labelWidth = prompt.Label.GetPreferredValues(prompt.Label.text).x + U(4);
                 var width = tagWidth + U(10) + labelWidth;
-                prompt.Tag.Rect.At(0, (U(FooterHeight) - U(TagHeight)) / 2, tagWidth, U(TagHeight));
+                prompt.Tag.Rect.At(0, (U(FooterHeight) - tag.y) / 2, tagWidth, tag.y);
                 prompt.Label.rectTransform.At(tagWidth + U(10), 0, labelWidth, U(FooterHeight));
                 if (prompt.Right)
                 {
@@ -422,12 +427,6 @@ namespace Modstoke.Loader
                     left += width + U(38);
                 }
             }
-        }
-
-        private static void SetTag((RectTransform Rect, TextMeshProUGUI Label) tag, string text)
-        {
-            tag.Label.text = text;
-            tag.Rect.sizeDelta = new Vector2(MenuKit.TagWidth(tag.Label, text, U(TagHeight)), U(TagHeight));
         }
 
         private static void Paint()

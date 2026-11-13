@@ -8,14 +8,15 @@ using UnityEngine;
 namespace Modstoke.Loader
 {
     /// <summary>
-    /// The Join | Host switch at the top right of the multiplayer screens: the open section on a brush stroke,
-    /// the other one clickable, and the buttons that step between them for the device in use.
+    /// The Join | Host switch at the top right of the multiplayer screens: the open section bright and
+    /// underlined, the other one clickable, and the buttons that step between them for the device in use.
     /// </summary>
     internal sealed class SectionNav
     {
         private const float TagHeight = 24, Height = 48;
         private readonly RectTransform _rect;
-        private readonly (RectTransform Rect, TextMeshProUGUI Label) _previous, _next, _join, _host;
+        private readonly KeyTag _previous, _next;
+        private readonly (RectTransform Rect, TextMeshProUGUI Label) _join, _host;
         private readonly bool _hostOpen;
 
         internal SectionNav(RectTransform root, float right, float top, bool hostOpen)
@@ -24,10 +25,10 @@ namespace Modstoke.Loader
             _rect = MenuKit.Box(root, "Sections");
             _rect.anchorMin = _rect.anchorMax = _rect.pivot = new Vector2(1, 1);
             _rect.anchoredPosition = new Vector2(-right, -top);
-            _previous = MenuKit.Tag(_rect, "Previous", "LT", FrontEnd.U(TagHeight));
+            _previous = new KeyTag(_rect, "Previous", FrontEnd.U(TagHeight));
             _join = Item("Join", !hostOpen);
             _host = Item("Host", hostOpen);
-            _next = MenuKit.Tag(_rect, "Next", "RT", FrontEnd.U(TagHeight));
+            _next = new KeyTag(_rect, "Next", FrontEnd.U(TagHeight));
         }
 
         /// <summary>The section that is not open; a click on it switches.</summary>
@@ -39,10 +40,10 @@ namespace Modstoke.Loader
         internal void Paint(bool pad)
         {
             var culture = Languages.CultureOf(Languages.Current);
-            Fit(_join, FrontEnd.Text["common.join"].ToUpper(culture), !_hostOpen);
-            Fit(_host, FrontEnd.Text["common.host"].ToUpper(culture), _hostOpen);
-            Label(_previous, pad ? "LT" : "");
-            Label(_next, pad ? "RT" : "TAB");
+            Fit(_join, FrontEnd.Text["common.join"].ToUpper(culture));
+            Fit(_host, FrontEnd.Text["common.host"].ToUpper(culture));
+            _previous.Set(pad ? "LT" : "", pad);
+            _next.Set(pad ? "RT" : "TAB", pad);
 
             var x = 0f;
             var gap = FrontEnd.U(6);
@@ -69,18 +70,10 @@ namespace Modstoke.Loader
             return (rect, label);
         }
 
-        private static void Fit((RectTransform Rect, TextMeshProUGUI Label) item, string text, bool open)
+        private static void Fit((RectTransform Rect, TextMeshProUGUI Label) item, string text)
         {
             item.Label.text = text;
             item.Rect.sizeDelta = new Vector2(item.Label.GetPreferredValues(text).x + FrontEnd.U(28), FrontEnd.U(Height));
-        }
-
-        private static void Label((RectTransform Rect, TextMeshProUGUI Label) tag, string text)
-        {
-            tag.Rect.gameObject.SetActive(text.Length > 0);
-            if (text.Length == 0) return;
-            tag.Label.text = text;
-            tag.Rect.sizeDelta = new Vector2(MenuKit.TagWidth(tag.Label, text, FrontEnd.U(TagHeight)), FrontEnd.U(TagHeight));
         }
     }
 }

@@ -48,8 +48,7 @@
     "newGameHint": "Börja från början",
     "chooseMode": "Välj hur du vill spela.",
     "continue": "Fortsätt",
-    "delete": "Radera",
-    "deleteConfirm": "Tryck igen för att radera",
+    "deleteHold": "Håll in för att radera",
     "saves": { "one": "{count} sparat spel", "other": "{count} sparade spel" },
     "reading": "Läser sparade spel…",
     "none": "Inga sparade spel än.",
@@ -169,6 +168,7 @@
       "voiceCount": { "name": "Ljudkanaler", "about": "Hur många ljud som kan spelas samtidigt. Sänk det om ljudet hackar." },
       "proximityChat": { "name": "Röstchatt", "about": "Hur din mikrofon fungerar i flerspelarläge: tryck för att tala eller alltid på." },
       "menus": { "name": "Menyer", "about": "Modstokes menyer eller spelets egna som de var. Ställ in classicMenus = false i Modstoke/UserData/openacai-loader.settings.cfg för att komma tillbaka." },
+      "menuSize": { "name": "Menystorlek", "about": "Storleken på Modstokes menyer och deras text." },
       "textLanguage": { "name": "Modstokes språk", "about": "Språket i Modstokes egna texter, till exempel de här menyerna. ”Följ spelet” använder spelets språk." }
     },
 
@@ -217,6 +217,17 @@
       "modstokeMenus": "Modstoke",
       "gameMenus": "Spelets egna"
     }
+  },
+
+  "confirm": {
+    "keepDisplayTitle": "Behålla de här bildskärmsinställningarna?",
+    "keepDisplayBody": "Om bilden ser fel ut, vänta så kommer de tidigare inställningarna tillbaka av sig själva.",
+    "keep": "Behåll",
+    "revert": "Återställ",
+    "revertIn": { "one": "Återgår om {count} sekund", "other": "Återgår om {count} sekunder" },
+    "quitTitle": "Avsluta spelet?",
+    "quitBody": "Sons of the Forest stängs och du kommer tillbaka till skrivbordet.",
+    "quit": "Avsluta"
   },
 
   "multiplayer": {

@@ -43,6 +43,11 @@ namespace Modstoke.Loader
         /// <summary>For a row that opens something instead of holding a value.</summary>
         internal virtual Action Open => null;
 
+        /// <summary>The stored value as it is now, to put back with <see cref="Restore"/>; null where not supported.</summary>
+        internal virtual string Snapshot() => null;
+
+        internal virtual void Restore(string value) { }
+
         protected static Strings Text => FrontEnd.Text;
     }
 
@@ -111,6 +116,13 @@ namespace Modstoke.Loader
             if (IsDefault) return false;
             GameSettingsManager.SetSetting(_key, _default);
             return true;
+        }
+
+        internal override string Snapshot() => Current;
+
+        internal override void Restore(string value)
+        {
+            if (value != null) GameSettingsManager.SetSetting(_key, value);
         }
     }
 
@@ -413,7 +425,11 @@ namespace Modstoke.Loader
                     {
                         ("false", () => FrontEnd.Text["options.value.modstokeMenus"]),
                         ("true", () => FrontEnd.Text["options.value.gameMenus"])
-                    }, FrontEnd.SettingChanged)),
+                    }, FrontEnd.SettingChanged),
+                    new LoaderChoice("menuSize", "menuScale", "1", new[] { 0.9f, 1f, 1.1f, 1.2f }
+                        .Select(scale => (scale.ToString(CultureInfo.InvariantCulture),
+                            (Func<string>)(() => scale.ToString("P0", Languages.CultureOf(Languages.Current)))))
+                        .ToArray(), FrontEnd.ScaleChanged)),
                 Section("language",
                     new LoaderChoice("textLanguage", "language", "auto",
                         new (string, Func<string>)[] { ("auto", () => FrontEnd.Text["options.value.followGame"]) }

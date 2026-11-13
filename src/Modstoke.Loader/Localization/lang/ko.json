@@ -48,8 +48,7 @@
     "newGameHint": "처음부터 시작",
     "chooseMode": "어떻게 플레이할지 선택하세요.",
     "continue": "계속하기",
-    "delete": "삭제",
-    "deleteConfirm": "다시 누르면 삭제됩니다",
+    "deleteHold": "길게 눌러 삭제",
     "saves": { "other": "저장된 게임 {count}개" },
     "reading": "저장된 게임을 읽는 중…",
     "none": "아직 저장된 게임이 없습니다.",
@@ -169,6 +168,7 @@
       "voiceCount": { "name": "사운드 채널", "about": "동시에 재생할 수 있는 소리의 수입니다. 소리가 끊기면 낮추세요." },
       "proximityChat": { "name": "음성 채팅", "about": "멀티플레이에서 마이크가 작동하는 방식입니다. 눌러서 말하기 또는 항상 켜기 중에서 고릅니다." },
       "menus": { "name": "메뉴", "about": "Modstoke의 메뉴 또는 원래 그대로인 게임 자체 메뉴입니다. 되돌리려면 Modstoke/UserData/openacai-loader.settings.cfg에서 classicMenus = false로 설정하세요." },
+      "menuSize": { "name": "메뉴 크기", "about": "Modstoke 메뉴와 그 텍스트의 크기입니다." },
       "textLanguage": { "name": "Modstoke 언어", "about": "이 메뉴처럼 Modstoke 자체 텍스트의 언어입니다. ‘게임 따르기’를 선택하면 게임의 언어를 사용합니다." }
     },
 
@@ -217,6 +217,17 @@
       "modstokeMenus": "Modstoke",
       "gameMenus": "게임 자체 메뉴"
     }
+  },
+
+  "confirm": {
+    "keepDisplayTitle": "이 디스플레이 설정을 유지하시겠습니까?",
+    "keepDisplayBody": "화면이 이상하게 보이면 기다리세요. 이전 설정으로 자동으로 돌아갑니다.",
+    "keep": "유지",
+    "revert": "되돌리기",
+    "revertIn": { "other": "{count}초 후 되돌아갑니다" },
+    "quitTitle": "게임을 종료하시겠습니까?",
+    "quitBody": "Sons of the Forest가 닫히고 바탕 화면으로 돌아갑니다.",
+    "quit": "종료"
   },
 
   "multiplayer": {

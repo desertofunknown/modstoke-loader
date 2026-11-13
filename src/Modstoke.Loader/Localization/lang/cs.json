@@ -48,8 +48,7 @@
     "newGameHint": "Začít od začátku",
     "chooseMode": "Zvolte, jak chcete hrát.",
     "continue": "Pokračovat",
-    "delete": "Smazat",
-    "deleteConfirm": "Dalším stisknutím smažete",
+    "deleteHold": "Podržením smažete",
     "saves": { "one": "{count} uložená hra", "few": "{count} uložené hry", "other": "{count} uložených her" },
     "reading": "Načítají se uložené hry…",
     "none": "Zatím žádné uložené hry.",
@@ -169,6 +168,7 @@
       "voiceCount": { "name": "Zvukové kanály", "about": "Kolik zvuků může hrát najednou. Snižte počet, pokud zvuk zadrhává." },
       "proximityChat": { "name": "Hlasový chat", "about": "Jak funguje váš mikrofon ve hře více hráčů: stisknout a mluvit, nebo stále zapnutý." },
       "menus": { "name": "Nabídky", "about": "Nabídky Modstoke, nebo původní nabídky hry. Pro návrat nastavte classicMenus = false v souboru Modstoke/UserData/openacai-loader.settings.cfg." },
+      "menuSize": { "name": "Velikost nabídek", "about": "Velikost nabídek Modstoke a jejich textu." },
       "textLanguage": { "name": "Jazyk Modstoke", "about": "Jazyk vlastních textů Modstoke, například těchto nabídek. Volba „Podle hry“ použije jazyk hry." }
     },
 
@@ -217,6 +217,17 @@
       "modstokeMenus": "Modstoke",
       "gameMenus": "Nabídky hry"
     }
+  },
+
+  "confirm": {
+    "keepDisplayTitle": "Ponechat tato nastavení zobrazení?",
+    "keepDisplayBody": "Pokud obraz nevypadá správně, počkejte a předchozí nastavení se vrátí samo.",
+    "keep": "Ponechat",
+    "revert": "Vrátit",
+    "revertIn": { "one": "Návrat za {count} sekundu", "few": "Návrat za {count} sekundy", "other": "Návrat za {count} sekund" },
+    "quitTitle": "Ukončit hru?",
+    "quitBody": "Hra Sons of the Forest se zavře a vrátí vás na plochu.",
+    "quit": "Ukončit"
   },
 
   "multiplayer": {
