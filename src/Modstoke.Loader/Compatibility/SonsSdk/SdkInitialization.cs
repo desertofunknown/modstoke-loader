@@ -259,21 +259,10 @@ namespace Modstoke.Loader
 
         private static Task InitializeServices()
         {
-            var stage = "client input";
+            if (!LoaderEnvironment.IsDedicatedServer) SetUpClientUi();
+            var stage = "mod save serializers";
             try
             {
-                if (!LoaderEnvironment.IsDedicatedServer)
-                {
-                    global::SonsSdk.GlobalInput.Init();
-                    stage = "modal dialogs";
-                    GenericModalDialog.Setup();
-                    stage = "tooltips";
-                    TooltipProvider.Setup();
-                    stage = "linked UI";
-                    SonsUiTools.Init();
-                }
-
-                stage = "mod save serializers";
                 SonsSaveTools.Init();
                 stage = "world records";
                 global::Modstoke.Sons.WorldRecords.Initialize();
@@ -291,6 +280,25 @@ namespace Modstoke.Loader
             catch (Exception error)
             {
                 throw new InvalidOperationException("Shared SDK initialization failed at " + stage + ".", error);
+            }
+        }
+
+        // Client UI is set up as far as the title screen allows. A dialog or tooltip prefab the game hasn't loaded yet
+        // (its modal manager comes up with the title scene, not always before this runs) must not take the save,
+        // network and world services after it down too; dialogs set themselves up again when first shown.
+        internal static void SetUpClientUi()
+        {
+            foreach (var (stage, setUp) in new (string, Action)[]
+            {
+                ("client input", global::SonsSdk.GlobalInput.Init), ("modal dialogs", GenericModalDialog.Setup),
+                ("tooltips", TooltipProvider.Setup), ("linked UI", SonsUiTools.Init)
+            })
+            {
+                try { setUp(); }
+                catch (Exception error)
+                {
+                    RuntimeEntryPoint.LogSource?.LogWarning("Shared SDK " + stage + " could not be set up yet: " + error.Message);
+                }
             }
         }
 

@@ -362,14 +362,7 @@ internal sealed class SdkInitializationFallback : ISdkInitializationDriver
 
     private static Task InitSystems()
     {
-        if (!LoaderEnvironment.IsDedicatedServer)
-        {
-            global::SonsSdk.GlobalInput.Init();
-            GenericModalDialog.Setup();
-            TooltipProvider.Setup();
-            SonsUiTools.Init();
-        }
-
+        if (!LoaderEnvironment.IsDedicatedServer) SdkInitialization.SetUpClientUi();
         SonsSaveTools.Init();
         global::Modstoke.Sons.WorldRecords.Initialize();
         global::SonsSdk.GameManagers.Init();

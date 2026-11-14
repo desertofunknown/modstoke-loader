@@ -89,7 +89,10 @@ namespace Modstoke.Loader
             if (Dialog.Instance)
                 return;
 
-            var prefab = ModalDialogManager._instance.GameStartingDialog;
+            var manager = ModalDialogManager._instance;
+            var prefab = manager != null && manager ? manager.GameStartingDialog : null;
+            if (prefab == null || !prefab || prefab._gui == null || SUI.SUI.SUIViewport == null)
+                throw new InvalidOperationException("The game's modal dialog or the SDK's viewport is not loaded yet.");
             var gui = prefab._gui;
             GameObject staging = null;
             GameObject newGui = null;
