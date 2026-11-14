@@ -2,6 +2,8 @@
 #![allow(non_upper_case_globals)]
 #![allow(unsafe_op_in_unsafe_fn)]
 
+mod dxbc;
+
 use std::arch::{global_asm, naked_asm};
 use std::cell::Cell;
 use std::collections::HashMap;
@@ -464,6 +466,10 @@ unsafe fn process_attach(hinst_dll: Hinstance) -> Result<(), BootstrapError> {
         None => String::from_utf16_lossy(wide_slice(GetCommandLineW())),
     };
     DRED_WANTED.store(command_line.to_ascii_lowercase().contains("-force-d3d12"), Ordering::SeqCst);
+    BOUND_LIGHT_COUNTS.store(
+        DRED_WANTED.load(Ordering::SeqCst) && std::env::var_os(STOCK_SHADERS_ENV).is_none_or(|value| value != "1"),
+        Ordering::SeqCst,
+    );
     install_get_proc_address_hook()?;
     set_env("DOORSTOP_DISABLE", "TRUE");
     write_state(
@@ -708,6 +714,23 @@ static ORIGINAL_DRAW_INDEXED: AtomicUsize = AtomicUsize::new(0);
 static ORIGINAL_DISPATCH: AtomicUsize = AtomicUsize::new(0);
 static ORIGINAL_EXECUTE_INDIRECT: AtomicUsize = AtomicUsize::new(0);
 
+// On DirectX 12 starts every shader that reads HDRP's tile light counts is created bounded (see dxbc.rs), unless
+// MODSTOKE_DX12_STOCK_SHADERS=1. Bounded copies are made once per shader and kept for the session.
+const STOCK_SHADERS_ENV: &str = "MODSTOKE_DX12_STOCK_SHADERS";
+static BOUND_LIGHT_COUNTS: AtomicBool = AtomicBool::new(false);
+static BOUNDED_SHADERS: Mutex<Option<HashMap<[u8; 16], Option<&'static [u8]>>>> = Mutex::new(None);
+static BOUNDED_SHADER_COUNT: AtomicUsize = AtomicUsize::new(0);
+static BOUNDED_READS: AtomicUsize = AtomicUsize::new(0);
+static BOUNDED_REFUSED: AtomicUsize = AtomicUsize::new(0);
+
+// D3D12_GRAPHICS_PIPELINE_STATE_DESC (656 bytes): root signature, then VS, PS, DS, HS, GS as {pointer, length}, and
+// the cached blob {pointer, length} at 632. D3D12_COMPUTE_PIPELINE_STATE_DESC (56 bytes): CS at 8, cached blob at 32.
+const GRAPHICS_DESC_SIZE: usize = 656;
+const GRAPHICS_SHADERS: [(&str, usize); 5] = [("vertex", 8), ("pixel", 24), ("domain", 40), ("hull", 56), ("geometry", 72)];
+const GRAPHICS_CACHED_BLOB: usize = 632;
+const COMPUTE_DESC_SIZE: usize = 56;
+const COMPUTE_CACHED_BLOB: usize = 32;
+
 thread_local! {
     static LAST_LIST: Cell<(usize, usize)> = const { Cell::new((0, 0)) };
 }
@@ -753,6 +776,7 @@ unsafe fn install_pipeline_tracking(device: *mut c_void) {
     } else {
         "DRED: some pipeline or draw methods could not be hooked; reports may not name shaders"
     });
+    log_line(&light_count_summary());
 }
 
 unsafe fn hook_vtable(vtable: *mut usize, slot: usize, detour: usize, original: &AtomicUsize) -> bool {
@@ -783,11 +807,13 @@ unsafe extern "system" fn create_graphics_pipeline_detour(
     pipeline: *mut *mut c_void,
 ) -> i32 {
     let original: DeviceCreatePipeline = std::mem::transmute(ORIGINAL_CREATE_GRAPHICS_PIPELINE.load(Ordering::Relaxed));
-    let result = original(device, desc, riid, pipeline);
+    let offsets = GRAPHICS_SHADERS.map(|(_, offset)| offset);
+    let result = create_bounded(desc as *const u8, GRAPHICS_DESC_SIZE, &offsets, Some(GRAPHICS_CACHED_BLOB), |copy| {
+        original(device, copy.map_or(desc, |copy| copy.as_ptr().cast()), riid, pipeline)
+    });
     if result >= 0 && !desc.is_null() && !pipeline.is_null() && !(*pipeline).is_null() {
-        // D3D12_GRAPHICS_PIPELINE_STATE_DESC: root signature, then VS, PS, DS, HS, GS as {pointer, length}.
         let desc = desc as *const u8;
-        let shaders = [("vertex", 8), ("pixel", 24), ("domain", 40), ("hull", 56), ("geometry", 72)]
+        let shaders = GRAPHICS_SHADERS
             .iter()
             .filter_map(|&(stage, offset)| shader_ref(stage, desc.add(offset)))
             .collect();
@@ -803,7 +829,9 @@ unsafe extern "system" fn create_compute_pipeline_detour(
     pipeline: *mut *mut c_void,
 ) -> i32 {
     let original: DeviceCreatePipeline = std::mem::transmute(ORIGINAL_CREATE_COMPUTE_PIPELINE.load(Ordering::Relaxed));
-    let result = original(device, desc, riid, pipeline);
+    let result = create_bounded(desc as *const u8, COMPUTE_DESC_SIZE, &[8], Some(COMPUTE_CACHED_BLOB), |copy| {
+        original(device, copy.map_or(desc, |copy| copy.as_ptr().cast()), riid, pipeline)
+    });
     if result >= 0 && !desc.is_null() && !pipeline.is_null() && !(*pipeline).is_null() {
         let shaders = shader_ref("compute", (desc as *const u8).add(8)).into_iter().collect();
         remember_pipeline(*pipeline as usize, shaders, 1);
@@ -820,40 +848,151 @@ unsafe extern "system" fn create_stream_pipeline_detour(
     pipeline: *mut *mut c_void,
 ) -> i32 {
     let original: DeviceCreatePipeline = std::mem::transmute(ORIGINAL_CREATE_STREAM_PIPELINE.load(Ordering::Relaxed));
-    let result = original(device, desc, riid, pipeline);
-    if result >= 0 && !desc.is_null() && !pipeline.is_null() && !(*pipeline).is_null() {
-        let size = *(desc as *const usize);
-        let stream = *((desc as *const u8).add(8) as *const *const u8);
+    let (size, stream) = if desc.is_null() {
+        (0, null())
+    } else {
+        (*(desc as *const usize), *((desc as *const u8).add(8) as *const *const u8))
+    };
+    let found = stream_shaders(stream, size);
+    let offsets: Vec<usize> = found.iter().map(|&(offset, _)| offset).collect();
+    // Shaders found by scanning give no cached blob to drop; a refused copy falls back to the stream as given.
+    let result = create_bounded(stream, if offsets.is_empty() { 0 } else { size }, &offsets, None, |copy| match copy {
+        Some(copy) => {
+            let copied = [size, copy.as_ptr() as usize];
+            original(device, copied.as_ptr().cast(), riid, pipeline)
+        }
+        None => original(device, desc, riid, pipeline),
+    });
+    if result >= 0 && !pipeline.is_null() && !(*pipeline).is_null() {
         let mut shaders: Vec<ShaderRef> = Vec::new();
-        let mut offset = 0;
-        while !stream.is_null() && offset + 24 <= size {
-            let stage = match *(stream.add(offset) as *const u32) {
-                1 => Some("vertex"),
-                2 => Some("pixel"),
-                3 => Some("domain"),
-                4 => Some("hull"),
-                5 => Some("geometry"),
-                6 => Some("compute"),
-                24 => Some("amplification"),
-                25 => Some("mesh"),
-                _ => None,
-            };
-            if let Some(stage) = stage {
-                let bytecode = stream.add(offset + 8);
-                let (address, length) = (*(bytecode as *const usize), *(bytecode.add(8) as *const usize));
-                if address != 0 && (20..=1 << 26).contains(&length) && readable(address, 20) {
-                    if let Some(shader) = shader_ref(stage, bytecode) {
-                        if !shaders.iter().any(|known| known.checksum == shader.checksum) {
-                            shaders.push(shader);
-                        }
-                    }
+        for &(offset, stage) in &found {
+            if let Some(shader) = shader_ref(stage, stream.add(offset)) {
+                if !shaders.iter().any(|known| known.checksum == shader.checksum) {
+                    shaders.push(shader);
                 }
             }
-            offset += 8;
         }
         remember_pipeline(*pipeline as usize, shaders, 2);
     }
     result
+}
+
+/// Offsets of the bytecode {pointer, length} of each shader subobject in a pipeline stream that points at readable
+/// memory.
+unsafe fn stream_shaders(stream: *const u8, size: usize) -> Vec<(usize, &'static str)> {
+    let mut found = Vec::new();
+    let mut offset = 0;
+    while !stream.is_null() && offset + 24 <= size {
+        let stage = match *(stream.add(offset) as *const u32) {
+            1 => Some("vertex"),
+            2 => Some("pixel"),
+            3 => Some("domain"),
+            4 => Some("hull"),
+            5 => Some("geometry"),
+            6 => Some("compute"),
+            24 => Some("amplification"),
+            25 => Some("mesh"),
+            _ => None,
+        };
+        if let Some(stage) = stage {
+            let bytecode = stream.add(offset + 8);
+            let (address, length) = (*(bytecode as *const usize), *(bytecode.add(8) as *const usize));
+            if address != 0 && (20..=1 << 26).contains(&length) && readable(address, length) {
+                found.push((offset + 8, stage));
+            }
+        }
+        offset += 8;
+    }
+    found
+}
+
+/// Creates a pipeline from a copy of its description (`size` bytes at `desc`) with each shader at `shader_offsets`
+/// that reads HDRP's tile light counts swapped for its bounded copy. `create` gets the copy, or `None` to use the
+/// description as given: when nothing needed swapping, or when the runtime refused the copy.
+unsafe fn create_bounded(
+    desc: *const u8,
+    size: usize,
+    shader_offsets: &[usize],
+    cached_blob: Option<usize>,
+    create: impl Fn(Option<&[u8]>) -> i32,
+) -> i32 {
+    if desc.is_null() || size == 0 || !BOUND_LIGHT_COUNTS.load(Ordering::Relaxed) {
+        return create(None);
+    }
+    let mut copy = std::slice::from_raw_parts(desc, size).to_vec();
+    let mut swapped = false;
+    for &offset in shader_offsets {
+        if let Some(bounded) = bounded_shader(copy.as_ptr().add(offset)) {
+            copy[offset..offset + 8].copy_from_slice(&(bounded.as_ptr() as usize).to_le_bytes());
+            copy[offset + 8..offset + 16].copy_from_slice(&bounded.len().to_le_bytes());
+            swapped = true;
+        }
+    }
+    if !swapped {
+        return create(None);
+    }
+    // A cached blob was compiled from the stock shaders.
+    if let Some(at) = cached_blob {
+        copy[at..at + 16].fill(0);
+    }
+    let result = create(Some(&copy));
+    if result >= 0 {
+        return result;
+    }
+    if BOUNDED_REFUSED.fetch_add(1, Ordering::Relaxed) == 0 {
+        log_line(&format!("DX12: the runtime refused a pipeline with bounded light counts (0x{result:08X}); using the stock shaders for it"));
+    }
+    create(None)
+}
+
+/// The bounded copy of the shader a D3D12_SHADER_BYTECODE points at, made the first time the shader is seen.
+unsafe fn bounded_shader(bytecode: *const u8) -> Option<&'static [u8]> {
+    let address = *(bytecode as *const usize);
+    let length = *(bytecode.add(8) as *const usize);
+    if address == 0 || !(32..=1 << 26).contains(&length) || *(address as *const [u8; 4]) != *b"DXBC" {
+        return None;
+    }
+    let checksum = *((address + 4) as *const [u8; 16]);
+    if let Some(known) = BOUNDED_SHADERS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .as_ref()
+        .and_then(|shaders| shaders.get(&checksum).copied())
+    {
+        return known;
+    }
+    let made = dxbc::bound_tile_light_counts(std::slice::from_raw_parts(address as *const u8, length));
+    let reads = made.as_ref().map(|(_, reads)| *reads);
+    let (bounded, first) = {
+        let mut shaders = BOUNDED_SHADERS.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        match shaders.get_or_insert_with(HashMap::new).entry(checksum) {
+            std::collections::hash_map::Entry::Occupied(known) => (*known.get(), false),
+            std::collections::hash_map::Entry::Vacant(slot) => {
+                let bytes = made.map(|(bytes, _)| &*Box::leak(bytes.into_boxed_slice()));
+                (*slot.insert(bytes), true)
+            }
+        }
+    };
+    if let (true, Some(reads)) = (first, reads) {
+        let shaders = BOUNDED_SHADER_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+        let reads = BOUNDED_READS.fetch_add(reads, Ordering::Relaxed) + reads;
+        if shaders.is_power_of_two() {
+            log_line(&format!("DX12: bounded HDRP tile light counts in {shaders} shaders so far ({reads} reads)"));
+        }
+    }
+    bounded
+}
+
+fn light_count_summary() -> String {
+    if !BOUND_LIGHT_COUNTS.load(Ordering::Relaxed) {
+        return format!("Shaders ran as shipped ({STOCK_SHADERS_ENV}=1).\n");
+    }
+    format!(
+        "HDRP tile light counts were bounded in {} shaders ({} reads); pipelines the runtime refused that way: {}.\n",
+        BOUNDED_SHADER_COUNT.load(Ordering::Relaxed),
+        BOUNDED_READS.load(Ordering::Relaxed),
+        BOUNDED_REFUSED.load(Ordering::Relaxed),
+    )
 }
 
 unsafe fn shader_ref(stage: &'static str, bytecode: *const u8) -> Option<ShaderRef> {
@@ -1020,12 +1159,18 @@ unsafe fn append_stalled_draw(report: &mut String, node: *const u8, history: *co
         let pipeline = slot.draws[ring][ordinal].load(Ordering::Relaxed);
         report.push_str(&format!("    recording -{back}: pipeline 0x{pipeline:X}\n"));
         let shaders = guard.as_ref().and_then(|map| map.as_ref()).and_then(|map| map.get(&pipeline)).cloned();
+        let bounded = BOUNDED_SHADERS.try_lock().ok();
         match shaders {
             Some(shaders) if !shaders.is_empty() => {
                 for shader in &shaders {
                     let checksum: String = shader.checksum.iter().map(|byte| format!("{byte:02x}")).collect();
                     let copy = dump_shader(shader, &checksum).map_or_else(String::new, |name| format!(", saved as {name}"));
-                    report.push_str(&format!("      {} shader {checksum} ({} bytes{copy})\n", shader.stage, shader.size));
+                    let was_bounded = bounded
+                        .as_ref()
+                        .and_then(|map| map.as_ref())
+                        .is_some_and(|map| matches!(map.get(&shader.checksum), Some(Some(_))));
+                    let note = if was_bounded { ", ran with its tile light counts bounded" } else { "" };
+                    report.push_str(&format!("      {} shader {checksum} ({} bytes{copy}{note})\n", shader.stage, shader.size));
                 }
             }
             Some(_) => report.push_str("      no shader bytecode was recorded for this pipeline\n"),
@@ -1078,6 +1223,7 @@ unsafe fn write_device_removed_report(device: *mut c_void) {
     let reason: DeviceRemovedReason = std::mem::transmute(*vtable.add(37));
     let reason = reason(device) as u32;
     let mut report = format!("DirectX 12 device removed: 0x{reason:08X} ({})\n", removal_reason_name(reason));
+    report.push_str(&light_count_summary());
     let query: ComQueryInterface = std::mem::transmute(*vtable.add(0));
     let mut dred = null_mut();
     let version = if query(device, &IID_DRED1, &mut dred) >= 0 && !dred.is_null() {

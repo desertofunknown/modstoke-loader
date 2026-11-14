@@ -305,6 +305,18 @@ the installed runtime and release package; ownership is not runtime acceptance.
   pipeline each draw of a command list ran with over that list's last four recordings.
   A report then names the stalled draw's shaders and saves their bytecode next to it
   as `dx12-shader-<stage>-<checksum>.dxbc`.
+  The first such report stopped in HDRP's forward-lit pixel shader. Its punctual,
+  area and reflection-probe loops run as many times as the light count it reads
+  from the fine-pruned tile light list, a 16-bit value. A tile holds at most
+  127 lights (`2 * dwords per tile - 1`), so a larger count can only come from a list
+  that was not built when the draw read it. Each pixel then loops up to 65535 times
+  and the GPU watchdog removes the device. On DirectX 12 starts the host now hands
+  pipeline creation a copy of every shader that reads those counts, with a `umin`
+  after each read that keeps the count within a tile, and recomputes the DXBC
+  checksum (`src/dxbc.rs`). Copies are made once per shader. If the runtime
+  refuses a copy, that pipeline is created from the stock shaders.
+  `MODSTOKE_DX12_STOCK_SHADERS=1` turns the change off. The removal report says how
+  many shaders were bounded and marks the stalled draw's shaders that were.
 - `Modstoke.Bootstrap.dll` as the Doorstop target assembly.
   It records OpenACAI bootstrap and chainloader state. The default
   `openacai-native` path now owns preloader orchestration and the IL2CPP
