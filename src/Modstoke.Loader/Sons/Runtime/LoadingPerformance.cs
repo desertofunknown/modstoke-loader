@@ -110,6 +110,7 @@ namespace Modstoke.Sons
                 gameUploadPersistent = upload.Persistent
             });
             Watched.Clear();
+            SceneOperationStates.Clear();
             _loaderSteps = -1;
             _scannedScene = null;
             _startSequence = null;
@@ -347,6 +348,7 @@ namespace Modstoke.Sons
             {
                 var (loader, previous) = Watched[index];
                 if (!loader) continue;
+                MarkSceneOperations(index, loader);
                 var steps = (loader._initialized ? 1 : 0) | (loader._startLoadSequence ? 2 : 0) |
                     (loader._preloadCompleted > 0 ? 4 : 0) | (loader._singleLoadStarted ? 8 : 0) |
                     (loader._startedTetrahedralizeAsync ? 16 : 0) | (loader._finishedTetrahedralizeAsync ? 32 : 0) |
@@ -366,6 +368,31 @@ namespace Modstoke.Sons
                     progress = loader._totalProgressPercent
                 });
             }
+        }
+
+        private static readonly Dictionary<int, string> SceneOperationStates = new();
+
+        // The loader allows its scenes to activate once their combined progress reaches 90%, where Unity's async scene
+        // loads stop until activation. Each operation's progress (d = done, a = activation allowed) shows which one
+        // holds the world back when the loading threads are idle.
+        private static void MarkSceneOperations(int index, LoadScene loader)
+        {
+            var operations = loader._loadSceneAsync;
+            if (operations == null || operations.Count == 0) return;
+            var state = new System.Text.StringBuilder();
+            state.Append(Mathf.RoundToInt(loader._totalSceneLoadProgressPercent)).Append("% of");
+            for (var operation = 0; operation < operations.Count; operation++)
+            {
+                var item = operations[operation];
+                if (item == null) { state.Append(" -"); continue; }
+                state.Append(' ').Append(Mathf.RoundToInt(item.progress * 100));
+                if (item.isDone) state.Append('d');
+                if (item.allowSceneActivation) state.Append('a');
+            }
+            var text = state.ToString();
+            if (SceneOperationStates.TryGetValue(index, out var last) && string.Equals(last, text, StringComparison.Ordinal)) return;
+            SceneOperationStates[index] = text;
+            PerformanceCapture.Mark("scene-ops", new { loader = index, state = text });
         }
 
         private static void LiftMenuCap()
