@@ -20,6 +20,7 @@ namespace Modstoke.Sons
     /// keeps its small slices.
     /// Menus: the multiplayer scenes carry a 30 fps override, which made the front end's motion visibly choppy; while
     /// no world is loading or running, such overrides are raised to the game's own menu limit.
+    /// The new world is revealed as soon as frames settle instead of after the game's fixed black-screen wait.
     /// During a performance capture each loading step is marked on the timeline.
     /// </summary>
     internal static class LoadingPerformance
@@ -28,6 +29,12 @@ namespace Modstoke.Sons
         private const string WorldLoaderScene = "SonsMainLoading";
         private const int LoadingUploadSliceMs = 24;
         private const int LoadingUploadBufferMb = 256;
+        private const float SettledFrameSeconds = 0.05f;
+        private const int SettledFrames = 10;
+        private static global::Sons.Utils.MainSceneLoadingTrigger _reveal;
+        private static float _nextRevealSearch;
+        private static int _smoothFrames;
+        private static bool _revealHandled;
         private static (int Slice, int Buffer, bool Persistent)? _gameUpload;
         private static readonly Dictionary<IntPtr, (FpsLimiterOverride Override, int Fps)> RaisedOverrides = new();
         private static readonly List<(LoadScene Scene, int Steps)> Watched = new();
@@ -59,6 +66,7 @@ namespace Modstoke.Sons
                 if (_loading)
                 {
                     FindLoaders(state.SceneName);
+                    if (gameScene && !GameBuild.IsDedicatedServer) RevealWhenSettled();
                     if (PerformanceCapture.Active) WatchSteps();
                 }
                 else if (!state.IsInWorld && !gameScene && !GameBuild.IsDedicatedServer)
@@ -105,6 +113,9 @@ namespace Modstoke.Sons
             _scannedScene = null;
             _startSequence = null;
             _playerView = null;
+            _reveal = null;
+            _nextRevealSearch = 0;
+            _revealHandled = false;
         }
 
         // Loaders live in the scenes being loaded, so each newly current scene is searched once.
@@ -154,6 +165,7 @@ namespace Modstoke.Sons
                 (typeof(global::Sons.Cutscenes.CutsceneManager), "OnGameLoadedFromSave"),
                 (typeof(global::Sons.Cutscenes.FadeFromBlackCutscene), "Play"),
                 (typeof(global::Sons.Cutscenes.FadeFromBlackCutscene), "PostStartHook"),
+                (typeof(global::Sons.Utils.MainSceneLoadingTrigger), "Completed"),
                 (typeof(global::LoadSave), "OnSaveSlotSelected")
             })
             {
@@ -212,12 +224,46 @@ namespace Modstoke.Sons
             RuntimeEntryPoint.LogSource?.LogInfo("World loader fixed waits skipped: " + delay + " s before loading, " + cleanup + " s before closing.");
         }
 
+        // MainSceneLoadingTrigger.LateUpdate starts the fade in once the loader has reported completion, a fixed
+        // _completeWaitTrigger has passed (3 s of game time in this build, stretched further by the long frames right
+        // after loading) and PlayerActivationDependencies are all done. Captures show frames running steadily for the
+        // last 2.5 s of that wait with nothing left to do. Once frames have settled the fixed part is dropped, and the
+        // game's own dependency check still decides when the fade starts.
+        private static void RevealWhenSettled()
+        {
+            if (_revealHandled || !LoadScene._isMainSceneLoadComplete) return;
+            if (!_reveal)
+            {
+                if (Time.unscaledTime < _nextRevealSearch) return;
+                _nextRevealSearch = Time.unscaledTime + 0.25f;
+                _reveal = UnityEngine.Object.FindObjectOfType<global::Sons.Utils.MainSceneLoadingTrigger>();
+                _smoothFrames = 0;
+                if (!_reveal) return;
+            }
+            // A negative completion time means the loader has not reported completion yet.
+            if (_reveal._completedTime < 0) return;
+            var wait = _reveal._completeWaitTrigger;
+            var waited = Time.time - _reveal._completedTime;
+            if (_reveal._triggered || waited >= wait)
+            {
+                _revealHandled = true;
+                return;
+            }
+            _smoothFrames = Time.unscaledDeltaTime < SettledFrameSeconds ? _smoothFrames + 1 : 0;
+            if (_smoothFrames < SettledFrames) return;
+            _revealHandled = true;
+            _reveal._completeWaitTrigger = 0;
+            RuntimeEntryPoint.LogSource?.LogInfo($"World fade in no longer waits: frames settled {waited:0.0} s into the game's fixed {wait:0.#} s wait.");
+            PerformanceCapture.Mark("world-reveal", new { fixedWait = wait, waited });
+        }
+
         private static void End(string where)
         {
             _loading = false;
             RestorePriority();
             Watched.Clear();
             _startSequence = null;
+            _reveal = null;
             PerformanceCapture.Mark("loading-finished", where);
         }
 

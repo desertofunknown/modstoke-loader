@@ -469,7 +469,11 @@ the installed runtime and release package; ownership is not runtime acceptance.
   per gen-0 collection. The Loader also sets `SustainedLowLatency`, so the game
   thread does not wait for a blocking full collection. `LoadingPerformance` widens Unity's
   background-integration and async-upload slices from the loading screen until the
-  player is in the world, then restores the game's values.
+  player is in the world, then restores the game's values. It also skips the world
+  loader's fixed 0.2 s and 1 s timers. The game then keeps the screen black for a
+  fixed 3 s of game time before the fade-in (`MainSceneLoadingTrigger`), and that
+  wait is dropped once ten frames in a row take under 50 ms. The game's player
+  activation check still decides when the fade-in starts.
   `InteropNativeCallStubs` owns restored native-call delegates, static
   initialization and invocation bodies. Reference-typed ref/out temporaries are
   written back after the call instead of discarded; a typed local preserves any
