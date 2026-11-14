@@ -124,6 +124,9 @@ type DredGetOutput = unsafe extern "system" fn(this: *mut c_void, output: *mut c
 
 type DeviceCreatePipeline =
     unsafe extern "system" fn(this: *mut c_void, desc: *const c_void, riid: *const Guid, pipeline: *mut *mut c_void) -> i32;
+type DeviceCreateCommandQueue =
+    unsafe extern "system" fn(this: *mut c_void, desc: *const u32, riid: *const Guid, queue: *mut *mut c_void) -> i32;
+type QueueExecuteCommandLists = unsafe extern "system" fn(this: *mut c_void, count: u32, lists: *const *mut c_void);
 type DeviceCreateCommandAllocator =
     unsafe extern "system" fn(this: *mut c_void, kind: u32, riid: *const Guid, allocator: *mut *mut c_void) -> i32;
 type DeviceCreateCommandList = unsafe extern "system" fn(
@@ -714,6 +717,22 @@ static ORIGINAL_DRAW_INDEXED: AtomicUsize = AtomicUsize::new(0);
 static ORIGINAL_DISPATCH: AtomicUsize = AtomicUsize::new(0);
 static ORIGINAL_EXECUTE_INDIRECT: AtomicUsize = AtomicUsize::new(0);
 
+// The engine's command queues by type (D3D12_COMMAND_LIST_TYPE: 0 direct, 2 compute, 3 copy) and how many command
+// lists each was given, so a removal report shows whether async compute was running and which queue each unfinished
+// list was on.
+struct QueueSlot {
+    queue: AtomicUsize,
+    kind: AtomicUsize,
+    submitted: AtomicUsize,
+}
+
+const QUEUE_SLOTS: usize = 32;
+static QUEUES: [QueueSlot; QUEUE_SLOTS] = [const {
+    QueueSlot { queue: AtomicUsize::new(0), kind: AtomicUsize::new(0), submitted: AtomicUsize::new(0) }
+}; QUEUE_SLOTS];
+static ORIGINAL_CREATE_QUEUE: AtomicUsize = AtomicUsize::new(0);
+static ORIGINAL_EXECUTE_LISTS: AtomicUsize = AtomicUsize::new(0);
+
 // On DirectX 12 starts every shader that reads HDRP's tile light counts is created bounded (see dxbc.rs), unless
 // MODSTOKE_DX12_STOCK_SHADERS=1. Bounded copies are made once per shader and kept for the session.
 const STOCK_SHADERS_ENV: &str = "MODSTOKE_DX12_STOCK_SHADERS";
@@ -739,7 +758,8 @@ thread_local! {
 /// list shares for setting a pipeline and recording draws. Runs before the engine creates anything on the device.
 unsafe fn install_pipeline_tracking(device: *mut c_void) {
     let vtable = *(device as *const *mut usize);
-    let mut hooked = hook_vtable(vtable, 10, create_graphics_pipeline_detour as *const () as usize, &ORIGINAL_CREATE_GRAPHICS_PIPELINE);
+    let mut hooked = hook_vtable(vtable, 8, create_queue_detour as *const () as usize, &ORIGINAL_CREATE_QUEUE);
+    hooked &= hook_vtable(vtable, 10, create_graphics_pipeline_detour as *const () as usize, &ORIGINAL_CREATE_GRAPHICS_PIPELINE);
     hooked &= hook_vtable(vtable, 11, create_compute_pipeline_detour as *const () as usize, &ORIGINAL_CREATE_COMPUTE_PIPELINE);
     let query: ComQueryInterface = std::mem::transmute(*vtable.add(0));
     let mut device2 = null_mut();
@@ -793,6 +813,73 @@ unsafe fn hook_vtable(vtable: *mut usize, slot: usize, detour: usize, original: 
     let mut restored = 0;
     VirtualProtect(entry.cast(), size_of::<usize>(), protection, &mut restored);
     true
+}
+
+unsafe extern "system" fn create_queue_detour(
+    device: *mut c_void,
+    desc: *const u32,
+    riid: *const Guid,
+    queue: *mut *mut c_void,
+) -> i32 {
+    let original: DeviceCreateCommandQueue = std::mem::transmute(ORIGINAL_CREATE_QUEUE.load(Ordering::Relaxed));
+    let result = original(device, desc, riid, queue);
+    if result >= 0 && !desc.is_null() && !queue.is_null() && !(*queue).is_null() {
+        let created = *queue as usize;
+        if let Some(slot) = QUEUES.iter().find(|slot| slot.queue.compare_exchange(0, created, Ordering::AcqRel, Ordering::Relaxed).is_ok()) {
+            slot.kind.store(*desc as usize, Ordering::Release);
+        }
+        // Every queue type shares the runtime's ExecuteCommandLists; a queue with another one is only left untracked.
+        let entry = (*(created as *const *mut usize)).add(10);
+        let detour = execute_lists_detour as *const () as usize;
+        let known = ORIGINAL_EXECUTE_LISTS.load(Ordering::Acquire);
+        if *entry != detour && (known == 0 || known == *entry) {
+            hook_vtable(*(created as *const *mut usize), 10, detour, &ORIGINAL_EXECUTE_LISTS);
+        }
+        log_line(&format!("DX12: the engine created a {} queue", queue_kind_name(*desc as usize)));
+    }
+    result
+}
+
+unsafe extern "system" fn execute_lists_detour(queue: *mut c_void, count: u32, lists: *const *mut c_void) {
+    if let Some(slot) = QUEUES.iter().find(|slot| slot.queue.load(Ordering::Relaxed) == queue as usize) {
+        if slot.submitted.fetch_add(count as usize, Ordering::Relaxed) == 0 && slot.kind.load(Ordering::Relaxed) == 2 {
+            log_line("DX12: the engine submitted its first command lists to a compute queue (async compute is in use)");
+        }
+    }
+    let original: QueueExecuteCommandLists = std::mem::transmute(ORIGINAL_EXECUTE_LISTS.load(Ordering::Relaxed));
+    original(queue, count, lists);
+}
+
+fn queue_kind_name(kind: usize) -> &'static str {
+    match kind {
+        0 => "direct",
+        2 => "compute",
+        3 => "copy",
+        _ => "video",
+    }
+}
+
+fn queue_kind(queue: usize) -> Option<&'static str> {
+    QUEUES
+        .iter()
+        .find(|slot| queue != 0 && slot.queue.load(Ordering::Relaxed) == queue)
+        .map(|slot| queue_kind_name(slot.kind.load(Ordering::Acquire)))
+}
+
+fn queue_summary() -> String {
+    let queues: Vec<String> = QUEUES
+        .iter()
+        .filter(|slot| slot.queue.load(Ordering::Relaxed) != 0)
+        .map(|slot| {
+            format!(
+                "{} 0x{:X} ({} lists submitted)",
+                queue_kind_name(slot.kind.load(Ordering::Acquire)),
+                slot.queue.load(Ordering::Relaxed),
+                slot.submitted.load(Ordering::Relaxed)
+            )
+        })
+        .collect();
+    if queues.is_empty() { "Command queues: none recorded.\n".to_string() } else { format!("Command queues: {}.\n", queues.join(", ")) }
 }
 
 unsafe fn com_release(object: *mut c_void) {
@@ -1136,6 +1223,7 @@ unsafe fn append_stalled_draw(report: &mut String, node: *const u8, history: *co
         return;
     }
     let ordinal = (0..last).filter(|&index| is_draw(*history.add(index as usize))).count();
+    let draws = (0..*(node.add(48) as *const u32)).filter(|&index| is_draw(*history.add(index as usize))).count();
     let list = *(node.add(32) as *const usize);
     report.push_str(&format!("    that is draw or dispatch {ordinal} of command list 0x{list:X}\n"));
     let Some(slot) = list_slot(list, false) else {
@@ -1157,7 +1245,11 @@ unsafe fn append_stalled_draw(report: &mut String, node: *const u8, history: *co
             continue;
         }
         let pipeline = slot.draws[ring][ordinal].load(Ordering::Relaxed);
-        report.push_str(&format!("    recording -{back}: pipeline 0x{pipeline:X}\n"));
+        let recorded = slot.counts[ring].load(Ordering::Relaxed);
+        // The GPU may still be running an older recording than the list's latest; the one with as many draws as the
+        // stalled list is the likely one.
+        let matches = if recorded == draws { ", as many as the stalled list" } else { "" };
+        report.push_str(&format!("    recording -{back}: {recorded} draws{matches}; pipeline 0x{pipeline:X}\n"));
         let shaders = guard.as_ref().and_then(|map| map.as_ref()).and_then(|map| map.get(&pipeline)).cloned();
         let bounded = BOUNDED_SHADERS.try_lock().ok();
         match shaders {
@@ -1224,6 +1316,7 @@ unsafe fn write_device_removed_report(device: *mut c_void) {
     let reason = reason(device) as u32;
     let mut report = format!("DirectX 12 device removed: 0x{reason:08X} ({})\n", removal_reason_name(reason));
     report.push_str(&light_count_summary());
+    report.push_str(&queue_summary());
     let query: ComQueryInterface = std::mem::transmute(*vtable.add(0));
     let mut dred = null_mut();
     let version = if query(device, &IID_DRED1, &mut dred) >= 0 && !dred.is_null() {
@@ -1255,8 +1348,9 @@ unsafe fn write_device_removed_report(device: *mut c_void) {
     write_report(&report);
 }
 
-// D3D12_AUTO_BREADCRUMB_NODE(1): names at 0..32, BreadcrumbCount 48, pLastBreadcrumbValue 56, pCommandHistory 64,
-// pNext 72; NODE1 adds BreadcrumbContextsCount 80 and pBreadcrumbContexts 88 (index, wide string).
+// D3D12_AUTO_BREADCRUMB_NODE(1): names at 0..32, pCommandList 32, pCommandQueue 40, BreadcrumbCount 48,
+// pLastBreadcrumbValue 56, pCommandHistory 64, pNext 72; NODE1 adds BreadcrumbContextsCount 80 and
+// pBreadcrumbContexts 88 (index, wide string).
 unsafe fn append_breadcrumbs(report: &mut String, mut node: *const u8, with_contexts: bool) {
     report.push_str("Command lists the GPU had not finished (finished lists are left out):\n");
     let mut shown = 0;
@@ -1268,7 +1362,8 @@ unsafe fn append_breadcrumbs(report: &mut String, mut node: *const u8, with_cont
             shown += 1;
             let list = node_name(node, 0, 8);
             let queue = node_name(node, 16, 24);
-            report.push_str(&format!("\n  queue \"{queue}\", list \"{list}\": {last} of {count} operations done\n"));
+            let kind = queue_kind(*(node.add(40) as *const usize)).unwrap_or("untracked");
+            report.push_str(&format!("\n  queue \"{queue}\" ({kind}), list \"{list}\": {last} of {count} operations done\n"));
             let history = *(node.add(64) as *const *const u32);
             let (contexts, context_count) = if with_contexts {
                 (*(node.add(88) as *const *const u8), *(node.add(80) as *const u32))
