@@ -3797,6 +3797,13 @@ from a mod's model rather than from game data:
   alive, such as a prefab from its asset bundle. The SDK instantiates inert copies:
   scripts, rigidbodies, joints and colliders are stripped and hit boxes are fitted
   to the meshes.
+- `ItemArt` builds such a template from a bundle beside the mod's assembly:
+  `TryLoadBundle(typeof(MyMod).Assembly, "my-bundle", ...)`, then
+  `TryGetTemplate(bundle, "CODE", ...)` for the prefab `CODE` drawn with the game's
+  HDRP/Lit and the textures `CODE_BaseColor`, `CODE_Mask` (metallic, occlusion,
+  detail, smoothness) and `CODE_Normal`. Pass `ownMaterial` to leave named parts,
+  such as a live screen, with an empty material for the mod to fill. Bundles,
+  templates and materials are made once and survive scene loads.
 - The item shows on the inventory's mod gear page (below), rotated by
   `MatRotation` and scaled by `MatScale`. The SDK picks its place from
   `MatCategory` and the model's footprint as it lies; `MatOffset` moves the model

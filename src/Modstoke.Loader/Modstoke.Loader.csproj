@@ -898,6 +898,7 @@
     <Compile Include="Sons/Inventory/ItemRegistration.Runtime.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.Modules.cs" />
     <Compile Include="Sons/Inventory/ItemModel.cs" />
+    <Compile Include="Sons/Inventory/ItemArt.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.Models.cs" />
     <Compile Include="Sons/Inventory/WeaponAttachments.cs" />
     <Compile Include="Sons/Inventory/LootTables.cs" />
