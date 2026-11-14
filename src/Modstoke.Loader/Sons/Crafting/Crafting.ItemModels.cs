@@ -17,6 +17,10 @@ namespace Modstoke.Sons
     {
         private delegate bool AuthoredLayoutPublisher<TGroup>(ItemData item, TGroup group, out CraftingLayoutRegistrationResult result);
 
+        // The weapon mods' spots on the mat, which the game's own crafts rarely fill alongside a mod's parts:
+        // laser sight, flashlight, pistol suppressor, pistol rail, rifle rail and shotgun rail.
+        private static readonly int[] MatSpots = { ItemDatabase.LaserSightMod, 378, ItemDatabase.PistolSuppressor, 376, 383, 346 };
+
         private static readonly List<MatIngredient> MatIngredients = new();
         private static IntPtr _modelMat;
         private static bool _modelMatSettled, _modelMatFailureLogged;
@@ -24,7 +28,7 @@ namespace Modstoke.Sons
         internal static void AddItemModel(ItemData item, ItemModel model)
         {
             if (model.MatAction != ItemMatAction.Combine) return;
-            MatIngredients.Add(new MatIngredient(item, model));
+            MatIngredients.Add(new MatIngredient(item, model, MatSpots[MatIngredients.Count % MatSpots.Length]));
             _modelMatSettled = false;
         }
 
@@ -62,21 +66,23 @@ namespace Modstoke.Sons
         }
 
         // One combinable modeled item on one crafting mat: a group where it lies as an ingredient and a group
-        // where it lies when a craft hands it back, each with a single row that carries the model. Both take
-        // the spot of the game's laser sight, its nearest thing to a weapon mod of this kind, and stand the way
-        // the item does on the inventory mat.
+        // where it lies when a craft hands it back, each with a single row that carries the model. Both take the
+        // spot of one of the game's weapon mods, the next one for each item registered, so the parts of a recipe
+        // lie apart; they stand the way the item does on the inventory mat.
         private sealed class MatIngredient
         {
             private readonly ItemData _item;
             private readonly ItemModel _model;
+            private readonly int _spot;
             private bool _ingredient, _result, _abandoned, _reported;
             private float _retryAt;
             private string _status;
 
-            internal MatIngredient(ItemData item, ItemModel model)
+            internal MatIngredient(ItemData item, ItemModel model, int spot)
             {
                 _item = item;
                 _model = model;
+                _spot = spot;
             }
 
             internal bool Settled => _abandoned || _ingredient && _result;
@@ -110,19 +116,20 @@ namespace Modstoke.Sons
                 string role, AuthoredLayoutPublisher<TGroup> publish)
                 where TGroup : LayoutItemGroup<TLayout> where TLayout : LayoutItem
             {
-                TGroup donor = null;
+                TGroup donor = null, fallback = null;
                 if (groups is not null && !groups.WasCollected)
                     foreach (var group in groups)
-                        if (CraftExecutionLive(group) && group._itemId == ItemDatabase.LaserSightMod)
-                        {
-                            donor = group;
-                            break;
-                        }
+                    {
+                        if (!CraftExecutionLive(group) || group._layoutItems is not { Count: > 0 } rows || !CraftExecutionLive(rows[0])) continue;
+                        if (group._itemId == _spot) { donor = group; break; }
+                        if (group._itemId == ItemDatabase.LaserSightMod) fallback = group;
+                    }
+                donor ??= fallback;
                 var donorRows = donor?._layoutItems;
                 if (!CraftExecutionLive(root) || donorRows is null || donorRows.WasCollected || donorRows.Count == 0
                     || !CraftExecutionLive(donorRows[0]))
                 {
-                    Wait("the mat has no laser sight " + role + " group to take a place from.");
+                    Wait("the mat has no weapon mod " + role + " group to take a place from.");
                     return false;
                 }
                 var donorRow = donorRows[0];

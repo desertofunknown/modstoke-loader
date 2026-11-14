@@ -30,8 +30,9 @@ namespace Modstoke.Sons
         public int ResultItemId { get; }
         public int ResultCount { get; }
 
-        /// <summary>An item whose own crafting recipe lends this one its craft animation and sounds; 0 takes the game's
-        /// first animated recipe.</summary>
+        /// <summary>An item whose own crafting recipe lends this one its craft animation and sounds. The animation moves
+        /// that recipe's own parts in the player's hands, so name one only for the same ingredients; 0 completes the
+        /// craft at once.</summary>
         public int AnimationFromItemId { get; init; }
     }
 
@@ -40,6 +41,9 @@ namespace Modstoke.Sons
     /// content, so every recipe database in every process gets the same additions in the same order, after the
     /// game's own: weapon attachment recipes first, then these sorted by mod id and key. Register at mod start in
     /// every process, clients and servers alike; recipes go in once a world is loading.
+    /// The mat makes the first recipe whose ingredient kinds are exactly the ones lying on it, with at least each
+    /// count, and only while every result still fits the inventory: a player who carries the most of an item they
+    /// may cannot make another.
     /// </summary>
     public static class CraftingRecipeRegistration
     {
@@ -165,6 +169,7 @@ namespace Modstoke.Sons
                 if (registration.Recipe != null && !registration.Recipe.WasCollected && list.Contains(registration.Recipe)) continue;
                 var recipe = registration.Recipe != null && !registration.Recipe.WasCollected ? registration.Recipe : Build(list, registration.Spec);
                 if (recipe == null) continue;
+                if (registration.Recipe == null) WarnIfShadowed(list, registration.Spec);
                 registration.Recipe = recipe;
                 list.Add(recipe);
                 added++;
@@ -172,25 +177,43 @@ namespace Modstoke.Sons
             return added;
         }
 
-        // A copy of one of the game's craft-new-item recipes, for its sounds and settings, and its craft animation when
-        // it has one: the one that makes AnimationFromItemId, else the first animated one, else the first plain one.
-        // Without an animation a recipe completes at once, as the weapon attachment recipes do.
+        // The mat makes the first recipe whose ingredients are exactly the kinds lying on it, so an earlier recipe
+        // with the same kinds always wins.
+        private static void WarnIfShadowed(Il2CppSystem.Collections.Generic.List<CraftingRecipe> list, CraftRecipeSpec spec)
+        {
+            var kinds = new HashSet<int>(spec.Ingredients.Select(ingredient => ingredient.ItemId));
+            foreach (var other in list)
+            {
+                if (other == null || other.WasCollected || other._recipeType != CraftingRecipe.Type.CraftNewItem
+                    || other._ingredients is not { } ingredients || ingredients.Count != kinds.Count) continue;
+                var same = true;
+                foreach (var ingredient in ingredients)
+                    if (ingredient == null || !kinds.Contains(ingredient.ItemId)) { same = false; break; }
+                if (!same) continue;
+                RuntimeEntryPoint.LogSource?.LogWarning("Recipe " + spec.ModId + ":" + spec.Key + " takes the same kinds of item as "
+                    + other.name + ", which the crafting mat makes first.");
+                return;
+            }
+        }
+
+        // A copy of one of the game's craft-new-item recipes, for its sounds and settings. It keeps the craft animation
+        // only when it is the recipe that makes AnimationFromItemId; any other completes at once, as the weapon
+        // attachment recipes do, since a game animation plays its own recipe's parts in the player's hands.
         private static CraftingRecipe Build(Il2CppSystem.Collections.Generic.List<CraftingRecipe> list, CraftRecipeSpec spec)
         {
-            CraftingRecipe chosen = null, animated = null, plain = null;
+            CraftingRecipe chosen = null, first = null;
             foreach (var candidate in list)
             {
                 if (candidate == null || candidate.WasCollected || candidate._recipeType != CraftingRecipe.Type.CraftNewItem
                     || candidate._useContainerDataForResultingItems) continue;
-                plain ??= candidate;
-                if (string.IsNullOrEmpty(candidate._animationStateName)) continue;
-                animated ??= candidate;
-                if (spec.AnimationFromItemId != 0 && candidate._resultingItems != null)
-                    foreach (var result in candidate._resultingItems)
-                        if (result != null && result.Id == spec.AnimationFromItemId) { chosen = candidate; break; }
+                first ??= candidate;
+                if (spec.AnimationFromItemId == 0) break;
+                if (string.IsNullOrEmpty(candidate._animationStateName) || candidate._resultingItems == null) continue;
+                foreach (var result in candidate._resultingItems)
+                    if (result != null && result.Id == spec.AnimationFromItemId) { chosen = candidate; break; }
                 if (chosen != null) break;
             }
-            var template = chosen ?? animated ?? plain;
+            var template = chosen ?? first;
             if (template == null)
             {
                 if (!_loggedNoTemplate)
@@ -200,12 +223,16 @@ namespace Modstoke.Sons
                 }
                 return null;
             }
+            if (spec.AnimationFromItemId != 0 && chosen == null)
+                RuntimeEntryPoint.LogSource?.LogWarning("Recipe " + spec.ModId + ":" + spec.Key + " found no animated recipe that makes item "
+                    + spec.AnimationFromItemId + ", so it completes at once.");
             RuntimeEntryPoint.LogSource?.LogInfo("Recipe " + spec.ModId + ":" + spec.Key + " copies the game's " + template.name
-                + (string.IsNullOrEmpty(template._animationStateName) ? " (no craft animation)." : " (craft animation " + template._animationStateName + ")."));
+                + (chosen != null ? " with its craft animation " + chosen._animationStateName + "." : " and completes at once."));
             var recipe = Object.Instantiate(template);
             recipe.name = spec.ModId + ":" + spec.Key;
             recipe.hideFlags |= HideFlags.DontUnloadUnusedAsset;
             recipe._recipeType = CraftingRecipe.Type.CraftNewItem;
+            if (chosen == null) recipe._animationStateName = "";
             recipe._hasCustomName = false;
             recipe._useContainerDataForResultingItems = false;
             recipe._containerItemData = null;

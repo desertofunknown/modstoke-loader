@@ -3923,12 +3923,22 @@ applies the additions once a world is loading, in a fixed order.
 
 - `CraftingRecipeRegistration.TryRegister(CraftRecipeSpec)` adds a crafting mat
   recipe that combines ingredients (1 to 8 kinds, counts 1 to 99) into 1 to 4 of
-  a result the mod reserved. It copies one of the game's animated craft-new-item
-  recipes for its animation and sounds (`AnimationFromItemId` picks the recipe
-  that makes that item). Strict inventory checks a craft against the server's
-  list by position and content, so every crafting recipe database in the process
-  gets the same additions after the game's own: weapon attachment recipes first,
-  then mod recipes sorted by mod id and key. Dedicated servers get them too.
+  a result the mod reserved. It copies one of the game's craft-new-item recipes
+  for its sounds and completes at once. `AnimationFromItemId` borrows the craft
+  animation of the recipe that makes that item instead; the animation moves that
+  recipe's own parts, so use it only for the same ingredients. Strict inventory
+  checks a craft against the server's list by position and content, so every
+  crafting recipe database in the process gets the same additions after the
+  game's own: weapon attachment recipes first, then mod recipes sorted by mod id
+  and key. Dedicated servers get them too.
+- The mat makes the first recipe whose ingredient kinds are exactly the ones
+  lying on it, with at least each count, and only while every result fits the
+  inventory: a player who already carries the most of an item they may can't
+  make another, and the recipe isn't listed under the cog. A mod recipe with the
+  same kinds as an earlier one never wins, and the Loader logs a warning for it.
+- Combinable modeled items lie on the crafting mat at the game's weapon mod
+  spots, the next spot for each item registered, so the parts of a recipe lie
+  apart.
 - `LootTables.TryAdd(modId, table, itemId, weight, out problem, maxCount)` adds
   an item to one of the game's container loot tables, such as `AmmoCase` (the
   colored weapon cases in helicopter crash sites and caves) or
