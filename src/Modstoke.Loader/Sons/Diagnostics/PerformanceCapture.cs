@@ -89,6 +89,7 @@ namespace Modstoke.Loader
                         + "No save contents, save paths, player identities or locations are recorded." });
                 InitializeCounters();
                 InitializeNativeTimings(support);
+                StartGpuSampling();
                 GameRuntime.SceneChanged += OnScene;
                 GameRuntime.WorldChanged += OnWorld;
                 SaveLifecycle.Lifecycle += OnSave;
@@ -160,6 +161,7 @@ namespace Modstoke.Loader
             GameRuntime.WorldChanged -= OnWorld;
             SaveLifecycle.Lifecycle -= OnSave;
             StopNativeTimings();
+            StopGpuSampling();
             foreach (var counter in Counters) counter.Dispose();
             Counters.Clear();
             Emit(new { kind = "stop", elapsedMs = ElapsedMs(), reason, droppedRecords = Volatile.Read(ref _dropped) });
@@ -220,7 +222,7 @@ namespace Modstoke.Loader
                 updateIntervalsMs = Frames.Take(), intervalsOver33Ms = _over33Ms, intervalsOver50Ms = _over50Ms,
                 fixedUpdates = _fixedUpdates, focused = Application.isFocused, timeScale = Time.timeScale,
                 captureTickWorkMs = _captureWorkMs, maxCaptureTickMs = _maxCaptureTickMs, unityCounters = counterValues,
-                nativeMethods = TakeNativeTimings(), callbackTimings = TakeCallbackTimings(),
+                gpu = TakeGpu(), nativeMethods = TakeNativeTimings(), callbackTimings = TakeCallbackTimings(),
                 droppedRecords = Volatile.Read(ref _dropped) });
             _lastFlush = now;
             _fixedUpdates = _over33Ms = _over50Ms = 0;
