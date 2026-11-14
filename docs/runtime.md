@@ -317,8 +317,13 @@ the installed runtime and release package; ownership is not runtime acceptance.
   memory) reads far outside the 160-vector buffer.
   On DirectX 12 starts the host hands pipeline creation a hardened copy of each such
   shader (`src/dxbc.rs`). Every read `cbN[rX.c + k]` from a dynamically indexed buffer
-  declared with S vectors, and every indexed immediate-constant-buffer read, now goes
-  through `umin rT.c, rX.c, l(S - 1 - k)` in a temp register added for it. HDRP's
+  now goes through `umin rT.c, rX.c, l(4095 - k)` in a temp register added for it.
+  The bound is D3D's largest constant buffer (4096 vectors, 64 KB), not the declared
+  size. Unity declares its instancing arrays with two entries and reads past them up
+  to the size it binds, and a declared-size bound collapsed every instanced terrain
+  patch onto the first two, leaving holes in the ground. A buffer of its own takes a
+  whole 64 KB allocation, so a read within 64 KB of its start is mapped. Indexed
+  immediate-constant-buffer reads are bounded by that buffer's size. HDRP's
   fine-pruned tile light counts (16-bit values; a tile holds at most 127 lights, or
   `2 * dwords per tile - 1`) also get a `umin` after each read, so an unbuilt list
   cannot make a pixel loop 65535 times. The DXBC checksum is recomputed. Copies are

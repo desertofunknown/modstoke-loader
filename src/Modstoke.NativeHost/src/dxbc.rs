@@ -6,8 +6,11 @@
 //! index points. HDRP's lit shaders look up planar reflection probes as `cb3[index * 4 + n]` and `cb3[index + 80]`
 //! with `index = abs(envIndex) - 1` taken from the probe's light data. Unbuilt or stale light data gives an index far
 //! past the 160-vector buffer, and the GPU stops with an MMU fault in the shader, which is what every DirectX 12 hang
-//! in the driver's log was. Each read `cbN[rX.c + k]` from a buffer declared with S vectors now goes through
-//! `umin rT.c, rX.c, l(S - 1 - k)` into a register of its own, so it stays inside the buffer.
+//! in the driver's log was. Each read `cbN[rX.c + k]` from a dynamically indexed buffer now goes through
+//! `umin rT.c, rX.c, l(4095 - k)` into a register of its own. The bound is the largest constant buffer D3D allows
+//! (4096 vectors, 64 KB), not the declared size: Unity declares its instancing arrays with two entries and reads past
+//! them up to the size it binds, which D3D allows. A buffer of its own takes a whole 64 KB allocation, so a read
+//! within 64 KB of its start is mapped memory. Immediate constant buffer reads are bounded by the buffer's size.
 //!
 //! Tile light counts. HDRP's fine-pruned tile light list keeps, per 16x16 tile and light category, a light count in
 //! the low 16 bits of the tile's first dword, followed by 16-bit light indices. The lit shaders read the count as
@@ -66,6 +69,9 @@ const OPERAND_CONSTANT_BUFFER: u32 = 8;
 const OPERAND_IMMEDIATE_CONSTANT_BUFFER: u32 = 9;
 
 const CUSTOMDATA_IMMEDIATE_CONSTANT_BUFFER: u32 = 3;
+
+/// D3D's largest constant buffer, in 16-byte vectors.
+const CONSTANT_BUFFER_VECTORS: u32 = 4096;
 
 /// How far back from a count read the instruction that scaled the tile offset may be.
 const OFFSET_SEARCH: usize = 24;
@@ -154,6 +160,7 @@ fn select(kind: u32, component: u32) -> u32 {
 /// clamped copy of its index in a register added for it, and queues the `umin` that makes the copy. Returns how
 /// many reads were changed; shaders with no single temp declaration (hull shader phases) are left alone.
 fn clamp_constant_reads(tokens: &mut [u32], instructions: &[(usize, usize)], inserts: &mut Vec<(usize, u8, [u32; 7])>) -> usize {
+    // Dynamically indexed constant buffer slots, each bounded by D3D's largest buffer rather than its declared size.
     let mut sizes: Vec<(u32, u32)> = Vec::new();
     let mut immediate_size = None;
     let mut temps = Vec::new();
@@ -162,7 +169,7 @@ fn clamp_constant_reads(tokens: &mut [u32], instructions: &[(usize, usize)], ins
             OP_DCL_CONSTANT_BUFFER if tokens[at] >> 11 & 1 == 1 => {
                 if let Some(buffer) = Operand::read(&tokens[..at + length], at + 1) {
                     if buffer.kind == OPERAND_CONSTANT_BUFFER && buffer.len == 3 && tokens[at + 1] >> 20 & 3 == 2 {
-                        sizes.push((tokens[at + 2], tokens[at + 3]));
+                        sizes.push((tokens[at + 2], CONSTANT_BUFFER_VECTORS));
                     }
                 }
             }
