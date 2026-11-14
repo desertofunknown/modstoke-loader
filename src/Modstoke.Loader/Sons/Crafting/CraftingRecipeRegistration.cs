@@ -7,6 +7,7 @@ using System.Linq;
 using Modstoke.Loader;
 using global::Sons.Crafting;
 using global::Sons.Inventory;
+using global::Sons.Items.Core;
 using TheForest.Items.Inventory;
 using TheForest.Utils;
 using UnityEngine;
@@ -260,6 +261,7 @@ namespace Modstoke.Sons
             return true;
         }
 
+        // The cog does nothing, so the player is told why, on the game's own message line.
         private static bool Refuse(CraftingRecipe recipe)
         {
             if (_lastRefused != recipe.Pointer)
@@ -267,6 +269,15 @@ namespace Modstoke.Sons
                 _lastRefused = recipe.Pointer;
                 RuntimeEntryPoint.LogSource?.LogInfo("Crafting mat: " + recipe.name + " is not made; its result does not fit the inventory.");
             }
+            try
+            {
+                var result = recipe._resultingItems != null && recipe._resultingItems.Count > 0 ? recipe._resultingItems[0] : null;
+                var item = result != null ? ItemDatabaseManager.ItemById(result.Id) : null;
+                var name = item != null && !string.IsNullOrEmpty(item._name) ? item._name : "that";
+                var hud = HudGui._instance;
+                if (hud != null && hud) hud.DisplayGeneralMessage("You can't carry another " + name + ".", 3f);
+            }
+            catch (Exception) { /* The message is a courtesy; the refusal stands without it. */ }
             return false;
         }
 
