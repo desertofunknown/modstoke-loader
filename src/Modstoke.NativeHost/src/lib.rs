@@ -40,6 +40,9 @@ const GRAPHICS_API_KEY: &str = "graphicsApi";
 // never got that far is known on the next one.
 const GRAPHICS_PENDING_NAME: &str = "graphics-api-pending";
 const GRAPHICS_FAILED_NAME: &str = "graphics-api-failed";
+// Present while boot.config has native graphics jobs switched off for DirectX 12, so the next other start restores it.
+const GRAPHICS_JOBS_CHANGED_NAME: &str = "graphics-jobs-changed";
+const NATIVE_GFX_JOBS_ENV: &str = "MODSTOKE_DX12_NATIVE_GFX_JOBS";
 // Launch options that already pick a graphics API, or start the game without graphics.
 const GRAPHICS_FLAGS: [&str; 6] = ["-force-d3d", "-force-vulkan", "-force-gl", "-force-gfx-", "-batchmode", "-nographics"];
 
@@ -469,6 +472,7 @@ unsafe fn process_attach(hinst_dll: Hinstance) -> Result<(), BootstrapError> {
         None => String::from_utf16_lossy(wide_slice(GetCommandLineW())),
     };
     DRED_WANTED.store(command_line.to_ascii_lowercase().contains("-force-d3d12"), Ordering::SeqCst);
+    apply_graphics_jobs(&game_exe, &game_dir, DRED_WANTED.load(Ordering::SeqCst));
     HARDEN_SHADERS.store(
         DRED_WANTED.load(Ordering::SeqCst) && std::env::var_os(STOCK_SHADERS_ENV).is_none_or(|value| value != "1"),
         Ordering::SeqCst,
@@ -555,6 +559,69 @@ unsafe fn apply_graphics_api(game_exe: &Path, game_dir: &Path) {
     } else {
         let _ = fs::remove_file(&pending);
         log_line("Graphics API: the command line could not be hooked; starting without the setting");
+    }
+}
+
+/// On DirectX 12 the engine runs native graphics jobs: worker threads record command lists in parallel, a path
+/// DirectX 11 never takes. Every DirectX 12 GPU fault so far hit a different shader with the same driver report, as a
+/// race in that path would, so DirectX 12 starts use the engine's legacy graphics jobs instead. Unity reads
+/// boot.config after this runs and before it creates its graphics device. The shipped value comes back on the next
+/// start without DirectX 12; MODSTOKE_DX12_NATIVE_GFX_JOBS=1 keeps native jobs on DirectX 12.
+fn apply_graphics_jobs(game_exe: &Path, game_dir: &Path, dx12: bool) {
+    const KEY: &str = "gfx-enable-native-gfx-jobs=";
+    let Some(stem) = game_exe.file_stem().and_then(|stem| stem.to_str()) else { return };
+    if stem.to_ascii_lowercase().ends_with("ds") {
+        return;
+    }
+    let path = game_exe.with_file_name(format!("{stem}_Data")).join("boot.config");
+    let marker = user_data_dir(game_dir).join(GRAPHICS_JOBS_CHANGED_NAME);
+    let keep = std::env::var_os(NATIVE_GFX_JOBS_ENV).is_some_and(|value| value == "1");
+    let wanted = if dx12 && !keep {
+        "0"
+    } else if marker.is_file() {
+        "1"
+    } else {
+        return;
+    };
+    let Ok(text) = fs::read_to_string(&path) else { return };
+    let newline = if text.contains("\r\n") { "\r\n" } else { "\n" };
+    let mut found = None;
+    let lines: Vec<String> = text
+        .lines()
+        .map(|line| match line.strip_prefix(KEY) {
+            Some(value) => {
+                found = Some(value.trim() == wanted);
+                format!("{KEY}{wanted}")
+            }
+            None => line.to_string(),
+        })
+        .collect();
+    match found {
+        None => {
+            log_line("Graphics jobs: boot.config has no native graphics jobs setting; left as it is");
+            return;
+        }
+        Some(true) => {}
+        Some(false) => {
+            let mut updated = lines.join(newline);
+            if text.ends_with('\n') {
+                updated.push_str(newline);
+            }
+            if fs::write(&path, updated).is_err() {
+                log_line("Graphics jobs: boot.config could not be written; the engine keeps its setting");
+                return;
+            }
+            log_line(if wanted == "0" {
+                "Graphics jobs: legacy graphics jobs for this DirectX 12 start"
+            } else {
+                "Graphics jobs: native graphics jobs back for this start"
+            });
+        }
+    }
+    if wanted == "0" {
+        let _ = fs::write(&marker, "");
+    } else {
+        let _ = fs::remove_file(&marker);
     }
 }
 
@@ -1255,24 +1322,49 @@ unsafe fn append_stalled_draw(report: &mut String, node: *const u8, history: *co
         // stalled list is the likely one.
         let matches = if recorded == draws { ", as many as the stalled list" } else { "" };
         report.push_str(&format!("    recording -{back}: {recorded} draws{matches}; pipeline 0x{pipeline:X}\n"));
-        let shaders = guard.as_ref().and_then(|map| map.as_ref()).and_then(|map| map.get(&pipeline)).cloned();
-        let hardened = HARDENED_SHADERS.try_lock().ok();
-        match shaders {
-            Some(shaders) if !shaders.is_empty() => {
-                for shader in &shaders {
-                    let checksum: String = shader.checksum.iter().map(|byte| format!("{byte:02x}")).collect();
-                    let copy = dump_shader(shader, &checksum).map_or_else(String::new, |name| format!(", saved as {name}"));
-                    let was_hardened = hardened
-                        .as_ref()
-                        .and_then(|map| map.as_ref())
-                        .is_some_and(|map| matches!(map.get(&shader.checksum), Some(Some(_))));
-                    let note = if was_hardened { ", ran hardened" } else { "" };
-                    report.push_str(&format!("      {} shader {checksum} ({} bytes{copy}{note})\n", shader.stage, shader.size));
+        let pipelines = guard.as_ref().and_then(|map| map.as_ref());
+        append_pipeline_shaders(report, pipelines, pipeline, "      ");
+        // The GPU runs several draws at once, and a faulting warp can belong to any draw still in flight, so the
+        // likely recording also names the pipelines of the draws around the stalled one.
+        if recorded == draws && recorded > 0 {
+            let (first, end) = (ordinal.saturating_sub(8), (ordinal + 9).min(recorded.min(LIST_DRAWS)));
+            report.push_str(&format!("      draws {first} to {} also ran with:\n", end - 1));
+            let mut seen = vec![pipeline];
+            for index in first..end {
+                let other = slot.draws[ring][index].load(Ordering::Relaxed);
+                if seen.contains(&other) {
+                    continue;
                 }
+                seen.push(other);
+                report.push_str(&format!("        pipeline 0x{other:X} (first at draw {index})\n"));
+                append_pipeline_shaders(report, pipelines, other, "          ");
             }
-            Some(_) => report.push_str("      no shader bytecode was recorded for this pipeline\n"),
-            None => report.push_str("      this pipeline was not recorded (made before tracking, or from a pipeline library)\n"),
         }
+    }
+}
+
+unsafe fn append_pipeline_shaders(
+    report: &mut String,
+    pipelines: Option<&HashMap<usize, Vec<ShaderRef>>>,
+    pipeline: usize,
+    indent: &str,
+) {
+    let hardened = HARDENED_SHADERS.try_lock().ok();
+    match pipelines.and_then(|map| map.get(&pipeline)) {
+        Some(shaders) if !shaders.is_empty() => {
+            for shader in shaders {
+                let checksum: String = shader.checksum.iter().map(|byte| format!("{byte:02x}")).collect();
+                let copy = dump_shader(shader, &checksum).map_or_else(String::new, |name| format!(", saved as {name}"));
+                let was_hardened = hardened
+                    .as_ref()
+                    .and_then(|map| map.as_ref())
+                    .is_some_and(|map| matches!(map.get(&shader.checksum), Some(Some(_))));
+                let note = if was_hardened { ", ran hardened" } else { "" };
+                report.push_str(&format!("{indent}{} shader {checksum} ({} bytes{copy}{note})\n", shader.stage, shader.size));
+            }
+        }
+        Some(_) => report.push_str(&format!("{indent}no shader bytecode was recorded for this pipeline\n")),
+        None => report.push_str(&format!("{indent}this pipeline was not recorded (made before tracking, or from a pipeline library)\n")),
     }
 }
 

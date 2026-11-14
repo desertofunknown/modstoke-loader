@@ -334,6 +334,17 @@ the installed runtime and release package; ownership is not runtime acceptance.
   lists each got, and logs the first submission to a compute queue. The report labels
   every unfinished list with its queue type, and gives each recent recording of the
   stalled list its draw count, since the GPU may still be running an older recording.
+  For the recording that matches, it also names the pipelines and shaders of the eight
+  draws on either side, since a faulting warp can belong to any draw still in flight.
+  A hang with hardened shaders then stopped in HDRP's terrain GBuffer pass, again an
+  MMU fault, and the driver's fault registers read the same in every warp of every
+  hang. On DirectX 12 the engine runs native graphics jobs, worker threads recording
+  command lists in parallel, which DirectX 11 never does. So for DirectX 12 starts the
+  host sets `gfx-enable-native-gfx-jobs=0` in the game's `boot.config` before the
+  engine reads it, and the engine runs its legacy graphics jobs. A
+  `graphics-jobs-changed` marker in `Modstoke/UserData` brings the shipped `1` back on
+  the next start without DirectX 12. `MODSTOKE_DX12_NATIVE_GFX_JOBS=1` keeps native
+  jobs on DirectX 12.
 - `Modstoke.Bootstrap.dll` as the Doorstop target assembly.
   It records OpenACAI bootstrap and chainloader state. The default
   `openacai-native` path now owns preloader orchestration and the IL2CPP
