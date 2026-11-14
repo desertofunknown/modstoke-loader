@@ -305,9 +305,9 @@ namespace Modstoke.Sons
             foreach (var range in ranges)
                 text.Append(range.ModId).Append('\t').Append(range.First).Append('\t').Append(range.Last).Append('\n');
             var digest = SHA256.HashData(Encoding.UTF8.GetBytes("modstoke.content/1\n" + text));
-            var summary = string.Join(", ", ranges.GroupBy(range => range.ModId)
-                .Select(group => group.Key + " " + string.Join("/", group.Select(range => range.First == range.Last
-                    ? range.First.ToString() : range.First + "-" + range.Last))));
+            // Players read the summary in the refusal notice: each mod's short name and version, not its item ranges.
+            var summary = string.Join(", ", ranges.Select(range => range.ModId).Distinct(StringComparer.Ordinal)
+                .Select(ModNames.LabelForId));
             return new Declaration(digest, ranges.Count, summary);
         }
 

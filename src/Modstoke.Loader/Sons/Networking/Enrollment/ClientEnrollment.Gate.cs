@@ -237,11 +237,12 @@ namespace Modstoke.Sons
                 Refuse(session, connection);
         }
 
-        // A server with mod content says why; other gate refusals keep the plain disconnect.
+        // A refusal over mod content or required mods says which mods; other gate refusals keep the plain disconnect.
         private static void Refuse(ServerSession session, BoltConnection connection)
         {
             if (ServerSessions.HasDisconnectAttempt(session)) return;
-            var notice = ContentAgreement.RefusalNotice(ControlTransport.FindPeer(connection));
+            var peer = ControlTransport.FindPeer(connection);
+            var notice = ContentAgreement.RefusalNotice(peer) ?? ModAdmission.RefusalNotice(peer);
             if (notice == null || ServerSessions.DisconnectWithNotice(session, notice) != DisconnectResult.Requested)
                 ServerSessions.Disconnect(session);
         }

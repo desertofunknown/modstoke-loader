@@ -199,11 +199,7 @@ namespace Modstoke.Loader
             {
                 var all = Entries(MenuProviderIds.AllMods).Length;
                 var issues = Entries(MenuProviderIds.Issues).Length;
-                // The release number alone, without the build label and commit after it.
-                var version = RuntimeEntryPoint.Version ?? "";
-                var cut = version.IndexOfAny(new[] { '-', '+' });
-                if (cut > 0) version = version.Substring(0, cut);
-                var parts = new List<string> { "Modstoke " + version, Text.Count("mods.count", all) };
+                var parts = new List<string> { ModNames.Label("Modstoke", RuntimeEntryPoint.Version), Text.Count("mods.count", all) };
                 parts.Add(issues == 0 ? Text["mods.noIssues"] : Text.Count("mods.issues", issues));
                 return string.Join(" · ", parts);
             }

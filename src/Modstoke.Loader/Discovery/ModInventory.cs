@@ -88,7 +88,12 @@ namespace Modstoke.Loader
 
         internal bool DataOnly { get; set; }
 
-        internal string DisplayName => Name ?? Id ?? Path.GetFileNameWithoutExtension(AssemblyPath) ?? "Unknown mod";
+        /// <summary>The manifest's optional short name for players.</summary>
+        public string ManifestDisplayName { get; set; }
+
+        internal string DisplayName => Name == null && Id == null && ManifestDisplayName == null
+            ? Path.GetFileNameWithoutExtension(AssemblyPath) ?? "Unknown mod"
+            : ModNames.Short(ManifestDisplayName, Name, Id);
         internal bool HasControls => HasConfig || LiveSettingsAvailable || ModActionsAvailable;
     }
 
@@ -355,6 +360,7 @@ namespace Modstoke.Loader
                     {
                         Id = id,
                         Name = name,
+                        ManifestDisplayName = ReadManifestValue(manifest, "displayName"),
                         Version = ReadManifestValue(manifest, "version"),
                         Author = ReadManifestAuthor(manifest),
                         SourceFamily = ModSourceFamilies.OpenAcai,

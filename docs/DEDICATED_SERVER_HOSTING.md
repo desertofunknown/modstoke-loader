@@ -95,6 +95,15 @@ mod whose `minLoaderVersion` is newer than the Loader is not loaded
 (`loader-too-old`). A minimum without a prerelease tag ignores the Loader's own
 tag, so `0.4.3` accepts a `0.4.3-dev` build.
 
+Players see a mod by a short name and a plain version, such as `Optics 0.0.45`,
+in the mods menu, the server browser, the multiplayer screen, the console's mod
+lines and the notice a server sends when it refuses them over mods. The short
+name is the manifest's optional `displayName`; without one, its `name` minus a
+leading "Modstoke". A mod the player doesn't have is named from its id
+(`modstoke.optics` reads "Optics"). Versions drop build labels and commit
+hashes. A server that refuses a player over required packages now says what to
+install, update or turn on (`Modstoke.Loader.ModNames` formats all of these).
+
 `help` lists every command, including those added by mods.
 
 ## Stopping the server

@@ -821,6 +821,7 @@
     <Compile Include="Hosting/HostEvents.cs" />
     <Compile Include="Hosting/HostPlayers.cs" />
     <Compile Include="Hosting/HostMods.cs" />
+    <Compile Include="Hosting/ModNames.cs" />
     <Compile Include="Hosting/HostSave.cs" />
     <Compile Include="Hosting/HostCrash.cs" />
     <Compile Include="Hosting/HostConfig.cs" />

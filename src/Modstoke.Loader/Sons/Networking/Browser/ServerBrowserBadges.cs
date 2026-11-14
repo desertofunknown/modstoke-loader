@@ -294,7 +294,7 @@ namespace Modstoke.Sons
         private static string Describe(ServerDetails details)
         {
             var (color, verdict) = Judge(details);
-            return Tint(color, "Modstoke " + details.Loader + " · " + verdict);
+            return Tint(color, ModNames.Label("Modstoke", details.Loader) + " · " + verdict);
         }
 
         internal static (string Color, string Verdict) Judge(ServerDetails details)
@@ -340,8 +340,8 @@ namespace Modstoke.Sons
             var mine = ContentAgreement.Fingerprint;
             var local = ServerDetails.LocalMods();
             var text = new StringBuilder();
-            text.Append("Modstoke ").Append(details.Loader.Length > 0 ? details.Loader : "(version not given)")
-                .Append(" · you have ").Append(ServerDetails.ShortVersion(RuntimeEntryPoint.Version)).Append('\n');
+            text.Append("Modstoke ").Append(details.Loader.Length > 0 ? ModNames.Version(details.Loader) : "(version not given)")
+                .Append(" · you have ").Append(ModNames.Version(RuntimeEntryPoint.Version)).Append('\n');
             if (details.Content.Length == 0)
                 text.Append(mine.Length == 0 ? "No mods with their own items on either side.\n"
                     : Tint(Amber, "This server has no mods with their own items; yours won't exist there.") + "\n");
@@ -359,16 +359,16 @@ namespace Modstoke.Sons
                 var own = local.FirstOrDefault(entry => string.Equals(entry.Id, mod.Id, StringComparison.OrdinalIgnoreCase));
                 var yours = own == null
                     ? mod.Client == "required" ? Tint(Red, "missing") : Tint(Dim, mod.Client == "server" ? "server only" : "not installed")
-                    : string.Equals(own.Version, mod.Version, StringComparison.OrdinalIgnoreCase) ? Tint(Green, own.Version)
-                    : Tint(Amber, own.Version.Length > 0 ? own.Version : "?");
-                text.Append(mod.Id).Append("<pos=58%>").Append(mod.Version.Length > 0 ? mod.Version : "?")
+                    : string.Equals(own.Version, mod.Version, StringComparison.OrdinalIgnoreCase) ? Tint(Green, ModNames.Version(own.Version))
+                    : Tint(Amber, own.Version.Length > 0 ? ModNames.Version(own.Version) : "?");
+                text.Append(ModNames.ForId(mod.Id)).Append("<pos=58%>").Append(mod.Version.Length > 0 ? ModNames.Version(mod.Version) : "?")
                     .Append("<pos=80%>").Append(yours).Append('\n');
             }
             var unlisted = details.ModCount - Math.Min(details.Mods.Count, shown);
             if (unlisted > 0) text.Append(Tint(Dim, "and " + unlisted + " more")).Append('\n');
             var onlyMine = local.Where(own => own.Client == "required"
                 && !details.Mods.Any(mod => string.Equals(mod.Id, own.Id, StringComparison.OrdinalIgnoreCase)))
-                .Select(own => own.Id).ToArray();
+                .Select(own => ModNames.Label(ModNames.ForId(own.Id), own.Version)).ToArray();
             if (onlyMine.Length > 0 && details.ModCount <= details.Mods.Count)
                 text.Append('\n').Append(Tint(Dim, "Only on your game: " + string.Join(", ", onlyMine)));
             return text.ToString().TrimEnd();

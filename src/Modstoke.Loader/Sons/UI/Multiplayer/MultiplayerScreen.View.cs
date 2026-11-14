@@ -618,7 +618,7 @@ namespace Modstoke.Loader
         private static string Kind(Entry entry, ServerDetails details, string separator)
         {
             var parts = new List<string> { T[entry.Dedicated != null ? "multiplayer.kind.dedicated" : "multiplayer.kind.hosted"] };
-            if (details != null && details.Loader.Length > 0) parts.Add(T.Get("multiplayer.kind.modstoke", ("version", details.Loader)));
+            if (details != null && details.Loader.Length > 0) parts.Add(T.Get("multiplayer.kind.modstoke", ("version", ModNames.Version(details.Loader))));
             var mode = ModeName(entry.Mode);
             if (mode.Length > 0) parts.Add(mode);
             if (entry.Password) parts.Add(T["multiplayer.kind.password"]);
@@ -663,7 +663,7 @@ namespace Modstoke.Loader
             _sub.text = entry.Dedicated != null ? entry.Dedicated.Ip + ":" + entry.Dedicated.Port : T["multiplayer.details.hostedBy"];
             StatValues[0].text = entry.Limit > 0 ? entry.Players + " / " + entry.Limit : entry.Players.ToString();
             StatValues[1].text = entry.Ping > 0 ? T.Get("multiplayer.details.pingValue", ("ping", entry.Ping)) : "—";
-            StatValues[2].text = details != null ? (details.Loader.Length > 0 ? details.Loader : T["common.yes"])
+            StatValues[2].text = details != null ? (details.Loader.Length > 0 ? ModNames.Version(details.Loader) : T["common.yes"])
                 : state switch
                 {
                     ModState.Checking => "…",
@@ -696,14 +696,14 @@ namespace Modstoke.Loader
                 case ModState.Match: return Plain("match", GreenAccent);
                 case ModState.AddsItems: return Plain("addsItems", AmberAccent);
             }
-            var missing = ServerBrowserBadges.Missing(details).Select(mod => mod.Id).ToArray();
+            var missing = ServerBrowserBadges.Missing(details).Select(mod => ModNames.LabelForId(mod.Id, mod.Version)).ToArray();
             if (state == ModState.Needs)
                 return (T.Count("multiplayer.notice.needsTitle", missing.Length),
                     T.Get("multiplayer.notice.needs", ("mods", string.Join(", ", missing))), AmberAccent);
             var local = ServerDetails.LocalMods();
             var extra = local.Where(own => own.Client == "required"
                 && !details.Mods.Any(mod => string.Equals(mod.Id, own.Id, StringComparison.OrdinalIgnoreCase)))
-                .Select(own => own.Id).ToArray();
+                .Select(own => ModNames.ForId(own.Id)).ToArray();
             var steps = new List<string> { T["multiplayer.notice.refused"] };
             if (missing.Length > 0) steps.Add(T.Get("multiplayer.notice.refusedAdd", ("mods", string.Join(", ", missing))));
             if (extra.Length > 0) steps.Add(T.Get("multiplayer.notice.refusedTurnOff", ("mods", string.Join(", ", extra))));
@@ -742,11 +742,11 @@ namespace Modstoke.Loader
                     continue;
                 }
                 var own = local.FirstOrDefault(entry => string.Equals(entry.Id, mod.Id, StringComparison.OrdinalIgnoreCase));
-                view.Name.text = mod.Id;
-                view.Server.text = mod.Version.Length > 0 ? mod.Version : "?";
+                view.Name.text = ModNames.ForId(mod.Id);
+                view.Server.text = mod.Version.Length > 0 ? ModNames.Version(mod.Version) : "?";
                 if (own != null)
                 {
-                    view.Yours.text = own.Version.Length > 0 ? own.Version : "?";
+                    view.Yours.text = own.Version.Length > 0 ? ModNames.Version(own.Version) : "?";
                     view.Yours.color = string.Equals(own.Version, mod.Version, StringComparison.OrdinalIgnoreCase) ? MenuKit.Green : MenuKit.Amber;
                 }
                 else

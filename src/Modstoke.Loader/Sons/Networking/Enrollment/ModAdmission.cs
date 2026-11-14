@@ -400,6 +400,38 @@ namespace Modstoke.Sons
             }
         }
 
+        /// <summary>The disconnect notice for a peer refused over this server's required mods, naming what it lacks by
+        /// short name and version; null when its admission did not fail on requirements.</summary>
+        internal static string RefusalNotice(ControlPeer peer)
+        {
+            if (!_selected || !OnOwnerThread || peer == null || !Entries.TryGetValue(peer.PeerId, out var entry)
+                || !ReferenceEquals(entry.Peer, peer) || entry.State != ModAdmissionState.Rejected
+                || entry.Reason != nameof(ModAdmissionRejection.IncompatibleRequirements)) return null;
+            var install = new List<string>();
+            var update = new List<string>();
+            var turnOn = new List<string>();
+            foreach (var result in entry.Results)
+            {
+                var label = ModNames.LabelForId(result.Id, result.RequiredVersion);
+                switch (result.Status)
+                {
+                    case NativeRequirementStatus.Matched: break;
+                    case NativeRequirementStatus.VersionMismatch: update.Add(label); break;
+                    case NativeRequirementStatus.Inactive: turnOn.Add(label); break;
+                    default: install.Add(label); break;
+                }
+            }
+            var steps = new List<string>();
+            if (install.Count > 0) steps.Add("Install " + string.Join(", ", install) + ".");
+            if (update.Count > 0) steps.Add("Update to " + string.Join(", ", update) + ".");
+            if (turnOn.Count > 0) steps.Add("Turn on " + string.Join(", ", turnOn) + ".");
+            if (steps.Count == 0) return null;
+            var text = "This server needs mods you don't have. " + string.Join(" ", steps);
+            while (Encoding.UTF8.GetByteCount(text) > ServerSessions.MaxDisconnectMessageKeyBytes)
+                text = text.Substring(0, text.Length - 4) + "...";
+            return text;
+        }
+
         private static IReadOnlyList<ModRequirementResult> Compare(
             ModRequirementsDocument requirements, LoadedModsSnapshot report) =>
             Array.AsReadOnly(requirements.Packages.Select(package => new ModRequirementResult(

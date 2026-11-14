@@ -135,8 +135,8 @@ namespace Modstoke.Loader
                 if (commands.Count >= 512) break;
             }
             var mods = (inventory?.Entries ?? Array.Empty<ModInventoryEntry>()).Select(entry =>
-                entry.DisplayName + " " + entry.Version + " · " + entry.Status + " · " + entry.SourceFamily);
-            string summary = "Modstoke " + RuntimeEntryPoint.Version + " · "
+                ModNames.Label(entry.DisplayName, entry.Version) + (string.IsNullOrWhiteSpace(entry.Status) ? "" : " · " + entry.Status));
+            string summary = ModNames.Label("Modstoke", RuntimeEntryPoint.Version) + " · "
                 + (inventory == null ? "Mod discovery is pending." : inventory.Summary.Total
                     + (inventory.Summary.Total == 1 ? " discovered entry, " : " discovered entries, ")
                     + inventory.Summary.Hosted + " hosted, " + inventory.Summary.Libraries

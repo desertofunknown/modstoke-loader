@@ -118,8 +118,8 @@ namespace Modstoke.Loader
                 parts.Add("by " + entry.Author.Trim());
             }
 
-            var version = (entry.Version ?? entry.AssemblyVersion)?.Trim();
-            if (!string.IsNullOrEmpty(version))
+            var version = ModNames.Version(entry.Version ?? entry.AssemblyVersion);
+            if (version.Length > 0)
             {
                 parts.Add(char.IsDigit(version[0]) ? "v" + version : version);
             }
@@ -157,7 +157,8 @@ namespace Modstoke.Loader
 
         internal static string VersionText(ModInventoryEntry entry)
         {
-            return entry?.Version ?? entry?.AssemblyVersion ?? "-";
+            var version = ModNames.Version(entry?.Version ?? entry?.AssemblyVersion);
+            return version.Length > 0 ? version : "-";
         }
 
         internal static string ConfigFileMeta(ModInventoryEntry entry)

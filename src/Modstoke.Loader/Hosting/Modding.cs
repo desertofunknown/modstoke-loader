@@ -835,6 +835,7 @@ namespace Modstoke.Loader
         {
             Id = entry.Id;
             Name = entry.Name;
+            DisplayName = entry.DisplayName;
             Version = entry.Version;
             Author = entry.Author;
             SourceFamily = entry.SourceFamily;
@@ -896,7 +897,8 @@ namespace Modstoke.Loader
         public string ManifestPath { get; }
         public string PackagePath { get; }
         public string AssemblyPath { get; }
-        public string DisplayName => string.IsNullOrWhiteSpace(Name) ? string.IsNullOrWhiteSpace(Id) ? "Unknown mod" : Id : Name;
+        /// <summary>The short name players see, such as "Optics" (see <see cref="ModNames"/>).</summary>
+        public string DisplayName { get; }
         public bool IsOpenAcai => ModLoaderTypes.IsOpenAcai(LoaderType);
         public bool IsLibrary => ModLoaderTypes.IsLibrary(LoaderType);
         public bool IsLegacyRedLoader => ModLoaderTypes.IsLegacyRedLoader(LoaderType);
