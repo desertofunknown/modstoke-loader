@@ -474,8 +474,9 @@ the installed runtime and release package; ownership is not runtime acceptance.
   after its shader warm-up has finished. That warm-up compiled a few variants and
   then waited frames before the next batch, so at the loading screen's 30 fps it
   held the load for over 4 s while every loading thread sat idle. It now compiles 64
-  variants every frame. The loading screen's 30 fps override is raised to 240 fps while
-  a world loads. Once the loader allowed its 23 scenes to activate, captures showed
+  variants every frame. The game's frame limiter keeps the menus and the loading screen
+  at its 30 fps menu limit. That limit is raised to 60 fps in the menus and to 240 fps
+  while a world loads, set directly when no limiter is running on the loading screen. Once the loader allowed its 23 scenes to activate, captures showed
   4.6 s of idle frames before the game scene appeared: Unity's async texture and mesh
   uploads and its scene integration each advance once per frame, and a scene cannot
   activate until its uploads finish. The game's own values come back once the player

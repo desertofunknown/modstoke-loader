@@ -18,9 +18,8 @@ namespace Modstoke.Sons
     /// caps its loading screen at 30 fps, so most of every loading frame sat idle. From the loading screen until the
     /// player is in the world both slices are wide, then the game's own values are put back so streaming in the world
     /// keeps its small slices.
-    /// Frame caps: the multiplayer scenes and the world's loading screen carry 30 fps overrides. In the menus they are
-    /// raised to the game's own menu limit; while a world loads, to 240 fps, because Unity's uploads and scene
-    /// integration advance once per frame.
+    /// Frame caps: the game's frame limiter holds the menus and the world's loading screen at 30 fps. The menus get
+    /// 60 fps; while a world loads, 240 fps, because Unity's uploads and scene integration advance once per frame.
     /// The new world is revealed as soon as frames settle instead of after the game's fixed black-screen wait.
     /// During a performance capture each loading step is marked on the timeline.
     /// </summary>
@@ -42,6 +41,8 @@ namespace Modstoke.Sons
         private static bool _revealHandled;
         private static (int Slice, int Buffer, bool Persistent)? _gameUpload;
         private static readonly Dictionary<IntPtr, (FpsLimiterOverride Override, int Fps)> RaisedOverrides = new();
+        private static FpsLimiter _limiter;
+        private static int _limiterMenuFps;
         private static readonly List<(LoadScene Scene, int Steps)> Watched = new();
         private static ThreadPriority? _gamePriority;
         private static bool _loading;
@@ -407,19 +408,39 @@ namespace Modstoke.Sons
             PerformanceCapture.Mark("scene-ops", new { loader = index, state = text });
         }
 
-        // Scene overrides cap the menus and the world's loading screen at 30 fps. In the menus that made motion choppy.
-        // While a world loads it held the load back: Unity's async texture and mesh uploads and its scene integration
-        // each advance once per frame, and a scene cannot activate until its uploads finish, so captures showed seconds
-        // of idle 30 fps frames with every thread waiting. Overrides below the target are raised; 0 means the game's
-        // own menu limit.
+        // The game's frame limiter caps the menus and the world's loading screen at its menu limit, 30 fps, unless a
+        // scene override says otherwise. In the menus that made motion choppy. While a world loads it held the load back:
+        // Unity's async texture and mesh uploads and its scene integration each advance once per frame, and a scene
+        // cannot activate until its uploads finish, so captures showed seconds of idle 30 fps frames with every thread
+        // waiting. The limiter's menu limit and any lower overrides are raised to the target (0 = the menus' 60 fps);
+        // when no limiter runs on the loading screen, the menus' last rate would stay in force, so it is raised directly.
         private static void LiftFrameCaps(int fps)
         {
             if (Time.unscaledTime < _nextMenuCheck) return;
             _nextMenuCheck = Time.unscaledTime + 0.25f;
+            if (fps <= 0) fps = DefaultMenuFps;
+            if (FpsLimiter.TryGetInstance(out var limiter) && limiter)
+            {
+                if (limiter._menuFpsMax < fps)
+                {
+                    if (_limiter == null || _limiter.Pointer != limiter.Pointer)
+                    {
+                        _limiter = limiter;
+                        _limiterMenuFps = limiter._menuFpsMax;
+                    }
+                    RuntimeEntryPoint.LogSource?.LogInfo("Frame limit raised from " + limiter._menuFpsMax + " to " + fps + " fps"
+                        + (_loading ? " while the world loads." : " in the menus."));
+                    limiter._menuFpsMax = fps;
+                }
+            }
+            else if (_loading && Application.targetFrameRate > 0 && Application.targetFrameRate < fps)
+            {
+                RuntimeEntryPoint.LogSource?.LogInfo("Frame rate raised from " + Application.targetFrameRate + " to " + fps
+                    + " fps while the world loads; no frame limiter is running.");
+                Application.targetFrameRate = fps;
+            }
             var overrides = FpsLimiter._overrides;
             if (overrides == null || overrides.Count == 0) return;
-            if (fps <= 0)
-                fps = FpsLimiter.TryGetInstance(out var limiter) && limiter && limiter._menuFpsMax > 0 ? limiter._menuFpsMax : DefaultMenuFps;
             for (var index = 0; index < overrides.Count; index++)
             {
                 var fpsOverride = overrides[index];
@@ -439,6 +460,8 @@ namespace Modstoke.Sons
             foreach (var (fpsOverride, fps) in RaisedOverrides.Values)
                 if (fpsOverride) fpsOverride._targetFps = fps;
             RaisedOverrides.Clear();
+            if (_limiter != null && _limiter) _limiter._menuFpsMax = _limiterMenuFps;
+            _limiter = null;
         }
     }
 }
