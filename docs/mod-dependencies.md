@@ -43,10 +43,15 @@ its cleanup callbacks before its prerequisites.
 
 If a prerequisite fails during startup, the dependent's entrypoint is not run.
 If it fails during a later Loader-dispatched callback, dependent mods stop
-receiving ordinary runtime callbacks before their next callback is invoked.
-Previously started mods remain eligible for shutdown cleanup. This does not
-unload assemblies or undo external event handlers, threads or game mutations;
-mods remain responsible for cleaning up their own resources.
+receiving ordinary runtime callbacks before their next callback is invoked, and
+their declared shutdown and dispose callbacks run at that point instead of at
+game exit, so they can release what they hold while the game is still running.
+This does not unload assemblies or undo external event handlers, threads or game
+mutations; mods remain responsible for cleaning up their own resources.
+
+A mod that references another mod's assembly without declaring it in
+`modstokeDependencies` still loads, but the Loader logs a warning: without the
+declaration the two may start in either order.
 
 The declaration accepts at most 64 required mods. IDs are limited to 96
 characters and version strings to 256, with no surrounding whitespace or control

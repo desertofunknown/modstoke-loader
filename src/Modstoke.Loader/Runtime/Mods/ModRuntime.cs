@@ -151,6 +151,17 @@ namespace Modstoke.Loader
                 try
                 {
                     RequireDependencies(mod);
+                }
+                catch (InvalidOperationException error)
+                {
+                    // A dependent stops with its prerequisite and releases what it holds now, not at game exit.
+                    Fail(mod, hook.ToString(), error);
+                    Cleanup(mod);
+                    Publish();
+                    continue;
+                }
+                try
+                {
                     Invoke(mod, hook);
                 }
                 catch (Exception error)

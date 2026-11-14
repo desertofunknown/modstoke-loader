@@ -255,6 +255,8 @@ namespace Modstoke.Loader
                 }
             }
 
+            WarnUndeclaredReferences(candidates, dependencies);
+
             // Propagate known failures before sorting so an invalid target can never satisfy a requirement.
             var blocked = new Queue<int>();
             for (var i = 0; i < candidates.Count; i++)
@@ -304,6 +306,31 @@ namespace Modstoke.Loader
                 ordered.Add(candidates[i]);
             }
             return new ModDependencyPlan(ordered, issues, required);
+        }
+
+        // A mod built against another mod's assembly without declaring it may start first and find that mod's
+        // statics unset, or keep running after it fails. Nothing is blocked; the author is told what to declare.
+        private static void WarnUndeclaredReferences(IReadOnlyList<ModCandidateSnapshot> candidates, List<int>[] dependencies)
+        {
+            var byAssemblyName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < candidates.Count; i++)
+                if (IsExecutable(candidates[i]) && !string.IsNullOrEmpty(candidates[i].AssemblyName))
+                    byAssemblyName.TryAdd(candidates[i].AssemblyName, i);
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                if (!IsExecutable(candidates[i])) continue;
+                foreach (var reference in candidates[i].AssemblyReferences)
+                {
+                    if (reference == null || !byAssemblyName.TryGetValue(reference.AssemblyName ?? "", out var target)
+                        || target == i || dependencies[i].Contains(target)) continue;
+                    try
+                    {
+                        RuntimeEntryPoint.LogSource?.LogWarning("Native mod '" + candidates[i].ModId + "' uses " + reference.AssemblyName
+                            + " from mod '" + candidates[target].ModId + "' without requiring it in modstokeDependencies, so their order is not guaranteed.");
+                    }
+                    catch { /* A logging listener must not stop planning. */ }
+                }
+            }
         }
 
         private static bool IsExecutable(ModCandidateSnapshot candidate)
