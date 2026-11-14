@@ -67,8 +67,10 @@ namespace Modstoke.Loader
                     {
                         if (!name.StartsWith(process, StringComparison.Ordinal)) continue;
                         // Engines of one type are reported separately; the busiest stands for the type, as in Task Manager.
+                        // Compute engines are numbered ("engtype_Compute 0"), and some drivers add a high-priority one.
                         if (name.EndsWith("engtype_3D", StringComparison.Ordinal)) sample.Engine3dPercent = Math.Max(sample.Engine3dPercent, value);
-                        else if (name.EndsWith("engtype_Compute", StringComparison.Ordinal)) sample.ComputePercent = Math.Max(sample.ComputePercent, value);
+                        else if (name.Contains("engtype_Compute", StringComparison.Ordinal) || name.EndsWith("engtype_High Priority Compute", StringComparison.Ordinal))
+                            sample.ComputePercent = Math.Max(sample.ComputePercent, value);
                         else if (name.EndsWith("engtype_Copy", StringComparison.Ordinal)) sample.CopyPercent = Math.Max(sample.CopyPercent, value);
                     }
                     if (memory != IntPtr.Zero)
