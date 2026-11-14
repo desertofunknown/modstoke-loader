@@ -13,10 +13,11 @@ namespace Modstoke.Sons
 {
     /// <summary>
     /// On DirectX 12 HDRP runs its light-list build and other compute passes on the engine's async compute queue, synced
-    /// to the graphics queue with fences; DirectX 11 has no such queue and runs them in order. Every DirectX 12 GPU hang
-    /// so far stopped on a lit draw that loops over those light lists, so on DirectX 12 the engine's answer to "is async
-    /// compute supported" becomes no. HDRP asks every frame and then records the same passes in order on the graphics
-    /// queue, as it does on DirectX 11. MODSTOKE_DX12_ASYNC_COMPUTE=1 leaves async compute on.
+    /// to the graphics queue with fences; DirectX 11 has no such queue and runs them in order. On DirectX 12 the
+    /// engine's answer to "is async compute supported" becomes no, so HDRP, which asks every frame, records the same
+    /// passes in order on the graphics queue, as it does on DirectX 11. The DirectX 12 hangs turned out to be shader MMU
+    /// faults that happen with async compute off as well; it stays off while the fix for those is confirmed, so one
+    /// thing changes at a time. MODSTOKE_DX12_ASYNC_COMPUTE=1 leaves async compute on.
     /// </summary>
     internal static class AsyncComputeSwitch
     {

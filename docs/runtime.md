@@ -305,18 +305,26 @@ the installed runtime and release package; ownership is not runtime acceptance.
   pipeline each draw of a command list ran with over that list's last four recordings.
   A report then names the stalled draw's shaders and saves their bytecode next to it
   as `dx12-shader-<stage>-<checksum>.dxbc`.
-  The first such report stopped in HDRP's forward-lit pixel shader. Its punctual,
-  area and reflection-probe loops run as many times as the light count it reads
-  from the fine-pruned tile light list, a 16-bit value. A tile holds at most
-  127 lights (`2 * dwords per tile - 1`), so a larger count can only come from a list
-  that was not built when the draw read it. Each pixel then loops up to 65535 times
-  and the GPU watchdog removes the device. On DirectX 12 starts the host now hands
-  pipeline creation a copy of every shader that reads those counts, with a `umin`
-  after each read that keeps the count within a tile, and recomputes the DXBC
-  checksum (`src/dxbc.rs`). Copies are made once per shader. If the runtime
-  refuses a copy, that pipeline is created from the stock shaders.
-  `MODSTOKE_DX12_STOCK_SHADERS=1` turns the change off. The removal report says how
-  many shaders were bounded and marks the stalled draw's shaders that were.
+  Three reports stopped in three different HDRP lit pixel shaders. The driver's
+  System event log (nvlddmkm event 13) shows the same thing for every DirectX 12 hang:
+  "Graphics SM Warp Exception ... MMU Fault", across many warps, followed by the
+  reset. A shader read unmapped memory; nothing ran too long. All three shaders look
+  up planar reflection probes as `cb3[index * 4 + n]` and `cb3[index + 80]`, where
+  `index = abs(envIndex) - 1` comes from the probe's light data and nothing bounds it.
+  DirectX 11 returns zero for a constant buffer read past the buffer's end. On
+  DirectX 12 the engine binds constant buffers by GPU address, so a garbage index
+  (light data the GPU reads before it is written; DirectX 12 does not zero new
+  memory) reads far outside the 160-vector buffer.
+  On DirectX 12 starts the host hands pipeline creation a hardened copy of each such
+  shader (`src/dxbc.rs`). Every read `cbN[rX.c + k]` from a dynamically indexed buffer
+  declared with S vectors, and every indexed immediate-constant-buffer read, now goes
+  through `umin rT.c, rX.c, l(S - 1 - k)` in a temp register added for it. HDRP's
+  fine-pruned tile light counts (16-bit values; a tile holds at most 127 lights, or
+  `2 * dwords per tile - 1`) also get a `umin` after each read, so an unbuilt list
+  cannot make a pixel loop 65535 times. The DXBC checksum is recomputed. Copies are
+  made once per shader. If the runtime refuses a copy, that pipeline is created from
+  the stock shaders. `MODSTOKE_DX12_STOCK_SHADERS=1` turns the change off. The removal
+  report counts the hardened shaders and marks the stalled draw's shaders that were.
   The host also records the engine's command queues by type and how many command
   lists each got, and logs the first submission to a compute queue. The report labels
   every unfinished list with its queue type, and gives each recent recording of the
@@ -524,13 +532,15 @@ the installed runtime and release package; ownership is not runtime acceptance.
   `AsyncComputeSwitch` runs on DirectX 12 only. HDRP's async passes (the light-list
   build, SSAO, SSR, contact shadows, volumetric voxelization) run on the engine's
   compute queue there, synced to the graphics queue with fences. DirectX 11 has no
-  such queue, so it runs them in order. Two DirectX 12 GPU hangs in a row stopped on
-  lit draws that loop over those light lists, so the switch makes the engine's
+  such queue, so it runs them in order. The switch makes the engine's
   `SupportsAsyncCompute` call (UnityPlayer's registered function, a capability-flag
   read) return false. It writes `xor eax,eax; ret` over its first three bytes in one
   aligned 8-byte store. HDRP's `FrameSettings.asyncEnabled` calls it on every
   check, so the same passes go in order on the graphics queue from the next frame.
-  `MODSTOKE_DX12_ASYNC_COMPUTE=1` leaves async compute on.
+  It was added while the DirectX 12 hangs looked like a cross-queue race. A hang
+  with it on, and no list ever sent to a compute queue, ruled that out (they are
+  shader MMU faults; see `Modstoke.NativeHost` above). It stays on until that fix is confirmed, so one thing
+  changes at a time. `MODSTOKE_DX12_ASYNC_COMPUTE=1` leaves async compute on.
   The game then keeps the screen black for a
   fixed 3 s of game time before the fade-in (`MainSceneLoadingTrigger`), and that
   wait is dropped once ten frames in a row take under 50 ms. The game's player

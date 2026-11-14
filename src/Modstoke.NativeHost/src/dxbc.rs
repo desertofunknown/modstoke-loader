@@ -1,8 +1,16 @@
-//! DXBC shader containers: the checksum the runtime checks, and the one change the native host makes to HDRP's
+//! DXBC shader containers: the checksum the runtime checks, and the changes the native host makes to the game's
 //! shaders on DirectX 12.
 //!
-//! HDRP's fine-pruned tile light list keeps, per 16x16 tile and light category, a light count in the low 16 bits of
-//! the tile's first dword, followed by 16-bit light indices. The lit shaders read the count as
+//! Indexed constant buffer reads. DirectX 11 returns zero for a constant buffer read past the buffer's end. On
+//! DirectX 12 the engine binds constant buffers by GPU address, which has no bounds, so such a read goes wherever the
+//! index points. HDRP's lit shaders look up planar reflection probes as `cb3[index * 4 + n]` and `cb3[index + 80]`
+//! with `index = abs(envIndex) - 1` taken from the probe's light data. Unbuilt or stale light data gives an index far
+//! past the 160-vector buffer, and the GPU stops with an MMU fault in the shader, which is what every DirectX 12 hang
+//! in the driver's log was. Each read `cbN[rX.c + k]` from a buffer declared with S vectors now goes through
+//! `umin rT.c, rX.c, l(S - 1 - k)` into a register of its own, so it stays inside the buffer.
+//!
+//! Tile light counts. HDRP's fine-pruned tile light list keeps, per 16x16 tile and light category, a light count in
+//! the low 16 bits of the tile's first dword, followed by 16-bit light indices. The lit shaders read the count as
 //!
 //! ```text
 //! ishl          rT.c, rT.c, l(k)         // tile offset * dwords per tile (1 << k)
@@ -11,8 +19,8 @@
 //! ```
 //!
 //! and run their punctual, area and reflection-probe loops that many times. A tile holds at most 2 * (1 << k) - 1
-//! lights, so anything larger means the list was not built when the draw read it. Each pixel then loops up to
-//! 65535 times and the GPU watchdog removes the device. A `umin` after each such read keeps the count within a tile.
+//! lights, so anything larger means the list was not built when the draw read it, and each pixel would loop up to
+//! 65535 times over garbage lights. A `umin` after each such read keeps the count within a tile.
 
 const OP_BREAK: u32 = 2;
 const OP_BREAKC: u32 = 3;
@@ -44,22 +52,36 @@ const OP_UMIN: u32 = 84;
 const OP_UADDC: u32 = 132;
 const OP_USUBB: u32 = 133;
 const OP_SWAPC: u32 = 142;
+const OP_DCL_CONSTANT_BUFFER: u32 = 89;
+const OP_DCL_TEMPS: u32 = 104;
 const OP_DCL_RESOURCE_STRUCTURED: u32 = 162;
 const OP_LD_STRUCTURED: u32 = 167;
 
 const OPERAND_TEMP: u32 = 0;
+const OPERAND_INPUT: u32 = 1;
 const OPERAND_IMMEDIATE32: u32 = 4;
 const OPERAND_IMMEDIATE64: u32 = 5;
 const OPERAND_RESOURCE: u32 = 7;
+const OPERAND_CONSTANT_BUFFER: u32 = 8;
+const OPERAND_IMMEDIATE_CONSTANT_BUFFER: u32 = 9;
+
+const CUSTOMDATA_IMMEDIATE_CONSTANT_BUFFER: u32 = 3;
 
 /// How far back from a count read the instruction that scaled the tile offset may be.
 const OFFSET_SEARCH: usize = 24;
 
-/// The container with every tile light count read bounded, and how many reads that was; `None` when the shader has
-/// no such read or is not a container this understands.
-pub fn bound_tile_light_counts(container: &[u8]) -> Option<(Vec<u8>, usize)> {
+/// What `harden` changed in a shader.
+#[derive(Clone, Copy, Default)]
+pub struct Hardened {
+    pub constant_reads: usize,
+    pub light_counts: usize,
+}
+
+/// The container with its indexed constant buffer reads kept inside their buffers and its tile light counts
+/// bounded; `None` when there is nothing to change or the container is not one this understands.
+pub fn harden(container: &[u8]) -> Option<(Vec<u8>, Hardened)> {
     let layout = Layout::read(container)?;
-    let tokens: Vec<u32> = container[layout.program..layout.program + layout.program_len]
+    let mut tokens: Vec<u32> = container[layout.program..layout.program + layout.program_len]
         .chunks_exact(4)
         .map(|word| u32::from_le_bytes(word.try_into().unwrap()))
         .collect();
@@ -68,26 +90,33 @@ pub fn bound_tile_light_counts(container: &[u8]) -> Option<(Vec<u8>, usize)> {
         return None;
     }
     let instructions = instructions(&tokens[..program_len])?;
-    let sites = count_reads(&tokens, &instructions);
-    if sites.is_empty() {
-        return None;
-    }
 
-    let mut program = Vec::with_capacity(program_len + sites.len() * 7);
-    let mut copied = 0;
+    // (token index, order at that index, instruction)
+    let mut inserts: Vec<(usize, u8, [u32; 7])> = Vec::new();
+    let sites = count_reads(&tokens, &instructions);
     for site in &sites {
-        program.extend_from_slice(&tokens[copied..site.after]);
-        program.extend_from_slice(&[
+        inserts.push((site.after, 0, [
             OP_UMIN | 7 << 24,
             site.destination[0],
             site.destination[1],
-            // rM.c as a single selected component
-            2 | 2 << 2 | site.component << 4 | OPERAND_TEMP << 12 | 1 << 20,
+            select(OPERAND_TEMP, site.component),
             site.register,
             1 | OPERAND_IMMEDIATE32 << 12,
             site.limit,
-        ]);
-        copied = site.after;
+        ]));
+    }
+    let constant_reads = clamp_constant_reads(&mut tokens, &instructions, &mut inserts);
+    if inserts.is_empty() {
+        return None;
+    }
+    inserts.sort_by_key(|&(at, order, _)| (at, order));
+
+    let mut program = Vec::with_capacity(program_len + inserts.len() * 7);
+    let mut copied = 0;
+    for (at, _, instruction) in &inserts {
+        program.extend_from_slice(&tokens[copied..*at]);
+        program.extend_from_slice(instruction);
+        copied = *at;
     }
     program.extend_from_slice(&tokens[copied..program_len]);
     program[1] = program.len() as u32;
@@ -113,7 +142,93 @@ pub fn bound_tile_light_counts(container: &[u8]) -> Option<(Vec<u8>, usize)> {
     }
     let sum = checksum(&patched);
     patched[4..20].copy_from_slice(&sum);
-    Some((patched, sites.len()))
+    Some((patched, Hardened { constant_reads, light_counts: sites.len() }))
+}
+
+/// A source operand token selecting one component of a register.
+fn select(kind: u32, component: u32) -> u32 {
+    2 | 2 << 2 | component << 4 | kind << 12 | 1 << 20
+}
+
+/// Points every indexed read of a dynamically indexed constant buffer, and of the immediate constant buffer, at a
+/// clamped copy of its index in a register added for it, and queues the `umin` that makes the copy. Returns how
+/// many reads were changed; shaders with no single temp declaration (hull shader phases) are left alone.
+fn clamp_constant_reads(tokens: &mut [u32], instructions: &[(usize, usize)], inserts: &mut Vec<(usize, u8, [u32; 7])>) -> usize {
+    let mut sizes: Vec<(u32, u32)> = Vec::new();
+    let mut immediate_size = None;
+    let mut temps = Vec::new();
+    for &(at, length) in instructions {
+        match tokens[at] & 0x7ff {
+            OP_DCL_CONSTANT_BUFFER if tokens[at] >> 11 & 1 == 1 => {
+                if let Some(buffer) = Operand::read(&tokens[..at + length], at + 1) {
+                    if buffer.kind == OPERAND_CONSTANT_BUFFER && buffer.len == 3 && tokens[at + 1] >> 20 & 3 == 2 {
+                        sizes.push((tokens[at + 2], tokens[at + 3]));
+                    }
+                }
+            }
+            OP_CUSTOMDATA if tokens[at] >> 11 == CUSTOMDATA_IMMEDIATE_CONSTANT_BUFFER => {
+                immediate_size = Some(((length - 2) / 4) as u32);
+            }
+            OP_DCL_TEMPS if length == 2 => temps.push(at),
+            _ => {}
+        }
+    }
+    let [temps_at] = temps[..] else { return 0 };
+    if sizes.is_empty() && immediate_size.is_none() {
+        return 0;
+    }
+    let added = tokens[temps_at + 1];
+
+    let mut changed = 0;
+    for &(at, length) in instructions {
+        let opcode = tokens[at] & 0x7ff;
+        if opcode == OP_CUSTOMDATA || (88..=106).contains(&opcode) || (143..=162).contains(&opcode) {
+            continue;
+        }
+        // Up to four distinct indices per instruction, one component of the added register each.
+        let mut lanes: Vec<(u32, u32, u32, u32)> = Vec::new();
+        for operand in operands(tokens, at, length) {
+            let Some(relative) = operand.relative else { continue };
+            let size = match operand.kind {
+                OPERAND_CONSTANT_BUFFER => operand.slot.and_then(|slot| sizes.iter().find(|&&(s, _)| s == slot)).map(|&(_, size)| size),
+                OPERAND_IMMEDIATE_CONSTANT_BUFFER => immediate_size,
+                _ => None,
+            };
+            let index = relative.operand;
+            let (Some(size), Some(register), Components::Select(component)) = (size, index.register, index.components) else { continue };
+            if !matches!(index.kind, OPERAND_TEMP | OPERAND_INPUT) || index.len != 2 || relative.offset >= size {
+                continue;
+            }
+            let limit = size - 1 - relative.offset;
+            let key = (index.kind, register, component, limit);
+            let lane = match lanes.iter().position(|&known| known == key) {
+                Some(lane) => lane,
+                None if lanes.len() < 4 => {
+                    lanes.push(key);
+                    lanes.len() - 1
+                }
+                None => continue,
+            } as u32;
+            tokens[relative.at] = select(OPERAND_TEMP, lane);
+            tokens[relative.at + 1] = added;
+            changed += 1;
+        }
+        for (lane, &(kind, register, component, limit)) in lanes.iter().enumerate() {
+            inserts.push((at, 1, [
+                OP_UMIN | 7 << 24,
+                2 | (1 << lane) << 4 | OPERAND_TEMP << 12 | 1 << 20,
+                added,
+                select(kind, component),
+                register,
+                1 | OPERAND_IMMEDIATE32 << 12,
+                limit,
+            ]));
+        }
+    }
+    if changed > 0 {
+        tokens[temps_at + 1] = added + 1;
+    }
+    changed
 }
 
 struct Layout {
@@ -188,7 +303,28 @@ struct Operand {
     components: Components,
     /// The register number, when the operand has one immediate index and no modifier.
     register: Option<u32>,
+    /// The first index when it is immediate: a constant buffer's slot.
+    slot: Option<u32>,
+    /// The last index that holds a register, with the immediate offset added to it.
+    relative: Option<Relative>,
     immediate: [u32; 4],
+    len: usize,
+}
+
+#[derive(Clone, Copy)]
+struct Relative {
+    /// Token index of the index register's operand.
+    at: usize,
+    operand: Leaf,
+    offset: u32,
+}
+
+/// An index register operand: only what a clamp needs, so `Operand` does not contain itself.
+#[derive(Clone, Copy)]
+struct Leaf {
+    kind: u32,
+    components: Components,
+    register: Option<u32>,
     len: usize,
 }
 
@@ -231,26 +367,37 @@ impl Operand {
             len += values * 2;
         }
         let dimensions = token >> 20 & 3;
-        let mut register = None;
+        let (mut register, mut slot, mut relative) = (None, None, None);
         for dimension in 0..dimensions {
-            match token >> (22 + dimension * 3) & 7 {
+            let mut index = |skip: usize, offset: u32| -> Option<usize> {
+                let operand = Operand::read(tokens, at + len + skip)?;
+                let leaf = Leaf { kind: operand.kind, components: operand.components, register: operand.register, len: operand.len };
+                relative = Some(Relative { at: at + len + skip, operand: leaf, offset });
+                Some(skip + operand.len)
+            };
+            let used = match token >> (22 + dimension * 3) & 7 {
                 0 => {
-                    if dimensions == 1 && !modified {
-                        register = Some(*tokens.get(at + len)?);
+                    let value = *tokens.get(at + len)?;
+                    if dimension == 0 {
+                        slot = Some(value);
                     }
-                    len += 1;
+                    if dimensions == 1 && !modified {
+                        register = Some(value);
+                    }
+                    1
                 }
-                1 => len += 2,
-                2 => len += Operand::read(tokens, at + len)?.len,
-                3 => len += 1 + Operand::read(tokens, at + len + 1)?.len,
-                4 => len += 2 + Operand::read(tokens, at + len + 2)?.len,
+                1 => 2,
+                2 => index(0, 0)?,
+                3 => index(1, *tokens.get(at + len)?)?,
+                4 => 2 + Operand::read(tokens, at + len + 2)?.len,
                 _ => return None,
-            }
+            };
+            len += used;
         }
         if at + len > tokens.len() {
             return None;
         }
-        Some(Operand { kind, components, register, immediate, len })
+        Some(Operand { kind, components, register, slot, relative, immediate, len })
     }
 
     /// The one component a temp destination writes.
