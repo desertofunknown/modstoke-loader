@@ -143,6 +143,8 @@ namespace Modstoke.Loader
                     {
                         if (!TryReadText(property.Value, MaxTextLength, out version))
                             return Invalid("A required native dependency version must be nonblank text of at most 256 characters, without control characters or surrounding whitespace.");
+                        if (LoaderVersionRequirement.IsMinimum(version) && !LoaderVersionRequirement.IsValidMinimum(version))
+                            return Invalid("A minimum dependency version must be \">=\" and a version like 0.3.0.");
                     }
                     else
                         return Invalid("Unknown member in a required native dependency.");
@@ -235,8 +237,9 @@ namespace Modstoke.Loader
                         var target = candidates[targetIndex];
                         if (!target.DependencyIdentityValid)
                             issue = "Required native mod '" + dependency.Id + "' has an invalid or truncated manifest identity.";
-                        else if (!string.Equals(target.Version, dependency.Version, StringComparison.Ordinal))
-                            issue = "Required native mod '" + dependency.Id + "' does not have the exact declared version '" + dependency.Version + "'.";
+                        else if (!LoaderVersionRequirement.Satisfies(target.Version, dependency.Version))
+                            issue = "Required native mod '" + dependency.Id + "' is version " + target.Version + "; this mod needs "
+                                + (LoaderVersionRequirement.IsMinimum(dependency.Version) ? dependency.Version[2..] + " or newer." : "exactly " + dependency.Version + ".");
                         else
                         {
                             targets.Add(target);
@@ -244,7 +247,10 @@ namespace Modstoke.Loader
                             consumers[targetIndex].Add(i);
                         }
                     }
-                    if (issue != null && !issues.ContainsKey(candidate))
+                    // A missing prerequisite usually also leaves its assembly unresolved; the dependency says why.
+                    if (issue != null && (!issues.ContainsKey(candidate)
+                        || !candidate.Hostable && candidate.IssueCode == "unresolved-assembly-references"
+                            && issues[candidate] == candidate.Detail))
                         issues[candidate] = issue;
                 }
             }

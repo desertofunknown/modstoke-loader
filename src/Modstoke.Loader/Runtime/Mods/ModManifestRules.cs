@@ -62,6 +62,24 @@ namespace Modstoke.Loader
             return satisfied;
         }
 
+        /// <summary>
+        /// Whether a mod's version meets a dependency's: the same text, or "&gt;=" and a version, met by that version
+        /// and every later one under the minLoaderVersion rules, so "&gt;=0.3.0" accepts 0.3.0, 0.3.0-dev and 0.4.1.
+        /// </summary>
+        internal static bool Satisfies(string version, string requirement)
+        {
+            if (string.Equals(version, requirement, StringComparison.Ordinal))
+                return true;
+            if (!IsMinimum(requirement) || !TryParse(requirement[2..], out var required) || !TryParse(version, out var current))
+                return false;
+            var core = Compare(current.Core, required.Core);
+            return core > 0 || core == 0 && (required.Prerelease == null || ComparePrerelease(current.Prerelease, required.Prerelease) >= 0);
+        }
+
+        internal static bool IsMinimum(string requirement) => requirement != null && requirement.StartsWith(">=", StringComparison.Ordinal);
+
+        internal static bool IsValidMinimum(string requirement) => IsMinimum(requirement) && TryParse(requirement[2..], out _);
+
         private static bool TryParse(string text, out (ulong[] Core, string Prerelease) version)
         {
             version = default;

@@ -22,9 +22,14 @@ manifest when your callbacks depend on services provided by another mod:
 ```
 
 The required mod must be enabled, have an executable managed entrypoint and pass
-the Loader's hosting checks. Its version must match exactly, including case;
-`2.1` and `2.1.0` are different versions. IDs match without regard to case.
-No version ranges, optional dependencies or automatic downloads are implied.
+the Loader's hosting checks. A plain version must match exactly, including case;
+`2.1` and `2.1.0` are different versions. A version written as `">=2.1.0"` is a
+minimum: 2.1.0 and every later version meet it, compared as major.minor.patch
+with SemVer prerelease order, and a minimum without a prerelease also accepts
+that version's prereleases (`2.1.0-dev`), as `minLoaderVersion` does. Prefer a
+minimum unless your mod reaches into the other mod's internals. IDs match
+without regard to case. No optional dependencies or automatic downloads are
+implied.
 Library-only packages and RedLoader/BepInEx plugins cannot satisfy this Modstoke
 lifecycle contract. Their assembly references and compatibility dependency
 handling remain separate.
@@ -65,6 +70,8 @@ runtime truncates cannot satisfy a new dependency requirement.
 This contract starts with SDK package 0103. Older Modstoke builds ignore the new
 field, so authors must require a supporting Loader when distributing packages
 that rely on it. The field does not itself enforce a minimum Loader version.
+Minimum versions (`>=`) need a Loader built on or after 2026-11-14; an older
+one reads them as exact versions that never match.
 Manager installation planning does not yet consume this declaration. Exact
 versions are compatibility requirements, not proof of publisher identity, client
 integrity or trusted gameplay.
