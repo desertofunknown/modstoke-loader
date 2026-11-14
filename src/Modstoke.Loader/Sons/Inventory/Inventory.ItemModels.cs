@@ -48,11 +48,14 @@ namespace Modstoke.Sons
                 if (!InventoryLayout.Same(inventory, _matInventory))
                 {
                     ReleaseMatModels();
-                    // Opening the inventory changes the view, not the player, so only a new inventory waits for the world.
-                    if (!LocalPlayer.IsInWorld || Time.unscaledTime < _matBindAt) return;
+                    // Opening the inventory changes the view, not the player, so only a new inventory waits for the world;
+                    // the black seconds before a new world appears count, so the models are built where nobody sees it.
+                    if (!LocalPlayer.IsInWorld && !GameRuntime.IsWorldStarting || Time.unscaledTime < _matBindAt) return;
                     _matInventory = inventory;
                 }
-                foreach (var model in MatModels) model.Update(inventory);
+                // At most one model is built a frame; four together cost about 90 ms in one frame.
+                var built = false;
+                foreach (var model in MatModels) built |= model.Update(inventory, !built);
             }
             catch (Exception error)
             {
@@ -166,21 +169,28 @@ namespace Modstoke.Sons
                 return true;
             }
 
-            internal void Update(PlayerInventory inventory)
+            // True when this call built the model, so the caller can leave the others to later frames.
+            internal bool Update(PlayerInventory inventory, bool mayBuild)
             {
                 if (_dropRequested && inventory._currentView == PlayerInventory.PlayerViews.World)
                 {
                     _dropRequested = false;
                     DropOne();
                 }
-                if (Time.unscaledTime < _retryAt || _layout == null && !TryCreate(inventory)) return;
+                var built = false;
+                if (Time.unscaledTime < _retryAt) return false;
+                if (_layout == null)
+                {
+                    if (!mayBuild || !TryCreate(inventory)) return false;
+                    built = true;
+                }
                 var count = inventory._itemInstanceManager.GetItemCount(_item._id);
-                if (count == _count) return;
+                if (count == _count) return built;
                 if (!_layout.TryRefresh(out var status))
                 {
                     Wait(status);
                     Release();
-                    return;
+                    return built;
                 }
                 _count = count;
                 if (count > 0 && !_shownLogged)
@@ -194,6 +204,7 @@ namespace Modstoke.Sons
                         + _layout.Root.activeInHierarchy + ", " + visible + " of " + renderers.Length + " renderers drawing, layer "
                         + LayerMask.LayerToName(_layout.Item.gameObject.layer) + ".");
                 }
+                return built;
             }
 
             private bool TryCreate(PlayerInventory inventory)

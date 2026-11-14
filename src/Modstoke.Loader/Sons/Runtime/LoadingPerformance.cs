@@ -25,6 +25,7 @@ namespace Modstoke.Sons
     internal static class LoadingPerformance
     {
         private const int DefaultMenuFps = 60;
+        private const string WorldLoaderScene = "SonsMainLoading";
         private const int LoadingUploadSliceMs = 24;
         private const int LoadingUploadBufferMb = 256;
         private static (int Slice, int Buffer, bool Persistent)? _gameUpload;
@@ -57,11 +58,8 @@ namespace Modstoke.Sons
 
                 if (_loading)
                 {
-                    if (PerformanceCapture.Active)
-                    {
-                        FindLoaders(state.SceneName);
-                        WatchSteps();
-                    }
+                    FindLoaders(state.SceneName);
+                    if (PerformanceCapture.Active) WatchSteps();
                 }
                 else if (!state.IsInWorld && !gameScene && !GameBuild.IsDedicatedServer)
                     LiftMenuCap();
@@ -118,6 +116,7 @@ namespace Modstoke.Sons
             {
                 if (!loader || Watched.Exists(entry => entry.Scene && entry.Scene.Pointer == loader.Pointer)) continue;
                 Watched.Add((loader, -1));
+                TrimFixedWaits(loader);
                 PerformanceCapture.Mark("load-scene", new
                 {
                     loader = Watched.Count - 1,
@@ -136,6 +135,20 @@ namespace Modstoke.Sons
                 if (_startSequence)
                     PerformanceCapture.Mark("start-sequence-found", new { activateAfterLoading = _startSequence._activateAfterLoading?.Count ?? 0 });
             }
+        }
+
+        // The world's loader waits fixed times before it starts and before it closes (LoadScene.DelayPassed and
+        // WaitForCleanupDelay): plain timers with no condition behind them, 0.2 s and 1 s in this build. The screen
+        // stays black for seconds after the loader closes anyway, so the world's loader skips both.
+        private static void TrimFixedWaits(LoadScene loader)
+        {
+            if (!string.Equals(loader.gameObject.scene.name, WorldLoaderScene, StringComparison.Ordinal)) return;
+            var delay = loader._delay;
+            var cleanup = loader._cleanupDelay;
+            if (delay <= 0 && cleanup <= 0) return;
+            loader._delay = 0;
+            loader._cleanupDelay = 0;
+            RuntimeEntryPoint.LogSource?.LogInfo("World loader fixed waits skipped: " + delay + " s before loading, " + cleanup + " s before closing.");
         }
 
         private static void End(string where)
@@ -183,8 +196,15 @@ namespace Modstoke.Sons
                 _loaderSteps = global;
             }
             // The player is in the world once the game moves its view there; these show what holds it after loading.
+            var cutscene = global::Sons.Cutscenes.CutsceneManager.GetActiveCutScene();
+            var fade = cutscene ? cutscene.TryCast<global::Sons.Cutscenes.FadeFromBlackCutscene>() : null;
+            var cameras = new List<string>();
+            foreach (var camera in Camera.allCameras)
+                if (camera && camera.enabled) cameras.Add(camera.name);
             var view = TheForest.Utils.LocalPlayer.CurrentView.ToString() + (Time.timeScale == 0 ? " (time stopped)" : "")
-                + (Camera.main ? "" : " (no camera)");
+                + " | cutscene " + (cutscene ? cutscene.name + (fade != null ? " (duration " + fade._cutsceneDuration + " s, HUD at "
+                    + fade._timeToHudReveal + " s, started " + fade._cutsceneHasStarted + ")" : "") : "none")
+                + " | cameras " + (cameras.Count == 0 ? "none" : string.Join(", ", cameras));
             if (!string.Equals(view, _playerView, StringComparison.Ordinal))
             {
                 PerformanceCapture.Mark("player-view", view);

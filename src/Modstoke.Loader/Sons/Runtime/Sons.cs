@@ -67,6 +67,30 @@ namespace Modstoke.Sons
         public static bool IsGameScene => string.Equals(State.SceneKind, SceneKind.Game, StringComparison.Ordinal);
         public static bool IsInWorld => State.IsInWorld;
 
+        /// <summary>
+        /// True from the loading screen closing until the player's view reaches the world: a few seconds of black and
+        /// then the game's fade in, with the world and the player already loaded. One-time setup for a new world
+        /// (models, attachments, inventory layouts) belongs here instead of on the first frame the player can see.
+        /// Some things, such as the player's camera, only exist in the fade's last part, so setup that needs them
+        /// keeps retrying until they do.
+        /// </summary>
+        public static bool IsWorldStarting
+        {
+            get
+            {
+                if (!IsGameScene || State.IsInWorld) return false;
+                try
+                {
+                    return !global::Sons.Loading.LoadScene._isLoading
+                        && LocalPlayer.CurrentView == TheForest.Items.Inventory.PlayerInventory.PlayerViews.Loading;
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+        }
+
         internal static void Initialize()
         {
             if (_initialized)

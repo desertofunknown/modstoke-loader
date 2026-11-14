@@ -1610,6 +1610,18 @@ a loaded ranged-weapon ammunition profile without loading or creating assets.
 flags. See [Server ballistic data](BALLISTIC_READS.md) for snapshot lifetime,
 unavailable data and the distinction between initial damage and final health loss.
 
+## World start window
+
+`GameRuntime.IsWorldStarting` is true from the loading screen closing until the
+player's view reaches the world: in this build about three seconds with no camera,
+then the game's fade in, with the world, the player and the inventory already
+loaded. One-time setup for a new world (models, attachments, inventory layouts)
+belongs here rather than on the first frame the player sees; the Loader's own
+inventory-mat models and the Client's devices and character body use it. The
+player's camera only exists in the fade's last part, so setup that needs it keeps
+retrying until it does. `IsInWorld` stays false throughout, so anything the player
+interacts with still waits for the world.
+
 ## PNG textures off the game thread
 
 `PngTextures.DecodeAsync` (or `Decode` on a worker you already own) turns PNG bytes
