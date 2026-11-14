@@ -470,7 +470,11 @@ the installed runtime and release package; ownership is not runtime acceptance.
   thread does not wait for a blocking full collection. `LoadingPerformance` widens Unity's
   background-integration and async-upload slices from the loading screen until the
   player is in the world, then restores the game's values. It also skips the world
-  loader's fixed 0.2 s and 1 s timers. The game then keeps the screen black for a
+  loader's fixed 0.2 s and 1 s timers. The world loader asks for the game scene only
+  after its shader warm-up has finished. That warm-up compiled a few variants and
+  then waited frames before the next batch, so at the loading screen's 30 fps it
+  held the load for over 4 s while every loading thread sat idle. It now compiles 64
+  variants every frame. The game then keeps the screen black for a
   fixed 3 s of game time before the fade-in (`MainSceneLoadingTrigger`), and that
   wait is dropped once ten frames in a row take under 50 ms. The game's player
   activation check still decides when the fade-in starts.

@@ -29,6 +29,7 @@ namespace Modstoke.Sons
         private const string WorldLoaderScene = "SonsMainLoading";
         private const int LoadingUploadSliceMs = 24;
         private const int LoadingUploadBufferMb = 256;
+        private const int WarmUpVariantsPerFrame = 64;
         private const float SettledFrameSeconds = 0.05f;
         private const int SettledFrames = 10;
         private static global::Sons.Utils.MainSceneLoadingTrigger _reveal;
@@ -128,6 +129,7 @@ namespace Modstoke.Sons
                 if (!loader || Watched.Exists(entry => entry.Scene && entry.Scene.Pointer == loader.Pointer)) continue;
                 Watched.Add((loader, -1));
                 TrimFixedWaits(loader);
+                PaceShaderWarmUp(loader);
                 PerformanceCapture.Mark("load-scene", new
                 {
                     loader = Watched.Count - 1,
@@ -222,6 +224,30 @@ namespace Modstoke.Sons
             loader._delay = 0;
             loader._cleanupDelay = 0;
             RuntimeEntryPoint.LogSource?.LogInfo("World loader fixed waits skipped: " + delay + " s before loading, " + cleanup + " s before closing.");
+        }
+
+        // The world's loader does not request the game scene until its shader warm-up (ShaderCollectionWarmUp, 514
+        // variants in this build) has finished. The warm-up compiles a few variants, waits _delayFrameCount frames
+        // and repeats, so at the loading screen's 30 fps it held the load for over 4 s while every loading thread sat
+        // idle; the compiling itself took 0.3 s. Larger batches with no frame gaps finish it in a few frames.
+        private static void PaceShaderWarmUp(LoadScene loader)
+        {
+            if (!string.Equals(loader.gameObject.scene.name, WorldLoaderScene, StringComparison.Ordinal)) return;
+            var warmUps = loader._shaderCollectionWarmUps;
+            if (warmUps == null) return;
+            for (var index = 0; index < warmUps.Count; index++)
+            {
+                var warmUp = warmUps[index];
+                if (!warmUp) continue;
+                var batch = warmUp._variantsPerFrame;
+                var delay = warmUp._delayFrameCount;
+                if (batch >= WarmUpVariantsPerFrame && delay <= 0) continue;
+                warmUp._variantsPerFrame = Math.Max(batch, WarmUpVariantsPerFrame);
+                warmUp._delayFrameCount = 0;
+                RuntimeEntryPoint.LogSource?.LogInfo("Shader warm-up before the world paced up: " + batch + " variants every " +
+                    (Math.Max(delay, 0) + 1) + " frames became " + warmUp._variantsPerFrame + " every frame.");
+                PerformanceCapture.Mark("shader-warmup", new { batch, delay, newBatch = warmUp._variantsPerFrame });
+            }
         }
 
         // MainSceneLoadingTrigger.LateUpdate starts the fade in once the loader has reported completion, a fixed
