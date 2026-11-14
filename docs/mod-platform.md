@@ -3870,9 +3870,19 @@ never equipped and none of its scripts run.
   held item replaced, such as a flashlight, as that hand's previous item; the
   SDK takes that memory over too and gives the item back once the arm has
   lowered the held item and the hands are free, or not at all if something
-  else takes the left hand first. An equip into the other hand puts a
-  two-handed held item away first; a right-hand equip that does so gives the
-  left-hand item back the same way.
+  else takes the left hand first; the wait pauses while the inventory or a
+  menu is open. A right-hand item that needs both hands leaves the left-hand
+  item to the game instead, as the hand's previous item, which is how the game
+  keeps it for its own two-handed items: it comes back the next time the game
+  restores the left hand, such as when the inventory closes. An equip into the
+  other hand puts a two-handed held item away first; a right-hand equip that
+  does so gives the left-hand item back the same way. A two-handed held item
+  that replaces
+  another one takes over what that one owed, and never gives the replaced one
+  back. With the inventory open the game only queues an equip as the hand's
+  previous item and brings it out on close. Another item chosen there over a
+  queued two-handed held item takes its place, as an equip into the other hand
+  does in the world, and the items that one owed go back to the game's memory.
 - Every equip of a held item is checked before the game's TryEquip runs: an
   item whose hand definition cannot be found, an equip forced into the other
   hand, or a two-handed equip while carrying a log is refused with the item
@@ -3896,8 +3906,11 @@ never equipped and none of its scripts run.
   and destroyed on every stash, so keep mod state outside them.
 - `HeldItems.TryEquip`, `TryToggle` and `TryPutAway` run the game's own equip,
   toggle and stash for the item's hand, after the game's own check that the
-  hand can take it now, and say why when they refuse. `CanEquip` makes the
-  same checks as `TryEquip` without equipping anything, so it can be polled.
+  hand can take it now, and say why when they refuse. They don't bring an item
+  out while the player has no backpack, since the game drops what it puts away
+  then. Refusals that last the session start with "It can't be held here".
+  `CanEquip` makes the same checks as `TryEquip` without equipping anything, so
+  it can be polled.
   `IsHeld`, `TryGetLocal` and `Snapshot` read the local hands. All need the
   Unity thread.
 

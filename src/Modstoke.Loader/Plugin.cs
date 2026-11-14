@@ -42,7 +42,7 @@ namespace Modstoke.Loader
     {
         public const string PluginGuid = "com.openacai.sotf.endnightloader";
         public const string PluginName = "Modstoke Loader Core";
-        public const string Version = "0.4.3";
+        public const string Version = "0.4.4";
         private const string EnableSonsMenuHarmonyEnvVar = "OPENACAI_ENABLE_SONS_MENU_HARMONY";
         private const string DisableSonsMenuHarmonyEnvVar = "OPENACAI_DISABLE_SONS_MENU_HARMONY";
 

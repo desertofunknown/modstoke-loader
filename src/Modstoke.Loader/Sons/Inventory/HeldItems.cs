@@ -70,6 +70,9 @@ namespace Modstoke.Sons
         private const string ClientLocalStatus = "It can't be held here: " + ClientLocalRefusal + ".";
         private const string StrictStatus = "It can't be held here: " + StrictRefusal + ".";
         private const string UngatedStatus = "It can't be held here: " + UngatedRefusal + ".";
+        private const string NoHooksStatus = "It can't be held here: the SDK's held item hooks are unavailable.";
+        // Without it the game drops anything but the knife that it puts away.
+        private const int BackpackItemId = 402;
 
         private static bool ClientLocalInSession(int itemId) => BoltNetwork.isRunning && !ItemIds.IsNetworked(itemId);
 
@@ -191,8 +194,11 @@ namespace Modstoke.Sons
                 // Queued before the right hand's give-back, whose equip ends every left-hand memory but a pending one.
                 if (giveBackLeft > 0) _leftGiveBackUntil = Time.unscaledTime + LeftGiveBackSeconds;
                 else if (twoHanded) ForgetLeft();
-                status = "Put away." + (giveBack > 0 ? GiveBack(inventory, giveBack) : "")
-                    + (giveBackLeft > 0 ? " Item " + giveBackLeft + " goes back into the left hand once the hands are free." : "");
+                status = "Put away." + (giveBack > 0 ? GiveBack(inventory, giveBack) : "");
+                // A give-back that needs both hands leaves the left-hand item to the game's own memory.
+                if (giveBackLeft > 0)
+                    status += _leftGiveBackUntil > 0 ? " Item " + giveBackLeft + " goes back into the left hand once the hands are free."
+                        : " Item " + giveBackLeft + " is the game's previous left-hand item again, as it is for item " + giveBack + ".";
                 return true;
             }
             catch (Exception error)
@@ -262,6 +268,11 @@ namespace Modstoke.Sons
                 status = "The player does not carry it.";
                 return false;
             }
+            if (!_hooksInstalled)
+            {
+                status = NoHooksStatus;
+                return false;
+            }
             var refusal = SessionRefusal(profile.ItemId);
             if (refusal != null)
             {
@@ -271,6 +282,12 @@ namespace Modstoke.Sons
             if (profile.BothHands && inventory.HeldOnlyItemController?.HasItem == true)
             {
                 status = "The player is carrying something in both hands.";
+                return false;
+            }
+            // Brought out now, it would land on the ground at its put-away.
+            if (!inventory.Owns(BackpackItemId, null))
+            {
+                status = "The player has no backpack to put it away in.";
                 return false;
             }
             var ready = profile.Slot == EquipmentSlot.LeftHand
@@ -305,8 +322,7 @@ namespace Modstoke.Sons
         private static void TickLeftGiveBack()
         {
             if (_leftGiveBackUntil == 0) return;
-            if (Time.unscaledTime >= _leftGiveBackUntil || !Inventory.TryGetCurrentInventory(out var inventory, out _)
-                || inventory.Pointer != _rememberedLeftBy)
+            if (!Inventory.TryGetCurrentInventory(out var inventory, out _) || inventory.Pointer != _rememberedLeftBy)
             {
                 ForgetLeft();
                 return;
@@ -314,6 +330,17 @@ namespace Modstoke.Sons
             var itemId = _rememberedLeft;
             try
             {
+                // In the inventory or a menu the player can't act, so the wait starts again once back in the world.
+                if (inventory._currentView != PlayerInventory.PlayerViews.World || GameRuntime.State.PauseMenuOpen)
+                {
+                    _leftGiveBackUntil = Time.unscaledTime + LeftGiveBackSeconds;
+                    return;
+                }
+                if (Time.unscaledTime >= _leftGiveBackUntil)
+                {
+                    ForgetLeft();
+                    return;
+                }
                 if (SlotItem(inventory, EquipmentSlot.LeftHand, false) > 0 || SlotItem(inventory, EquipmentSlot.LeftHand, true) > 0
                     || inventory.AmountOf(itemId, false, false) < 1)
                 {
@@ -322,8 +349,7 @@ namespace Modstoke.Sons
                 }
                 // Only the game's equip returns its state to Idle, so an empty right hand counts as settled whatever
                 // the state says.
-                var settled = inventory._currentView == PlayerInventory.PlayerViews.World && !LocalPlayer.IsInMidAction
-                    && SlotItem(inventory, EquipmentSlot.RightHand, true) < 0
+                var settled = !LocalPlayer.IsInMidAction && SlotItem(inventory, EquipmentSlot.RightHand, true) < 0
                     && (inventory._currentEquipState == PlayerInventory.HandEquipState.Idle
                         || SlotItem(inventory, EquipmentSlot.RightHand, false) < 0);
                 if (!settled || !inventory.CanEquipItemInLeftHand(itemId)) return;

@@ -137,14 +137,24 @@ namespace Modstoke.Sons
                     if (__state < 0 && !restoring && __instance._currentView == PlayerInventory.PlayerViews.Inventory
                         && previous != null && !previous.WasCollected)
                         __state = previous._itemID;
-                    // Brought out with the right hand empty it owes nothing back, unless the game is restoring it
-                    // (closing the inventory, leaving water), which keeps what the first equip put away.
-                    if (__state < 0 && !restoring) _remembered = -1;
-                    // The left-hand item it owes back is read after the equip. Brought out again before a pending
-                    // give-back ran, it keeps that item for its own put-away.
-                    if (_leftGiveBackUntil > 0) _leftGiveBackUntil = 0;
-                    else if (!restoring) _rememberedLeft = -1;
-                    _replacingLeft = restoring ? -1 : SlotItem(__instance, EquipmentSlot.LeftHand, false);
+                    var replacing = restoring ? -1 : SlotItem(__instance, EquipmentSlot.LeftHand, false);
+                    // With the inventory open the game only queues an equip, as the hand's previous item, so a held
+                    // item queued earlier in the same visit is the one this replaces.
+                    var queued = !restoring && replacing < 0 && __instance._currentView == PlayerInventory.PlayerViews.Inventory
+                        ? PreviousLeft(__instance) : -1;
+                    // Taking over from another two-handed held item, it owes back what that one did, never that item.
+                    if (TwoHandedHeld(replacing) || TwoHandedHeld(queued)) replacing = -1;
+                    else
+                    {
+                        // Brought out with the right hand empty it owes nothing back, unless the game is restoring it
+                        // (closing the inventory, leaving water), which keeps what the first equip put away.
+                        if (__state < 0 && !restoring) _remembered = -1;
+                        // The left-hand item it owes back is read after the equip. Brought out again before a pending
+                        // give-back ran, it keeps that item for its own put-away.
+                        if (_leftGiveBackUntil > 0) _leftGiveBackUntil = 0;
+                        else if (!restoring) _rememberedLeft = -1;
+                    }
+                    _replacingLeft = replacing;
                 }
             }
             catch (Exception error)
@@ -178,7 +188,7 @@ namespace Modstoke.Sons
                 var recorded = left != null && !left.WasCollected;
                 var leftId = recorded ? left._itemID : _replacingLeft;
                 _replacingLeft = -1;
-                if (leftId > 0 && leftId != profile.ItemId)
+                if (leftId > 0 && leftId != profile.ItemId && !TwoHandedHeld(leftId))
                 {
                     _rememberedLeft = leftId;
                     _rememberedLeftBy = __instance.Pointer;
@@ -201,30 +211,72 @@ namespace Modstoke.Sons
             var other = slot == EquipmentSlot.LeftHand ? EquipmentSlot.RightHand : EquipmentSlot.LeftHand;
             var held = SlotItem(inventory, other, false);
             var displaces = held >= 0 && Profiles.TryGetValue(held, out var profile) && profile.BothHands;
-            // Anything else taking a hand ends the memory; only the two-handed item's own re-equips keep it. A pending
-            // left-hand give-back ends only when something else takes the left hand, and a right-hand item that puts
-            // the held item away queues one, as a put-away through HeldItems does.
+            var leftToGame = -1;
+            // Anything else taking a hand ends the memory; only the two-handed item's own re-equips keep it.
             if (!Profiles.TryGetValue(incoming._itemID, out var own) || !own.BothHands || own.Slot != EquipmentSlot.LeftHand)
             {
+                var leftOwed = _rememberedLeft > 0 && _rememberedLeftBy == inventory.Pointer ? _rememberedLeft : -1;
+                if (slot == EquipmentSlot.LeftHand)
+                {
+                    HandBackQueuedRight(inventory);
+                    ForgetLeft();
+                }
+                else
+                {
+                    // Chosen on the open inventory over a queued two-handed held item, which the game would bring out
+                    // next to it on close: the queued one stays put away, as in the world.
+                    var queued = QueuedTwoHanded(inventory);
+                    if (queued) inventory.ForgetPreviousItemInSlot(EquipmentSlot.LeftHand);
+                    var bothHands = data._requiresBothHands || own is { BothHands: true };
+                    // A right-hand item that puts the held item away gives the left-hand item back once the hands are
+                    // free, as a put-away through HeldItems does. One that needs both hands, or one chosen on the open
+                    // inventory, leaves it to the game as the hand's previous item, as the game keeps it for its own
+                    // two-handed items; the game equips it the next time it restores the left hand, such as when the
+                    // inventory closes. A pending give-back otherwise ends only when something takes the left hand.
+                    if (leftOwed > 0 && (bothHands || queued))
+                    {
+                        leftToGame = leftOwed;
+                        ForgetLeft();
+                    }
+                    else if (displaces && leftOwed > 0) _leftGiveBackUntil = Time.unscaledTime + LeftGiveBackSeconds;
+                    else if (_leftGiveBackUntil == 0) ForgetLeft();
+                }
                 _remembered = -1;
-                if (displaces && other == EquipmentSlot.LeftHand && _rememberedLeft > 0 && _rememberedLeftBy == inventory.Pointer)
-                    _leftGiveBackUntil = Time.unscaledTime + LeftGiveBackSeconds;
-                else if (_leftGiveBackUntil == 0 || slot == EquipmentSlot.LeftHand) ForgetLeft();
             }
-            if (!displaces) return;
-            _remembered = -1;
-            if (other == EquipmentSlot.LeftHand) inventory.UnequipItemAtSlot(EquipmentSlot.LeftHand, false, true, false);
-            else inventory.StashRightHandItem(false, false, false);
+            if (displaces)
+            {
+                _remembered = -1;
+                if (other == EquipmentSlot.LeftHand) inventory.UnequipItemAtSlot(EquipmentSlot.LeftHand, false, true, false);
+                else inventory.StashRightHandItem(false, false, false);
+            }
+            if (leftToGame > 0 && inventory.AmountOf(leftToGame, false, false) > 0)
+                inventory.MemorizeItem(EquipmentSlot.LeftHand, leftToGame);
         }
 
-        // Whether the game is equipping the left hand's previous item again rather than a fresh bring-out.
-        private static bool Restoring(PlayerInventory inventory, int itemId)
+        // A two-handed held item the open inventory has queued for the left hand, with nothing in either hand yet.
+        private static bool QueuedTwoHanded(PlayerInventory inventory)
+            => inventory._currentView == PlayerInventory.PlayerViews.Inventory
+               && SlotItem(inventory, EquipmentSlot.LeftHand, false) < 0 && SlotItem(inventory, EquipmentSlot.RightHand, false) < 0
+               && TwoHandedHeld(PreviousItem(inventory, EquipmentSlot.LeftHand));
+
+        // A left-hand item chosen on the open inventory over a two-handed held item that was only queued there: the
+        // right-hand item that one took over from the game goes back to the game, which brings it out on close.
+        private static void HandBackQueuedRight(PlayerInventory inventory)
         {
-            var previous = inventory._equipmentSlotsPrevious;
-            var slot = (int)EquipmentSlot.LeftHand;
-            return previous != null && !previous.WasCollected && previous.Length > slot && previous[slot] != null
-                && !previous[slot].WasCollected && previous[slot]._itemID == itemId;
+            if (_remembered <= 0 || _rememberedBy != inventory.Pointer || !QueuedTwoHanded(inventory)
+                || PreviousItem(inventory, EquipmentSlot.RightHand) > 0 || inventory.AmountOf(_remembered, false, false) < 1)
+                return;
+            inventory.MemorizeItem(EquipmentSlot.RightHand, _remembered);
         }
+
+        private static bool TwoHandedHeld(int itemId)
+            => itemId > 0 && Profiles.TryGetValue(itemId, out var profile) && profile.BothHands && profile.Slot == EquipmentSlot.LeftHand;
+
+        // Whether the game is equipping the left hand's previous item again rather than a fresh bring-out.
+        private static bool Restoring(PlayerInventory inventory, int itemId) => PreviousItem(inventory, EquipmentSlot.LeftHand) == itemId;
+
+        // The game's previous item for the left hand: what it brings back there, such as on closing the inventory.
+        private static int PreviousLeft(PlayerInventory inventory) => PreviousItem(inventory, EquipmentSlot.LeftHand);
 
         private static void LogOnce(string key, string message)
         {
