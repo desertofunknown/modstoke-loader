@@ -36,6 +36,7 @@ namespace Modstoke.Sons
         private static int _loaderSteps = -1;
         private static string _scannedScene;
         private static global::LoadSave _startSequence;
+        private static string _playerView;
         private static bool _failed;
 
         internal static void Tick()
@@ -105,6 +106,7 @@ namespace Modstoke.Sons
             _loaderSteps = -1;
             _scannedScene = null;
             _startSequence = null;
+            _playerView = null;
         }
 
         // Loaders live in the scenes being loaded, so each newly current scene is searched once.
@@ -179,6 +181,14 @@ namespace Modstoke.Sons
                     playerEntityAttached = (global & 32) != 0
                 });
                 _loaderSteps = global;
+            }
+            // The player is in the world once the game moves its view there; these show what holds it after loading.
+            var view = TheForest.Utils.LocalPlayer.CurrentView.ToString() + (Time.timeScale == 0 ? " (time stopped)" : "")
+                + (Camera.main ? "" : " (no camera)");
+            if (!string.Equals(view, _playerView, StringComparison.Ordinal))
+            {
+                PerformanceCapture.Mark("player-view", view);
+                _playerView = view;
             }
             for (var index = 0; index < Watched.Count; index++)
             {

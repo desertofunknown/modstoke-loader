@@ -76,6 +76,11 @@ namespace Modstoke.Sons
 
             _initialized = true;
             EngineBootConfig.Ensure();
+            // The game thread never waits for a blocking full collection of the mods' managed heap; background ones
+            // still run. Server collection with parallel heaps comes from the runtime configuration.
+            System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.SustainedLowLatency;
+            RuntimeEntryPoint.LogSource?.LogInfo("Managed collection: " + (System.Runtime.GCSettings.IsServerGC ? "server" : "workstation")
+                + ", " + System.Runtime.GCSettings.LatencyMode + ".");
             RefreshEnvironment();
             RegisterMenuProvider();
             SaveData.RegisterMenuProvider();
@@ -154,20 +159,27 @@ namespace Modstoke.Sons
         {
             try
             {
-                Combat.StrictCombatEquipmentCleanupPump.Tick();
-                Combat.StrictCombatImpactParticles.Tick();
-                global::Modstoke.Sons.ItemRegistration.RepublishIntoNewDatabase();
-                global::Modstoke.Sons.Inventory.TickItemModels();
-                global::Modstoke.Sons.Crafting.TickItemModels();
-                global::Modstoke.Sons.WeaponAttachments.Tick();
-                global::Modstoke.Sons.ContentAgreement.EnsureHooks();
-                global::Modstoke.Sons.ContentAgreement.LabelHostedLobby();
-                global::Modstoke.Sons.KickReason.Tick();
-                global::Modstoke.Sons.ServerDetailsPublisher.Tick();
-                global::Modstoke.Sons.ServerBrowserBadges.Tick();
+                // Each part is a named scope in performance captures, so a slow frame names its owner.
+                using (Timings.MeasureCapture("Sons.Combat"))
+                {
+                    Combat.StrictCombatEquipmentCleanupPump.Tick();
+                    Combat.StrictCombatImpactParticles.Tick();
+                }
+                using (Timings.MeasureCapture("Sons.ItemRegistration")) global::Modstoke.Sons.ItemRegistration.RepublishIntoNewDatabase();
+                using (Timings.MeasureCapture("Sons.InventoryModels")) global::Modstoke.Sons.Inventory.TickItemModels();
+                using (Timings.MeasureCapture("Sons.CraftingModels")) global::Modstoke.Sons.Crafting.TickItemModels();
+                using (Timings.MeasureCapture("Sons.WeaponAttachments")) global::Modstoke.Sons.WeaponAttachments.Tick();
+                using (Timings.MeasureCapture("Sons.Networking"))
+                {
+                    global::Modstoke.Sons.ContentAgreement.EnsureHooks();
+                    global::Modstoke.Sons.ContentAgreement.LabelHostedLobby();
+                    global::Modstoke.Sons.KickReason.Tick();
+                    global::Modstoke.Sons.ServerDetailsPublisher.Tick();
+                    global::Modstoke.Sons.ServerBrowserBadges.Tick();
+                }
                 LocalizationStartup.Tick();
                 LoadingPerformance.Tick();
-                FrontEnd.Tick();
+                using (Timings.MeasureCapture("Sons.FrontEnd")) FrontEnd.Tick();
                 MultiplayerTakeover.Tick();
             }
             finally

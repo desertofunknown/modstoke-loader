@@ -259,10 +259,15 @@ namespace Modstoke.Loader
                 ReportWriteCompletion();
                 string reason;
                 bool refreshFileIntegrity;
+                var gameplay = !force && InLoadOrPlay();
                 lock (RefreshSync)
                 {
                     if (_pendingRefreshReason == null || _stateRefreshInProgress
                         || (!force && Environment.TickCount64 < _nextStateRefreshTick))
+                        return;
+                    // A full export costs tens of milliseconds on the game thread. Ones raised by scene, world and
+                    // lifecycle changes wait for the menus or the pause menu instead of landing in a load or in play.
+                    if (gameplay && !_pendingFileIntegrityRefresh && FollowsGameState(_pendingRefreshReason))
                         return;
 
                     reason = _pendingRefreshReason;
@@ -296,6 +301,28 @@ namespace Modstoke.Loader
                     LoaderStatePersistence.Flush();
                     ReportWriteCompletion();
                 }
+            }
+        }
+
+        private static bool FollowsGameState(string reason) =>
+            reason.StartsWith("sons-scene-", StringComparison.Ordinal) || reason.StartsWith("sons-world-", StringComparison.Ordinal)
+            || reason.StartsWith("sons-lifecycle-", StringComparison.Ordinal) || reason.StartsWith("sons-pause-", StringComparison.Ordinal);
+
+        // Loading, or in the game scene with the pause menu closed; the dedicated server has no player to disturb.
+        private static bool InLoadOrPlay()
+        {
+            if (LoaderEnvironment.IsDedicatedServer) return false;
+            try
+            {
+                var state = global::Modstoke.Sons.GameRuntime.State;
+                if (state.PauseMenuOpen) return false;
+                return state.IsInWorld || global::Sons.Loading.LoadScene._isLoading
+                    || string.Equals(state.SceneKind, global::Modstoke.Sons.SceneKind.Loading, StringComparison.Ordinal)
+                    || string.Equals(state.SceneKind, global::Modstoke.Sons.SceneKind.Game, StringComparison.Ordinal);
+            }
+            catch (Exception)
+            {
+                return false;
             }
         }
 

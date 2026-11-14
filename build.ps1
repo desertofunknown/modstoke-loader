@@ -874,6 +874,17 @@ if ($UseHostFxrLayout) {
                 version = $dotnetRuntime.version
             }
             rollForward = "LatestPatch"
+            # Mods allocate a wrapper for every native object they touch. The default single-threaded collector
+            # paused the game thread 8-17 ms per gen-0 collection; four parallel heaps, not pinned to cores so
+            # Unity's own threads keep theirs, with a fixed heap count, keep those pauses short.
+            configProperties = [ordered]@{
+                "System.GC.Server" = $true
+                "System.GC.HeapCount" = 4
+                "System.GC.NoAffinitize" = $true
+                "System.GC.DynamicAdaptationMode" = 0
+                "System.GC.Concurrent" = $true
+                "System.GC.RetainVM" = $true
+            }
         }
     }
     $runtimeConfigPath = Join-Path $packageRoot $dotnetRuntime.runtimeConfigRelativePath.Replace("/", "\")

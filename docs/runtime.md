@@ -456,12 +456,18 @@ the installed runtime and release package; ownership is not runtime acceptance.
   `MODSTOKE_NATIVE_UNITY_MATH=1` keeps every wrapper native; the value is part of
   the interop input hash, so changing it regenerates the assemblies.
   `EngineBootConfig` adds `memorysetup-temp-allocator-size-preload-manager`
-  (32 MB) and `memorysetup-temp-allocator-size-main` (16 MB) to the game's or
+  (64 MB) and `memorysetup-temp-allocator-size-main` (32 MB) to the game's or
   server's `boot.config` when they are absent; Unity's defaults (256 KB and 4 MB)
-  overflowed to the shared heap about 370,000 and 5,000 times in one world load.
-  Existing keys are never changed, the rest of the file is kept byte for byte, and
-  the settings apply from the next start; Steam's file check restores the original,
-  so the Loader checks again at every start. `LoadingPerformance` widens Unity's
+  overflowed to the shared heap about 370,000 and 5,000 times in one world load,
+  and the measured peaks were 63 MB and 31 MB. Values the Loader wrote earlier are
+  raised; any other value is never changed, the rest of the file is kept byte for
+  byte, and the settings apply from the next start; Steam's file check restores the
+  original, so the Loader checks again at every start.
+  `Modstoke.Loader.runtimeconfig.json` runs the managed heap with server collection
+  on four heaps that are not pinned to cores, a fixed heap count and background
+  collection; the default single-threaded collector paused the game thread 8-17 ms
+  per gen-0 collection. The Loader also sets `SustainedLowLatency`, so the game
+  thread does not wait for a blocking full collection. `LoadingPerformance` widens Unity's
   background-integration and async-upload slices from the loading screen until the
   player is in the world, then restores the game's values.
   `InteropNativeCallStubs` owns restored native-call delegates, static

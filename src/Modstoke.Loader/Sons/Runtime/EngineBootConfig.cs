@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Alex Cooper
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -20,10 +21,12 @@ namespace Modstoke.Sons
     /// </summary>
     internal static class EngineBootConfig
     {
-        private static readonly (string Key, string Value)[] Settings =
+        // Sized from the peaks Unity reported once the first values were in (63 MB and 31 MB). Earlier values written by
+        // the Loader are raised; any other value is left alone.
+        private static readonly (string Key, string Value, string[] Earlier)[] Settings =
         {
-            ("memorysetup-temp-allocator-size-preload-manager", "33554432"),
-            ("memorysetup-temp-allocator-size-main", "16777216")
+            ("memorysetup-temp-allocator-size-preload-manager", "67108864", new[] { "33554432" }),
+            ("memorysetup-temp-allocator-size-main", "33554432", new[] { "16777216" })
         };
 
         internal static void Ensure()
@@ -33,19 +36,36 @@ namespace Modstoke.Sons
             {
                 if (!File.Exists(path)) return;
                 var text = File.ReadAllText(path, Encoding.ASCII);
-                var keys = text.Split('\n').Select(line => line.Split('=', 2)[0].Trim())
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                var missing = Settings.Where(setting => !keys.Contains(setting.Key)).ToArray();
-                if (missing.Length == 0) return;
                 var newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
-                var builder = new StringBuilder(text);
-                if (text.Length != 0 && !text.EndsWith('\n')) builder.Append(newline);
-                foreach (var (key, value) in missing) builder.Append(key).Append('=').Append(value).Append(newline);
+                var lines = text.Split('\n');
+                var changed = new List<string>();
+                foreach (var (key, value, earlier) in Settings)
+                {
+                    var index = Array.FindIndex(lines, line => string.Equals(line.Split('=', 2)[0].Trim(), key, StringComparison.OrdinalIgnoreCase));
+                    if (index < 0)
+                    {
+                        changed.Add(key);
+                        continue;
+                    }
+                    var current = lines[index].Split('=', 2).ElementAtOrDefault(1)?.Trim();
+                    if (current == null || !earlier.Contains(current)) continue;
+                    // Same line, same ending; only the value changes.
+                    lines[index] = key + "=" + value + (lines[index].EndsWith('\r') ? "\r" : "");
+                    changed.Add(key);
+                }
+                if (changed.Count == 0) return;
+                var builder = new StringBuilder(string.Join('\n', lines));
+                foreach (var (key, value, _) in Settings)
+                {
+                    if (lines.Any(line => string.Equals(line.Split('=', 2)[0].Trim(), key, StringComparison.OrdinalIgnoreCase))) continue;
+                    if (builder.Length != 0 && builder[^1] != '\n') builder.Append(newline);
+                    builder.Append(key).Append('=').Append(value).Append(newline);
+                }
                 var temporary = path + ".modstoke-" + Guid.NewGuid().ToString("N");
                 File.WriteAllText(temporary, builder.ToString(), Encoding.ASCII);
                 File.Move(temporary, path, overwrite: true);
-                RuntimeEntryPoint.LogSource?.LogInfo("Engine memory settings added to boot.config (" +
-                    string.Join(", ", missing.Select(setting => setting.Key)) + "); they apply from the next start.");
+                RuntimeEntryPoint.LogSource?.LogInfo("Engine memory settings written to boot.config (" +
+                    string.Join(", ", changed) + "); they apply from the next start.");
             }
             catch (Exception error)
             {
