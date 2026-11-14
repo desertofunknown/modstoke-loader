@@ -49,7 +49,7 @@ namespace Modstoke.Sons
         private static readonly List<CraftingRecipeDatabase> Known = new();
         private static float _nextCheck, _nextSearch;
         private static int _searches;
-        private static bool _loggedFailure;
+        private static bool _loggedFailure, _loggedNoTemplate;
 
         private sealed class Registration
         {
@@ -172,22 +172,36 @@ namespace Modstoke.Sons
             return added;
         }
 
-        // A copy of one of the game's craft-new-item recipes, for its animation, sounds and settings.
+        // A copy of one of the game's craft-new-item recipes, for its sounds and settings, and its craft animation when
+        // it has one: the one that makes AnimationFromItemId, else the first animated one, else the first plain one.
+        // Without an animation a recipe completes at once, as the weapon attachment recipes do.
         private static CraftingRecipe Build(Il2CppSystem.Collections.Generic.List<CraftingRecipe> list, CraftRecipeSpec spec)
         {
-            CraftingRecipe template = null, fallback = null;
+            CraftingRecipe chosen = null, animated = null, plain = null;
             foreach (var candidate in list)
             {
                 if (candidate == null || candidate.WasCollected || candidate._recipeType != CraftingRecipe.Type.CraftNewItem
-                    || candidate._useContainerDataForResultingItems || string.IsNullOrEmpty(candidate._animationStateName)) continue;
-                fallback ??= candidate;
+                    || candidate._useContainerDataForResultingItems) continue;
+                plain ??= candidate;
+                if (string.IsNullOrEmpty(candidate._animationStateName)) continue;
+                animated ??= candidate;
                 if (spec.AnimationFromItemId != 0 && candidate._resultingItems != null)
                     foreach (var result in candidate._resultingItems)
-                        if (result != null && result.Id == spec.AnimationFromItemId) { template = candidate; break; }
-                if (template != null) break;
+                        if (result != null && result.Id == spec.AnimationFromItemId) { chosen = candidate; break; }
+                if (chosen != null) break;
             }
-            template ??= fallback;
-            if (template == null) return null;
+            var template = chosen ?? animated ?? plain;
+            if (template == null)
+            {
+                if (!_loggedNoTemplate)
+                {
+                    _loggedNoTemplate = true;
+                    RuntimeEntryPoint.LogSource?.LogWarning("The crafting mat has no craft-new-item recipe to copy, so mod recipes cannot be added.");
+                }
+                return null;
+            }
+            RuntimeEntryPoint.LogSource?.LogInfo("Recipe " + spec.ModId + ":" + spec.Key + " copies the game's " + template.name
+                + (string.IsNullOrEmpty(template._animationStateName) ? " (no craft animation)." : " (craft animation " + template._animationStateName + ")."));
             var recipe = Object.Instantiate(template);
             recipe.name = spec.ModId + ":" + spec.Key;
             recipe.hideFlags |= HideFlags.DontUnloadUnusedAsset;
