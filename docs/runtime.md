@@ -474,7 +474,14 @@ the installed runtime and release package; ownership is not runtime acceptance.
   after its shader warm-up has finished. That warm-up compiled a few variants and
   then waited frames before the next batch, so at the loading screen's 30 fps it
   held the load for over 4 s while every loading thread sat idle. It now compiles 64
-  variants every frame. The game then keeps the screen black for a
+  variants every frame.
+  `GcWriteBarrierPatch` changes the incremental collector's write barrier,
+  `il2cpp_gc_wbarrier_set_field`. It used to mark the written page with a locked
+  compare-exchange even when the page was already marked, and engine bindings call
+  it on nearly every call that touches a managed object. It now tests the bit first
+  and takes the locked path only for an unmarked page. The 16 replaced bytes are
+  checked against the known build, written in one aligned store, and read back to
+  confirm. `MODSTOKE_NATIVE_GC_BARRIER=1` leaves the barrier as built. The game then keeps the screen black for a
   fixed 3 s of game time before the fade-in (`MainSceneLoadingTrigger`), and that
   wait is dropped once ten frames in a row take under 50 ms. The game's player
   activation check still decides when the fade-in starts.

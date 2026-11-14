@@ -100,6 +100,7 @@ namespace Modstoke.Sons
 
             _initialized = true;
             EngineBootConfig.Ensure();
+            GcWriteBarrierPatch.Apply();
             // The game thread never waits for a blocking full collection of the mods' managed heap; background ones
             // still run. Server collection with parallel heaps comes from the runtime configuration.
             System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.SustainedLowLatency;
