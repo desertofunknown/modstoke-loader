@@ -137,6 +137,67 @@ namespace Modstoke.Sons
             }
         }
 
+        // Capture-only: marks when the game starts its opening cutscene and steps through its start sequence, to find
+        // what holds the camera back after loading. Nothing is patched outside an armed capture.
+        internal static void InstallCaptureHooks(HarmonySupportSnapshot support, Action<string> warning)
+        {
+            if (!PerformanceCapture.Active || GameBuild.IsDedicatedServer || support == null || !support.SafeForHarmonyPatches) return;
+            var harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".loading-capture");
+            var mark = new HarmonyLib.HarmonyMethod(typeof(LoadingPerformance), nameof(MarkGameCall));
+            var patched = 0;
+            foreach (var (type, name) in new[]
+            {
+                (typeof(global::Sons.Cutscenes.CutsceneManager), "Start"),
+                (typeof(global::Sons.Cutscenes.CutsceneManager), "PlayOpeningCutscene"),
+                (typeof(global::Sons.Cutscenes.CutsceneManager), "TriggerOpeningCutsceneInternal"),
+                (typeof(global::Sons.Cutscenes.CutsceneManager), "VerifyFadeFromBlackCutscene"),
+                (typeof(global::Sons.Cutscenes.CutsceneManager), "OnGameLoadedFromSave"),
+                (typeof(global::Sons.Cutscenes.FadeFromBlackCutscene), "Play"),
+                (typeof(global::Sons.Cutscenes.FadeFromBlackCutscene), "PostStartHook"),
+                (typeof(global::LoadSave), "OnSaveSlotSelected")
+            })
+            {
+                try
+                {
+                    var method = HarmonyLib.AccessTools.DeclaredMethod(type, name);
+                    if (method == null) continue;
+                    harmony.Patch(method, prefix: mark);
+                    patched++;
+                }
+                catch (Exception error)
+                {
+                    warning?.Invoke("Loading capture could not mark " + type.Name + "." + name + ": " + error.Message);
+                }
+            }
+            try
+            {
+                var step = HarmonyLib.AccessTools.DeclaredMethod(typeof(global::LoadSave), "SetStartSequenceStep");
+                if (step != null)
+                {
+                    harmony.Patch(step, prefix: new HarmonyLib.HarmonyMethod(typeof(LoadingPerformance), nameof(MarkStartStep)));
+                    patched++;
+                }
+            }
+            catch (Exception error)
+            {
+                warning?.Invoke("Loading capture could not mark LoadSave.SetStartSequenceStep: " + error.Message);
+            }
+            RuntimeEntryPoint.LogSource?.LogInfo("Loading capture marks " + patched + " game calls.");
+        }
+
+        private static void MarkGameCall(System.Reflection.MethodBase __originalMethod) =>
+            PerformanceCapture.Mark("game-call", __originalMethod.DeclaringType?.Name + "." + __originalMethod.Name);
+
+        private static int _startStep = -1;
+
+        // The sequence reports progress inside a step every frame; only a new step is marked.
+        private static void MarkStartStep(int step)
+        {
+            if (step == _startStep) return;
+            _startStep = step;
+            PerformanceCapture.Mark("start-step", step);
+        }
+
         // The world's loader waits fixed times before it starts and before it closes (LoadScene.DelayPassed and
         // WaitForCleanupDelay): plain timers with no condition behind them, 0.2 s and 1 s in this build. The screen
         // stays black for seconds after the loader closes anyway, so the world's loader skips both.

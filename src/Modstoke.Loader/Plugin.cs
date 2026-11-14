@@ -374,6 +374,7 @@ namespace Modstoke.Loader
                 InstallHooks("sons-game-lifecycle", GameLifecycleFixes.InstallHarmonyPatches, GatheringLifecycleFix.InstallHarmonyPatches);
                 InstallHooks("sons-construction-dirty-cache", ConstructionDirtyPatch.InstallHarmonyPatch);
                 PerformanceCapture.Initialize(_harmonySupportState);
+                InstallHooks("sons-loading-capture", LoadingPerformance.InstallCaptureHooks);
                 InstallHooks("sons-server-player-spawns", ServerPlayerSpawns.InstallHarmonyPatches);
                 InstallHooks("sons-server-player-hits", ServerPlayerHits.InstallHarmonyPatches);
                 InstallHooks("sons-server-player-revives", ServerPlayerRevives.InstallHarmonyPatches);
