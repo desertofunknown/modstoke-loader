@@ -474,7 +474,12 @@ the installed runtime and release package; ownership is not runtime acceptance.
   after its shader warm-up has finished. That warm-up compiled a few variants and
   then waited frames before the next batch, so at the loading screen's 30 fps it
   held the load for over 4 s while every loading thread sat idle. It now compiles 64
-  variants every frame.
+  variants every frame. The loading screen's 30 fps override is raised to 240 fps while
+  a world loads. Once the loader allowed its 23 scenes to activate, captures showed
+  4.6 s of idle frames before the game scene appeared: Unity's async texture and mesh
+  uploads and its scene integration each advance once per frame, and a scene cannot
+  activate until its uploads finish. The game's own values come back once the player
+  is in the world.
   `GcWriteBarrierPatch` changes the incremental collector's write barrier,
   `il2cpp_gc_wbarrier_set_field`. It used to mark the written page with a locked
   compare-exchange even when the page was already marked, and engine bindings call

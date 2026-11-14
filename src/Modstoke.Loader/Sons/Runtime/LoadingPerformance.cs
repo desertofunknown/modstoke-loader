@@ -18,20 +18,24 @@ namespace Modstoke.Sons
     /// caps its loading screen at 30 fps, so most of every loading frame sat idle. From the loading screen until the
     /// player is in the world both slices are wide, then the game's own values are put back so streaming in the world
     /// keeps its small slices.
-    /// Menus: the multiplayer scenes carry a 30 fps override, which made the front end's motion visibly choppy; while
-    /// no world is loading or running, such overrides are raised to the game's own menu limit.
+    /// Frame caps: the multiplayer scenes and the world's loading screen carry 30 fps overrides. In the menus they are
+    /// raised to the game's own menu limit; while a world loads, to 240 fps, because Unity's uploads and scene
+    /// integration advance once per frame.
     /// The new world is revealed as soon as frames settle instead of after the game's fixed black-screen wait.
     /// During a performance capture each loading step is marked on the timeline.
     /// </summary>
     internal static class LoadingPerformance
     {
         private const int DefaultMenuFps = 60;
+        private const int LoadingFps = 240;
         private const string WorldLoaderScene = "SonsMainLoading";
         private const int LoadingUploadSliceMs = 24;
         private const int LoadingUploadBufferMb = 256;
         private const int WarmUpVariantsPerFrame = 64;
         private const float SettledFrameSeconds = 0.05f;
         private const int SettledFrames = 10;
+        private const float SettledSeconds = 0.15f;
+        private static float _smoothSeconds;
         private static global::Sons.Utils.MainSceneLoadingTrigger _reveal;
         private static float _nextRevealSearch;
         private static int _smoothFrames;
@@ -67,11 +71,15 @@ namespace Modstoke.Sons
                 if (_loading)
                 {
                     FindLoaders(state.SceneName);
-                    if (gameScene && !GameBuild.IsDedicatedServer) RevealWhenSettled();
+                    if (!GameBuild.IsDedicatedServer)
+                    {
+                        LiftFrameCaps(LoadingFps);
+                        if (gameScene) RevealWhenSettled();
+                    }
                     if (PerformanceCapture.Active) WatchSteps();
                 }
                 else if (!state.IsInWorld && !gameScene && !GameBuild.IsDedicatedServer)
-                    LiftMenuCap();
+                    LiftFrameCaps(0);
             }
             catch (Exception error)
             {
@@ -265,6 +273,7 @@ namespace Modstoke.Sons
                 _nextRevealSearch = Time.unscaledTime + 0.25f;
                 _reveal = UnityEngine.Object.FindObjectOfType<global::Sons.Utils.MainSceneLoadingTrigger>();
                 _smoothFrames = 0;
+                _smoothSeconds = 0;
                 if (!_reveal) return;
             }
             // A negative completion time means the loader has not reported completion yet.
@@ -276,8 +285,10 @@ namespace Modstoke.Sons
                 _revealHandled = true;
                 return;
             }
-            _smoothFrames = Time.unscaledDeltaTime < SettledFrameSeconds ? _smoothFrames + 1 : 0;
-            if (_smoothFrames < SettledFrames) return;
+            var delta = Time.unscaledDeltaTime;
+            _smoothFrames = delta < SettledFrameSeconds ? _smoothFrames + 1 : 0;
+            _smoothSeconds = _smoothFrames == 0 ? 0 : _smoothSeconds + delta;
+            if (_smoothFrames < SettledFrames || _smoothSeconds < SettledSeconds) return;
             _revealHandled = true;
             _reveal._completeWaitTrigger = 0;
             RuntimeEntryPoint.LogSource?.LogInfo($"World fade in no longer waits: frames settled {waited:0.0} s into the game's fixed {wait:0.#} s wait.");
@@ -287,6 +298,7 @@ namespace Modstoke.Sons
         private static void End(string where)
         {
             _loading = false;
+            RestoreMenuCaps();
             RestorePriority();
             Watched.Clear();
             _startSequence = null;
@@ -395,25 +407,30 @@ namespace Modstoke.Sons
             PerformanceCapture.Mark("scene-ops", new { loader = index, state = text });
         }
 
-        private static void LiftMenuCap()
+        // Scene overrides cap the menus and the world's loading screen at 30 fps. In the menus that made motion choppy.
+        // While a world loads it held the load back: Unity's async texture and mesh uploads and its scene integration
+        // each advance once per frame, and a scene cannot activate until its uploads finish, so captures showed seconds
+        // of idle 30 fps frames with every thread waiting. Overrides below the target are raised; 0 means the game's
+        // own menu limit.
+        private static void LiftFrameCaps(int fps)
         {
             if (Time.unscaledTime < _nextMenuCheck) return;
-            _nextMenuCheck = Time.unscaledTime + 0.5f;
+            _nextMenuCheck = Time.unscaledTime + 0.25f;
             var overrides = FpsLimiter._overrides;
             if (overrides == null || overrides.Count == 0) return;
-            var menuFps = FpsLimiter.TryGetInstance(out var limiter) && limiter && limiter._menuFpsMax > 0
-                ? limiter._menuFpsMax : DefaultMenuFps;
+            if (fps <= 0)
+                fps = FpsLimiter.TryGetInstance(out var limiter) && limiter && limiter._menuFpsMax > 0 ? limiter._menuFpsMax : DefaultMenuFps;
             for (var index = 0; index < overrides.Count; index++)
             {
                 var fpsOverride = overrides[index];
-                if (!fpsOverride || fpsOverride._targetFps <= 0 || fpsOverride._targetFps >= menuFps) continue;
+                if (!fpsOverride || fpsOverride._targetFps <= 0 || fpsOverride._targetFps >= fps) continue;
                 if (!RaisedOverrides.ContainsKey(fpsOverride.Pointer))
                 {
                     RaisedOverrides[fpsOverride.Pointer] = (fpsOverride, fpsOverride._targetFps);
-                    RuntimeEntryPoint.LogSource?.LogInfo("Menu frame limit raised from " + fpsOverride._targetFps + " to " + menuFps +
-                        " fps for " + fpsOverride.gameObject.scene.name + ".");
+                    RuntimeEntryPoint.LogSource?.LogInfo("Frame limit raised from " + fpsOverride._targetFps + " to " + fps +
+                        " fps for " + fpsOverride.gameObject.scene.name + (_loading ? " while the world loads." : "."));
                 }
-                fpsOverride._targetFps = menuFps;
+                fpsOverride._targetFps = fps;
             }
         }
 
