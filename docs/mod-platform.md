@@ -3914,6 +3914,38 @@ a native weapon mod for one weapon item, on a slot (`OnTopRail` by default):
   item type defaults to `CraftingMaterial, Droppable`; equipment, weapon and
   ammunition types are refused until held models are supported.
 
+### Crafting recipes, loot and 3D prints
+
+These put registered mod items into the game's own ways of getting things. Each
+one changes a list that every peer must hold identically, so mods register at
+start in every process, clients and dedicated servers alike, and the Loader
+applies the additions once a world is loading, in a fixed order.
+
+- `CraftingRecipeRegistration.TryRegister(CraftRecipeSpec)` adds a crafting mat
+  recipe that combines ingredients (1 to 8 kinds, counts 1 to 99) into 1 to 4 of
+  a result the mod reserved. It copies one of the game's animated craft-new-item
+  recipes for its animation and sounds (`AnimationFromItemId` picks the recipe
+  that makes that item). Strict inventory checks a craft against the server's
+  list by position and content, so every crafting recipe database in the process
+  gets the same additions after the game's own: weapon attachment recipes first,
+  then mod recipes sorted by mod id and key. Dedicated servers get them too.
+- `LootTables.TryAdd(modId, table, itemId, weight, out problem, maxCount)` adds
+  an item to one of the game's container loot tables, such as `AmmoCase` (the
+  colored weapon cases in helicopter crash sites and caves) or
+  `BasicStorageCrateItems` (storage crates, the game's tech loot). The game's own
+  entries weigh 1 to 300; `maxCount` caps how many one container may roll.
+  Containers already opened in a save keep what they rolled.
+- `PrinterBlueprints.TryRegister(modId, key, itemId, name, resin, seconds, out
+  problem)` adds a 3D printer blueprint that prints one item from 1 to 2000
+  resin. Its id comes from the mod id and key, so a save printing one finds it
+  again; the laptop shows the item's localized name.
+- All three need the item to have a world pickup, which modeled items registered
+  with `canBeSpawned` get.
+- `content-catalog-next-launch.flag` in `Modstoke/UserData` makes the Loader write
+  `content-catalog-<time>.json` 20 seconds into the next world: every loot table
+  with its weighted items and the containers that use it, and every printer
+  blueprint.
+
 ## Current Sons Inventory SDK Slice
 
 `Modstoke.Sons.Inventory` exposes the OpenACAI-owned inventory

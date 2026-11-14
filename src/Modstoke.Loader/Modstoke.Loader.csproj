@@ -609,6 +609,8 @@
     <Compile Include="Sons/Server/Building/ServerPrinters.cs" />
     <Compile Include="Sons/Crafting/PrinterDevices.cs" />
     <Compile Include="Sons/Crafting/PrinterDevices.Models.cs" />
+    <Compile Include="Sons/Crafting/PrinterBlueprints.cs" />
+    <Compile Include="Sons/Crafting/CraftingRecipeRegistration.cs" />
     <Compile Include="Sons/Server/Building/ServerPrinters.Requests.cs" />
     <Compile Include="Sons/Server/ServerNamedStates.cs" />
     <Compile Include="Sons/Server/ServerNamedStates.Requests.cs" />
@@ -897,6 +899,7 @@
     <Compile Include="Sons/Inventory/ItemModel.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.Models.cs" />
     <Compile Include="Sons/Inventory/WeaponAttachments.cs" />
+    <Compile Include="Sons/Inventory/LootTables.cs" />
     <Compile Include="Sons/Inventory/Modules/ItemModuleSnapshot.cs" />
     <Compile Include="Sons/Inventory/Modules/ModuleStackStore.cs" />
     <Compile Include="Sons/Inventory/Modules/ModuleStackStore.Serialization.cs" />

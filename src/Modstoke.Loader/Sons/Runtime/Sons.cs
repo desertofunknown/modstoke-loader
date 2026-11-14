@@ -206,6 +206,9 @@ namespace Modstoke.Sons
                 LocalizationStartup.Tick();
                 LoadingPerformance.Tick();
                 ContentCatalog.Tick();
+                LootTables.Tick();
+                PrinterBlueprints.Tick();
+                CraftingRecipeRegistration.Tick();
                 using (Timings.MeasureCapture("Sons.FrontEnd")) FrontEnd.Tick();
                 MultiplayerTakeover.Tick();
             }

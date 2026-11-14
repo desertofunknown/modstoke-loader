@@ -317,22 +317,27 @@ namespace Modstoke.Sons
             }
         }
 
-        // The game's weapon mods go on by combining the weapon and the mod on the crafting mat and come off
-        // by dismantling the weapon there. Every attachment gets the same two recipes, appended so the game's
-        // own keep their places in the list. They carry no craft animation: the game has none for a weapon it
-        // never modded, and a recipe without one completes at once, as its chainsaw recharge does. A new
-        // recipe database (a new player or item database) is filled again.
+        // The local crafting mat learns to take the weapons that carry attachments. The recipes themselves go in
+        // through CraftingRecipeRegistration, which fills every recipe database in the process in one order.
         private static void EnsureRecipes()
         {
             var system = CraftingSystem._Instance_k__BackingField;
             if (!Alive(system) || !system._isInitialized || !Alive(system._recipeDatabase)) return;
-            var recipes = system._recipeDatabase._recipes;
-            if (recipes == null || recipes.WasCollected) return;
             if (system.Pointer != _matSeen || !_weaponsOnMat)
             {
                 _matSeen = system.Pointer;
                 _weaponsOnMat = PutWeaponsOnMat(system);
             }
+        }
+
+        // The game's weapon mods go on by combining the weapon and the mod on the crafting mat and come off
+        // by dismantling the weapon there. Every attachment gets the same two recipes, appended so the game's
+        // own keep their places in the list. They carry no craft animation: the game has none for a weapon it
+        // never modded, and a recipe without one completes at once, as its chainsaw recharge does. Returns how
+        // many attachments were added to this list.
+        internal static int AppendRecipes(Il2CppSystem.Collections.Generic.List<CraftingRecipe> recipes)
+        {
+            if (ByHash.Count == 0) return 0;
             CraftingRecipe apply = null, dismantle = null;
             foreach (var recipe in recipes)
             {
@@ -341,7 +346,7 @@ namespace Modstoke.Sons
                 else if (recipe._recipeType == CraftingRecipe.Type.ApplyWeaponMod && Alive(recipe._weaponMod)
                     && !ByHash.ContainsKey(recipe._weaponMod.Id)) apply ??= recipe;
             }
-            if (apply == null) return;
+            if (apply == null) return 0;
             var added = 0;
             foreach (var registration in ByHash.Values)
             {
@@ -351,10 +356,7 @@ namespace Modstoke.Sons
                 ReturnOnDismantle(recipes, dismantle, registration.Spec);
                 added++;
             }
-            if (added == 0) return;
-            system.RefreshAvailableRecipes(false);
-            RuntimeEntryPoint.LogSource?.LogInfo(added + " weapon attachment recipe(s) added to the crafting mat; " + recipes.Count
-                + " recipes in all.");
+            return added;
         }
 
         // The game moves an item to the crafting mat only if it is a crafting material, and prompts for it only
