@@ -258,10 +258,10 @@ For test runs, a player's game also takes these from the desktop console only:
 | `game new <Normal\|Hard\|HardSurvival\|Peaceful\|Creative\|Custom>` | From the title screen, starts a new single player game. |
 | `game inventory open\|close` | Opens or closes the local player's inventory. |
 | `game gearpage on\|off` | Turns the open inventory to the mod gear page or back. |
-| `game equip <item id>` | Toggles an item in the right hand. |
+| `game equip <item id>` | Toggles an item in the right hand; an item with a held model goes through `HeldItems.TryEquip`. |
 | `game toggle <item id>` | Toggles an item in its own hand, through `HeldItems.TryToggle` for items with a held model. |
 | `game unequip left\|right` | Puts away what that hand holds, through `HeldItems.TryPutAway` for items with a held model. |
-| `game held` | One line on both hands (current, next and previous item, held instance and its parent), the hands' animator item ids, the held items' animator variables, layer 5's weight and activators, the equip state and held item counts. |
+| `game held` | One line on both hands (current, next and previous item, held instance and its parent, the instance's lossy scale and its pose from the hand bone in metres), the hands' animator item ids, the held items' animator variables, layer 5's weight and activators, the equip state, the items held items will give back and held item counts. |
 | `game held animator` | The local animator's non-zero parameters, each layer's weight and state hash, and the components of the held instances, for comparing a held item with its donor. |
 | `game give <item id> [count]` | Adds items to the inventory without equipping them; host and single player only. |
 | `game remove <item id>` | Removes one of an item from the inventory. |

@@ -122,12 +122,13 @@ namespace Modstoke.Sons
     public sealed class HeldItemsSnapshot
     {
         internal HeldItemsSnapshot(IReadOnlyList<HeldItemEntry> items, int leftHandItemId,
-            int rightHandItemId, int rememberedItemId, int liveInstances)
+            int rightHandItemId, int rememberedItemId, int rememberedLeftItemId, int liveInstances)
         {
             Items = items;
             LeftHandItemId = leftHandItemId;
             RightHandItemId = rightHandItemId;
             RememberedItemId = rememberedItemId;
+            RememberedLeftItemId = rememberedLeftItemId;
             LiveInstances = liveInstances;
         }
 
@@ -140,6 +141,9 @@ namespace Modstoke.Sons
 
         /// <summary>The item a two-handed held item put away and gives back when it is put away, or -1.</summary>
         public int RememberedItemId { get; }
+
+        /// <summary>The left-hand item a two-handed held item replaced, given back once its put-away has settled, or -1.</summary>
+        public int RememberedLeftItemId { get; }
 
         /// <summary>Held instances alive on every player, local and remote.</summary>
         public int LiveInstances { get; }

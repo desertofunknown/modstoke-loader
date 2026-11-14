@@ -48,6 +48,13 @@ namespace Modstoke.Loader
                 }
                 case "equip" when int.TryParse(rest, out var itemId):
                 {
+                    // A held mod item goes through the SDK's equip, as a mod brings it out.
+                    if (Modstoke.Sons.HeldItems.IsHeldModelItem(itemId))
+                    {
+                        var equipped = Modstoke.Sons.HeldItems.TryEquip(itemId, out var heldStatus);
+                        HostCommands.Respond(request, equipped, "Held item " + itemId + ": " + heldStatus);
+                        break;
+                    }
                     var inventory = LocalPlayer.Inventory;
                     if (inventory == null)
                     {

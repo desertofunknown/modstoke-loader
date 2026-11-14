@@ -63,7 +63,7 @@ namespace Modstoke.Sons
                     if (current > 0)
                     {
                         text.Append(", carried ").Append(inventory.AmountOf(current, false, false));
-                        DescribeInstance(text, current);
+                        DescribeInstance(text, current, slot);
                         if (Live(animator) && ItemDatabaseManager.TryFindItemById(current, out var data) && Live(data))
                             DescribePoses(text, animator, data);
                     }
@@ -75,7 +75,8 @@ namespace Modstoke.Sons
                         .Append(", RightHandHeldItemIdFloat ").Append(animator.GetFloat(AnimationHashes.RightHandHeldItemIdFloatHash).ToString("0.##"));
                     DescribeLayer(text, animator);
                 }
-                text.Append("; remembered ").Append(Id(_remembered)).Append("; live instances ").Append(Instances.Count);
+                text.Append("; remembered ").Append(Id(_remembered)).Append(", left ").Append(Id(_rememberedLeft))
+                    .Append(_leftGiveBackUntil > 0 ? " (giving back)" : "").Append("; live instances ").Append(Instances.Count);
                 foreach (var profile in Profiles.Values)
                     text.Append("; item ").Append(profile.ItemId).Append(" carried ").Append(inventory.AmountOf(profile.ItemId, true, false));
             }
@@ -140,7 +141,7 @@ namespace Modstoke.Sons
             return text.ToString();
         }
 
-        private static void DescribeInstance(StringBuilder text, int itemId)
+        private static void DescribeInstance(StringBuilder text, int itemId, EquipmentSlot slot)
         {
             var props = LocalProps();
             var instances = Live(props) ? props._gameObjectInstances : null;
@@ -151,7 +152,21 @@ namespace Modstoke.Sons
             }
             var transform = instance.transform;
             text.Append(", instance ").Append(transform.name).Append(" under ").Append(Live(transform.parent) ? transform.parent.name : "nothing")
-                .Append(" at ").Append(transform.localPosition.ToString("F3"));
+                .Append(" at ").Append(transform.localPosition.ToString("F3")).Append(", lossy scale ").Append(transform.lossyScale.ToString("F3"));
+            // The hand locators hang below the hand bone, as in .../LeftHand/LeftHandWeapon/leftHandHeld/LeftHandItemLocators.
+            var bone = slot == EquipmentSlot.LeftHand ? "LeftHand" : "RightHand";
+            var hand = transform.parent;
+            while (Live(hand) && hand.name != bone) hand = hand.parent;
+            if (!Live(hand))
+            {
+                text.Append(", no ").Append(bone).Append(" bone above it");
+                return;
+            }
+            // Metres along the bone's axes, as a grip in hand space is authored.
+            var toHand = Quaternion.Inverse(hand.rotation);
+            text.Append(", from the ").Append(bone).Append(" bone ").Append((toHand * (transform.position - hand.position)).ToString("F3"))
+                .Append(" m turned ").Append((toHand * transform.rotation).eulerAngles.ToString("F1"))
+                .Append(" (bone lossy scale ").Append(hand.lossyScale.ToString("F3")).Append(')');
         }
 
         // The item's animator variables as the animator holds them, read by the parameter's own type.

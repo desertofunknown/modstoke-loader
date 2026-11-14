@@ -3866,8 +3866,13 @@ never equipped and none of its scripts run.
   For a left-hand item the SDK remembers the right-hand item it put away,
   instead of the game, which would re-equip it next to the held item when the
   inventory closes or the player leaves water, and gives it back when the held
-  item is put away through `HeldItems`. An equip into the other hand puts a
-  two-handed held item away first.
+  item is put away through `HeldItems`. The game keeps the left-hand item the
+  held item replaced, such as a flashlight, as that hand's previous item; the
+  SDK takes that memory over too and gives the item back once the arm has
+  lowered the held item and the hands are free, or not at all if something
+  else takes the left hand first. An equip into the other hand puts a
+  two-handed held item away first; a right-hand equip that does so gives the
+  left-hand item back the same way.
 - Every equip of a held item is checked before the game's TryEquip runs: an
   item whose hand definition cannot be found, an equip forced into the other
   hand, or a two-handed equip while carrying a log is refused with the item
@@ -3891,15 +3896,24 @@ never equipped and none of its scripts run.
   and destroyed on every stash, so keep mod state outside them.
 - `HeldItems.TryEquip`, `TryToggle` and `TryPutAway` run the game's own equip,
   toggle and stash for the item's hand, after the game's own check that the
-  hand can take it now, and say why when they refuse. `IsHeld`,
-  `TryGetLocal` and `Snapshot` read the local hands. All need the Unity thread.
+  hand can take it now, and say why when they refuse. `CanEquip` makes the
+  same checks as `TryEquip` without equipping anything, so it can be polled.
+  `IsHeld`, `TryGetLocal` and `Snapshot` read the local hands. All need the
+  Unity thread.
 
 Every peer that should see the item in a hand registers it the same way. A
 peer without the registration, such as a vanilla client a server lets in, can't
 resolve the id: the game's update of that player's hands fails there and stops
-showing their hand items. The content agreement refuses such clients by
-default. It digests networked id reservations, not donors, so two versions of
-a mod with different donors agree but show different poses.
+showing their hand items. So the SDK only lets the game publish a held mod id
+to the other players (the player state's `HeldItems`, which the game fills in
+`BoltPlayerSetup.AddHeldItem`) when every player is known to have the content:
+the content agreement runs for the session and the server refuses clients
+that don't take part. Elsewhere, on an `allowVanillaClients` server or one
+that declares no content, the player still holds the item and sees it, and
+the others see an empty hand. Single player is unaffected. If that gate can't
+be installed, held mod items are refused in such sessions instead. The
+agreement digests networked id reservations, not donors, so two versions of a
+mod with different donors agree but show different poses.
 
 ### The mod gear page
 
@@ -3975,6 +3989,11 @@ with its own.
   still checked and refused when they differ.
 - Clients with content log the server's summary next to their own when they
   differ. Processes without reservations are unaffected.
+- A server requires the capability in its enrollment challenge exactly when it
+  refuses clients that don't take part. A client whose content matches reads
+  that as every admitted player sharing it, which is what lets held mod items
+  show in other players' hands. Nothing extra goes on the wire, so older and
+  newer Loaders keep working with each other.
 
 ### Weapon attachments
 

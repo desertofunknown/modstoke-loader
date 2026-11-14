@@ -37,7 +37,7 @@ namespace Modstoke.Sons
         private const int MaxSends = 8;
         private static readonly Dictionary<Guid, Peer> Peers = new();
         private static Declaration _local;
-        private static bool _server, _requireClients, _active;
+        private static bool _server, _requireClients, _active, _serverShares;
         private static string _joining, _labelledContent;
         private static double _joiningAt, _nextLobbyCheck;
         private static ulong _labelledLobby;
@@ -76,6 +76,12 @@ namespace Modstoke.Sons
         /// <summary>Whether this server lets vanilla clients in despite its content (allowVanillaClients).</summary>
         internal static bool AllowsVanilla => RuntimePreferences.ReadBoolean(AllowVanillaKey, false);
 
+        /// <summary>
+        /// Whether every player in this session is known to have this process's content: the check runs, and the
+        /// server refuses clients that don't take part, vanilla ones included. Fixed once known for the session.
+        /// </summary>
+        internal static bool PeersShareContent => _active && (_server ? _requireClients : _serverShares);
+
         /// <summary>The agreement state with one connected peer, or NotChecked when it was not checked.</summary>
         public static Status Read(ControlPeer peer)
             => peer != null && Peers.TryGetValue(peer.PeerId, out var entry) && ReferenceEquals(entry.Control, peer)
@@ -100,7 +106,7 @@ namespace Modstoke.Sons
         internal static void PrepareForStart(bool server)
         {
             Peers.Clear();
-            _active = false;
+            _active = _serverShares = false;
             _local = Capture();
             if (_local.Count == 0) return;
             _server = server;
@@ -277,6 +283,11 @@ namespace Modstoke.Sons
             }
             // The client answers every server frame, since any one of them may have been the first to arrive.
             ControlTransport.Send(peer, Write(_local));
+            // A server requires this capability in its challenge exactly when it refuses clients that don't take
+            // part (every Loader with the check does), so then every player it admits has this content.
+            if (same && ClientEnrollment.TryRead(peer, out var enrollment) == EnrollmentReadStatus.Success
+                && (enrollment.RequiredCapabilities & Capability) != 0)
+                _serverShares = true;
             if (!same && !Peers.ContainsKey(peer.PeerId))
             {
                 Peers[peer.PeerId] = new Peer { Control = peer, State = Status.Differs, RemoteSummary = remote.Summary };

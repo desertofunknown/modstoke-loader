@@ -54,15 +54,34 @@ namespace Modstoke.Sons
         // same player's inventory only (a world load makes a new one).
         private static int _remembered = -1;
         private static IntPtr _rememberedBy;
-        private static float _sweepAt;
+        // The left-hand item it replaced, such as a flashlight, which the game keeps as that hand's previous item. The
+        // SDK takes that memory over and gives it back once the hands are free after the put-away.
+        private static int _rememberedLeft = -1;
+        private static IntPtr _rememberedLeftBy;
+        // The left-hand item a two-handed equip is about to replace, from its prefix to its postfix.
+        private static int _replacingLeft = -1;
+        private static float _leftGiveBackUntil, _sweepAt;
+        private const float LeftGiveBackSeconds = 30;
 
         private const string ClientLocalRefusal = "its id is client-local, and in multiplayer the game shows a held item to every player";
         private const string StrictRefusal = "strict inventory has no server equip for held mod items yet";
+        private const string UngatedRefusal = "the game would show it to every player, and not all of them are known to have it";
+        // CanEquip is polled every frame, so its statuses for these are composed once.
+        private const string ClientLocalStatus = "It can't be held here: " + ClientLocalRefusal + ".";
+        private const string StrictStatus = "It can't be held here: " + StrictRefusal + ".";
+        private const string UngatedStatus = "It can't be held here: " + UngatedRefusal + ".";
 
         private static bool ClientLocalInSession(int itemId) => BoltNetwork.isRunning && !ItemIds.IsNetworked(itemId);
 
         // A client under strict inventory: its equips go to the server, which can't carry out one for a held mod item.
         private static bool StrictClient => BoltNetwork.isRunning && !BoltNetwork.isServer && PlayerInventoryEnforcement.StrictInventoryArmed;
+
+        // Why this session keeps the item out of the hand, or null.
+        private static string SessionRefusal(int itemId)
+            => ClientLocalInSession(itemId) ? ClientLocalRefusal
+                : StrictClient ? StrictRefusal
+                : !_publicationGated && !Publishes(itemId) ? UngatedRefusal
+                : null;
 
         internal static void Add(ItemData item, HeldModel model, ItemData donor)
         {
@@ -108,12 +127,39 @@ namespace Modstoke.Sons
         /// </summary>
         public static bool TryEquip(int itemId, out string status) => TryBringOut(itemId, false, out status);
 
+        /// <summary>Whether <see cref="TryEquip"/> would bring it out now, and why not; changes nothing.</summary>
+        /// <remarks>Cheap enough to poll every frame. Also true while it is in the hand or being equipped.</remarks>
+        public static bool CanEquip(int itemId, out string status)
+        {
+            if (!Profiles.TryGetValue(itemId, out var profile))
+            {
+                status = "Item " + itemId + " has no held model.";
+                return false;
+            }
+            if (!Inventory.TryGetCurrentInventory(out var inventory, out status)) return false;
+            try
+            {
+                if (inventory.HasInSlotOrNextSlot(profile.Slot, itemId))
+                {
+                    status = "It is already in the hand.";
+                    return true;
+                }
+                return CanBringOut(inventory, profile, out status);
+            }
+            catch (Exception error)
+            {
+                status = "Checking the hand failed: " + error.Message;
+                return false;
+            }
+        }
+
         /// <summary>Puts it away when held; otherwise brings it out through the game's toggle for its hand.</summary>
         public static bool TryToggle(int itemId, out string status)
             => IsHeld(itemId) ? TryPutAway(itemId, out status) : TryBringOut(itemId, true, out status);
 
         /// <summary>
-        /// Stashes it as the game's toggle does and gives back the other hand's item a two-handed item put away.
+        /// Stashes it as the game's toggle does and gives back the items a two-handed item put away: the other hand's
+        /// at once, and its own hand's once the hands are free.
         /// </summary>
         public static bool TryPutAway(int itemId, out string status)
         {
@@ -131,8 +177,9 @@ namespace Modstoke.Sons
                         ? "It is still being equipped." : "It is not in the hand.";
                     return false;
                 }
-                var giveBack = profile.Slot == EquipmentSlot.LeftHand && profile.BothHands && _rememberedBy == inventory.Pointer
-                    ? _remembered : -1;
+                var twoHanded = profile.Slot == EquipmentSlot.LeftHand && profile.BothHands;
+                var giveBack = twoHanded && _rememberedBy == inventory.Pointer ? _remembered : -1;
+                var giveBackLeft = twoHanded && _rememberedLeftBy == inventory.Pointer ? _rememberedLeft : -1;
                 if (profile.Slot == EquipmentSlot.LeftHand) inventory.UnequipItemAtSlot(EquipmentSlot.LeftHand, false, true, false);
                 else inventory.StashRightHandItem(true, false, false);
                 if (inventory.HasInSlot(profile.Slot, itemId))
@@ -141,7 +188,11 @@ namespace Modstoke.Sons
                     return false;
                 }
                 _remembered = -1;
-                status = "Put away." + (giveBack > 0 ? GiveBack(inventory, giveBack) : "");
+                // Queued before the right hand's give-back, whose equip ends every left-hand memory but a pending one.
+                if (giveBackLeft > 0) _leftGiveBackUntil = Time.unscaledTime + LeftGiveBackSeconds;
+                else if (twoHanded) ForgetLeft();
+                status = "Put away." + (giveBack > 0 ? GiveBack(inventory, giveBack) : "")
+                    + (giveBackLeft > 0 ? " Item " + giveBackLeft + " goes back into the left hand once the hands are free." : "");
                 return true;
             }
             catch (Exception error)
@@ -165,7 +216,7 @@ namespace Modstoke.Sons
                 items.Add(new HeldItemEntry(profile.ItemId, profile.DonorId, (ItemEquipmentSlot)(int)profile.Slot,
                     profile.BothHands, (profile.Slot == EquipmentSlot.LeftHand ? left : right) == profile.ItemId));
             items.Sort((a, b) => a.ItemId.CompareTo(b.ItemId));
-            return new HeldItemsSnapshot(items.AsReadOnly(), left, right, _remembered, Instances.Count);
+            return new HeldItemsSnapshot(items.AsReadOnly(), left, right, _remembered, _rememberedLeft, Instances.Count);
         }
 
         private static bool TryBringOut(int itemId, bool toggle, out string status)
@@ -182,11 +233,6 @@ namespace Modstoke.Sons
                 {
                     status = "It is already in the hand.";
                     return true;
-                }
-                if (inventory.AmountOf(itemId, false, false) < 1)
-                {
-                    status = "The player does not carry it.";
-                    return false;
                 }
                 if (!CanBringOut(inventory, profile, out status)) return false;
                 if (!toggle) inventory.TryEquip(itemId, false, true, false);
@@ -207,13 +253,19 @@ namespace Modstoke.Sons
             }
         }
 
-        // The game's own readiness checks for the hand, then the hand definition, so its TryEquip never starts
-        // with nothing to show.
+        // The carried count and the game's own readiness checks for the hand, then the hand definition, so its
+        // TryEquip never starts with nothing to show. Reads only.
         private static bool CanBringOut(PlayerInventory inventory, Profile profile, out string status)
         {
-            if (ClientLocalInSession(profile.ItemId) || StrictClient)
+            if (inventory.AmountOf(profile.ItemId, false, false) < 1)
             {
-                status = "It can't be held here: " + (StrictClient ? StrictRefusal : ClientLocalRefusal) + ".";
+                status = "The player does not carry it.";
+                return false;
+            }
+            var refusal = SessionRefusal(profile.ItemId);
+            if (refusal != null)
+            {
+                status = refusal switch { ClientLocalRefusal => ClientLocalStatus, StrictRefusal => StrictStatus, _ => UngatedStatus };
                 return false;
             }
             if (profile.BothHands && inventory.HeldOnlyItemController?.HasItem == true)
@@ -246,6 +298,50 @@ namespace Modstoke.Sons
             if (inventory.AmountOf(itemId, false, false) < 1) return " Item " + itemId + " is no longer carried.";
             inventory.TryEquip(itemId, false, false, false);
             return " Giving back item " + itemId + ".";
+        }
+
+        // The left hand's item goes back only once the hands have settled after the put-away: the arm has lowered
+        // the held item and the right hand's give-back has finished.
+        private static void TickLeftGiveBack()
+        {
+            if (_leftGiveBackUntil == 0) return;
+            if (Time.unscaledTime >= _leftGiveBackUntil || !Inventory.TryGetCurrentInventory(out var inventory, out _)
+                || inventory.Pointer != _rememberedLeftBy)
+            {
+                ForgetLeft();
+                return;
+            }
+            var itemId = _rememberedLeft;
+            try
+            {
+                if (SlotItem(inventory, EquipmentSlot.LeftHand, false) > 0 || SlotItem(inventory, EquipmentSlot.LeftHand, true) > 0
+                    || inventory.AmountOf(itemId, false, false) < 1)
+                {
+                    ForgetLeft();
+                    return;
+                }
+                // Only the game's equip returns its state to Idle, so an empty right hand counts as settled whatever
+                // the state says.
+                var settled = inventory._currentView == PlayerInventory.PlayerViews.World && !LocalPlayer.IsInMidAction
+                    && SlotItem(inventory, EquipmentSlot.RightHand, true) < 0
+                    && (inventory._currentEquipState == PlayerInventory.HandEquipState.Idle
+                        || SlotItem(inventory, EquipmentSlot.RightHand, false) < 0);
+                if (!settled || !inventory.CanEquipItemInLeftHand(itemId)) return;
+                // Consumed first: an equip that fails is not tried again.
+                ForgetLeft();
+                inventory.TryEquip(itemId, false, false, false);
+            }
+            catch (Exception error)
+            {
+                ForgetLeft();
+                LogOnce("left give-back", "Item " + itemId + " could not be given back to the left hand: " + error.Message);
+            }
+        }
+
+        private static void ForgetLeft()
+        {
+            _rememberedLeft = -1;
+            _leftGiveBackUntil = 0;
         }
 
         // Called by the game through IHeldItem, on every player's props, before it applies the item's animator variables.
@@ -335,10 +431,14 @@ namespace Modstoke.Sons
             Notify(entry.Profile.Model.Hidden, entry.Held, entry.Profile, "Hidden");
         }
 
-        /// <summary>Releases instances that went without OnDestroy, such as on a failed unload.</summary>
+        /// <summary>
+        /// Gives back a pending left-hand item and releases instances that went without OnDestroy, such as on a
+        /// failed unload.
+        /// </summary>
         internal static void Tick()
         {
             TickSelfTest();
+            TickLeftGiveBack();
             if (Instances.Count == 0 || Time.unscaledTime < _sweepAt) return;
             _sweepAt = Time.unscaledTime + 1;
             List<IntPtr> gone = null;

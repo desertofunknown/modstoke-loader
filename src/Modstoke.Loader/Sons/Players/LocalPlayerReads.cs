@@ -4,6 +4,7 @@
 using System;
 using Il2CppInterop.Runtime.InteropTypes;
 using Modstoke.Loader;
+using global::Sons.Areas;
 using global::Sons.StatSystem;
 using TheForest.Utils;
 using UnityEngine;
@@ -17,7 +18,7 @@ namespace Modstoke.Sons
         public const int MaximumRegisteredStats = 64;
 
         /// <summary>
-        /// Copies world-space position, forward and cave state on the initialized Unity thread.
+        /// Copies world-space position, forward, cave state and area mask on the initialized Unity thread.
         /// Requires the SDK's current-world manager root and a live in-world local player, but no
         /// vital-stat caches or server authority. Values are sequential observations, not an atomic
         /// state, a life-state assessment or permission to move. False returns a null snapshot;
@@ -58,6 +59,7 @@ namespace Modstoke.Sons
                 int frame = Time.frameCount;
                 Vector3 position = transform.position, forward = transform.forward;
                 bool inCaves = LocalPlayer.IsInCaves;
+                int areaMask = (int)CaveEntranceManager.CurrentAreaMask;
                 if (!float.IsFinite(position.x) || !float.IsFinite(position.y) || !float.IsFinite(position.z)
                     || !float.IsFinite(forward.x) || !float.IsFinite(forward.y) || !float.IsFinite(forward.z))
                 {
@@ -86,7 +88,7 @@ namespace Modstoke.Sons
                 if (status != LocalPlayerReadStatus.Success)
                     return false;
 
-                snapshot = new LocalPlayerLocationSnapshot(frame, position, forward, inCaves);
+                snapshot = new LocalPlayerLocationSnapshot(frame, position, forward, inCaves, areaMask);
                 return true;
             }
             catch (Exception)
@@ -302,12 +304,13 @@ namespace Modstoke.Sons
     /// <summary>Copied local location observations without native references or movement authority.</summary>
     public sealed class LocalPlayerLocationSnapshot
     {
-        internal LocalPlayerLocationSnapshot(int frame, Vector3 position, Vector3 forward, bool inCaves)
+        internal LocalPlayerLocationSnapshot(int frame, Vector3 position, Vector3 forward, bool inCaves, int areaMask)
         {
             Frame = frame;
             Position = position;
             Forward = forward;
             IsInCaves = inCaves;
+            AreaMask = areaMask;
             ObservedAt = DateTimeOffset.UtcNow;
         }
 
@@ -318,6 +321,11 @@ namespace Modstoke.Sons
         /// <summary>World-space transform forward, preserved without horizontal projection or normalization.</summary>
         public Vector3 Forward { get; }
         public bool IsInCaves { get; }
+        /// <summary>
+        /// The local player's raw Sons.Areas.AreaMask bits; the game's GPS counts the player as underground wherever
+        /// they are not zero. Read apart from <see cref="IsInCaves"/>, which may disagree at the edges.
+        /// </summary>
+        public int AreaMask { get; }
     }
 
     /// <summary>Raw cached stat fields, not resolved limits, normalized UI values or an authority decision.</summary>
