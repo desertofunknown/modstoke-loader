@@ -57,6 +57,10 @@ namespace Modstoke.Loader
                     HostCommands.Respond(request, true, "Toggled item " + itemId + " in the right hand.");
                     break;
                 }
+                case "gearpage" when rest is "on" or "off":
+                    HostCommands.Respond(request, Modstoke.Sons.Inventory.TrySetGearPage(rest == "on"),
+                        "Gear page " + rest + " (the inventory must be open and carry mod gear).");
+                    break;
                 case "remove" when int.TryParse(rest, out var removeId):
                 {
                     var removed = Modstoke.Sons.Inventory.TryRemoveItem(removeId, 1, out var result);
@@ -70,7 +74,7 @@ namespace Modstoke.Loader
                     break;
                 default:
                     HostCommands.Respond(request, false, "Usage: game continue [latest|<slot>] | game new <"
-                        + string.Join("|", Modes) + "> | game inventory open|close | game equip <item id> | game remove <item id> | game quit",
+                        + string.Join("|", Modes) + "> | game inventory open|close | game gearpage on|off | game equip <item id> | game remove <item id> | game quit",
                         error: "invalid-arguments");
                     break;
             }

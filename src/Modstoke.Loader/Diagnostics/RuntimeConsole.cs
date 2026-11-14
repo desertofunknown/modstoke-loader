@@ -162,11 +162,14 @@ namespace Modstoke.Loader
                     var arguments = submission.Arguments.Trim();
                     var desktop = submission.Origin == ConsoleOrigin.DesktopConsole;
                     Report(submission, "Info", arguments == "check" ? CraftingRecipeRegistration.Check()
+                        : desktop && arguments == "places" ? CraftingRecipeRegistration.Places()
                         : desktop && arguments.StartsWith("stock ", StringComparison.Ordinal)
                             ? CraftingRecipeRegistration.Stock(arguments[6..].Trim())
                         : desktop && arguments.StartsWith("try ", StringComparison.Ordinal)
                             ? CraftingRecipeRegistration.TryCraft(arguments[4..].Trim())
-                            : "Usage: crafting check | crafting stock <mod:key> | crafting try <mod:key> (stock and try: desktop console)");
+                        : desktop && arguments.StartsWith("lay ", StringComparison.Ordinal)
+                            ? CraftingRecipeRegistration.TryCraft(arguments[4..].Trim(), turnCog: false)
+                            : "Usage: crafting check | crafting stock|lay|try <mod:key> (stock, lay and try: desktop console)");
                     return;
                 }
                 if (text == "boltwidths")

@@ -360,6 +360,26 @@ namespace Modstoke.Sons
         /// The "crafting try &lt;mod:key&gt;" console command for test runs: with the inventory open, lays the recipe's
         /// ingredients on the mat the way a click does and turns the cog.
         /// </summary>
+        /// <summary>"crafting places": every ingredient place on the mat, in the mat root's own frame, for layout work.</summary>
+        internal static string Places()
+        {
+            var system = CraftingSystem._Instance_k__BackingField;
+            if (system == null || system.WasCollected || system._ingredientLayoutGroups == null) return "The crafting mat is not loaded.";
+            var root = system._ingredientLayoutGroups;
+            var lines = new List<string> { "root scale " + root.lossyScale.ToString("F3") + ", right " + root.right.ToString("F2") + ", forward " + root.forward.ToString("F2") };
+            foreach (var group in system._ingredientLayoutItemGroups)
+            {
+                if (group == null || group.WasCollected) continue;
+                var rows = group._layoutItems;
+                var world = rows != null && rows.Count > 0 && rows[0] != null ? rows[0].transform.position : group.transform.position;
+                var local = root.InverseTransformPoint(world);
+                var camera = Camera.main;
+                var screen = camera != null ? camera.WorldToScreenPoint(world) : Vector3.zero;
+                lines.Add(group._itemId + " " + local.ToString("F3") + " screen (" + (int)screen.x + ", " + (int)(Screen.height - screen.y) + ")");
+            }
+            return string.Join(" | ", lines);
+        }
+
         /// <summary>"crafting stock &lt;mod:key&gt;": with the inventory closed, tops the player up with the recipe's ingredients.</summary>
         internal static string Stock(string name)
         {
@@ -382,7 +402,7 @@ namespace Modstoke.Sons
             lock (Registrations) return Registrations.Find(entry => entry.Spec.ModId + ":" + entry.Spec.Key == name)?.Spec;
         }
 
-        internal static string TryCraft(string name)
+        internal static string TryCraft(string name, bool turnCog = true)
         {
             var spec = Find(name);
             if (spec == null) return "No mod recipe is called " + name + ".";
@@ -430,6 +450,7 @@ namespace Modstoke.Sons
             Inventory.TrySetGearPage(false);
             var system = CraftingSystem._Instance_k__BackingField;
             var mat = string.Join(", ", spec.Ingredients.Select(ingredient => ingredient.ItemId + " x" + system.GetIngredientCount(ingredient.ItemId)));
+            if (!turnCog) return name + ": laid " + string.Join(", ", steps) + "; mat " + mat + ".";
             var room = inventory.HasRoomFor(spec.ResultItemId, 1);
             var amount = inventory.AmountOf(spec.ResultItemId, true, false);
             var begun = Crafting.TryBeginCurrentCraft(out var execution, out var status);
