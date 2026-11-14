@@ -338,6 +338,10 @@ namespace Modstoke.Sons
         internal static int AppendRecipes(Il2CppSystem.Collections.Generic.List<CraftingRecipe> recipes)
         {
             if (ByHash.Count == 0) return 0;
+            var complete = true;
+            foreach (var registration in ByHash.Values)
+                if (!Alive(registration.Apply) || !recipes.Contains(registration.Apply)) { complete = false; break; }
+            if (complete) return 0;
             CraftingRecipe apply = null, dismantle = null;
             foreach (var recipe in recipes)
             {

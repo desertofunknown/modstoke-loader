@@ -43,9 +43,12 @@ namespace Modstoke.Sons
     /// </summary>
     public static class CraftingRecipeRegistration
     {
-        private const int MaximumRecipes = 128, MaximumRows = 8;
+        private const int MaximumRecipes = 128, MaximumRows = 8, Searches = 3;
+        private const float SearchSpacing = 30f;
         private static readonly List<Registration> Registrations = new();
-        private static float _nextCheck;
+        private static readonly List<CraftingRecipeDatabase> Known = new();
+        private static float _nextCheck, _nextSearch;
+        private static int _searches;
         private static bool _loggedFailure;
 
         private sealed class Registration
@@ -93,25 +96,40 @@ namespace Modstoke.Sons
             return null;
         }
 
+        // Finding every recipe database walks every loaded object, so it runs when a world loads and twice more over
+        // the next minute, or when a database it found was unloaded. The local crafting system's database is checked
+        // every time, at the cost of one field read, so a new player database is filled at once.
         internal static void Tick()
         {
+            if (!GameRuntime.IsGameScene)
+            {
+                if (_searches != 0) { Known.Clear(); _searches = 0; }
+                return;
+            }
             if (Time.unscaledTime < _nextCheck) return;
             _nextCheck = Time.unscaledTime + 1f;
-            if (!GameRuntime.IsGameScene) return;
             try
             {
                 Registration[] registrations;
                 lock (Registrations) registrations = Registrations.ToArray();
-                int attachments = 0, recipes = 0;
-                foreach (var database in Resources.FindObjectsOfTypeAll<CraftingRecipeDatabase>())
+                bool lost = Known.RemoveAll(database => database == null || database.WasCollected) > 0;
+                var system = CraftingSystem._Instance_k__BackingField;
+                if (system != null && !system.WasCollected && system._recipeDatabase != null) Remember(system._recipeDatabase);
+                if (lost || (_searches < Searches && Time.unscaledTime >= _nextSearch))
                 {
-                    var list = database == null ? null : database._recipes;
-                    if (list == null || list.WasCollected || !IsMatDatabase(list)) continue;
+                    _searches = Math.Min(_searches + 1, Searches);
+                    _nextSearch = Time.unscaledTime + SearchSpacing;
+                    foreach (var database in Resources.FindObjectsOfTypeAll<CraftingRecipeDatabase>()) Remember(database);
+                }
+                int attachments = 0, recipes = 0;
+                foreach (var database in Known)
+                {
+                    var list = database._recipes;
+                    if (list == null || list.WasCollected) continue;
                     attachments += WeaponAttachments.AppendRecipes(list);
                     recipes += Append(list, registrations);
                 }
                 if (attachments + recipes == 0) return;
-                var system = CraftingSystem._Instance_k__BackingField;
                 if (system != null && !system.WasCollected && system._isInitialized) system.RefreshAvailableRecipes(false);
                 RuntimeEntryPoint.LogSource?.LogInfo("Crafting mat: " + attachments + " weapon attachment and " + recipes
                     + " mod recipe(s) added.");
@@ -122,6 +140,13 @@ namespace Modstoke.Sons
                 _loggedFailure = true;
                 RuntimeEntryPoint.LogSource?.LogWarning("Mod recipes could not be added to the crafting mat: " + error.Message);
             }
+        }
+
+        private static void Remember(CraftingRecipeDatabase database)
+        {
+            if (database == null || database.WasCollected || Known.Exists(known => known.Pointer == database.Pointer)) return;
+            var list = database._recipes;
+            if (list != null && !list.WasCollected && IsMatDatabase(list)) Known.Add(database);
         }
 
         // The crafting mat's database is the one with the game's weapon dismantling; structure recipes live elsewhere.

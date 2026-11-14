@@ -18,10 +18,12 @@ namespace Modstoke.Sons
     /// </summary>
     public static class PrinterBlueprints
     {
-        private const int FirstId = 1000, IdRange = 30000, MaximumBlueprints = 24;
+        private const int FirstId = 1000, IdRange = 30000, MaximumBlueprints = 24, Searches = 3;
+        private const float SearchSpacing = 30f;
         private static readonly List<Registration> Registrations = new();
-        private static float _nextCheck;
-        private static bool _loggedFailure;
+        private static float _nextCheck, _nextSearch;
+        private static int _searches;
+        private static bool _loggedFailure, _hooked;
 
         private sealed class Registration
         {
@@ -65,40 +67,79 @@ namespace Modstoke.Sons
             return true;
         }
 
-        // Laptops come with the bunker and base scenes, and a new one starts from the game's list, so each check
-        // fills any laptop that lacks the mod blueprints.
+        // Laptops come with the bunker and base scenes as they stream in, so each one gets the mod blueprints as it
+        // starts. Laptops that started before the hook are found by a search, which walks every loaded object and so
+        // runs only when a world loads and twice more over the next minute.
         internal static void Tick()
         {
-            if (Registrations.Count == 0 || Time.unscaledTime < _nextCheck) return;
-            _nextCheck = Time.unscaledTime + 1f;
-            if (!GameRuntime.IsGameScene) return;
+            if (Registrations.Count == 0) return;
+            if (!GameRuntime.IsGameScene)
+            {
+                _searches = 0;
+                return;
+            }
+            if (Time.unscaledTime < _nextCheck) return;
+            _nextCheck = Time.unscaledTime + 2f;
+            if (!_hooked) Hook();
+            if (_searches >= Searches || Time.unscaledTime < _nextSearch) return;
+            _searches++;
+            _nextSearch = Time.unscaledTime + SearchSpacing;
             try
             {
-                Registration[] registrations;
-                lock (Registrations) registrations = Registrations.ToArray();
                 int added = 0;
-                foreach (var laptop in Resources.FindObjectsOfTypeAll<Resin3dPrinterLaptop>())
-                {
-                    var list = laptop == null ? null : laptop._availableBlueprints;
-                    if (list == null || list.Count == 0) continue;
-                    foreach (var registration in registrations)
-                    {
-                        if (Contains(list, registration.Id)) continue;
-                        var blueprint = Blueprint(registration, list);
-                        if (blueprint == null) continue;
-                        list.Add(blueprint);
-                        added++;
-                    }
-                }
-                if (added > 0)
-                    RuntimeEntryPoint.LogSource?.LogInfo(added + " mod printer blueprint" + (added == 1 ? "" : "s") + " added to the 3D printer.");
+                foreach (var laptop in Resources.FindObjectsOfTypeAll<Resin3dPrinterLaptop>()) added += Fill(laptop);
+                Report(added);
             }
-            catch (Exception error)
+            catch (Exception error) { Failed(error); }
+        }
+
+        private static void Hook()
+        {
+            _hooked = true;
+            try
             {
-                if (_loggedFailure) return;
-                _loggedFailure = true;
-                RuntimeEntryPoint.LogSource?.LogWarning("Mod printer blueprints could not be added: " + error.Message);
+                var harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-printer-blueprints");
+                harmony.Patch(HarmonyLib.AccessTools.Method(typeof(Resin3dPrinterLaptop), nameof(Resin3dPrinterLaptop.Start)),
+                    postfix: new HarmonyLib.HarmonyMethod(typeof(PrinterBlueprints), nameof(AfterLaptopStart)));
             }
+            catch (Exception error) { Failed(error); }
+        }
+
+        private static void AfterLaptopStart(Resin3dPrinterLaptop __instance)
+        {
+            try { Report(Fill(__instance)); }
+            catch (Exception error) { Failed(error); }
+        }
+
+        private static int Fill(Resin3dPrinterLaptop laptop)
+        {
+            var list = laptop == null ? null : laptop._availableBlueprints;
+            if (list == null || list.Count == 0) return 0;
+            Registration[] registrations;
+            lock (Registrations) registrations = Registrations.ToArray();
+            int added = 0;
+            foreach (var registration in registrations)
+            {
+                if (Contains(list, registration.Id)) continue;
+                var blueprint = Blueprint(registration, list);
+                if (blueprint == null) continue;
+                list.Add(blueprint);
+                added++;
+            }
+            return added;
+        }
+
+        private static void Report(int added)
+        {
+            if (added > 0)
+                RuntimeEntryPoint.LogSource?.LogInfo(added + " mod printer blueprint" + (added == 1 ? "" : "s") + " added to the 3D printer.");
+        }
+
+        private static void Failed(Exception error)
+        {
+            if (_loggedFailure) return;
+            _loggedFailure = true;
+            RuntimeEntryPoint.LogSource?.LogWarning("Mod printer blueprints could not be added: " + error.Message);
         }
 
         private static bool Contains(Il2CppSystem.Collections.Generic.List<PrintedItemBlueprint> list, int id)

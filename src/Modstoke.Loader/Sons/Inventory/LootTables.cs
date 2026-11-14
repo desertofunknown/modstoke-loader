@@ -27,9 +27,12 @@ namespace Modstoke.Sons
         public const string StorageCrate = "BasicStorageCrateItems";
         public const string Suitcase = "SuitcaseItems", WoodenCrate = "WoodenCrateItems", Grave = "GraveItems";
 
-        private const int MaximumEntries = 256;
+        private const int MaximumEntries = 256, Searches = 3;
+        private const float SearchSpacing = 30f;
         private static readonly List<Entry> Entries = new();
-        private static float _nextCheck;
+        private static readonly List<ContainerItemSpawnerData> Known = new();
+        private static float _nextCheck, _nextSearch;
+        private static int _searches;
         private static bool _loggedFailure;
 
         private sealed record Entry(string ModId, string Table, int ItemId, int Weight, int MaxCount);
@@ -67,24 +70,37 @@ namespace Modstoke.Sons
             return true;
         }
 
-        // Tables are assets that come and go with scenes, so each check finds them again and fills any that lack
-        // the entries. A table the game has already rolled from is unaffected: opened containers are saved as such.
+        // Finding the tables walks every loaded object, so it runs when a world loads and twice more over the next
+        // minute for late loads; after that only a table the game unloaded brings it back. In between, the tables
+        // already found are topped up, which costs a few list reads. A table the game has already rolled from is
+        // unaffected: opened containers are saved as such.
         internal static void Tick()
         {
-            if (Entries.Count == 0 || Time.unscaledTime < _nextCheck) return;
-            _nextCheck = Time.unscaledTime + 1f;
-            if (!GameRuntime.IsGameScene) return;
+            if (Entries.Count == 0) return;
+            if (!GameRuntime.IsGameScene)
+            {
+                if (_searches != 0) { Known.Clear(); _searches = 0; }
+                return;
+            }
+            if (Time.unscaledTime < _nextCheck) return;
+            _nextCheck = Time.unscaledTime + 2f;
             try
             {
                 Entry[] entries;
                 lock (Entries) entries = Entries.ToArray();
-                int added = 0;
-                foreach (var table in Resources.FindObjectsOfTypeAll<ContainerItemSpawnerData>())
+                bool lost = Known.RemoveAll(table => table == null || table.WasCollected) > 0;
+                if (lost || (_searches < Searches && Time.unscaledTime >= _nextSearch))
                 {
-                    if (table == null || table._items == null) continue;
+                    _searches = Math.Min(_searches + 1, Searches);
+                    _nextSearch = Time.unscaledTime + SearchSpacing;
+                    foreach (var table in Resources.FindObjectsOfTypeAll<ContainerItemSpawnerData>())
+                        if (table != null && table._items != null && !Known.Exists(known => known.Pointer == table.Pointer)
+                            && Array.Exists(entries, entry => entry.Table == table.name)) Known.Add(table);
+                }
+                int added = 0;
+                foreach (var table in Known)
                     foreach (var entry in entries)
                         if (entry.Table == table.name && Append(table, entry)) added++;
-                }
                 if (added > 0)
                     RuntimeEntryPoint.LogSource?.LogInfo(added + " mod loot entr" + (added == 1 ? "y" : "ies") + " added to the game's container tables.");
             }
