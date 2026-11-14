@@ -317,6 +317,10 @@ the installed runtime and release package; ownership is not runtime acceptance.
   refuses a copy, that pipeline is created from the stock shaders.
   `MODSTOKE_DX12_STOCK_SHADERS=1` turns the change off. The removal report says how
   many shaders were bounded and marks the stalled draw's shaders that were.
+  The host also records the engine's command queues by type and how many command
+  lists each got, and logs the first submission to a compute queue. The report labels
+  every unfinished list with its queue type, and gives each recent recording of the
+  stalled list its draw count, since the GPU may still be running an older recording.
 - `Modstoke.Bootstrap.dll` as the Doorstop target assembly.
   It records OpenACAI bootstrap and chainloader state. The default
   `openacai-native` path now owns preloader orchestration and the IL2CPP
@@ -516,7 +520,18 @@ the installed runtime and release package; ownership is not runtime acceptance.
   it on nearly every call that touches a managed object. It now tests the bit first
   and takes the locked path only for an unmarked page. The 16 replaced bytes are
   checked against the known build, written in one aligned store, and read back to
-  confirm. `MODSTOKE_NATIVE_GC_BARRIER=1` leaves the barrier as built. The game then keeps the screen black for a
+  confirm. `MODSTOKE_NATIVE_GC_BARRIER=1` leaves the barrier as built.
+  `AsyncComputeSwitch` runs on DirectX 12 only. HDRP's async passes (the light-list
+  build, SSAO, SSR, contact shadows, volumetric voxelization) run on the engine's
+  compute queue there, synced to the graphics queue with fences. DirectX 11 has no
+  such queue, so it runs them in order. Two DirectX 12 GPU hangs in a row stopped on
+  lit draws that loop over those light lists, so the switch makes the engine's
+  `SupportsAsyncCompute` call (UnityPlayer's registered function, a capability-flag
+  read) return false. It writes `xor eax,eax; ret` over its first three bytes in one
+  aligned 8-byte store. HDRP's `FrameSettings.asyncEnabled` calls it on every
+  check, so the same passes go in order on the graphics queue from the next frame.
+  `MODSTOKE_DX12_ASYNC_COMPUTE=1` leaves async compute on.
+  The game then keeps the screen black for a
   fixed 3 s of game time before the fade-in (`MainSceneLoadingTrigger`), and that
   wait is dropped once ten frames in a row take under 50 ms. The game's player
   activation check still decides when the fade-in starts.
