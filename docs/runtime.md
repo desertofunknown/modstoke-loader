@@ -299,7 +299,12 @@ the installed runtime and release package; ownership is not runtime acceptance.
   A fence armed at its largest value then wakes a thread when the device is
   removed. The thread writes the removal reason, the unfinished command lists
   around where the GPU stopped, and any page fault's resources to
-  `Modstoke/UserData/dx12-device-removed-<time>.txt`.
+  `Modstoke/UserData/dx12-device-removed-<time>.txt`. The engine leaves its command
+  lists unnamed, so the host also hooks pipeline creation, `SetPipelineState` and the
+  draw and dispatch methods. It records each pipeline's shader DXBC checksums, and the
+  pipeline each draw of a command list ran with over that list's last four recordings.
+  A report then names the stalled draw's shaders and saves their bytecode next to it
+  as `dx12-shader-<stage>-<checksum>.dxbc`.
 - `Modstoke.Bootstrap.dll` as the Doorstop target assembly.
   It records OpenACAI bootstrap and chainloader state. The default
   `openacai-native` path now owns preloader orchestration and the IL2CPP

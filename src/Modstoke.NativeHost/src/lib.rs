@@ -3,13 +3,15 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
 use std::arch::{global_asm, naked_asm};
+use std::cell::Cell;
+use std::collections::HashMap;
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::ptr::{addr_of_mut, null, null_mut};
-use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicPtr, AtomicUsize, Ordering};
+use std::sync::{Mutex, OnceLock};
 
 type Bool = i32;
 type Dword = u32;
@@ -74,6 +76,24 @@ const IID_DRED1: Guid = Guid {
     data3: 0x4DDA,
     data4: [0x9E, 0xBA, 0xEF, 0xFA, 0x65, 0x3F, 0xC5, 0x06],
 };
+const IID_D3D12_DEVICE2: Guid = Guid {
+    data1: 0x30BA_A41E,
+    data2: 0xB15B,
+    data3: 0x475C,
+    data4: [0xA0, 0xBB, 0x1A, 0xF5, 0xC5, 0xB6, 0x43, 0x28],
+};
+const IID_D3D12_COMMAND_ALLOCATOR: Guid = Guid {
+    data1: 0x6102_DEE4,
+    data2: 0xAF59,
+    data3: 0x4B09,
+    data4: [0xB9, 0x99, 0xB4, 0x4D, 0x73, 0xF0, 0x9B, 0x24],
+};
+const IID_D3D12_GRAPHICS_COMMAND_LIST: Guid = Guid {
+    data1: 0x5B16_0D0F,
+    data2: 0xAC1B,
+    data3: 0x4185,
+    data4: [0x8B, 0xA8, 0xB3, 0xAE, 0x42, 0xA5, 0xA4, 0x55],
+};
 const DEVICE_REMOVED_REPORT_PREFIX: &str = "dx12-device-removed-";
 static DRED_WANTED: AtomicBool = AtomicBool::new(false);
 static DRED_REQUESTED: AtomicBool = AtomicBool::new(false);
@@ -100,10 +120,53 @@ type DeviceRemovedReason = unsafe extern "system" fn(this: *mut c_void) -> i32;
 type FenceSetEventOnCompletion = unsafe extern "system" fn(this: *mut c_void, value: u64, event: *mut c_void) -> i32;
 type DredGetOutput = unsafe extern "system" fn(this: *mut c_void, output: *mut c_void) -> i32;
 
+type DeviceCreatePipeline =
+    unsafe extern "system" fn(this: *mut c_void, desc: *const c_void, riid: *const Guid, pipeline: *mut *mut c_void) -> i32;
+type DeviceCreateCommandAllocator =
+    unsafe extern "system" fn(this: *mut c_void, kind: u32, riid: *const Guid, allocator: *mut *mut c_void) -> i32;
+type DeviceCreateCommandList = unsafe extern "system" fn(
+    this: *mut c_void,
+    node_mask: u32,
+    kind: u32,
+    allocator: *mut c_void,
+    pipeline: *mut c_void,
+    riid: *const Guid,
+    list: *mut *mut c_void,
+) -> i32;
+type ListClose = unsafe extern "system" fn(this: *mut c_void) -> i32;
+type ListReset = unsafe extern "system" fn(this: *mut c_void, allocator: *mut c_void, pipeline: *mut c_void) -> i32;
+type ListSetPipeline = unsafe extern "system" fn(this: *mut c_void, pipeline: *mut c_void);
+type ListDrawInstanced = unsafe extern "system" fn(this: *mut c_void, vertices: u32, instances: u32, first: u32, first_instance: u32);
+type ListDrawIndexedInstanced =
+    unsafe extern "system" fn(this: *mut c_void, indices: u32, instances: u32, first: u32, base: i32, first_instance: u32);
+type ListDispatch = unsafe extern "system" fn(this: *mut c_void, x: u32, y: u32, z: u32);
+type ListExecuteIndirect = unsafe extern "system" fn(
+    this: *mut c_void,
+    signature: *mut c_void,
+    max_commands: u32,
+    arguments: *mut c_void,
+    arguments_offset: u64,
+    count: *mut c_void,
+    count_offset: u64,
+);
+
+#[repr(C)]
+struct MemoryBasicInformation {
+    base_address: usize,
+    allocation_base: usize,
+    allocation_protect: u32,
+    partition_id: u16,
+    region_size: usize,
+    state: u32,
+    protect: u32,
+    kind: u32,
+}
+
 #[link(name = "kernel32")]
 unsafe extern "system" {
     fn CreateEventW(attributes: *mut c_void, manual_reset: Bool, initial_state: Bool, name: *const u16) -> *mut c_void;
     fn WaitForSingleObject(handle: *mut c_void, milliseconds: Dword) -> Dword;
+    fn VirtualQuery(address: *const c_void, info: *mut MemoryBasicInformation, length: usize) -> usize;
 }
 
 struct HostState {
@@ -594,9 +657,395 @@ unsafe extern "system" fn d3d12_create_device_detour(
     let result = create(adapter, level, riid, device);
     // The engine first asks whether a device could be created, without one; the real one comes back here.
     if result >= 0 && !device.is_null() && !(*device).is_null() && !DEVICE_WATCHED.swap(true, Ordering::SeqCst) {
+        install_pipeline_tracking(*device);
         watch_device_removal(*device);
     }
     result
+}
+
+// Which shaders a stalled draw used. DRED names the command list and the operation the GPU stopped on, but the engine
+// leaves its command lists unnamed, so on DirectX 12 starts every pipeline is recorded with its shaders' DXBC
+// checksums, and every command list with the pipeline each of its draws ran with (its last four recordings).
+
+#[derive(Clone)]
+struct ShaderRef {
+    stage: &'static str,
+    checksum: [u8; 16],
+    size: usize,
+    address: usize,
+}
+
+const LIST_SLOTS: usize = 1024;
+const LIST_RECORDINGS: usize = 4;
+const LIST_DRAWS: usize = 256;
+
+struct ListSlot {
+    list: AtomicUsize,
+    recordings: AtomicUsize,
+    pipeline: AtomicUsize,
+    counts: [AtomicUsize; LIST_RECORDINGS],
+    draws: [[AtomicUsize; LIST_DRAWS]; LIST_RECORDINGS],
+}
+
+static LISTS: [ListSlot; LIST_SLOTS] = [const {
+    ListSlot {
+        list: AtomicUsize::new(0),
+        recordings: AtomicUsize::new(0),
+        pipeline: AtomicUsize::new(0),
+        counts: [const { AtomicUsize::new(0) }; LIST_RECORDINGS],
+        draws: [const { [const { AtomicUsize::new(0) }; LIST_DRAWS] }; LIST_RECORDINGS],
+    }
+}; LIST_SLOTS];
+static PIPELINES: Mutex<Option<HashMap<usize, Vec<ShaderRef>>>> = Mutex::new(None);
+static PIPELINE_COUNTS: [AtomicUsize; 3] = [const { AtomicUsize::new(0) }; 3];
+static ORIGINAL_CREATE_GRAPHICS_PIPELINE: AtomicUsize = AtomicUsize::new(0);
+static ORIGINAL_CREATE_COMPUTE_PIPELINE: AtomicUsize = AtomicUsize::new(0);
+static ORIGINAL_CREATE_STREAM_PIPELINE: AtomicUsize = AtomicUsize::new(0);
+static ORIGINAL_LIST_RESET: AtomicUsize = AtomicUsize::new(0);
+static ORIGINAL_SET_PIPELINE: AtomicUsize = AtomicUsize::new(0);
+static ORIGINAL_DRAW: AtomicUsize = AtomicUsize::new(0);
+static ORIGINAL_DRAW_INDEXED: AtomicUsize = AtomicUsize::new(0);
+static ORIGINAL_DISPATCH: AtomicUsize = AtomicUsize::new(0);
+static ORIGINAL_EXECUTE_INDIRECT: AtomicUsize = AtomicUsize::new(0);
+
+thread_local! {
+    static LAST_LIST: Cell<(usize, usize)> = const { Cell::new((0, 0)) };
+}
+
+/// Hooks the device's pipeline creation and, through a command list of its own, the methods every graphics command
+/// list shares for setting a pipeline and recording draws. Runs before the engine creates anything on the device.
+unsafe fn install_pipeline_tracking(device: *mut c_void) {
+    let vtable = *(device as *const *mut usize);
+    let mut hooked = hook_vtable(vtable, 10, create_graphics_pipeline_detour as *const () as usize, &ORIGINAL_CREATE_GRAPHICS_PIPELINE);
+    hooked &= hook_vtable(vtable, 11, create_compute_pipeline_detour as *const () as usize, &ORIGINAL_CREATE_COMPUTE_PIPELINE);
+    let query: ComQueryInterface = std::mem::transmute(*vtable.add(0));
+    let mut device2 = null_mut();
+    if query(device, &IID_D3D12_DEVICE2, &mut device2) >= 0 && !device2.is_null() {
+        hooked &= hook_vtable(*(device2 as *const *mut usize), 47, create_stream_pipeline_detour as *const () as usize,
+            &ORIGINAL_CREATE_STREAM_PIPELINE);
+        com_release(device2);
+    }
+    let create_allocator: DeviceCreateCommandAllocator = std::mem::transmute(*vtable.add(9));
+    let create_list: DeviceCreateCommandList = std::mem::transmute(*vtable.add(12));
+    let (mut allocator, mut list) = (null_mut(), null_mut());
+    if create_allocator(device, 0, &IID_D3D12_COMMAND_ALLOCATOR, &mut allocator) < 0
+        || create_list(device, 0, 0, allocator, null_mut(), &IID_D3D12_GRAPHICS_COMMAND_LIST, &mut list) < 0
+    {
+        if !allocator.is_null() {
+            com_release(allocator);
+        }
+        log_line("DRED: no command list to find the draw methods; reports will not name shaders");
+        return;
+    }
+    let list_vtable = *(list as *const *mut usize);
+    hooked &= hook_vtable(list_vtable, 10, list_reset_detour as *const () as usize, &ORIGINAL_LIST_RESET);
+    hooked &= hook_vtable(list_vtable, 25, set_pipeline_detour as *const () as usize, &ORIGINAL_SET_PIPELINE);
+    hooked &= hook_vtable(list_vtable, 12, draw_detour as *const () as usize, &ORIGINAL_DRAW);
+    hooked &= hook_vtable(list_vtable, 13, draw_indexed_detour as *const () as usize, &ORIGINAL_DRAW_INDEXED);
+    hooked &= hook_vtable(list_vtable, 14, dispatch_detour as *const () as usize, &ORIGINAL_DISPATCH);
+    hooked &= hook_vtable(list_vtable, 59, execute_indirect_detour as *const () as usize, &ORIGINAL_EXECUTE_INDIRECT);
+    let close: ListClose = std::mem::transmute(*list_vtable.add(9));
+    close(list);
+    com_release(list);
+    com_release(allocator);
+    log_line(if hooked {
+        "DRED: tracking pipelines and draws, so a removal report names the stalled draw's shaders"
+    } else {
+        "DRED: some pipeline or draw methods could not be hooked; reports may not name shaders"
+    });
+}
+
+unsafe fn hook_vtable(vtable: *mut usize, slot: usize, detour: usize, original: &AtomicUsize) -> bool {
+    let entry = vtable.add(slot);
+    if *entry == detour {
+        return true;
+    }
+    let mut protection = 0;
+    if VirtualProtect(entry.cast(), size_of::<usize>(), PAGE_READWRITE, &mut protection) == FALSE {
+        return false;
+    }
+    original.store(*entry, Ordering::SeqCst);
+    *entry = detour;
+    let mut restored = 0;
+    VirtualProtect(entry.cast(), size_of::<usize>(), protection, &mut restored);
+    true
+}
+
+unsafe fn com_release(object: *mut c_void) {
+    let release: ComRelease = std::mem::transmute(*(*(object as *const *const usize)).add(2));
+    release(object);
+}
+
+unsafe extern "system" fn create_graphics_pipeline_detour(
+    device: *mut c_void,
+    desc: *const c_void,
+    riid: *const Guid,
+    pipeline: *mut *mut c_void,
+) -> i32 {
+    let original: DeviceCreatePipeline = std::mem::transmute(ORIGINAL_CREATE_GRAPHICS_PIPELINE.load(Ordering::Relaxed));
+    let result = original(device, desc, riid, pipeline);
+    if result >= 0 && !desc.is_null() && !pipeline.is_null() && !(*pipeline).is_null() {
+        // D3D12_GRAPHICS_PIPELINE_STATE_DESC: root signature, then VS, PS, DS, HS, GS as {pointer, length}.
+        let desc = desc as *const u8;
+        let shaders = [("vertex", 8), ("pixel", 24), ("domain", 40), ("hull", 56), ("geometry", 72)]
+            .iter()
+            .filter_map(|&(stage, offset)| shader_ref(stage, desc.add(offset)))
+            .collect();
+        remember_pipeline(*pipeline as usize, shaders, 0);
+    }
+    result
+}
+
+unsafe extern "system" fn create_compute_pipeline_detour(
+    device: *mut c_void,
+    desc: *const c_void,
+    riid: *const Guid,
+    pipeline: *mut *mut c_void,
+) -> i32 {
+    let original: DeviceCreatePipeline = std::mem::transmute(ORIGINAL_CREATE_COMPUTE_PIPELINE.load(Ordering::Relaxed));
+    let result = original(device, desc, riid, pipeline);
+    if result >= 0 && !desc.is_null() && !pipeline.is_null() && !(*pipeline).is_null() {
+        let shaders = shader_ref("compute", (desc as *const u8).add(8)).into_iter().collect();
+        remember_pipeline(*pipeline as usize, shaders, 1);
+    }
+    result
+}
+
+/// ID3D12Device2::CreatePipelineState takes a stream of subobjects, each starting pointer-aligned with its type;
+/// shader subobjects hold a {pointer, length} bytecode. Only bytecode that reads as a DXBC container is kept.
+unsafe extern "system" fn create_stream_pipeline_detour(
+    device: *mut c_void,
+    desc: *const c_void,
+    riid: *const Guid,
+    pipeline: *mut *mut c_void,
+) -> i32 {
+    let original: DeviceCreatePipeline = std::mem::transmute(ORIGINAL_CREATE_STREAM_PIPELINE.load(Ordering::Relaxed));
+    let result = original(device, desc, riid, pipeline);
+    if result >= 0 && !desc.is_null() && !pipeline.is_null() && !(*pipeline).is_null() {
+        let size = *(desc as *const usize);
+        let stream = *((desc as *const u8).add(8) as *const *const u8);
+        let mut shaders: Vec<ShaderRef> = Vec::new();
+        let mut offset = 0;
+        while !stream.is_null() && offset + 24 <= size {
+            let stage = match *(stream.add(offset) as *const u32) {
+                1 => Some("vertex"),
+                2 => Some("pixel"),
+                3 => Some("domain"),
+                4 => Some("hull"),
+                5 => Some("geometry"),
+                6 => Some("compute"),
+                24 => Some("amplification"),
+                25 => Some("mesh"),
+                _ => None,
+            };
+            if let Some(stage) = stage {
+                let bytecode = stream.add(offset + 8);
+                let (address, length) = (*(bytecode as *const usize), *(bytecode.add(8) as *const usize));
+                if address != 0 && (20..=1 << 26).contains(&length) && readable(address, 20) {
+                    if let Some(shader) = shader_ref(stage, bytecode) {
+                        if !shaders.iter().any(|known| known.checksum == shader.checksum) {
+                            shaders.push(shader);
+                        }
+                    }
+                }
+            }
+            offset += 8;
+        }
+        remember_pipeline(*pipeline as usize, shaders, 2);
+    }
+    result
+}
+
+unsafe fn shader_ref(stage: &'static str, bytecode: *const u8) -> Option<ShaderRef> {
+    let address = *(bytecode as *const usize);
+    let size = *(bytecode.add(8) as *const usize);
+    if address == 0 || size < 20 || *(address as *const [u8; 4]) != *b"DXBC" {
+        return None;
+    }
+    Some(ShaderRef { stage, checksum: *((address + 4) as *const [u8; 16]), size, address })
+}
+
+fn remember_pipeline(pipeline: usize, shaders: Vec<ShaderRef>, kind: usize) {
+    PIPELINE_COUNTS[kind].fetch_add(1, Ordering::Relaxed);
+    let mut pipelines = PIPELINES.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    pipelines.get_or_insert_with(HashMap::new).insert(pipeline, shaders);
+}
+
+unsafe fn readable(address: usize, length: usize) -> bool {
+    let mut info: MemoryBasicInformation = std::mem::zeroed();
+    if VirtualQuery(address as *const c_void, &mut info, size_of::<MemoryBasicInformation>()) == 0 {
+        return false;
+    }
+    const READABLE: u32 = 0x02 | 0x04 | 0x08 | 0x20 | 0x40 | 0x80;
+    info.state == 0x1000
+        && info.protect & READABLE != 0
+        && info.protect & 0x100 == 0
+        && address + length <= info.base_address + info.region_size
+}
+
+// Each command list's slot is written only by the thread recording it; the report reads it after the device is gone.
+fn list_slot(list: usize, claim: bool) -> Option<&'static ListSlot> {
+    let start = ((list >> 4).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> (64 - 10)) as usize;
+    for probe in 0..LIST_SLOTS {
+        let slot = &LISTS[(start + probe) & (LIST_SLOTS - 1)];
+        let key = slot.list.load(Ordering::Relaxed);
+        if key == list {
+            return Some(slot);
+        }
+        if key == 0 {
+            if !claim {
+                return None;
+            }
+            match slot.list.compare_exchange(0, list, Ordering::AcqRel, Ordering::Relaxed) {
+                Ok(_) => return Some(slot),
+                Err(found) if found == list => return Some(slot),
+                Err(_) => continue,
+            }
+        }
+    }
+    None
+}
+
+fn recording_slot(list: *mut c_void) -> Option<&'static ListSlot> {
+    let list = list as usize;
+    let (cached, index) = LAST_LIST.with(Cell::get);
+    if cached == list {
+        return Some(&LISTS[index]);
+    }
+    let slot = list_slot(list, true)?;
+    let index = (slot as *const ListSlot as usize - LISTS.as_ptr() as usize) / size_of::<ListSlot>();
+    LAST_LIST.with(|last| last.set((list, index)));
+    Some(slot)
+}
+
+fn note_draw(list: *mut c_void) {
+    if let Some(slot) = recording_slot(list) {
+        let ring = slot.recordings.load(Ordering::Relaxed) % LIST_RECORDINGS;
+        let count = slot.counts[ring].load(Ordering::Relaxed);
+        if count < LIST_DRAWS {
+            slot.draws[ring][count].store(slot.pipeline.load(Ordering::Relaxed), Ordering::Relaxed);
+        }
+        slot.counts[ring].store(count + 1, Ordering::Relaxed);
+    }
+}
+
+unsafe extern "system" fn list_reset_detour(list: *mut c_void, allocator: *mut c_void, pipeline: *mut c_void) -> i32 {
+    let original: ListReset = std::mem::transmute(ORIGINAL_LIST_RESET.load(Ordering::Relaxed));
+    let result = original(list, allocator, pipeline);
+    if result >= 0 {
+        if let Some(slot) = recording_slot(list) {
+            let next = slot.recordings.fetch_add(1, Ordering::Relaxed) + 1;
+            slot.counts[next % LIST_RECORDINGS].store(0, Ordering::Relaxed);
+            slot.pipeline.store(pipeline as usize, Ordering::Relaxed);
+        }
+    }
+    result
+}
+
+unsafe extern "system" fn set_pipeline_detour(list: *mut c_void, pipeline: *mut c_void) {
+    if let Some(slot) = recording_slot(list) {
+        slot.pipeline.store(pipeline as usize, Ordering::Relaxed);
+    }
+    let original: ListSetPipeline = std::mem::transmute(ORIGINAL_SET_PIPELINE.load(Ordering::Relaxed));
+    original(list, pipeline);
+}
+
+unsafe extern "system" fn draw_detour(list: *mut c_void, vertices: u32, instances: u32, first: u32, first_instance: u32) {
+    note_draw(list);
+    let original: ListDrawInstanced = std::mem::transmute(ORIGINAL_DRAW.load(Ordering::Relaxed));
+    original(list, vertices, instances, first, first_instance);
+}
+
+unsafe extern "system" fn draw_indexed_detour(
+    list: *mut c_void,
+    indices: u32,
+    instances: u32,
+    first: u32,
+    base: i32,
+    first_instance: u32,
+) {
+    note_draw(list);
+    let original: ListDrawIndexedInstanced = std::mem::transmute(ORIGINAL_DRAW_INDEXED.load(Ordering::Relaxed));
+    original(list, indices, instances, first, base, first_instance);
+}
+
+unsafe extern "system" fn dispatch_detour(list: *mut c_void, x: u32, y: u32, z: u32) {
+    note_draw(list);
+    let original: ListDispatch = std::mem::transmute(ORIGINAL_DISPATCH.load(Ordering::Relaxed));
+    original(list, x, y, z);
+}
+
+unsafe extern "system" fn execute_indirect_detour(
+    list: *mut c_void,
+    signature: *mut c_void,
+    max_commands: u32,
+    arguments: *mut c_void,
+    arguments_offset: u64,
+    count: *mut c_void,
+    count_offset: u64,
+) {
+    note_draw(list);
+    let original: ListExecuteIndirect = std::mem::transmute(ORIGINAL_EXECUTE_INDIRECT.load(Ordering::Relaxed));
+    original(list, signature, max_commands, arguments, arguments_offset, count, count_offset);
+}
+
+/// For the operation the GPU stopped on: which draw of its command list it was, the pipeline that draw ran with in
+/// the list's recent recordings, that pipeline's shaders, and a copy of each shader's bytecode next to the report.
+unsafe fn append_stalled_draw(report: &mut String, node: *const u8, history: *const u32, last: u32) {
+    let is_draw = |op: u32| matches!(op, 3..=6);
+    if history.is_null() || !is_draw(*history.add(last as usize)) {
+        return;
+    }
+    let ordinal = (0..last).filter(|&index| is_draw(*history.add(index as usize))).count();
+    let list = *(node.add(32) as *const usize);
+    report.push_str(&format!("    that is draw or dispatch {ordinal} of command list 0x{list:X}\n"));
+    let Some(slot) = list_slot(list, false) else {
+        report.push_str("    this command list was not tracked\n");
+        return;
+    };
+    let mut guard = None;
+    for _ in 0..40 {
+        if let Ok(pipelines) = PIPELINES.try_lock() {
+            guard = Some(pipelines);
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    let recordings = slot.recordings.load(Ordering::Relaxed);
+    for back in 0..LIST_RECORDINGS.min(recordings + 1) {
+        let ring = recordings.wrapping_sub(back) % LIST_RECORDINGS;
+        if ordinal >= slot.counts[ring].load(Ordering::Relaxed).min(LIST_DRAWS) {
+            continue;
+        }
+        let pipeline = slot.draws[ring][ordinal].load(Ordering::Relaxed);
+        report.push_str(&format!("    recording -{back}: pipeline 0x{pipeline:X}\n"));
+        let shaders = guard.as_ref().and_then(|map| map.as_ref()).and_then(|map| map.get(&pipeline)).cloned();
+        match shaders {
+            Some(shaders) if !shaders.is_empty() => {
+                for shader in &shaders {
+                    let checksum: String = shader.checksum.iter().map(|byte| format!("{byte:02x}")).collect();
+                    let copy = dump_shader(shader, &checksum).map_or_else(String::new, |name| format!(", saved as {name}"));
+                    report.push_str(&format!("      {} shader {checksum} ({} bytes{copy})\n", shader.stage, shader.size));
+                }
+            }
+            Some(_) => report.push_str("      no shader bytecode was recorded for this pipeline\n"),
+            None => report.push_str("      this pipeline was not recorded (made before tracking, or from a pipeline library)\n"),
+        }
+    }
+}
+
+unsafe fn dump_shader(shader: &ShaderRef, checksum: &str) -> Option<String> {
+    if !readable(shader.address, shader.size)
+        || *(shader.address as *const [u8; 4]) != *b"DXBC"
+        || *((shader.address + 4) as *const [u8; 16]) != shader.checksum
+    {
+        return None;
+    }
+    let game_dir = STATE.game_dir.get()?;
+    let name = format!("dx12-shader-{}-{checksum}.dxbc", shader.stage);
+    let bytes = std::slice::from_raw_parts(shader.address as *const u8, shader.size);
+    fs::write(user_data_dir(game_dir).join(&name), bytes).ok()?;
+    Some(name)
 }
 
 /// Every fence of a removed device is signalled to the largest value, so a fence nobody else signals gives a wait
@@ -692,6 +1141,9 @@ unsafe fn append_breadcrumbs(report: &mut String, mut node: *const u8, with_cont
                         report.push_str(&format!("            {}\n", wide_text(*(entry.add(8) as *const *const u16))));
                     }
                 }
+            }
+            if last > 0 {
+                append_stalled_draw(report, node, history, last);
             }
         }
         node = *(node.add(72) as *const *const u8);
