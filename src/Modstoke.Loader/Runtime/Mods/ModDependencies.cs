@@ -255,7 +255,7 @@ namespace Modstoke.Loader
                 }
             }
 
-            WarnUndeclaredReferences(candidates, dependencies);
+            WarnUndeclaredReferences(candidates);
 
             // Propagate known failures before sorting so an invalid target can never satisfy a requirement.
             var blocked = new Queue<int>();
@@ -309,20 +309,32 @@ namespace Modstoke.Loader
         }
 
         // A mod built against another mod's assembly without declaring it may start first and find that mod's
-        // statics unset, or keep running after it fails. Nothing is blocked; the author is told what to declare.
-        private static void WarnUndeclaredReferences(IReadOnlyList<ModCandidateSnapshot> candidates, List<int>[] dependencies)
+        // statics unset, or keep running after it fails. Requirements count through other requirements, and a
+        // declared one counts even when unmet, since that has its own message. Nothing is blocked; the author is
+        // told what to declare.
+        private static void WarnUndeclaredReferences(IReadOnlyList<ModCandidateSnapshot> candidates)
         {
             var byAssemblyName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            for (var i = 0; i < candidates.Count; i++)
-                if (IsExecutable(candidates[i]) && !string.IsNullOrEmpty(candidates[i].AssemblyName))
-                    byAssemblyName.TryAdd(candidates[i].AssemblyName, i);
+            var byModId = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             for (var i = 0; i < candidates.Count; i++)
             {
                 if (!IsExecutable(candidates[i])) continue;
+                if (!string.IsNullOrEmpty(candidates[i].AssemblyName)) byAssemblyName.TryAdd(candidates[i].AssemblyName, i);
+                if (!string.IsNullOrEmpty(candidates[i].ModId)) byModId.TryAdd(candidates[i].ModId, i);
+            }
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                if (!IsExecutable(candidates[i])) continue;
+                var declared = new HashSet<int>();
+                var pending = new Stack<int>();
+                pending.Push(i);
+                while (pending.Count > 0)
+                    foreach (var dependency in candidates[pending.Pop()].Dependencies)
+                        if (byModId.TryGetValue(dependency.Id, out var next) && declared.Add(next)) pending.Push(next);
                 foreach (var reference in candidates[i].AssemblyReferences)
                 {
                     if (reference == null || !byAssemblyName.TryGetValue(reference.AssemblyName ?? "", out var target)
-                        || target == i || dependencies[i].Contains(target)) continue;
+                        || target == i || declared.Contains(target)) continue;
                     try
                     {
                         RuntimeEntryPoint.LogSource?.LogWarning("Native mod '" + candidates[i].ModId + "' uses " + reference.AssemblyName
