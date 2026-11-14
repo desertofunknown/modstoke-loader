@@ -43,6 +43,20 @@ namespace Modstoke.Sons
         private static readonly Dictionary<IntPtr, (FpsLimiterOverride Override, int Fps)> RaisedOverrides = new();
         private static FpsLimiter _limiter;
         private static int _limiterMenuFps;
+        private static bool _loggedMenuRaise, _loggedLoadingRaise;
+        private static bool _collectorPaused;
+        private static long _heapAtPause;
+
+        // What UnityEngine.Scripting.GarbageCollector.GCMode switches underneath; that type is stripped from this build.
+        [System.Runtime.InteropServices.DllImport("GameAssembly", CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
+        private static extern void il2cpp_gc_disable();
+
+        [System.Runtime.InteropServices.DllImport("GameAssembly", CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
+        private static extern void il2cpp_gc_enable();
+
+        [System.Runtime.InteropServices.DllImport("GameAssembly", CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
+        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.I1)]
+        private static extern bool il2cpp_gc_is_disabled();
         private static readonly List<(LoadScene Scene, int Steps)> Watched = new();
         private static ThreadPriority? _gamePriority;
         private static bool _loading;
@@ -74,6 +88,7 @@ namespace Modstoke.Sons
                     FindLoaders(state.SceneName);
                     if (!GameBuild.IsDedicatedServer)
                     {
+                        if (loadingScene) PauseCollector();
                         LiftFrameCaps(LoadingFps);
                         if (gameScene) RevealWhenSettled();
                     }
@@ -88,6 +103,7 @@ namespace Modstoke.Sons
                 _failed = true;
                 RestoreMenuCaps();
                 RestorePriority();
+                ResumeCollector();
                 RuntimeEntryPoint.LogSource?.LogWarning("Loading performance corrections stopped: " + error.Message);
             }
         }
@@ -296,9 +312,35 @@ namespace Modstoke.Sons
             PerformanceCapture.Mark("world-reveal", new { fixedWait = wait, waited });
         }
 
+        // The game's managed heap uses Unity's incremental collector, which does marking work on whichever thread
+        // allocates once enough has been allocated. A world load allocates heavily: a CPU profile put 0.43 s of the
+        // main thread's activation phase and 0.28 s of the streaming phase in the collector. Collection is paused from
+        // the world's loading screen until the player is in the world (or back in the menus) and the heap simply grows
+        // meanwhile; the incremental collector then catches up in its usual per-frame slices.
+        private static void PauseCollector()
+        {
+            if (_collectorPaused || il2cpp_gc_is_disabled()) return;
+            il2cpp_gc_disable();
+            _collectorPaused = true;
+            _heapAtPause = UnityEngine.Profiling.Profiler.GetMonoUsedSizeLong();
+            RuntimeEntryPoint.LogSource?.LogInfo("Managed collection paused while the world loads (" + _heapAtPause / 1048576 + " MB in use).");
+        }
+
+        private static void ResumeCollector()
+        {
+            if (!_collectorPaused) return;
+            _collectorPaused = false;
+            il2cpp_gc_enable();
+            var used = UnityEngine.Profiling.Profiler.GetMonoUsedSizeLong();
+            RuntimeEntryPoint.LogSource?.LogInfo("Managed collection resumed (" + used / 1048576 + " MB in use, " +
+                (used - _heapAtPause) / 1048576 + " MB more than when paused; heap " + UnityEngine.Profiling.Profiler.GetMonoHeapSizeLong() / 1048576 + " MB).");
+            PerformanceCapture.Mark("collector-resumed", new { usedMb = used / 1048576, grownMb = (used - _heapAtPause) / 1048576 });
+        }
+
         private static void End(string where)
         {
             _loading = false;
+            ResumeCollector();
             RestoreMenuCaps();
             RestorePriority();
             Watched.Clear();
@@ -428,8 +470,12 @@ namespace Modstoke.Sons
                         _limiter = limiter;
                         _limiterMenuFps = limiter._menuFpsMax;
                     }
-                    RuntimeEntryPoint.LogSource?.LogInfo("Frame limit raised from " + limiter._menuFpsMax + " to " + fps + " fps"
-                        + (_loading ? " while the world loads." : " in the menus."));
+                    // The game resets its menu limit on every menu scene load, so each case is reported once.
+                    if (_loading ? !_loggedLoadingRaise : !_loggedMenuRaise)
+                        RuntimeEntryPoint.LogSource?.LogInfo("Frame limit raised from " + limiter._menuFpsMax + " to " + fps + " fps"
+                            + (_loading ? " while a world loads." : " in the menus."));
+                    if (_loading) _loggedLoadingRaise = true;
+                    else _loggedMenuRaise = true;
                     limiter._menuFpsMax = fps;
                 }
             }

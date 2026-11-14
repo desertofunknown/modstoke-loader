@@ -476,7 +476,12 @@ the installed runtime and release package; ownership is not runtime acceptance.
   held the load for over 4 s while every loading thread sat idle. It now compiles 64
   variants every frame. The game's frame limiter keeps the menus and the loading screen
   at its 30 fps menu limit. That limit is raised to 60 fps in the menus and to 240 fps
-  while a world loads, set directly when no limiter is running on the loading screen. Once the loader allowed its 23 scenes to activate, captures showed
+  while a world loads, set directly when no limiter is running on the loading screen.
+  The game's incremental collector is paused (`il2cpp_gc_disable`) from the world's
+  loading screen until the player is in the world or back in the menus. A world load
+  allocates heavily, and the collector did its marking on the allocating threads:
+  0.43 s of the main thread during activation and 0.28 s while the world streamed in.
+  The log reports how much the managed heap grew while collection was paused. Once the loader allowed its 23 scenes to activate, captures showed
   4.6 s of idle frames before the game scene appeared: Unity's async texture and mesh
   uploads and its scene integration each advance once per frame, and a scene cannot
   activate until its uploads finish. The game's own values come back once the player
