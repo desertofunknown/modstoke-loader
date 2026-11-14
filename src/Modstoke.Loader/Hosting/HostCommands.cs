@@ -15,7 +15,7 @@ namespace Modstoke.Loader
 
         internal static bool IsHostCommand(string name) => name is "status" or "version" or "players" or "mods"
             or "requirements" or "save" or "stop" or "config" or "reload" or "broadcast" or "saves" or "perf"
-            || ServerHosting.HasCommand(name);
+            || name == "game" && !Host.IsServer || ServerHosting.HasCommand(name);
 
         // status and mods are already listed as built-ins.
         internal static IEnumerable<ConsoleCommandInfo> Catalog()
@@ -34,6 +34,8 @@ namespace Modstoke.Loader
             yield return Listed("config", "config check | config get: check the known config files, or show dedicatedserver.cfg.");
             yield return Listed("reload", "Apply config changes that do not need a restart.");
             yield return Listed("perf", "perf [--seconds N]: time each mod's per-frame work for N seconds (default 10).");
+            if (!Host.IsServer)
+                yield return Listed("game", "game continue [latest|<slot>] | new <mode> | inventory open|close | equip <item id> | quit: drive a single player game for test runs (desktop console).");
             foreach (var (name, description) in ServerHosting.CommandCatalog())
                 yield return Listed(name, description);
         }
@@ -77,7 +79,7 @@ namespace Modstoke.Loader
                 Respond(request, false, "\"" + command + "\" is only available on a dedicated server.", error: "unavailable");
                 return;
             }
-            if (command is "save" or "stop" or "reload" or "broadcast"
+            if (command is "save" or "stop" or "reload" or "broadcast" or "game"
                 && request.Origin is not (ConsoleOrigin.ServerConsole or ConsoleOrigin.DesktopConsole))
             {
                 Respond(request, false, "\"" + command + "\" can only be run from the server or desktop console.",
@@ -134,6 +136,9 @@ namespace Modstoke.Loader
                     break;
                 case "reload":
                     HostConfig.RunReload(request);
+                    break;
+                case "game":
+                    HostGame.Run(request);
                     break;
             }
         }

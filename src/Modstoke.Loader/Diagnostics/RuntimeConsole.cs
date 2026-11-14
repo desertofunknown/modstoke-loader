@@ -97,6 +97,7 @@ namespace Modstoke.Loader
                 new("mods", "List the currently discovered mods and their status.", true, false),
                 new("desktop", "Open the desktop console window.", true, false),
                 new("boltwidths", "Report the bit width of each networked item-id field (writes UserData/bolt-widths.txt).", true, false),
+                new("crafting", "crafting check: ask the crafting mat which recipe each mod recipe's ingredients would make.", true, false, true),
                 new("language", "Show the language in use; \"language reload\" reads language files again.", true, false, true)
             };
             commands.AddRange(HostCommands.Catalog());
@@ -154,6 +155,18 @@ namespace Modstoke.Loader
                 {
                     bool opened = ConsoleHost.TryOpenDesktop(out var detail);
                     Report(submission, opened ? "Info" : "Warning", detail);
+                    return;
+                }
+                if (text == "crafting")
+                {
+                    var arguments = submission.Arguments.Trim();
+                    var desktop = submission.Origin == ConsoleOrigin.DesktopConsole;
+                    Report(submission, "Info", arguments == "check" ? CraftingRecipeRegistration.Check()
+                        : desktop && arguments.StartsWith("stock ", StringComparison.Ordinal)
+                            ? CraftingRecipeRegistration.Stock(arguments[6..].Trim())
+                        : desktop && arguments.StartsWith("try ", StringComparison.Ordinal)
+                            ? CraftingRecipeRegistration.TryCraft(arguments[4..].Trim())
+                            : "Usage: crafting check | crafting stock <mod:key> | crafting try <mod:key> (stock and try: desktop console)");
                     return;
                 }
                 if (text == "boltwidths")

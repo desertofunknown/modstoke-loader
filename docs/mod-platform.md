@@ -3931,11 +3931,16 @@ applies the additions once a world is loading, in a fixed order.
   crafting recipe database in the process gets the same additions after the
   game's own: weapon attachment recipes first, then mod recipes sorted by mod id
   and key. Dedicated servers get them too.
-- The mat makes the first recipe whose ingredient kinds are exactly the ones
-  lying on it, with at least each count, and only while every result fits the
-  inventory: a player who already carries the most of an item they may can't
-  make another, and the recipe isn't listed under the cog. A mod recipe with the
-  same kinds as an earlier one never wins, and the Loader logs a warning for it.
+- The mat makes the first recipe all of whose ingredients lie on it, in at
+  least each count; other items may lie there too and stay. Within a mod, the
+  recipes with more ingredient kinds come first, so a recipe whose ingredients
+  include another's wins when they are all there. A mod recipe is made only
+  while its results fit the inventory: a player who already carries the most of
+  an item they may can't make another, and when the mat holds exactly one mod
+  recipe's ingredients it makes that recipe or nothing. (The game alone would
+  make the last recipe it found, its result left on the mat.) A mod recipe that
+  an earlier recipe always beats, because that one takes only ingredients this
+  one lays down, is logged as one that can never be made.
 - Combinable modeled items lie on the crafting mat at the game's weapon mod
   spots, the next spot for each item registered, so the parts of a recipe lie
   apart.

@@ -250,6 +250,22 @@ console pipe in `Modstoke/UserData/console-endpoint.json` (`Schema`, `Pipe`,
 that the process is still running before trusting a leftover file. The pipe uses
 the same length-prefixed JSON exchange as `ConsoleWire`.
 
+For test runs, a player's game also takes these from the desktop console only:
+
+| Command | Does |
+|---|---|
+| `game continue [latest\|<slot>]` | From the title screen, continues a single player save (the newest by default). |
+| `game new <Normal\|Hard\|HardSurvival\|Peaceful\|Creative\|Custom>` | From the title screen, starts a new single player game. |
+| `game inventory open\|close` | Opens or closes the local player's inventory. |
+| `game equip <item id>` | Toggles an item in the right hand. |
+| `game remove <item id>` | Removes one of an item from the inventory. |
+| `game quit` | Quits without saving. |
+| `crafting stock <mod:key>` | Adds a mod recipe's missing ingredients, with the inventory closed. |
+| `crafting try <mod:key>` | With the inventory open, lays the ingredients on the mat as a click does and turns the cog. |
+
+`crafting check` works from any console: it asks the mat which recipe each mod
+recipe's ingredients would make, and whether its result fits.
+
 ## Player attachment handles
 
 `ServerWorld.TryCapturePlayerBinding(session, out binding, out status)`

@@ -333,6 +333,16 @@ namespace Modstoke.Sons
             }
         }
 
+        /// <summary>Turns the open inventory to the mod gear page or back, as the mode key does; false when it has none.</summary>
+        internal static bool TrySetGearPage(bool show)
+        {
+            if (!TryGetCurrentInventory(out var inventory, out _) || !GearPages.TryGetValue(inventory.Pointer, out var page)
+                || !InventoryLayout.Live(page.Root) || !InventoryLayout.Live(page.Container))
+                return false;
+            if (_gearShown != show) ShowGearPage(page, show);
+            return true;
+        }
+
         private static void ShowGearPage(GearPage page, bool show)
         {
             page.Container.gameObject.SetActive(!show);

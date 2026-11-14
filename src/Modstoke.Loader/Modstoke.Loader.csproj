@@ -829,6 +829,7 @@
     <Compile Include="Hosting/HostConfig.cs" />
     <Compile Include="Hosting/HostTcp.cs" />
     <Compile Include="Hosting/HostWorld.cs" />
+    <Compile Include="Hosting/HostGame.cs" />
     <Compile Include="Hosting/HostPerf.cs" />
     <Compile Include="Configuration/RuntimePreferences.cs" />
     <Compile Include="Sons/Runtime/Sons.cs" />
