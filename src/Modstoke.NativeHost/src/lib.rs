@@ -42,6 +42,70 @@ const GRAPHICS_FLAGS: [&str; 6] = ["-force-d3d", "-force-vulkan", "-force-gl", "
 static COMMAND_LINE_W: OnceLock<Vec<u16>> = OnceLock::new();
 static COMMAND_LINE_A: OnceLock<Vec<u8>> = OnceLock::new();
 
+// DirectX 12 device-removed data (DRED), switched on for starts on DirectX 12.
+const DRED_FORCED_ON: i32 = 2;
+const IID_DRED_SETTINGS1: Guid = Guid {
+    data1: 0xDBD5_AE51,
+    data2: 0x3317,
+    data3: 0x4F0A,
+    data4: [0xAD, 0xF9, 0x1D, 0x7C, 0xED, 0xCA, 0xAE, 0x0B],
+};
+const IID_DRED_SETTINGS: Guid = Guid {
+    data1: 0x82BC_481C,
+    data2: 0x6B9B,
+    data3: 0x4030,
+    data4: [0xAE, 0xDB, 0x7E, 0xE3, 0xD1, 0xDF, 0x1E, 0x63],
+};
+const IID_D3D12_FENCE: Guid = Guid {
+    data1: 0x0A75_3DCF,
+    data2: 0xC4D8,
+    data3: 0x4B91,
+    data4: [0xAD, 0xF6, 0xBE, 0x5A, 0x60, 0xD9, 0x5A, 0x76],
+};
+const IID_DRED: Guid = Guid {
+    data1: 0x9893_1D33,
+    data2: 0x5AE8,
+    data3: 0x4791,
+    data4: [0xAA, 0x3C, 0x1A, 0x73, 0xA2, 0x93, 0x4E, 0x71],
+};
+const IID_DRED1: Guid = Guid {
+    data1: 0x9727_A022,
+    data2: 0xCF1D,
+    data3: 0x4DDA,
+    data4: [0x9E, 0xBA, 0xEF, 0xFA, 0x65, 0x3F, 0xC5, 0x06],
+};
+const DEVICE_REMOVED_REPORT_PREFIX: &str = "dx12-device-removed-";
+static DRED_WANTED: AtomicBool = AtomicBool::new(false);
+static DRED_REQUESTED: AtomicBool = AtomicBool::new(false);
+static DEVICE_WATCHED: AtomicBool = AtomicBool::new(false);
+static ORIGINAL_D3D12_CREATE_DEVICE: AtomicPtr<c_void> = AtomicPtr::new(null_mut());
+
+#[repr(C)]
+struct Guid {
+    data1: u32,
+    data2: u16,
+    data3: u16,
+    data4: [u8; 8],
+}
+
+type D3d12CreateDevice =
+    unsafe extern "system" fn(adapter: *mut c_void, level: i32, riid: *const Guid, device: *mut *mut c_void) -> i32;
+type D3d12GetDebugInterface = unsafe extern "system" fn(riid: *const Guid, debug: *mut *mut c_void) -> i32;
+type ComSetEnablement = unsafe extern "system" fn(this: *mut c_void, enablement: i32);
+type ComRelease = unsafe extern "system" fn(this: *mut c_void) -> u32;
+type ComQueryInterface = unsafe extern "system" fn(this: *mut c_void, riid: *const Guid, out: *mut *mut c_void) -> i32;
+type DeviceCreateFence =
+    unsafe extern "system" fn(this: *mut c_void, initial: u64, flags: u32, riid: *const Guid, fence: *mut *mut c_void) -> i32;
+type DeviceRemovedReason = unsafe extern "system" fn(this: *mut c_void) -> i32;
+type FenceSetEventOnCompletion = unsafe extern "system" fn(this: *mut c_void, value: u64, event: *mut c_void) -> i32;
+type DredGetOutput = unsafe extern "system" fn(this: *mut c_void, output: *mut c_void) -> i32;
+
+#[link(name = "kernel32")]
+unsafe extern "system" {
+    fn CreateEventW(attributes: *mut c_void, manual_reset: Bool, initial_state: Bool, name: *const u16) -> *mut c_void;
+    fn WaitForSingleObject(handle: *mut c_void, milliseconds: Dword) -> Dword;
+}
+
 struct HostState {
     game_dir: OnceLock<PathBuf>,
     log_path: OnceLock<PathBuf>,
@@ -332,6 +396,11 @@ unsafe fn process_attach(hinst_dll: Hinstance) -> Result<(), BootstrapError> {
     let _ = STATE.config.set(config);
 
     apply_graphics_api(&game_exe, &game_dir);
+    let command_line = match COMMAND_LINE_W.get() {
+        Some(line) => String::from_utf16_lossy(&line[..line.len().saturating_sub(1)]),
+        None => String::from_utf16_lossy(wide_slice(GetCommandLineW())),
+    };
+    DRED_WANTED.store(command_line.to_ascii_lowercase().contains("-force-d3d12"), Ordering::SeqCst);
     install_get_proc_address_hook()?;
     set_env("DOORSTOP_DISABLE", "TRUE");
     write_state(
@@ -498,9 +567,254 @@ unsafe extern "system" fn get_proc_address_detour(module: Hmodule, name: *const 
                 return openacai_il2cpp_init as Farproc;
             }
         }
+        if requested == b"D3D12CreateDevice" && DRED_WANTED.load(Ordering::SeqCst) {
+            let original = GetProcAddress(module, name);
+            if !original.is_null() {
+                ORIGINAL_D3D12_CREATE_DEVICE.store(original, Ordering::SeqCst);
+                return d3d12_create_device_detour as Farproc;
+            }
+        }
     }
 
     GetProcAddress(module, name)
+}
+
+/// The engine loads d3d12.dll itself and creates its device through this export, so DRED can be switched on just
+/// before, outside the loader lock.
+unsafe extern "system" fn d3d12_create_device_detour(
+    adapter: *mut c_void,
+    level: i32,
+    riid: *const Guid,
+    device: *mut *mut c_void,
+) -> i32 {
+    if !DRED_REQUESTED.swap(true, Ordering::SeqCst) {
+        enable_dred();
+    }
+    let create: D3d12CreateDevice = std::mem::transmute(ORIGINAL_D3D12_CREATE_DEVICE.load(Ordering::SeqCst));
+    let result = create(adapter, level, riid, device);
+    // The engine first asks whether a device could be created, without one; the real one comes back here.
+    if result >= 0 && !device.is_null() && !(*device).is_null() && !DEVICE_WATCHED.swap(true, Ordering::SeqCst) {
+        watch_device_removal(*device);
+    }
+    result
+}
+
+/// Every fence of a removed device is signalled to the largest value, so a fence nobody else signals gives a wait
+/// that ends exactly when the device is lost. The thread then writes what DRED recorded, before the engine fails
+/// its next allocation and crashes.
+unsafe fn watch_device_removal(device: *mut c_void) {
+    let vtable = *(device as *const *const usize);
+    let create_fence: DeviceCreateFence = std::mem::transmute(*vtable.add(36));
+    let mut fence = null_mut();
+    if create_fence(device, 0, 0, &IID_D3D12_FENCE, &mut fence) < 0 || fence.is_null() {
+        log_line("DRED: no fence for the device-removed watch; a removal will only be in the engine's log");
+        return;
+    }
+    let event = CreateEventW(null_mut(), TRUE, FALSE, null());
+    let set_event: FenceSetEventOnCompletion = std::mem::transmute(*(*(fence as *const *const usize)).add(9));
+    if event.is_null() || set_event(fence, u64::MAX, event) < 0 {
+        log_line("DRED: the device-removed watch could not be armed");
+        return;
+    }
+    let (device, event) = (device as usize, event as usize);
+    let _ = std::thread::Builder::new().name("Modstoke DX12 watch".into()).spawn(move || {
+        WaitForSingleObject(event as *mut c_void, u32::MAX);
+        write_device_removed_report(device as *mut c_void);
+    });
+    log_line("DRED: watching the DirectX 12 device for removal");
+}
+
+unsafe fn write_device_removed_report(device: *mut c_void) {
+    let vtable = *(device as *const *const usize);
+    let reason: DeviceRemovedReason = std::mem::transmute(*vtable.add(37));
+    let reason = reason(device) as u32;
+    let mut report = format!("DirectX 12 device removed: 0x{reason:08X} ({})\n", removal_reason_name(reason));
+    let query: ComQueryInterface = std::mem::transmute(*vtable.add(0));
+    let mut dred = null_mut();
+    let version = if query(device, &IID_DRED1, &mut dred) >= 0 && !dred.is_null() {
+        1
+    } else if query(device, &IID_DRED, &mut dred) >= 0 && !dred.is_null() {
+        0
+    } else {
+        report.push_str("No DRED data: the device did not expose it.\n");
+        write_report(&report);
+        return;
+    };
+    let dred_vtable = *(dred as *const *const usize);
+    let mut breadcrumbs: usize = 0;
+    let get_breadcrumbs: DredGetOutput = std::mem::transmute(*dred_vtable.add(if version == 1 { 5 } else { 3 }));
+    if get_breadcrumbs(dred, (&mut breadcrumbs as *mut usize).cast()) >= 0 {
+        append_breadcrumbs(&mut report, breadcrumbs as *const u8, version == 1);
+    } else {
+        report.push_str("Breadcrumbs: unavailable\n");
+    }
+    let mut fault = [0usize; 3];
+    let get_fault: DredGetOutput = std::mem::transmute(*dred_vtable.add(if version == 1 { 6 } else { 4 }));
+    if get_fault(dred, fault.as_mut_ptr().cast()) >= 0 && fault[0] != 0 {
+        report.push_str(&format!("\nPage fault at GPU address 0x{:016X}\n", fault[0]));
+        append_allocations(&mut report, "Resources there", fault[1] as *const u8, version == 1);
+        append_allocations(&mut report, "Recently freed there", fault[2] as *const u8, version == 1);
+    } else {
+        report.push_str("\nNo page fault recorded.\n");
+    }
+    write_report(&report);
+}
+
+// D3D12_AUTO_BREADCRUMB_NODE(1): names at 0..32, BreadcrumbCount 48, pLastBreadcrumbValue 56, pCommandHistory 64,
+// pNext 72; NODE1 adds BreadcrumbContextsCount 80 and pBreadcrumbContexts 88 (index, wide string).
+unsafe fn append_breadcrumbs(report: &mut String, mut node: *const u8, with_contexts: bool) {
+    report.push_str("Command lists the GPU had not finished (finished lists are left out):\n");
+    let mut shown = 0;
+    while !node.is_null() && shown < 64 {
+        let count = *(node.add(48) as *const u32);
+        let last_ptr = *(node.add(56) as *const *const u32);
+        let last = if last_ptr.is_null() { 0 } else { *last_ptr };
+        if last < count {
+            shown += 1;
+            let list = node_name(node, 0, 8);
+            let queue = node_name(node, 16, 24);
+            report.push_str(&format!("\n  queue \"{queue}\", list \"{list}\": {last} of {count} operations done\n"));
+            let history = *(node.add(64) as *const *const u32);
+            let (contexts, context_count) = if with_contexts {
+                (*(node.add(88) as *const *const u8), *(node.add(80) as *const u32))
+            } else {
+                (null(), 0)
+            };
+            let first = last.saturating_sub(12);
+            let end = (last + 6).min(count);
+            for index in first..end {
+                let op = if history.is_null() { u32::MAX } else { *history.add(index as usize) };
+                let marker = if index == last { "  <- running when the GPU stopped" } else { "" };
+                report.push_str(&format!("    #{index:<6} {}{marker}\n", breadcrumb_op_name(op)));
+                for context in 0..context_count as usize {
+                    let entry = contexts.add(context * 16);
+                    if *(entry as *const u32) == index {
+                        report.push_str(&format!("            {}\n", wide_text(*(entry.add(8) as *const *const u16))));
+                    }
+                }
+            }
+        }
+        node = *(node.add(72) as *const *const u8);
+    }
+    if shown == 0 {
+        report.push_str("  none: every recorded command list had finished\n");
+    }
+}
+
+// D3D12_DRED_ALLOCATION_NODE(1): ObjectNameA 0, ObjectNameW 8, AllocationType 16, pNext 24.
+unsafe fn append_allocations(report: &mut String, label: &str, mut node: *const u8, _with_object: bool) {
+    report.push_str(&format!("  {label}:\n"));
+    let mut count = 0;
+    while !node.is_null() && count < 32 {
+        let name = node_name(node, 0, 8);
+        let kind = *(node.add(16) as *const u32);
+        report.push_str(&format!("    {} (allocation type {kind})\n", if name.is_empty() { "unnamed" } else { &name }));
+        node = *(node.add(24) as *const *const u8);
+        count += 1;
+    }
+    if count == 0 {
+        report.push_str("    none\n");
+    }
+}
+
+unsafe fn node_name(node: *const u8, ansi: usize, wide: usize) -> String {
+    let wide_name = *(node.add(wide) as *const *const u16);
+    if !wide_name.is_null() {
+        return wide_text(wide_name);
+    }
+    let ansi_name = *(node.add(ansi) as *const *const c_char);
+    if ansi_name.is_null() { String::new() } else { CStr::from_ptr(ansi_name).to_string_lossy().into_owned() }
+}
+
+unsafe fn wide_text(text: *const u16) -> String {
+    if text.is_null() { String::new() } else { String::from_utf16_lossy(wide_slice(text)) }
+}
+
+fn removal_reason_name(reason: u32) -> &'static str {
+    match reason {
+        0x887A_0005 => "DEVICE_REMOVED",
+        0x887A_0006 => "DEVICE_HUNG: the GPU took too long on submitted work",
+        0x887A_0007 => "DEVICE_RESET: a badly formed command or the driver reset the GPU",
+        0x887A_0020 => "DRIVER_INTERNAL_ERROR",
+        0x8007_000E => "OUT_OF_MEMORY",
+        0 => "not removed",
+        _ => "other",
+    }
+}
+
+fn breadcrumb_op_name(op: u32) -> &'static str {
+    const NAMES: [&str; 49] = [
+        "SetMarker", "BeginEvent", "EndEvent", "DrawInstanced", "DrawIndexedInstanced", "ExecuteIndirect", "Dispatch",
+        "CopyBufferRegion", "CopyTextureRegion", "CopyResource", "CopyTiles", "ResolveSubresource",
+        "ClearRenderTargetView", "ClearUnorderedAccessView", "ClearDepthStencilView", "ResourceBarrier",
+        "ExecuteBundle", "Present", "ResolveQueryData", "BeginSubmission", "EndSubmission", "DecodeFrame",
+        "ProcessFrames", "AtomicCopyBufferUint", "AtomicCopyBufferUint64", "ResolveSubresourceRegion",
+        "WriteBufferImmediate", "DecodeFrame1", "SetProtectedResourceSession", "DecodeFrame2", "ProcessFrames1",
+        "BuildRaytracingAccelerationStructure", "EmitRaytracingAccelerationStructurePostbuildInfo",
+        "CopyRaytracingAccelerationStructure", "DispatchRays", "InitializeMetaCommand", "ExecuteMetaCommand",
+        "EstimateMotion", "ResolveMotionVectorHeap", "SetPipelineState1", "InitializeExtensionCommand",
+        "ExecuteExtensionCommand", "DispatchMesh", "EncodeFrame", "ResolveEncoderOutputMetadata", "Barrier",
+        "BeginCommandList", "DispatchGraph", "SetProgram",
+    ];
+    NAMES.get(op as usize).copied().unwrap_or("unknown")
+}
+
+unsafe fn write_report(report: &str) {
+    let Some(game_dir) = STATE.game_dir.get() else {
+        return;
+    };
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |elapsed| elapsed.as_secs());
+    let path = user_data_dir(game_dir).join(format!("{DEVICE_REMOVED_REPORT_PREFIX}{stamp}.txt"));
+    match fs::write(&path, report) {
+        Ok(()) => log_line(&format!("DRED: device removed; report written to {}", path.display())),
+        Err(error) => log_line(&format!("DRED: device removed; the report could not be written: {error}")),
+    }
+}
+
+/// Switches on DirectX 12's device-removed extended data (DRED) before the engine creates its device. Breadcrumbs
+/// record how far the GPU got through each command list, and page-fault tracking names the resource behind a bad
+/// GPU address. Unity prints the breadcrumbs when its device is removed, but switches DRED on only with its debug
+/// layer, so the two DirectX 12 starts that hung the GPU on world activation left no trace of the work that hung it.
+unsafe fn enable_dred() {
+    let d3d12 = GetModuleHandleW(wide_null("d3d12.dll").as_ptr());
+    let get = if d3d12.is_null() {
+        null_mut()
+    } else {
+        GetProcAddress(d3d12, b"D3D12GetDebugInterface\0".as_ptr().cast())
+    };
+    if get.is_null() {
+        log_line("DRED: D3D12GetDebugInterface was not found; DirectX 12 starts without device-removed data");
+        return;
+    }
+    let get: D3d12GetDebugInterface = std::mem::transmute(get);
+    for (iid, with_contexts) in [(&IID_DRED_SETTINGS1, true), (&IID_DRED_SETTINGS, false)] {
+        let mut settings = null_mut();
+        if get(iid, &mut settings) < 0 || settings.is_null() {
+            continue;
+        }
+        // ID3D12DeviceRemovedExtendedDataSettings: 3 auto breadcrumbs, 4 page faults; Settings1 adds 6 contexts.
+        set_dred_enablement(settings, 3);
+        set_dred_enablement(settings, 4);
+        if with_contexts {
+            set_dred_enablement(settings, 6);
+        }
+        let release: ComRelease = std::mem::transmute(*(*(settings as *const *const usize)).add(2));
+        release(settings);
+        log_line(if with_contexts {
+            "DRED: breadcrumbs, breadcrumb contexts and page-fault tracking are on for this DirectX 12 start"
+        } else {
+            "DRED: breadcrumbs and page-fault tracking are on for this DirectX 12 start"
+        });
+        return;
+    }
+    log_line("DRED: the settings interface was not available; DirectX 12 starts without device-removed data");
+}
+
+unsafe fn set_dred_enablement(settings: *mut c_void, slot: usize) {
+    let set: ComSetEnablement = std::mem::transmute(*(*(settings as *const *const usize)).add(slot));
+    set(settings, DRED_FORCED_ON);
 }
 
 unsafe extern "system" fn openacai_il2cpp_init(domain_name: *const c_char) -> c_int {
