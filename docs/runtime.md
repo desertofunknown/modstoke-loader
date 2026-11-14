@@ -292,6 +292,14 @@ the installed runtime and release package; ownership is not runtime acceptance.
   another DLL export. This avoids the public-export semantics of
   [Rust no_mangle](https://doc.rust-lang.org/reference/abi.html#the-no_mangle-attribute)
   while preserving the 82-symbol proxy contract.
+  For starts on DirectX 12, whether from the Loader's graphics API option or
+  `-force-d3d12` in the launch options, the host wraps the engine's
+  `D3D12CreateDevice`. Before the device exists, the wrapper forces device-removed
+  extended data (DRED) on: breadcrumbs, breadcrumb contexts and page-fault tracking.
+  A fence armed at its largest value then wakes a thread when the device is
+  removed. The thread writes the removal reason, the unfinished command lists
+  around where the GPU stopped, and any page fault's resources to
+  `Modstoke/UserData/dx12-device-removed-<time>.txt`.
 - `Modstoke.Bootstrap.dll` as the Doorstop target assembly.
   It records OpenACAI bootstrap and chainloader state. The default
   `openacai-native` path now owns preloader orchestration and the IL2CPP
