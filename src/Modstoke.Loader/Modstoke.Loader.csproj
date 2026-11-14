@@ -966,6 +966,7 @@
     <Compile Include="Sons/Diagnostics/PerformanceCapture.Callbacks.cs" />
     <Compile Include="Sons/Diagnostics/PerformanceCapture.Native.cs" />
     <Compile Include="Sons/Diagnostics/PerformanceCapture.Gpu.cs" />
+    <Compile Include="Sons/Diagnostics/ContentCatalog.cs" />
     <Compile Include="Sons/UI/MenuBridge.cs" />
     <Compile Include="Sons/UI/MenuBridgeState.cs" />
     <Compile Include="Sons/UI/MenuTheme.cs" />
