@@ -44,6 +44,10 @@ namespace Modstoke.Sons
         private static FpsLimiter _limiter;
         private static int _limiterMenuFps;
         private static bool _loggedMenuRaise, _loggedLoadingRaise;
+        private const string ItemDatabasePath = "Data/ItemDatabase";
+        private static ResourceRequest _itemDatabaseRequest;
+        private static UnityEngine.Object _itemDatabase;
+        private static bool _itemDatabaseSettled;
         private static readonly List<(LoadScene Scene, int Steps)> Watched = new();
         private static ThreadPriority? _gamePriority;
         private static bool _loading;
@@ -81,7 +85,10 @@ namespace Modstoke.Sons
                     if (PerformanceCapture.Active) WatchSteps();
                 }
                 else if (!state.IsInWorld && !gameScene && !GameBuild.IsDedicatedServer)
+                {
                     LiftFrameCaps(0);
+                    PreloadItemDatabase();
+                }
             }
             catch (Exception error)
             {
@@ -295,6 +302,32 @@ namespace Modstoke.Sons
             _reveal._completeWaitTrigger = 0;
             RuntimeEntryPoint.LogSource?.LogInfo($"World fade in no longer waits: frames settled {waited:0.0} s into the game's fixed {wait:0.#} s wait.");
             PerformanceCapture.Mark("world-reveal", new { fixedWait = wait, waited });
+        }
+
+        // The player's inventory loads the item database with a synchronous Resources.Load while the world scene starts,
+        // 0.24 s inside that scene's already long first frame, because the database pulls in every item's data. In the
+        // menus Unity's loading thread is idle, so the same asset is requested asynchronously there and held; the game's
+        // load then finds it in memory. "Data/ItemDatabase" is the path ItemDatabaseManager.Initialize loads.
+        private static void PreloadItemDatabase()
+        {
+            if (_itemDatabaseSettled) return;
+            if (_itemDatabaseRequest == null)
+            {
+                if (global::Sons.Items.Core.ItemDatabaseManager._instance)
+                {
+                    _itemDatabaseSettled = true;
+                    return;
+                }
+                _itemDatabaseRequest = Resources.LoadAsync(ItemDatabasePath);
+                return;
+            }
+            if (!_itemDatabaseRequest.isDone) return;
+            _itemDatabase = _itemDatabaseRequest.asset;
+            _itemDatabaseRequest = null;
+            _itemDatabaseSettled = true;
+            RuntimeEntryPoint.LogSource?.LogInfo(_itemDatabase
+                ? "Item database preloaded in the menus."
+                : "Item database was not found at " + ItemDatabasePath + "; the game loads it with the world.");
         }
 
         private static void End(string where)

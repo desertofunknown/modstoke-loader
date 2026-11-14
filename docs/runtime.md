@@ -477,6 +477,10 @@ the installed runtime and release package; ownership is not runtime acceptance.
   variants every frame. The game's frame limiter keeps the menus and the loading screen
   at its 30 fps menu limit. That limit is raised to 60 fps in the menus and to 240 fps
   while a world loads, set directly when no limiter is running on the loading screen.
+  In the menus, where Unity's loading thread is idle, the item database
+  (`Data/ItemDatabase`) is requested asynchronously and held. The player's inventory
+  used to load it synchronously inside the world scene's first frame, which took
+  0.24 s.
   Pausing the managed collector for the load was tried and removed. The world
   load's time in collector code turned out to be the cost of allocating, not
   collecting, so activation stayed at 4.2 s, while the heap grew by 1.7 GB
