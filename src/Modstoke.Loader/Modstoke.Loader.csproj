@@ -899,6 +899,13 @@
     <Compile Include="Sons/Inventory/ItemRegistration.Modules.cs" />
     <Compile Include="Sons/Inventory/ItemModel.cs" />
     <Compile Include="Sons/Inventory/ItemArt.cs" />
+    <Compile Include="Sons/Inventory/HeldModel.cs" />
+    <Compile Include="Sons/Inventory/HeldItemBehaviour.cs" />
+    <Compile Include="Sons/Inventory/HeldItemTemplates.cs" />
+    <Compile Include="Sons/Inventory/HeldItems.cs" />
+    <Compile Include="Sons/Inventory/HeldItems.Props.cs" />
+    <Compile Include="Sons/Inventory/HeldItems.Animation.cs" />
+    <Compile Include="Sons/Inventory/HeldItems.SelfTest.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.Models.cs" />
     <Compile Include="Sons/Inventory/WeaponAttachments.cs" />
     <Compile Include="Sons/Inventory/LootTables.cs" />

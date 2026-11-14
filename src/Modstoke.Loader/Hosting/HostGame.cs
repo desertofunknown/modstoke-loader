@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using Modstoke.Diagnostics;
+using Sons.Items.Core;
 using Sons.Save;
 using TheForest.Utils;
 using UnityEngine;
@@ -57,6 +58,21 @@ namespace Modstoke.Loader
                     HostCommands.Respond(request, true, "Toggled item " + itemId + " in the right hand.");
                     break;
                 }
+                case "toggle" when int.TryParse(rest, out var toggleId):
+                    Toggle(request, toggleId);
+                    break;
+                case "unequip" when rest is "left" or "right":
+                    Unequip(request, rest == "left" ? EquipmentSlot.LeftHand : EquipmentSlot.RightHand);
+                    break;
+                case "held" when rest.Length == 0:
+                    HostCommands.Respond(request, true, Modstoke.Sons.HeldItems.DescribeLocal());
+                    break;
+                case "held" when rest == "animator":
+                    HostCommands.Respond(request, true, Modstoke.Sons.HeldItems.DescribeAnimator());
+                    break;
+                case "give":
+                    Give(request, rest);
+                    break;
                 case "gearpage" when rest is "on" or "off":
                     HostCommands.Respond(request, Modstoke.Sons.Inventory.TrySetGearPage(rest == "on"),
                         "Gear page " + rest + " (the inventory must be open and carry mod gear).");
@@ -74,10 +90,79 @@ namespace Modstoke.Loader
                     break;
                 default:
                     HostCommands.Respond(request, false, "Usage: game continue [latest|<slot>] | game new <"
-                        + string.Join("|", Modes) + "> | game inventory open|close | game gearpage on|off | game equip <item id> | game remove <item id> | game quit",
+                        + string.Join("|", Modes) + "> | game inventory open|close | game gearpage on|off | game equip <item id>"
+                        + " | game toggle <item id> | game unequip left|right | game held [animator] | game give <item id> [count]"
+                        + " | game remove <item id> | game quit",
                         error: "invalid-arguments");
                     break;
             }
+        }
+
+        // Toggles an item in its own hand, as the game's keys for the GPS or flashlight do.
+        private static void Toggle(ConsoleSubmission request, int itemId)
+        {
+            if (Modstoke.Sons.HeldItems.IsHeldModelItem(itemId))
+            {
+                var toggled = Modstoke.Sons.HeldItems.TryToggle(itemId, out var status);
+                HostCommands.Respond(request, toggled, "Held item " + itemId + ": " + status);
+                return;
+            }
+            var inventory = LocalPlayer.Inventory;
+            if (inventory == null || !ItemDatabaseManager.TryFindItemById(itemId, out var data) || data == null)
+            {
+                HostCommands.Respond(request, false, "There is no local player, or no item " + itemId + ".", error: "not-ready");
+                return;
+            }
+            var left = data._equipmentSlot == EquipmentSlot.LeftHand;
+            if (left) inventory.ToggleLeftHandItem(itemId);
+            else inventory.ToggleRightHandItem(itemId);
+            HostCommands.Respond(request, true, "Toggled item " + itemId + " in the " + (left ? "left" : "right") + " hand.");
+        }
+
+        private static void Unequip(ConsoleSubmission request, EquipmentSlot slot)
+        {
+            var inventory = LocalPlayer.Inventory;
+            if (inventory == null)
+            {
+                HostCommands.Respond(request, false, "There is no local player in a world.", error: "not-ready");
+                return;
+            }
+            var itemId = inventory.TryGetItemInSlot(slot, out var item) && item != null ? item._itemID : -1;
+            if (itemId < 0)
+            {
+                HostCommands.Respond(request, false, "The " + (slot == EquipmentSlot.LeftHand ? "left" : "right") + " hand is empty.");
+                return;
+            }
+            if (Modstoke.Sons.HeldItems.IsHeldModelItem(itemId))
+            {
+                var stashed = Modstoke.Sons.HeldItems.TryPutAway(itemId, out var status);
+                HostCommands.Respond(request, stashed, "Held item " + itemId + ": " + status);
+                return;
+            }
+            inventory.UnequipItemAtSlot(slot, false, true, false);
+            HostCommands.Respond(request, true, "Put away item " + itemId + ".");
+        }
+
+        // Host and single player only: a client's inventory belongs to its server.
+        private static void Give(ConsoleSubmission request, string arguments)
+        {
+            var parts = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var count = 1;
+            if (parts.Length is < 1 or > 2 || !int.TryParse(parts[0], out var itemId)
+                || parts.Length == 2 && (!int.TryParse(parts[1], out count) || count < 1))
+            {
+                HostCommands.Respond(request, false, "Usage: game give <item id> [count]", error: "invalid-arguments");
+                return;
+            }
+            if (BoltNetwork.isRunning && !BoltNetwork.isServer)
+            {
+                HostCommands.Respond(request, false, "Only the host or a single player game can give items.", error: "not-allowed");
+                return;
+            }
+            var given = Modstoke.Sons.Inventory.TryAddItem(itemId, count, out var result, preventAutoEquip: true);
+            HostCommands.Respond(request, given, given
+                ? "Gave " + count + " of item " + itemId + "; carried " + result.AfterCount + "."
+                : "Item " + itemId + " was not given: " + result?.Detail);
         }
 
         // The single player modes as the game's own mode buttons name them.

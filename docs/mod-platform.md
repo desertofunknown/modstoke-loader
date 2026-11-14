@@ -3821,10 +3821,85 @@ from a mod's model rather than from game data:
   clients that run the same mod. Client-local ids get local pickups.
 - `ItemModel.MatAction` sets the left click on the mat. `Drop` (the default,
   spawnable items only) closes the inventory and drops one in front of the
-  player, through the native drop or, when that refuses, a removal and spawn;
-  the game only drops held items, and modeled items cannot be held. `Attach`
-  attaches one to a carried weapon through `WeaponAttachments`. Combine is
-  hidden until modeled items can take part in recipes. Host and singleplayer only.
+  player, through the native drop or, when that refuses, a removal and spawn,
+  since the game only drops held items. `Attach` attaches one to a carried
+  weapon through `WeaponAttachments`. `Equip` (the default for items with a held
+  model) equips it with the inventory open, as the game's own mat does. Combine
+  is hidden until modeled items can take part in recipes. Host and singleplayer
+  only.
+
+#### Held items
+
+`ItemModel.Held = new HeldModel(donorId)` makes the item equippable in the hand
+as its own native item, with its own held model and the hold animation of a
+native hand item (the donor), such as the GPS tracker (412), walkie-talkie (486)
+or radio (590). Only data comes from the donor: its hand, animator variables,
+two-handedness, wide-pose blend, hand locator and render layer. The donor is
+never equipped and none of its scripts run.
+
+- The definition must be spawnable: the game drops held items in several of its
+  paths (no backpack, a full stack, forced drops). The item type defaults to
+  `Equippable, Droppable`; Equippable is refused without a held model.
+- The held model is `HeldModel.Model`, or `ItemModel.Model` when unset, copied
+  inert like the mat model under a `Grip` child placed by `GripOffset`,
+  `GripRotation` and `GripScale` in the donor locator's space (the game
+  overwrites the root's own pose with the locator's). Its root carries the
+  game's held-item interface, which is what makes the game apply the pose, and
+  the game's inert template controller: the game's left-hand toggle (the GPS,
+  flashlight and book keys) asks the held item's controller whether it is idle
+  without checking that there is one, and the controller plays the stash sound.
+- Each player's props get the item's hand definition the first time the game
+  looks for it, reusing the donor's locator, so nothing is added to the rig
+  and other players with the same registration see it in the hand. Dedicated
+  servers add none, since nothing renders there.
+- Left-hand poses live on animator layer 5, which only weighs in while
+  something activates it; the held instance registers an activator
+  ("Modstoke held <id>") for its lifetime, as the donors' own controllers do,
+  and drops it once the hand has lowered the item.
+- With `AnimatorId = Donor` (the default) the hand's animator item id reads as
+  the donor's while held and is cleared on unequip, so animations keyed on the
+  donor's id play and no pose is left behind. `Own` keeps the item's id. The
+  GPS tracker, walkie-talkie, radio and action camera have no animator
+  variables at all: their poses are chosen by that id alone, so they need
+  `Donor`.
+- `RequiresBothHands` (default: the donor's) puts the other hand's item away.
+  For a left-hand item the SDK remembers the right-hand item it put away,
+  instead of the game, which would re-equip it next to the held item when the
+  inventory closes or the player leaves water, and gives it back when the held
+  item is put away through `HeldItems`. An equip into the other hand puts a
+  two-handed held item away first.
+- Every equip of a held item is checked before the game's TryEquip runs: an
+  item whose hand definition cannot be found, an equip forced into the other
+  hand, or a two-handed equip while carrying a log is refused with the item
+  left in the inventory. The game's TryEquip would otherwise take the item out
+  of the inventory and give nothing back.
+- Held items need a networked id in multiplayer: the game shows what a player
+  holds to every other player by its id, so a client-local one is refused
+  there (it can be held in single player). On a client under strict inventory
+  they stay in the inventory for now: the server has no equip transaction for
+  them yet.
+- Pickups don't put the item into the hand unless `AutoEquipOnPickup`; quick
+  select is opt-in (`AllowQuickSelect`, in the donor's wheel slot); hotkeys and
+  first looks are off; a save taken with it in the hand loads it into the
+  inventory. `DropsOnDeath` defaults to false.
+- `Shown` fires each time an instance appears in a hand, the local player's or
+  another player's (`HeldItem.IsLocalPlayer`); `Hidden` fires when it goes
+  away, usually after the hand has lowered it, and its objects may already be
+  destroyed; `Activation` relays the game's network activation of other
+  players' left-hand items. `HeldItem.Grip` is the placed grip and
+  `HeldItem.Model` the model's copy in it. Instances are made on every equip
+  and destroyed on every stash, so keep mod state outside them.
+- `HeldItems.TryEquip`, `TryToggle` and `TryPutAway` run the game's own equip,
+  toggle and stash for the item's hand, after the game's own check that the
+  hand can take it now, and say why when they refuse. `IsHeld`,
+  `TryGetLocal` and `Snapshot` read the local hands. All need the Unity thread.
+
+Every peer that should see the item in a hand registers it the same way. A
+peer without the registration, such as a vanilla client a server lets in, can't
+resolve the id: the game's update of that player's hands fails there and stops
+showing their hand items. The content agreement refuses such clients by
+default. It digests networked id reservations, not donors, so two versions of
+a mod with different donors agree but show different poses.
 
 ### The mod gear page
 
@@ -3922,8 +3997,8 @@ a native weapon mod for one weapon item, on a slot (`OnTopRail` by default):
   inventory. A held weapon shows the change at once; other players see it
   when it is next equipped.
 - The definition must be a `CustomItem` without hotkeys or asset references. The
-  item type defaults to `CraftingMaterial, Droppable`; equipment, weapon and
-  ammunition types are refused until held models are supported.
+  item type defaults to `CraftingMaterial, Droppable`; weapon, clothing and
+  ammunition types are refused, and Equippable needs a held model.
 
 ### Crafting recipes, loot and 3D prints
 
@@ -3969,8 +4044,10 @@ applies the additions once a world is loading, in a fixed order.
   with `canBeSpawned` get.
 - `content-catalog-next-launch.flag` in `Modstoke/UserData` makes the Loader write
   `content-catalog-<time>.json` 20 seconds into the next world: every loot table
-  with its weighted items and the containers that use it, and every printer
-  blueprint.
+  with its weighted items and the containers that use it, every printer
+  blueprint, and every equippable item as a held-model pose donor
+  (`heldDonors`: hand, animator variables, held controller, render layer and
+  the local hand locator).
 
 ## Current Sons Inventory SDK Slice
 

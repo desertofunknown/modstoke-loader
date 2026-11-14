@@ -5,6 +5,7 @@ using System;
 using Bolt;
 using Endnight.Rendering;
 using Il2CppInterop.Runtime;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Modstoke.Loader;
 using global::Sons.Gameplay;
 using global::Sons.Inventory;
@@ -22,8 +23,10 @@ namespace Modstoke.Sons
     {
         private const int FeatherItemId = 479;
         private const Types DefaultModelTypes = Types.CraftingMaterial | Types.Droppable;
-        // Families that need held props, equipment slots or ammunition handling, which modeled items do not author.
-        private const Types UnsupportedModelTypes = Types.Equippable | Types.Clothing | Types.Ammo | Types.Projectile
+        private const Types DefaultHeldModelTypes = Types.Equippable | Types.Droppable;
+        // Families that need weapon, clothing or ammunition handling, which modeled items do not author. Equippable
+        // is authored only for items with a held model.
+        private const Types UnsupportedModelTypes = Types.Clothing | Types.Ammo | Types.Projectile
             | Types.StructureBlueprint | Types.RangedWeapon | Types.UniqueItem | Types.Weapon | Types.Armor | Types.Axe;
 
         /// <summary>
@@ -33,9 +36,10 @@ namespace Modstoke.Sons
         /// </summary>
         /// <remarks>
         /// The definition must be a <see cref="ItemRegistrationKind.CustomItem"/> without hotkeys or asset
-        /// references. Its item type defaults to "CraftingMaterial, Droppable"; equipment, weapon and ammunition
-        /// types are refused. A positive BaseItemId picks the item whose remaining data (stack sounds, UI colours,
-        /// grammar) is copied; otherwise the feather is used.
+        /// references. Its item type defaults to "CraftingMaterial, Droppable", or "Equippable, Droppable" with a
+        /// <see cref="ItemModel.Held"/> model; Equippable needs a held model and a spawnable definition, and weapon,
+        /// clothing and ammunition types are refused. A positive BaseItemId picks the item whose remaining data
+        /// (stack sounds, UI colours, grammar) is copied; otherwise the feather is used.
         /// </remarks>
         public static ItemRegistrationResult ExecuteItemRegistration(CustomItemDefinition definition, ItemModel model)
             => model == null
@@ -47,6 +51,7 @@ namespace Modstoke.Sons
             internal ItemData Data;
             internal PickUp Pickup;
             internal Types Type;
+            internal ItemData HeldDonor;
         }
 
         private static bool TryPrepareModel(NormalizedDefinition definition, ItemModel model, ItemData baseItem,
@@ -67,7 +72,8 @@ namespace Modstoke.Sons
                 return false;
             }
 
-            var type = DefaultModelTypes;
+            var held = model.Held;
+            var type = held != null ? DefaultHeldModelTypes : DefaultModelTypes;
             if (definition.ItemType.Length != 0)
             {
                 if (!Enum.TryParse(definition.ItemType, true, out type)
@@ -80,7 +86,7 @@ namespace Modstoke.Sons
             }
             if ((type & UnsupportedModelTypes) != 0)
             {
-                detail = "Equipment, weapon and ammunition types need held models, which modeled items do not author yet.";
+                detail = "Weapon, clothing and ammunition types need native data that modeled items do not author.";
                 return false;
             }
             if (definition.CanBeSpawned && (type & Types.Droppable) == 0)
@@ -88,6 +94,44 @@ namespace Modstoke.Sons
                 reason = "invalid-item-type";
                 detail = "Spawnable items must include the Droppable type.";
                 return false;
+            }
+            if ((held != null) != ((type & Types.Equippable) != 0))
+            {
+                reason = "invalid-item-type";
+                detail = held != null ? "Items with a held model must include the Equippable type."
+                    : "Only items with a held model can be Equippable.";
+                return false;
+            }
+            if (model.MatAction == ItemMatAction.Equip && held == null)
+            {
+                detail = "The Equip mat action needs a held model.";
+                return false;
+            }
+
+            ItemData heldDonor = null;
+            if (held != null)
+            {
+                // The game drops held items in several paths (no backpack, full stack, forced drops), and an item
+                // that cannot drop would be lost there.
+                if (!definition.CanBeSpawned)
+                {
+                    reason = "held-model-not-spawnable";
+                    detail = "Items with a held model must be spawnable, since the game drops held items in several paths.";
+                    return false;
+                }
+                if (!(held.GripScale > 0) || float.IsInfinity(held.GripScale) || !Finite(held.GripOffset) || !Finite(held.GripRotation))
+                {
+                    detail = "The held model needs a finite grip placement and a positive scale.";
+                    return false;
+                }
+                if (!cache.TryGetValue(held.PoseDonorItemId, out heldDonor) || !Live(heldDonor)
+                    || (heldDonor._type & Types.Equippable) == 0 || !Live(heldDonor._heldPrefab)
+                    || heldDonor._equipmentSlot is not (EquipmentSlot.LeftHand or EquipmentSlot.RightHand))
+                {
+                    reason = "held-donor-unavailable";
+                    detail = "The pose donor " + held.PoseDonorItemId + " must be a live native item held in one hand.";
+                    return false;
+                }
             }
 
             var data = Live(baseItem) ? baseItem : cache.TryGetValue(FeatherItemId, out var feather) ? feather : null;
@@ -114,7 +158,7 @@ namespace Modstoke.Sons
             if (!TranslationKeysFree(definition.ItemId, out reason, out detail))
                 return false;
 
-            sources = new ModelSources { Data = data, Pickup = pickup, Type = type };
+            sources = new ModelSources { Data = data, Pickup = pickup, Type = type, HeldDonor = heldDonor };
             reason = "ready";
             detail = "";
             return true;
@@ -177,22 +221,58 @@ namespace Modstoke.Sons
             ui._description = model.Description ?? "";
             ui._hasDescription = ui._description.Length != 0;
             if (Live(model.Icon)) ui._icon = ui._outlineIcon = model.Icon;
-            // Modeled items cannot be equipped. Left click is the SDK's drop or attach when the model asks for
-            // one; an item that combines takes the game's own right click onto the crafting mat instead, where
-            // Crafting gives it a place and WeaponAttachments its recipes.
+            // Left click is the SDK's drop, attach or equip when the model asks for one; an item that combines
+            // takes the game's own right click onto the crafting mat instead, where Crafting gives it a place and
+            // WeaponAttachments its recipes.
             var action = model.MatAction == ItemMatAction.Drop && !definition.CanBeSpawned ? ItemMatAction.None : model.MatAction;
-            var clicks = action is ItemMatAction.Drop or ItemMatAction.Attach;
+            var clicks = action is ItemMatAction.Drop or ItemMatAction.Attach or ItemMatAction.Equip;
             if (clicks) ui._leftClick = ItemUiData.LeftClickCommands.use;
             else if (action == ItemMatAction.Combine) ui._leftClick = ItemUiData.LeftClickCommands.none;
             ui._rightClick = action == ItemMatAction.Combine ? ItemUiData.RightClickCommands.Combine : ItemUiData.RightClickCommands.None;
             ui._applyCustomActionText = clicks;
-            ui._leftActionCustomText = action == ItemMatAction.Drop ? "Drop" : action == ItemMatAction.Attach ? "Attach" : "";
+            ui._leftActionCustomText = action switch
+            {
+                ItemMatAction.Drop => "Drop",
+                ItemMatAction.Attach => "Attach",
+                ItemMatAction.Equip => "Equip",
+                _ => ""
+            };
             ui._rightActionCustomText = "";
             item.hideFlags |= HideFlags.DontUnloadUnusedAsset;
 
             if (definition.CanBeSpawned)
                 item._pickupPrefab = CreateModelPickup(definition, model, sources.Pickup, registration);
+            if (model.Held != null)
+                SetHeldData(item, model, sources.HeldDonor, registration);
             AddItemTranslations(definition, registration);
+        }
+
+        // The donor lends its hand, pose and locator; everything that would run donor behaviour stays off.
+        private static void SetHeldData(ItemData item, ItemModel model, ItemData donor, RuntimeRegistration registration)
+        {
+            var held = model.Held;
+            item._equipmentSlot = donor._equipmentSlot;
+            item._leftHandWidePoseBlend = donor._leftHandWidePoseBlend;
+            item._requiresBothHands = held.RequiresBothHands ?? donor._requiresBothHands;
+            var poses = donor._equippedAnimVars;
+            var copy = new Il2CppStructArray<AnimatorVariables>(poses?.Length ?? 0);
+            for (var index = 0; index < copy.Length; index++) copy[index] = poses[index];
+            item._equippedAnimVars = copy;
+            item._allowQuickSelect = held.AllowQuickSelect;
+            item._quickSelectSlot = donor._quickSelectSlot;
+            item._hotkeyCanToggleItem = false;
+            item._preventEquipFromInventoryView = false;
+            item._allowFirstLookWhenEquippedFromInventory = item._playFirstLookAtBeforeEveryEquip = false;
+            item._firstLookRequiresBothHands = false;
+            item._dropsOnDeath = held.DropsOnDeath;
+            // A save taken with it in the hand loads it into the inventory, not back into the hand.
+            item._alwaysLoadStashedFromSaves = true;
+            item._heldPrefab = HeldItemTemplates.Create(item.name, held, model.Model,
+                HeldItemTemplates.RenderLayer(donor), registration.PrefabRoot.transform);
+
+            var pickup = item._pickupPrefab.GetComponent<PickUp>();
+            pickup._preventAutoEquip = !held.AutoEquipOnPickup;
+            pickup._forceAutoEquip = false;
         }
 
         private static Transform CreateModelPickup(NormalizedDefinition definition, ItemModel model, PickUp donor,

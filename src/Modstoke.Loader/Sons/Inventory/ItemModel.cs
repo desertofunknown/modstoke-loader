@@ -12,9 +12,9 @@ namespace Modstoke.Sons
     /// </summary>
     /// <remarks>
     /// Factories return a template the mod keeps alive, such as a prefab loaded from its asset bundle. The SDK
-    /// instantiates its own copies for the inventory mat and the world pickup and never destroys the template.
-    /// Copies are made inert: scripts, rigidbodies, joints and colliders are removed, and the SDK adds hit boxes
-    /// fitted to the meshes. Pickups of networked ids keep the donor pickup's Bolt entity under a prefab id derived
+    /// instantiates its own copies for the inventory mat, the world pickup and the hand, and never destroys the
+    /// template. Copies are made inert: scripts, rigidbodies, joints and colliders are removed, and mat copies get
+    /// hit boxes fitted to the meshes. Pickups of networked ids keep the donor pickup's Bolt entity under a prefab id derived
     /// from the item id, so every peer that registered the item resolves it; client-local ids get local pickups.
     /// </remarks>
     public sealed class ItemModel
@@ -24,7 +24,10 @@ namespace Modstoke.Sons
             Model = model ?? throw new ArgumentNullException(nameof(model));
         }
 
-        /// <summary>The model shown on the inventory mat, and in the world when no pickup model is given.</summary>
+        /// <summary>
+        /// The model shown on the inventory mat, in the world when no pickup model is given, and in the hand when the
+        /// held model gives none.
+        /// </summary>
         public Func<GameObject> Model { get; }
 
         /// <summary>Optional separate world model, for example a lower-detail copy.</summary>
@@ -56,11 +59,22 @@ namespace Modstoke.Sons
         public int MaxAmount { get; init; } = 1;
 
         /// <summary>
-        /// What clicking it on the mat does. The game has no drop action for plain items, so Drop and Attach are
-        /// the SDK's own left clicks. Combine is the game's right click onto the crafting mat; it and Attach need
-        /// a <see cref="WeaponAttachments"/> registration.
+        /// What clicking it on the mat does. The game has no drop action for plain items, so Drop, Attach and
+        /// Equip are the SDK's own left clicks. Combine is the game's right click onto the crafting mat; it and
+        /// Attach need a <see cref="WeaponAttachments"/> registration. Unset, items with a <see cref="Held"/>
+        /// model equip and the rest drop.
         /// </summary>
-        public ItemMatAction MatAction { get; init; } = ItemMatAction.Drop;
+        public ItemMatAction MatAction
+        {
+            get => _matAction ?? (Held != null ? ItemMatAction.Equip : ItemMatAction.Drop);
+            init => _matAction = value;
+        }
+
+        private readonly ItemMatAction? _matAction;
+
+        /// <summary>Makes the item equippable with its own held model and a native item's hold animation.</summary>
+        /// <remarks>Requires a spawnable definition, since the game drops held items in several of its paths.</remarks>
+        public HeldModel Held { get; init; }
     }
 
     public enum ItemMatAction
@@ -74,6 +88,8 @@ namespace Modstoke.Sons
         /// Put one on the crafting mat, where it combines with the weapon it fits and comes back when that
         /// weapon is dismantled, as the game's own weapon mods do.
         /// </summary>
-        Combine
+        Combine,
+        /// <summary>Equip it in the hand; items with a <see cref="ItemModel.Held"/> model only.</summary>
+        Equip
     }
 }

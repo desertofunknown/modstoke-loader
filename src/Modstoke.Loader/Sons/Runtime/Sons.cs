@@ -194,6 +194,7 @@ namespace Modstoke.Sons
                 using (Timings.MeasureCapture("Sons.ItemRegistration")) global::Modstoke.Sons.ItemRegistration.RepublishIntoNewDatabase();
                 using (Timings.MeasureCapture("Sons.InventoryModels")) global::Modstoke.Sons.Inventory.TickItemModels();
                 using (Timings.MeasureCapture("Sons.CraftingModels")) global::Modstoke.Sons.Crafting.TickItemModels();
+                using (Timings.MeasureCapture("Sons.HeldItems")) global::Modstoke.Sons.HeldItems.Tick();
                 using (Timings.MeasureCapture("Sons.WeaponAttachments")) global::Modstoke.Sons.WeaponAttachments.Tick();
                 using (Timings.MeasureCapture("Sons.Networking"))
                 {

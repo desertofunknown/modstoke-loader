@@ -7,13 +7,18 @@ using System.IO;
 using System.Text.Json;
 using Modstoke.Loader;
 using Sons.Gameplay;
+using Sons.Items.Core;
+using Sons.Player;
+using TheForest.Utils;
 using UnityEngine;
+using Types = Sons.Items.Core.Types;
 
 namespace Modstoke.Sons
 {
     /// <summary>
     /// A one-shot report of the game's loot and printer content: every container loot table with its weighted items,
     /// the containers in the world that use each table, and the 3D printer blueprints. Mods pick loot targets from it.
+    /// It also lists every equippable item as a pose donor for held models.
     /// Armed by <c>content-catalog-next-launch.flag</c> in the user data folder; written once a world is up, to
     /// <c>content-catalog-&lt;time&gt;.json</c> beside it.
     /// </summary>
@@ -58,8 +63,74 @@ namespace Modstoke.Sons
             json.WriteNumber("schemaVersion", 1);
             WriteLootTables(json);
             WritePrinterBlueprints(json);
+            WriteHeldDonors(json);
             json.WriteEndObject();
             return path;
+        }
+
+        // Every equippable item as a pose donor for held models: its hand, pose data, held controller, render layer
+        // and the local player's hand locator for it.
+        private static void WriteHeldDonors(Utf8JsonWriter json)
+        {
+            var props = LocalPlayer.Inventory != null ? LocalPlayer.Inventory._InventoryProps_k__BackingField : null;
+            var definitions = props != null ? props._propDefinitions : null;
+            var items = ItemDatabaseManager._instance != null ? ItemDatabaseManager._instance._itemDataList : null;
+            var mapHeld = new List<int>();
+            json.WriteStartArray("heldDonors");
+            for (int i = 0; items != null && i < items.Count; i++)
+            {
+                var item = items[i];
+                if (item == null || (item._type & Types.Equippable) == 0) continue;
+                json.WriteStartObject();
+                json.WriteNumber("id", item._id);
+                json.WriteString("name", item._name ?? "");
+                json.WriteString("slot", item._equipmentSlot.ToString());
+                json.WriteBoolean("bothHands", item._requiresBothHands);
+                json.WriteNumber("wideBlend", item._leftHandWidePoseBlend);
+                json.WriteBoolean("hasFirstLook", item._hasFirstLook);
+                json.WriteStartArray("animVars");
+                var poses = item._equippedAnimVars;
+                for (int p = 0; poses != null && p < poses.Length; p++)
+                {
+                    json.WriteStringValue(poses[p].ToString());
+                    if (poses[p] == AnimatorVariables.mapHeld && !mapHeld.Contains(item._id)) mapHeld.Add(item._id);
+                }
+                json.WriteEndArray();
+                var held = item._heldPrefab;
+                json.WriteString("heldPrefab", held != null ? held.name : "");
+                json.WriteString("controller", HeldItemTemplates.ControllerName(item));
+                json.WriteNumber("renderLayer", held != null ? HeldItemTemplates.RenderLayer(item) : -1);
+                WriteLocator(json, definitions, item._id);
+                json.WriteEndObject();
+            }
+            json.WriteEndArray();
+            json.WriteStartArray("mapHeldItems");
+            foreach (var id in mapHeld) json.WriteNumberValue(id);
+            json.WriteEndArray();
+        }
+
+        private static void WriteLocator(Utf8JsonWriter json, Il2CppSystem.Collections.Generic.List<InventoryProps.PropDefinition> definitions, int itemId)
+        {
+            for (int i = 0; definitions != null && i < definitions.Count; i++)
+            {
+                var definition = definitions[i];
+                if (definition == null || definition._itemId != itemId) continue;
+                var locator = definition._heldLocator;
+                if (locator == null)
+                {
+                    json.WriteString("locator", "");
+                    return;
+                }
+                var path = locator.name;
+                for (var parent = locator.parent; parent != null && path.Length < 400; parent = parent.parent) path = parent.name + "/" + path;
+                json.WriteString("locator", path);
+                var position = locator.localPosition;
+                var rotation = locator.localEulerAngles;
+                json.WriteString("locatorPosition", position.x.ToString("F3") + " " + position.y.ToString("F3") + " " + position.z.ToString("F3"));
+                json.WriteString("locatorRotation", rotation.x.ToString("F1") + " " + rotation.y.ToString("F1") + " " + rotation.z.ToString("F1"));
+                return;
+            }
+            json.WriteNull("locator");
         }
 
         private static void WriteLootTables(Utf8JsonWriter json)

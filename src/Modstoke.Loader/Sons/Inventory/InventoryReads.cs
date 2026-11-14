@@ -235,7 +235,7 @@ namespace Modstoke.Sons
             return TryGetCurrentInventory(out inventory, out status);
         }
 
-        private static bool TryGetCurrentInventory(out PlayerInventory inventory, out string status)
+        internal static bool TryGetCurrentInventory(out PlayerInventory inventory, out string status)
         {
             inventory = null;
             status = "";

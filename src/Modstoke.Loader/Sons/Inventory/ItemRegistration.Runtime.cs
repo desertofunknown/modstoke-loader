@@ -165,6 +165,7 @@ namespace Modstoke.Sons
                 {
                     Inventory.AddItemModel(registration.Item, model);
                     Crafting.AddItemModel(registration.Item, model);
+                    if (model.Held != null) HeldItems.Add(registration.Item, model.Held, sources.HeldDonor);
                 }
                 // Publication is already complete. A managed catalog refresh must not roll it back.
                 var refreshDetail = "";

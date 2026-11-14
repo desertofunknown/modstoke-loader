@@ -92,8 +92,8 @@ namespace Modstoke.Sons
             private ItemMatAction Action => _model.MatAction == ItemMatAction.Drop && !_item._canBeSpawned
                 ? ItemMatAction.None : _model.MatAction;
 
-            // The game only drops held items, and modeled items cannot be held, so a mat click closes the
-            // inventory and drops one once the player is back in the world view.
+            // The game only drops held items, so a drop click closes the inventory and drops one once the player is
+            // back in the world view. An equip click equips with the inventory open, as the game's own mat does.
             private void OnMatClick(InventoryLayoutItemGroup group)
             {
                 if (_clickFrame == Time.frameCount || !TryGetCurrentInventory(out var inventory, out _)) return;
@@ -112,6 +112,12 @@ namespace Modstoke.Sons
                     // away, and closing the inventory re-equips it and publishes its mods to other players.
                     if (!WeaponAttachments.TryAttach(_item._id, out var attach))
                         RuntimeEntryPoint.LogSource?.LogWarning("Item " + _item._id + " could not be attached: " + attach);
+                    return;
+                }
+                if (Action == ItemMatAction.Equip)
+                {
+                    if (!HeldItems.TryEquip(_item._id, out var equip))
+                        RuntimeEntryPoint.LogSource?.LogInfo("Item " + _item._id + " was not equipped: " + equip);
                     return;
                 }
                 _dropRequested = true;
@@ -235,7 +241,7 @@ namespace Modstoke.Sons
                         new Vector2(bounds.center.x - _model.MatOffset.x, bounds.center.z - _model.MatOffset.z), bounds.size.y);
                     // Bound while the group is still inactive, as the binding requires. An item that combines
                     // keeps the game's own right click onto the crafting mat and takes no click of the SDK's.
-                    if (Action is ItemMatAction.Drop or ItemMatAction.Attach
+                    if (Action is ItemMatAction.Drop or ItemMatAction.Attach or ItemMatAction.Equip
                         && !TryBindPrimaryAction(_layout.Group, OnMatClick, out _binding, out var bindStatus))
                         throw new InvalidOperationException(bindStatus);
                 }

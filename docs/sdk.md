@@ -259,6 +259,11 @@ For test runs, a player's game also takes these from the desktop console only:
 | `game inventory open\|close` | Opens or closes the local player's inventory. |
 | `game gearpage on\|off` | Turns the open inventory to the mod gear page or back. |
 | `game equip <item id>` | Toggles an item in the right hand. |
+| `game toggle <item id>` | Toggles an item in its own hand, through `HeldItems.TryToggle` for items with a held model. |
+| `game unequip left\|right` | Puts away what that hand holds, through `HeldItems.TryPutAway` for items with a held model. |
+| `game held` | One line on both hands (current, next and previous item, held instance and its parent), the hands' animator item ids, the held items' animator variables, layer 5's weight and activators, the equip state and held item counts. |
+| `game held animator` | The local animator's non-zero parameters, each layer's weight and state hash, and the components of the held instances, for comparing a held item with its donor. |
+| `game give <item id> [count]` | Adds items to the inventory without equipping them; host and single player only. |
 | `game remove <item id>` | Removes one of an item from the inventory. |
 | `game quit` | Quits without saving. |
 | `crafting stock <mod:key>` | Adds a mod recipe's missing ingredients, with the inventory closed. |
@@ -267,6 +272,14 @@ For test runs, a player's game also takes these from the desktop console only:
 
 `crafting check` works from any console: it asks the mat which recipe each mod
 recipe's ingredients would make, and whether its result fits.
+
+`Modstoke/UserData/held-selftest-next-launch.flag` makes the next launch register
+three client-local boxes for testing held models, and is then deleted: 60001
+with the GPS tracker's left-hand pose using both hands, 60002 with the radio's,
+and 60003, 60001's twin whose hand definition is withheld so that its equips
+are refused. `content-catalog-next-launch.flag` adds `heldDonors` to the content
+catalog: every equippable item's hand, animator variables, held controller,
+render layer and the local player's hand locator for it, with `mapHeldItems`.
 
 ## Player attachment handles
 
