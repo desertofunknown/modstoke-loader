@@ -62,8 +62,9 @@ namespace Modstoke.Sons
         }
 
         /// <summary>
-        /// An inactive template of the art named <paramref name="code"/>, every renderer drawing the code's texture
-        /// set, except renderers whose object <paramref name="ownMaterial"/> accepts, which keep an empty slot.
+        /// An inactive template of the art named <paramref name="code"/>, every mesh renderer drawing the code's
+        /// texture set, except those whose object <paramref name="ownMaterial"/> accepts, which keep empty slots.
+        /// Skinned renderers keep the slots the bundle gave them.
         /// </summary>
         public static bool TryGetTemplate(AssetBundle bundle, string code, out GameObject template, out string problem,
             Func<string, bool> ownMaterial = null)

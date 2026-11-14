@@ -3803,7 +3803,11 @@ from a mod's model rather than from game data:
   HDRP/Lit and the textures `CODE_BaseColor`, `CODE_Mask` (metallic, occlusion,
   detail, smoothness) and `CODE_Normal`. Pass `ownMaterial` to leave named parts,
   such as a live screen, with an empty material for the mod to fill. Bundles,
-  templates and materials are made once and survive scene loads.
+  templates and materials are made once and survive scene loads. A model built in
+  Blender with X right, Y forward and Z up and exported to FBX with forward -Z,
+  up Y and Apply Transform reaches Unity turned half round about Y: turn each copy
+  you make 180 degrees about Y (for an `ItemModel`, the model under the template,
+  `template.transform.GetChild(0)`, once) and its forward is +Z.
 - The item shows on the inventory's mod gear page (below), rotated by
   `MatRotation` and scaled by `MatScale`. The SDK picks its place from
   `MatCategory` and the model's footprint as it lies; `MatOffset` moves the model
