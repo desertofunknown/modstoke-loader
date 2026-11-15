@@ -6,6 +6,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using RedLoader;
 
 namespace Modstoke.Loader
@@ -17,9 +18,18 @@ namespace Modstoke.Loader
             return new EventDriver<T>(oneTimeUse);
         }
 
+        private sealed class Failure
+        {
+            internal string Signature = "";
+            internal int Repeats;
+            internal long NextSummary;
+        }
+
         private sealed class EventDriver<T> : IMelonEventDriver<T> where T : Delegate
         {
+            private const int SummarySeconds = 60;
             private readonly List<MelonAction<T>> actions = new();
+            private readonly ConditionalWeakTable<MelonAction<T>, Failure> failures = new();
             private MelonAction<T>[] cachedActionsArray = new MelonAction<T>[0];
             private bool hasOneShotActions;
             private volatile bool disposed;
@@ -195,13 +205,47 @@ namespace Modstoke.Loader
                 {
                     try
                     {
-                        RLog.Error(ex);
+                        Report(subscriber, ex);
                     }
                     catch
                     {
                         // Diagnostic listeners must not stop delivery to the other mods.
                     }
                 }
+            }
+
+            // A mod that throws on every update would write the same stack trace each time: one tester's log held 15,000
+            // of them from a single menu mod in half an hour. The first is logged in full, repeats of it are counted and
+            // summed up at most once a minute, and the mod keeps being called as RedLoader would.
+            private void Report(MelonAction<T> subscriber, Exception error)
+            {
+                var failure = failures.GetOrCreateValue(subscriber);
+                var signature = error.GetType().FullName + ": " + error.Message;
+                var now = Environment.TickCount64;
+                if (signature == failure.Signature)
+                {
+                    failure.Repeats++;
+                    if (now < failure.NextSummary)
+                        return;
+                    RLog.Error(Repeated(subscriber, failure));
+                    failure.Repeats = 0;
+                    failure.NextSummary = now + SummarySeconds * 1000;
+                    return;
+                }
+
+                if (failure.Repeats > 0)
+                    RLog.Error(Repeated(subscriber, failure));
+                failure.Signature = signature;
+                failure.Repeats = 0;
+                failure.NextSummary = now + SummarySeconds * 1000;
+                RLog.Error(error);
+            }
+
+            private static string Repeated(MelonAction<T> subscriber, Failure failure)
+            {
+                var method = subscriber.del.Method;
+                return (method.DeclaringType?.FullName ?? "A mod") + "." + method.Name + " threw " + failure.Signature + " "
+                    + failure.Repeats + (failure.Repeats == 1 ? " more time" : " more times") + " since it was last logged.";
             }
 
             public void Dispose()
