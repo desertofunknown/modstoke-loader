@@ -26,6 +26,9 @@ namespace Modstoke.Loader
         // A stick direction's chevron, by direction: up, right, down, left.
         private static readonly float[] Angles = { 0f, -90f, 180f, 90f };
         private static readonly Color SelectedFill = MenuKit.Hex(0x111212, 0.10f);
+        // A dark well under the keycaps rather than the light cell other screens use: blended in linear light, a light
+        // fill this size turns into a flat grey slab over the bright world.
+        private static readonly Color Well = MenuKit.Hex(0x050606, 0.42f);
         private static int _lastTab;
 
         private enum CellState { Idle, Listening, Holding, Refused }
@@ -177,14 +180,14 @@ namespace Modstoke.Loader
             return true;
         }
 
-        // A faint cell holding the key's cap or the controller's icon, a dot in one top corner for a binding changed from
+        // A dark well holding the key's cap or the controller's icon, a dot in one top corner for a binding changed from
         // the game's and a pip in the other for a clash, and a bar along its foot for the focus underline, a hold or the
         // time left to press something.
         private CellView BuildCell(RectTransform control, string name, bool right)
         {
             var rect = MenuKit.Box(control, name).Place(right ? 0.5f : 0, 0, right ? 1 : 0.5f, 1, right ? U(6) : 0, U(5), right ? 0 : U(6), U(5));
             var bar = Mathf.Max(2f, U(2));
-            var cell = new CellView { Rect = rect, Fill = MenuKit.Fill(rect, null, MenuKit.Cell) };
+            var cell = new CellView { Rect = rect, Fill = MenuKit.Fill(rect, null, Well) };
             cell.Track = MenuKit.Fill(MenuKit.Box(rect, "Track").Place(0, 0, 1, 0, 0, 0, 0, -bar), null, MenuKit.OnPlateTrack);
             cell.Bar = MenuKit.Fill(MenuKit.Box(rect, "Bar").Place(0, 0, 1, 0, 0, 0, 0, -bar), null, MenuKit.OnPlate);
             cell.Tag = new KeyTag(rect, "Key", U(TagHeight));
@@ -638,7 +641,7 @@ namespace Modstoke.Loader
             // A device the action does not use shows its words alone; listening is a solid plate of its own.
             var listening = state == CellState.Listening;
             cell.Fill.enabled = listening || available && slot.Offered && (!plate || selected);
-            cell.Fill.color = listening ? MenuKit.OnPlate : selected ? SelectedFill : MenuKit.Cell;
+            cell.Fill.color = listening ? MenuKit.OnPlate : selected ? SelectedFill : Well;
             cell.Track.enabled = state == CellState.Holding;
             cell.Bar.enabled = selected || listening;
             cell.Bar.color = listening ? MenuKit.Accent : MenuKit.OnPlate;
