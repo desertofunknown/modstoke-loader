@@ -6,6 +6,7 @@ using System.IO;
 using Modstoke.Diagnostics;
 using Sons.Items.Core;
 using Sons.Save;
+using TheForest;
 using TheForest.Utils;
 using UnityEngine;
 
@@ -95,11 +96,14 @@ namespace Modstoke.Loader
                     HostCommands.Respond(request, true, "Quitting the game without saving.");
                     Application.Quit();
                     break;
+                case "debug" when rest.Length > 0:
+                    SendToDebugConsole(request, rest);
+                    break;
                 default:
                     HostCommands.Respond(request, false, "Usage: game continue [latest|<slot>] | game new <"
                         + string.Join("|", Modes) + "> | game inventory open|close | game gearpage on|off | game equip <item id>"
                         + " | game toggle <item id> | game unequip left|right | game held [animator] | game give <item id> [count]"
-                        + " | game remove <item id> | game quit",
+                        + " | game remove <item id> | game debug <command> | game quit",
                         error: "invalid-arguments");
                     break;
             }
@@ -148,6 +152,20 @@ namespace Modstoke.Loader
             }
             inventory.UnequipItemAtSlot(slot, false, true, false);
             HostCommands.Respond(request, true, "Put away item " + itemId + ".");
+        }
+
+        // A line for the game's own debug console, as if typed into it ("goto ...", "season winter", "forcerain heavy");
+        // the game writes what it did to its own log.
+        private static void SendToDebugConsole(ConsoleSubmission request, string command)
+        {
+            var console = DebugConsole.Instance;
+            if (console == null)
+            {
+                HostCommands.Respond(request, false, "The game's debug console is not loaded.", error: "not-ready");
+                return;
+            }
+            console.SendCommand(command);
+            HostCommands.Respond(request, true, "Sent \"" + command + "\" to the game's debug console.");
         }
 
         // Host and single player only: a client's inventory belongs to its server.
