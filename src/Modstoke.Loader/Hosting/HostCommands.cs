@@ -35,7 +35,7 @@ namespace Modstoke.Loader
             yield return Listed("reload", "Apply config changes that do not need a restart.");
             yield return Listed("perf", "perf [--seconds N]: time each mod's per-frame work for N seconds (default 10).");
             if (!Host.IsServer)
-                yield return Listed("game", "game continue [latest|<slot>] | new <mode> | inventory open|close | equip <item id> | debug <command> | quit: drive a single player game for test runs (desktop console).");
+                yield return Listed("game", "game continue [latest|<slot>] | new <mode> | join <LAN server name> | leave | inventory open|close | equip <item id> | debug <command> | quit: drive a single player game for test runs (desktop console).");
             foreach (var (name, description) in ServerHosting.CommandCatalog())
                 yield return Listed(name, description);
         }

@@ -99,11 +99,17 @@ namespace Modstoke.Loader
                 case "debug" when rest.Length > 0:
                     SendToDebugConsole(request, rest);
                     break;
+                case "join" when rest.Length > 0:
+                    Join(request, rest);
+                    break;
+                case "leave" when rest.Length == 0:
+                    Leave(request);
+                    break;
                 default:
                     HostCommands.Respond(request, false, "Usage: game continue [latest|<slot>] | game new <"
-                        + string.Join("|", Modes) + "> | game inventory open|close | game gearpage on|off | game equip <item id>"
-                        + " | game toggle <item id> | game unequip left|right | game held [animator] | game give <item id> [count]"
-                        + " | game remove <item id> | game debug <command> | game quit",
+                        + string.Join("|", Modes) + "> | game join <LAN server name> | game leave | game inventory open|close | game gearpage on|off"
+                        + " | game equip <item id> | game toggle <item id> | game unequip left|right | game held [animator]"
+                        + " | game give <item id> [count] | game remove <item id> | game debug <command> | game quit",
                         error: "invalid-arguments");
                     break;
             }
@@ -198,6 +204,38 @@ namespace Modstoke.Loader
             if (GameMenus.Bind() && !GameMenus.OtherSceneOpen) return true;
             HostCommands.Respond(request, false, "A game can only be started from the title screen.", error: "not-ready");
             return false;
+        }
+
+        // A dedicated server on this network, by name, as opening Multiplayer, its LAN tab and the server's row does:
+        // a private test server and a game on one machine make a two-sided run. Only the LAN list is searched, so a
+        // test run can never land on a public server.
+        private static void Join(ConsoleSubmission request, string name)
+        {
+            if (global::Modstoke.Sons.GameRuntime.IsInWorld)
+            {
+                HostCommands.Respond(request, false, "Leave the current game before joining another.", error: "not-ready");
+                return;
+            }
+            if (!MultiplayerScreen.IsOpen)
+            {
+                if (!AtTitle(request)) return;
+                GameMenus.Join();
+            }
+            MultiplayerScreen.JoinWhenListed(name);
+            HostCommands.Respond(request, true, "Joining the LAN server \"" + name + "\" once the server list shows it.");
+        }
+
+        // Back to the title screen as the pause menu's Quit to title does once confirmed, so a test run can leave a
+        // world and enter another in the same process. The game saves nothing on the way out.
+        private static void Leave(ConsoleSubmission request)
+        {
+            if (!global::Modstoke.Sons.GameRuntime.IsInWorld)
+            {
+                HostCommands.Respond(request, false, "There is no game to leave.", error: "not-ready");
+                return;
+            }
+            PauseHost.QuitToTitle();
+            HostCommands.Respond(request, true, "Leaving for the title screen.");
         }
 
         // The title screen's own load path, as pressing Continue on a saved game does.

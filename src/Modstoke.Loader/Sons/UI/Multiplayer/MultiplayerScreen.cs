@@ -100,6 +100,13 @@ namespace Modstoke.Loader
         private static IntPtr _selectedId;
         private static float _nextScan, _nextPaint, _repeatAt, _lastClick, _resumeInputAt, _backResumeAt;
         private static bool _dirty, _filterDirty, _backlog, _rebuild, _acting, _searching, _backsPaused, _pad;
+        // A server name a console test run asked to join, until it is listed or the wait runs out.
+        private static string _wanted;
+        private static float _wantedUntil, _wantedRefreshAt;
+        // The server a join is waiting on for its rules, by the game's record of it.
+        private const float RulesWaitSeconds = 4f;
+        private static IntPtr _joinPending;
+        private static float _joinPendingUntil;
 
         private static Strings T => FrontEnd.Text;
 
@@ -177,6 +184,7 @@ namespace Modstoke.Loader
             _gameList = _stripButtons = null;
             _back = null;
             _rebuild = false;
+            _joinPending = IntPtr.Zero;
         }
 
         /// <summary>Puts the game's browser back the way its own controls show it, before this screen leaves it.</summary>
@@ -257,6 +265,71 @@ namespace Modstoke.Loader
             }
             PaintCaret();
             PaintProgress();
+            if (_joinPending != IntPtr.Zero) JoinPending(now);
+            if (_wanted != null) JoinWanted(now);
+        }
+
+        // The join that waited for its server's rules goes ahead once they are in, or when the wait is up.
+        private static void JoinPending(float now)
+        {
+            var index = Entries.FindIndex(entry => entry.Id == _joinPending);
+            if (index < 0)
+            {
+                _joinPending = IntPtr.Zero;
+                return;
+            }
+            var key = Entries[index].Key;
+            if (now < _joinPendingUntil && !ServerBrowserBadges.TryRead(key, out _, out _)) return;
+            _selected = index;
+            _selectedId = _joinPending;
+            Join();
+        }
+
+        /// <summary>Whether the server browser is up, in the game's multiplayer scene.</summary>
+        internal static bool IsOpen => _rootObject != null;
+
+        /// <summary>
+        /// Joins the dedicated server on this network whose name contains <paramref name="name"/> as soon as the LAN
+        /// list shows it, for test runs from the desktop console. The wish outlives the browser opening.
+        /// </summary>
+        internal static void JoinWhenListed(string name, float seconds = 60f)
+        {
+            _wanted = name;
+            _wantedUntil = Time.unscaledTime + seconds;
+            _wantedRefreshAt = 0;
+        }
+
+        private static void JoinWanted(float now)
+        {
+            if (_tab != Tab.Lan) SetTab(Tab.Lan);
+            for (var i = 0; i < Entries.Count; i++)
+            {
+                var entry = Entries[i];
+                if (entry.Dedicated == null || entry.Name.IndexOf(_wanted, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                _wanted = null;
+                Select(i);
+                Join();
+                return;
+            }
+            if (now >= _wantedUntil)
+            {
+                RuntimeEntryPoint.LogSource?.LogWarning("No LAN server named \"" + _wanted + "\" was listed; the join was given up.");
+                _wanted = null;
+            }
+            else if (now >= _wantedRefreshAt)
+            {
+                // The LAN list answers within a second or two; asked again until the server shows.
+                _wantedRefreshAt = now + 3f;
+                try
+                {
+                    _gui.Refresh();
+                }
+                catch (Exception error)
+                {
+                    RuntimeEntryPoint.LogSource?.LogWarning("The server list could not refresh: " + error.Message);
+                }
+                _dirty = true;
+            }
         }
 
         private static void Rebuild()
@@ -725,6 +798,20 @@ namespace Modstoke.Loader
         {
             if (_selected < 0 || _selected >= Entries.Count) return;
             var entry = Entries[_selected];
+            // A dedicated server's mod content is read from its rules, which arrive a moment after the server is
+            // listed. Joined before they are in, the game would start without the content check, and a server that
+            // requires it drops the player seconds into the world with no reason given. So the join waits for the
+            // answer, briefly; a server that never answers is joined as the game would.
+            if (entry.Dedicated != null && entry.Key != null && !ServerBrowserBadges.TryRead(entry.Key, out _, out _)
+                && _joinPending != entry.Id)
+            {
+                Ask(entry);
+                _joinPending = entry.Id;
+                _joinPendingUntil = Time.unscaledTime + RulesWaitSeconds;
+                MenuSound.Play(MenuCue.Activate);
+                return;
+            }
+            _joinPending = IntPtr.Zero;
             try
             {
                 var browser = entry.Dedicated != null
