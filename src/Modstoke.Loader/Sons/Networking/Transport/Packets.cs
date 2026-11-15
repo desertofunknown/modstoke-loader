@@ -246,11 +246,16 @@ namespace Modstoke.Loader
             }
         }
 
+        // An SDK packet goes out on the connection's socket directly, so it carries none of Bolt's own packet records.
+        // Bolt is told when it arrives or is lost all the same, and its channels throw on the missing record: once
+        // per packet, caught and logged inside Bolt. Neither notice means anything to Bolt, so both stop here.
         internal static bool DeliverPacket(Packet packet)
         {
             if (packet == null || packet.WasCollected) return false;
             return !HasMarker(packet.UdpPacket);
         }
+
+        internal static bool LosePacket(Packet packet) => packet != null && !packet.WasCollected;
 
         internal static bool ReceiveChatEvent(ChatEvent evnt)
         {
@@ -296,6 +301,13 @@ namespace Modstoke.Loader
             private static bool PacketDelivered(BoltConnection __instance, Packet packet, bool __runOriginal)
             {
                 return __runOriginal && DeliverPacket(packet);
+            }
+
+            [HarmonyPatch(typeof(BoltConnection), nameof(BoltConnection.PacketLost), typeof(Packet))]
+            [HarmonyPrefix]
+            private static bool PacketLost(BoltConnection __instance, Packet packet, bool __runOriginal)
+            {
+                return __runOriginal && LosePacket(packet);
             }
 
             [HarmonyPatch(typeof(CoopServerCallbacks), nameof(CoopServerCallbacks.OnEvent), typeof(ChatEvent))]

@@ -26,6 +26,14 @@ namespace Modstoke.Sons
             if (!_hooksAttempted)
             {
                 _hooksAttempted = true;
+                // A dedicated server has no local player and draws no props, so none of these has work to do there.
+                // Its GameAssembly also can't hand a hook the optional slot they all take, so with them on, the prop
+                // lookup the server makes when a player takes an item in hand threw instead of answering.
+                if (GameBuild.IsDedicatedServer)
+                {
+                    _hooksInstalled = true;
+                    return;
+                }
                 try
                 {
                     var slot = typeof(SlotOverride);

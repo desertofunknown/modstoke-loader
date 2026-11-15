@@ -393,7 +393,9 @@ namespace Modstoke.Sons
                     Held = new HeldItem(id, gameObject, Grip(gameObject.transform), (ItemEquipmentSlot)(int)profile.Slot, local, props)
                 };
                 Instances[behaviour.Pointer] = entry;
-                if (profile.Slot == EquipmentSlot.LeftHand) Activate(entry, control, animator);
+                // Only the local rig has a layer controller. On other players' rigs the donors' own controllers find
+                // none and skip registering too; the arm layer there follows the owner's through the game's Mecanim sync.
+                if (profile.Slot == EquipmentSlot.LeftHand && local) Activate(entry, control, animator);
                 Notify(profile.Model.Shown, entry.Held, profile, "Shown");
             }
             catch (Exception error)
