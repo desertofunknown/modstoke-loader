@@ -169,13 +169,14 @@
       "dynamicRange": { "name": "Dynamic range", "about": "How far apart quiet and loud sounds are kept. A narrower range suits small speakers or playing at night." },
       "voiceCount": { "name": "Sound channels", "about": "How many sounds can play at once. Lower it if the sound stutters." },
       "proximityChat": { "name": "Voice chat", "about": "How your microphone works in multiplayer: push to talk, or always on." },
-      "menus": { "name": "Menus", "about": "Modstoke's menus, or the game's own as they were. To come back, set classicMenus = false in Modstoke/UserData/openacai-loader.settings.cfg." },
+      "menus": { "name": "Menus", "about": "Modstoke's menus, or the game's own as they were. To come back from the game's menus, open Mods > Runtime Preferences and turn Classic Menus off." },
       "menuSize": { "name": "Menu size", "about": "The size of Modstoke's menus and their text." },
       "loadingScreen": { "name": "Loading screen", "about": "Modstoke's loading screen with pictures of the island and your own photos, or the game's own." },
       "loadingArt": { "name": "Loading pictures", "about": "Your photos of the world being loaded, then Modstoke's pictures of the island. Or only Modstoke's, or your photos of any world first." },
       "textLanguage": { "name": "Modstoke language", "about": "The language of Modstoke's own text, such as these menus. Following the game uses the game's language." }
     },
 
+    "classicMenus": { "title": "Use the game's own menus?", "body": "The game's own title, options and pause menus replace Modstoke's. To come back, open Mods > Runtime Preferences and turn Classic Menus off.", "yes": "Switch" },
     "graphicsApi": {
       "running": "Running now: {api}",
       "fellBack": "DirectX 12 did not start last time, so the game's own choice is back.",

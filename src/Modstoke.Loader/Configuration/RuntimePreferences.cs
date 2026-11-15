@@ -19,6 +19,7 @@ namespace Modstoke.Loader
         private const string SettingsFileName = "openacai-loader.settings.cfg";
         private const string ModsMenuHotkeyEnabledKey = "modsMenuHotkeyEnabled";
         private const string BackHotkeyEnabledKey = "backHotkeyEnabled";
+        private const string ClassicMenusKey = "classicMenus", LegacyClassicMenusKey = "classicMultiplayerMenu";
 
         private static readonly object SyncRoot = new object();
         private static bool _modsMenuHotkeyEnabled = true;
@@ -80,6 +81,17 @@ namespace Modstoke.Loader
                         "Allow the configured shortcut to return from Modstoke menu detail views.",
                         true,
                         false),
+                    // The way back from the game's own menus, which have no Modstoke Options page: this menu works in both.
+                    new ConfigValueSnapshot(
+                        "Menus",
+                        ClassicMenusKey,
+                        "Classic Menus",
+                        ConfigValueKinds.Boolean,
+                        BoolString(ReadBoolean(ClassicMenusKey, false) || ReadBoolean(LegacyClassicMenusKey, false)),
+                        "false",
+                        "Use the game's own title, options and pause menus instead of Modstoke's. Turn off to bring Modstoke's back.",
+                        true,
+                        false),
                     new ConfigValueSnapshot(
                         "Runtime",
                         "loaderVersion",
@@ -100,6 +112,26 @@ namespace Modstoke.Loader
             {
                 status = "Setting key is required.";
                 return false;
+            }
+
+            if (string.Equals(key, ClassicMenusKey, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!LoaderConfig.TryParseBoolean(value, out var classic))
+                {
+                    status = "Classic Menus expects true or false.";
+                    return false;
+                }
+                // The older classicMultiplayerMenu still forces the game's menus, so turning them off clears it too.
+                if (!WriteText(ClassicMenusKey, BoolString(classic), out var error)
+                    || !classic && ReadBoolean(LegacyClassicMenusKey, false) && !WriteText(LegacyClassicMenusKey, "false", out error))
+                {
+                    status = "Classic Menus was not saved: " + error;
+                    return false;
+                }
+                // The menus switch over on the next frame rather than at the front end's next settings read.
+                FrontEnd.SettingChanged();
+                status = "Classic Menus saved as " + BoolString(classic) + ".";
+                return true;
             }
 
             var isModsMenu = string.Equals(key, ModsMenuHotkeyEnabledKey, StringComparison.OrdinalIgnoreCase);

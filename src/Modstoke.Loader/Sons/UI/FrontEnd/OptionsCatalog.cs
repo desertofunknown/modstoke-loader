@@ -602,11 +602,7 @@ namespace Modstoke.Loader
             _ => new OptionTab("modstoke", new[]
             {
                 Section("menus",
-                    Loader("menus", "classicMenus", "false", new (string, Func<string>)[]
-                    {
-                        ("false", () => FrontEnd.Text["options.value.modstokeMenus"]),
-                        ("true", () => FrontEnd.Text["options.value.gameMenus"])
-                    }, FrontEnd.SettingChanged),
+                    Menus(),
                     Loader("menuSize", "menuScale", "1", new[] { 0.9f, 1f, 1.1f, 1.2f }
                         .Select(scale => (scale.ToString(CultureInfo.InvariantCulture),
                             (Func<string>)(() => scale.ToString("P0", Languages.CultureOf(Languages.Current)))))
@@ -632,6 +628,27 @@ namespace Modstoke.Loader
         };
 
         // A Loader setting, kept in the Loader's own settings file.
+        // Switching to the game's own menus is asked about first: they have no Options page of Modstoke's to come back
+        // from, so the question says where the way back is (Mods > Runtime Preferences).
+        private static OptionRow Menus() => new ChoiceRow("menus", () => RuntimePreferences.ReadText("classicMenus", "false"), value =>
+        {
+            if (!string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)) return WriteMenus(value);
+            FrontEnd.Push(new ConfirmScreen("options.classicMenus.title", "options.classicMenus.body", "options.classicMenus.yes",
+                "common.cancel", () => WriteMenus("true"), cautious: true));
+            return false;
+        }, "false", new (string, Func<string>)[]
+        {
+            ("false", () => FrontEnd.Text["options.value.modstokeMenus"]),
+            ("true", () => FrontEnd.Text["options.value.gameMenus"])
+        });
+
+        private static bool WriteMenus(string value)
+        {
+            if (!RuntimePreferences.WriteText("classicMenus", value, out _)) return false;
+            FrontEnd.SettingChanged();
+            return true;
+        }
+
         private static OptionRow Loader(string id, string key, string @default, (string Value, Func<string> Name)[] choices, Action changed)
             => new ChoiceRow(id, () => RuntimePreferences.ReadText(key, @default), value =>
             {

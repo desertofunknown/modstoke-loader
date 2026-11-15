@@ -169,13 +169,14 @@
       "dynamicRange": { "name": "Dinamik aralık", "about": "Sessiz ve yüksek seslerin birbirinden ne kadar ayrık tutulduğu. Daha dar bir aralık küçük hoparlörlere veya gece oynamaya uygundur." },
       "voiceCount": { "name": "Ses kanalları", "about": "Aynı anda kaç sesin çalabileceği. Ses takılıyorsa düşürün." },
       "proximityChat": { "name": "Sesli sohbet", "about": "Çok oyunculu oyunda mikrofonunuzun nasıl çalıştığı: bas-konuş veya her zaman açık." },
-      "menus": { "name": "Menüler", "about": "Modstoke menüleri veya oyunun eskisi gibi kendi menüleri. Geri dönmek için Modstoke/UserData/openacai-loader.settings.cfg dosyasında classicMenus = false ayarını yapın." },
+      "menus": { "name": "Menüler", "about": "Modstoke menüleri veya oyunun eskisi gibi kendi menüleri. Oyunun menülerinden geri dönmek için Modlar > Runtime Preferences bölümünü açıp Classic Menus’ü kapatın." },
       "menuSize": { "name": "Menü boyutu", "about": "Modstoke menülerinin ve metinlerinin boyutu." },
       "loadingScreen": { "name": "Yükleme ekranı", "about": "Ada görüntüleri ve kendi fotoğraflarınızla Modstoke yükleme ekranı ya da oyunun kendi ekranı." },
       "loadingArt": { "name": "Yükleme görselleri", "about": "Yüklenen dünyadaki fotoğraflarınız, ardından Modstoke’un ada görüntüleri. Ya yalnızca Modstoke’unkiler ya da önce herhangi bir dünyadan fotoğraflarınız." },
       "textLanguage": { "name": "Modstoke dili", "about": "Bu menüler gibi Modstoke’un kendi metinlerinin dili. “Oyunla aynı” seçeneği oyunun dilini kullanır." }
     },
 
+    "classicMenus": { "title": "Oyunun kendi menüleri kullanılsın mı?", "body": "Oyunun kendi başlık, seçenekler ve duraklatma menüleri Modstoke’unkilerin yerini alır. Geri dönmek için Modlar > Runtime Preferences bölümünü açıp Classic Menus’ü kapatın.", "yes": "Değiştir" },
     "graphicsApi": {
       "running": "Şu an kullanılan: {api}",
       "fellBack": "DirectX 12 geçen sefer başlatılamadı, bu yüzden oyunun kendi seçimine geri dönüldü.",

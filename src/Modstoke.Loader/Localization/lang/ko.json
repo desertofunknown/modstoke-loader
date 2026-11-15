@@ -169,13 +169,14 @@
       "dynamicRange": { "name": "다이내믹 레인지", "about": "작은 소리와 큰 소리의 차이를 얼마나 유지할지 정합니다. 범위가 좁을수록 작은 스피커나 밤에 플레이할 때 적합합니다." },
       "voiceCount": { "name": "사운드 채널", "about": "동시에 재생할 수 있는 소리의 수입니다. 소리가 끊기면 낮추세요." },
       "proximityChat": { "name": "음성 채팅", "about": "멀티플레이에서 마이크가 작동하는 방식입니다. 눌러서 말하기 또는 항상 켜기 중에서 고릅니다." },
-      "menus": { "name": "메뉴", "about": "Modstoke의 메뉴 또는 원래 그대로인 게임 자체 메뉴입니다. 되돌리려면 Modstoke/UserData/openacai-loader.settings.cfg에서 classicMenus = false로 설정하세요." },
+      "menus": { "name": "메뉴", "about": "Modstoke 메뉴 또는 원래 그대로의 게임 자체 메뉴입니다. 게임 메뉴에서 돌아오려면 모드 > Runtime Preferences에서 Classic Menus를 끄세요." },
       "menuSize": { "name": "메뉴 크기", "about": "Modstoke 메뉴와 그 텍스트의 크기입니다." },
       "loadingScreen": { "name": "로딩 화면", "about": "섬 풍경과 내 사진을 보여 주는 Modstoke 로딩 화면 또는 게임 자체 로딩 화면입니다." },
       "loadingArt": { "name": "로딩 이미지", "about": "불러오는 월드에서 찍은 내 사진을 먼저, 그다음 Modstoke의 섬 이미지를 보여 줍니다. Modstoke 이미지만 쓰거나 모든 월드의 내 사진을 먼저 보여 줄 수도 있습니다." },
       "textLanguage": { "name": "Modstoke 언어", "about": "이 메뉴처럼 Modstoke 자체 텍스트의 언어입니다. ‘게임 따르기’를 선택하면 게임의 언어를 사용합니다." }
     },
 
+    "classicMenus": { "title": "게임 자체 메뉴를 사용할까요?", "body": "게임 자체의 타이틀, 옵션, 일시 정지 메뉴가 Modstoke 메뉴를 대신합니다. 돌아오려면 모드 > Runtime Preferences에서 Classic Menus를 끄세요.", "yes": "전환" },
     "graphicsApi": {
       "running": "현재 사용 중: {api}",
       "fellBack": "지난번에 DirectX 12가 시작되지 않아 게임 기본값으로 되돌아갔습니다.",

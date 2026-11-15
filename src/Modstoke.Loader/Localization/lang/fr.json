@@ -169,13 +169,14 @@
       "dynamicRange": { "name": "Plage dynamique", "about": "L’écart conservé entre les sons faibles et les sons forts. Une plage plus étroite convient aux petites enceintes ou pour jouer la nuit." },
       "voiceCount": { "name": "Canaux audio", "about": "Le nombre de sons qui peuvent être joués en même temps. Baissez-le si le son saccade." },
       "proximityChat": { "name": "Chat vocal", "about": "Le fonctionnement de votre micro en multijoueur : appuyer pour parler, ou toujours actif." },
-      "menus": { "name": "Menus", "about": "Les menus de Modstoke, ou ceux du jeu tels qu’ils étaient. Pour revenir, définissez classicMenus = false dans Modstoke/UserData/openacai-loader.settings.cfg." },
+      "menus": { "name": "Menus", "about": "Les menus de Modstoke, ou ceux du jeu tels qu’ils étaient. Pour revenir depuis les menus du jeu, ouvrez Mods > Runtime Preferences et désactivez Classic Menus." },
       "menuSize": { "name": "Taille des menus", "about": "La taille des menus de Modstoke et de leur texte." },
       "loadingScreen": { "name": "Écran de chargement", "about": "L’écran de chargement de Modstoke, avec des images de l’île et vos propres photos, ou celui du jeu." },
       "loadingArt": { "name": "Images de chargement", "about": "Vos photos du monde en cours de chargement, puis les images de l’île de Modstoke. Ou seulement celles de Modstoke, ou d’abord vos photos de tous vos mondes." },
       "textLanguage": { "name": "Langue de Modstoke", "about": "La langue des textes propres à Modstoke, comme ces menus. « Suivre le jeu » utilise la langue du jeu." }
     },
 
+    "classicMenus": { "title": "Utiliser les menus du jeu ?", "body": "Les menus titre, options et pause du jeu remplacent ceux de Modstoke. Pour revenir, ouvrez Mods > Runtime Preferences et désactivez Classic Menus.", "yes": "Changer" },
     "graphicsApi": {
       "running": "Utilisée en ce moment : {api}",
       "fellBack": "DirectX 12 n’a pas démarré la dernière fois, le choix du jeu a donc été rétabli.",

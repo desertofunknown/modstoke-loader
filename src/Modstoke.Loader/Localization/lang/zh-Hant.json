@@ -169,13 +169,14 @@
       "dynamicRange": { "name": "動態範圍", "about": "安靜與響亮聲音之間保持的差距。較窄的範圍適合小型喇叭或夜間遊玩。" },
       "voiceCount": { "name": "音訊聲道", "about": "可同時播放的聲音數量。如果聲音斷斷續續，請調低此項。" },
       "proximityChat": { "name": "語音聊天", "about": "多人遊戲中麥克風的運作方式：按鍵通話或一律開啟。" },
-      "menus": { "name": "選單", "about": "使用 Modstoke 的選單，或遊戲原本的選單。如需改回，請在 Modstoke/UserData/openacai-loader.settings.cfg 中設定 classicMenus = false。" },
+      "menus": { "name": "選單", "about": "使用 Modstoke 的選單，或遊戲原本的選單。如需從遊戲選單改回，請開啟 模組 > Runtime Preferences，關閉 Classic Menus。" },
       "menuSize": { "name": "選單大小", "about": "Modstoke 選單及其文字的大小。" },
       "loadingScreen": { "name": "載入畫面", "about": "使用帶有島嶼風景和你自己照片的 Modstoke 載入畫面，或遊戲原版的載入畫面。" },
       "loadingArt": { "name": "載入圖片", "about": "先顯示你在正在載入的世界中拍的照片，再顯示 Modstoke 的島嶼圖片。也可以只用 Modstoke 的圖片，或優先顯示你在任何世界拍的照片。" },
       "textLanguage": { "name": "Modstoke 語言", "about": "Modstoke 本身文字（例如這些選單）的語言。選擇「跟隨遊戲」時會使用遊戲的語言。" }
     },
 
+    "classicMenus": { "title": "使用遊戲原版選單？", "body": "遊戲原版的標題、選項和暫停選單將取代 Modstoke 的選單。如需改回，請開啟 模組 > Runtime Preferences，關閉 Classic Menus。", "yes": "切換" },
     "graphicsApi": {
       "running": "目前使用：{api}",
       "fellBack": "上次 DirectX 12 未能啟動，因此已恢復為遊戲預設設定。",

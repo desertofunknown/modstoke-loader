@@ -169,13 +169,14 @@
       "dynamicRange": { "name": "Dynamiskt omfång", "about": "Hur långt isär tysta och starka ljud hålls. Ett smalare omfång passar små högtalare eller spel på natten." },
       "voiceCount": { "name": "Ljudkanaler", "about": "Hur många ljud som kan spelas samtidigt. Sänk det om ljudet hackar." },
       "proximityChat": { "name": "Röstchatt", "about": "Hur din mikrofon fungerar i flerspelarläge: tryck för att tala eller alltid på." },
-      "menus": { "name": "Menyer", "about": "Modstokes menyer eller spelets egna som de var. Ställ in classicMenus = false i Modstoke/UserData/openacai-loader.settings.cfg för att komma tillbaka." },
+      "menus": { "name": "Menyer", "about": "Modstokes menyer eller spelets egna som de var. För att komma tillbaka från spelets menyer, öppna Moddar > Runtime Preferences och stäng av Classic Menus." },
       "menuSize": { "name": "Menystorlek", "about": "Storleken på Modstokes menyer och deras text." },
       "loadingScreen": { "name": "Laddningsskärm", "about": "Modstokes laddningsskärm med bilder från ön och dina egna foton, eller spelets egen." },
       "loadingArt": { "name": "Laddningsbilder", "about": "Dina foton från världen som laddas, sedan Modstokes bilder från ön. Eller bara Modstokes, eller först dina foton från valfri värld." },
       "textLanguage": { "name": "Modstokes språk", "about": "Språket i Modstokes egna texter, till exempel de här menyerna. ”Följ spelet” använder spelets språk." }
     },
 
+    "classicMenus": { "title": "Använda spelets egna menyer?", "body": "Spelets egna titel-, inställnings- och pausmenyer ersätter Modstokes. För att komma tillbaka, öppna Moddar > Runtime Preferences och stäng av Classic Menus.", "yes": "Byt" },
     "graphicsApi": {
       "running": "Körs nu: {api}",
       "fellBack": "DirectX 12 startade inte förra gången, så spelets eget val gäller igen.",

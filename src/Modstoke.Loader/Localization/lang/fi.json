@@ -169,13 +169,14 @@
       "dynamicRange": { "name": "Dynamiikka-alue", "about": "Kuinka kaukana hiljaiset ja kovat äänet pidetään toisistaan. Kapeampi alue sopii pienille kaiuttimille tai yöllä pelaamiseen." },
       "voiceCount": { "name": "Äänikanavat", "about": "Kuinka monta ääntä voi soida yhtä aikaa. Laske sitä, jos ääni pätkii." },
       "proximityChat": { "name": "Puhechat", "about": "Miten mikrofonisi toimii moninpelissä: paina puhuaksesi tai aina päällä." },
-      "menus": { "name": "Valikot", "about": "Modstoken valikot tai pelin omat valikot sellaisina kuin ne olivat. Palaa takaisin asettamalla classicMenus = false tiedostossa Modstoke/UserData/openacai-loader.settings.cfg." },
+      "menus": { "name": "Valikot", "about": "Modstoken valikot tai pelin omat valikot sellaisina kuin ne olivat. Pelin valikoista pääset takaisin kohdasta Modit > Runtime Preferences poistamalla Classic Menus käytöstä." },
       "menuSize": { "name": "Valikoiden koko", "about": "Modstoken valikoiden ja niiden tekstin koko." },
       "loadingScreen": { "name": "Latausnäyttö", "about": "Modstoken latausnäyttö, jossa on kuvia saaresta ja omia kuviasi, tai pelin oma latausnäyttö." },
       "loadingArt": { "name": "Latauskuvat", "about": "Omat kuvasi ladattavasta maailmasta, sitten Modstoken kuvat saaresta. Tai vain Modstoken kuvat, tai ensin omat kuvasi mistä tahansa maailmasta." },
       "textLanguage": { "name": "Modstoken kieli", "about": "Modstoken omien tekstien, kuten näiden valikoiden, kieli. ”Seuraa peliä” käyttää pelin kieltä." }
     },
 
+    "classicMenus": { "title": "Käytetäänkö pelin omia valikoita?", "body": "Pelin oma alkuvalikko, asetukset ja taukovalikko korvaavat Modstoken valikot. Pääset takaisin kohdasta Modit > Runtime Preferences poistamalla Classic Menus käytöstä.", "yes": "Vaihda" },
     "graphicsApi": {
       "running": "Käytössä nyt: {api}",
       "fellBack": "DirectX 12 ei käynnistynyt viime kerralla, joten pelin oma valinta on palautettu.",

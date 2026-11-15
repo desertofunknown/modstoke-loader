@@ -169,13 +169,14 @@
       "dynamicRange": { "name": "Zakres dynamiki", "about": "Jak duża różnica jest zachowywana między cichymi a głośnymi dźwiękami. Węższy zakres sprawdza się przy małych głośnikach lub grze w nocy." },
       "voiceCount": { "name": "Kanały dźwięku", "about": "Ile dźwięków może grać jednocześnie. Zmniejsz tę wartość, jeśli dźwięk się zacina." },
       "proximityChat": { "name": "Czat głosowy", "about": "Jak działa twój mikrofon w grze wieloosobowej: naciśnij, aby mówić, albo zawsze włączony." },
-      "menus": { "name": "Menu", "about": "Menu Modstoke lub oryginalne menu gry. Aby wrócić, ustaw classicMenus = false w pliku Modstoke/UserData/openacai-loader.settings.cfg." },
+      "menus": { "name": "Menu", "about": "Menu Modstoke albo oryginalne menu gry. Aby wrócić z menu gry, otwórz Mody > Runtime Preferences i wyłącz Classic Menus." },
       "menuSize": { "name": "Rozmiar menu", "about": "Rozmiar menu Modstoke i ich tekstu." },
       "loadingScreen": { "name": "Ekran wczytywania", "about": "Ekran wczytywania Modstoke z obrazami wyspy i twoimi zdjęciami albo oryginalny ekran gry." },
       "loadingArt": { "name": "Obrazy wczytywania", "about": "Twoje zdjęcia wczytywanego świata, a potem obrazy wyspy od Modstoke. Albo tylko obrazy Modstoke, albo najpierw twoje zdjęcia z dowolnego świata." },
       "textLanguage": { "name": "Język Modstoke", "about": "Język tekstów samego Modstoke, np. tych menu. Opcja „Jak w grze” używa języka gry." }
     },
 
+    "classicMenus": { "title": "Użyć menu gry?", "body": "Menu tytułowe, opcje i menu pauzy gry zastąpią te z Modstoke. Aby wrócić, otwórz Mody > Runtime Preferences i wyłącz Classic Menus.", "yes": "Zmień" },
     "graphicsApi": {
       "running": "Obecnie w użyciu: {api}",
       "fellBack": "Ostatnim razem DirectX 12 się nie uruchomił, więc przywrócono wybór samej gry.",

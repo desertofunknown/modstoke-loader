@@ -169,13 +169,14 @@
       "dynamicRange": { "name": "Dynamický rozsah", "about": "Jak daleko od sebe zůstávají tiché a hlasité zvuky. Užší rozsah se hodí pro malé reproduktory nebo hraní v noci." },
       "voiceCount": { "name": "Zvukové kanály", "about": "Kolik zvuků může hrát najednou. Snižte počet, pokud zvuk zadrhává." },
       "proximityChat": { "name": "Hlasový chat", "about": "Jak funguje váš mikrofon ve hře více hráčů: stisknout a mluvit, nebo stále zapnutý." },
-      "menus": { "name": "Nabídky", "about": "Nabídky Modstoke, nebo původní nabídky hry. Pro návrat nastavte classicMenus = false v souboru Modstoke/UserData/openacai-loader.settings.cfg." },
+      "menus": { "name": "Nabídky", "about": "Nabídky Modstoke, nebo původní nabídky hry. Z nabídek hry se vrátíte přes Mody > Runtime Preferences, kde vypněte Classic Menus." },
       "menuSize": { "name": "Velikost nabídek", "about": "Velikost nabídek Modstoke a jejich textu." },
       "loadingScreen": { "name": "Načítací obrazovka", "about": "Načítací obrazovka Modstoke s obrázky ostrova a vašimi fotkami, nebo původní obrazovka hry." },
       "loadingArt": { "name": "Obrázky při načítání", "about": "Vaše fotky načítaného světa, potom obrázky ostrova od Modstoke. Nebo jen obrázky Modstoke, nebo nejdřív vaše fotky z libovolného světa." },
       "textLanguage": { "name": "Jazyk Modstoke", "about": "Jazyk vlastních textů Modstoke, například těchto nabídek. Volba „Podle hry“ použije jazyk hry." }
     },
 
+    "classicMenus": { "title": "Použít nabídky hry?", "body": "Úvodní nabídka, nastavení a pauza hry nahradí nabídky Modstoke. Pro návrat otevřete Mody > Runtime Preferences a vypněte Classic Menus.", "yes": "Přepnout" },
     "graphicsApi": {
       "running": "Nyní běží: {api}",
       "fellBack": "DirectX 12 se minule nespustil, takže platí opět volba samotné hry.",

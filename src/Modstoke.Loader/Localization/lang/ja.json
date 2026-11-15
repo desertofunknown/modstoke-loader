@@ -169,13 +169,14 @@
       "dynamicRange": { "name": "ダイナミックレンジ", "about": "小さな音と大きな音の差をどれだけ保つかです。狭くすると、小型スピーカーや夜間のプレイに向きます。" },
       "voiceCount": { "name": "サウンドチャンネル数", "about": "同時に再生できる音の数です。音が途切れる場合は下げてください。" },
       "proximityChat": { "name": "ボイスチャット", "about": "マルチプレイでのマイクの動作を、プッシュトゥトークか常時オンから選びます。" },
-      "menus": { "name": "メニュー", "about": "Modstokeのメニューか、元のままのゲーム本来のメニューを使います。戻すには、Modstoke/UserData/openacai-loader.settings.cfg で classicMenus = false に設定してください。" },
+      "menus": { "name": "メニュー", "about": "Modstokeのメニューか、元のままのゲーム本来のメニューを使います。ゲーム本来のメニューから戻すには、MOD > Runtime Preferences を開いて Classic Menus をオフにします。" },
       "menuSize": { "name": "メニューのサイズ", "about": "Modstokeのメニューとその文字のサイズです。" },
       "loadingScreen": { "name": "ロード画面", "about": "島の風景やあなたの写真を表示するModstokeのロード画面か、ゲーム本来のロード画面を使います。" },
       "loadingArt": { "name": "ロード画面の画像", "about": "ロードするワールドで撮った写真、次にModstokeの島の画像を表示します。Modstokeの画像だけにしたり、どのワールドの写真でも先に表示したりもできます。" },
       "textLanguage": { "name": "Modstokeの言語", "about": "このメニューなど、Modstoke独自のテキストの言語です。「ゲームに合わせる」ではゲームの言語を使います。" }
     },
 
+    "classicMenus": { "title": "ゲーム本来のメニューを使いますか？", "body": "タイトル、オプション、ポーズの各メニューがModstokeのものからゲーム本来のものに置き換わります。戻すには、MOD > Runtime Preferences を開いて Classic Menus をオフにします。", "yes": "切り替える" },
     "graphicsApi": {
       "running": "現在使用中：{api}",
       "fellBack": "前回DirectX 12で起動できなかったため、ゲーム標準の設定に戻りました。",
