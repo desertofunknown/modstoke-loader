@@ -369,7 +369,7 @@
     "title": "Modo foto",
     "online": "Online · o mundo continua",
     "onlineShort": "Online",
-    "tab": { "camera": "Câmera", "lens": "Lente", "look": "Visual", "frame": "Enquadramento", "capture": "Captura" },
+    "tab": { "camera": "Câmera", "lens": "Lente", "look": "Visual", "world": "Mundo", "frame": "Enquadramento", "capture": "Captura" },
     "section": {
       "camera": "Câmera",
       "subject": "Na foto",
@@ -380,6 +380,8 @@
       "light": "Luz e cor",
       "texture": "Textura",
       "effects": "Efeitos de tela",
+      "time": "Hora",
+      "weather": "Clima",
       "guides": "Guias",
       "image": "Imagem",
       "save": "Salvamento"
@@ -412,6 +414,11 @@
       "grainSize": { "name": "Tamanho do grão", "about": "O quão fino ou grosso é o grão." },
       "screenEffects": { "name": "Sangue, geada e chuva", "about": "Se o sangue, a geada e as gotas de chuva na tela aparecem na foto." },
       "resetLook": { "name": "Redefinir o visual", "about": "Volta o filtro, a cor e a lente para como o jogo os mostra." },
+      "time": { "name": "Hora do dia", "about": "Move o sol e a lua só para a foto; o relógio da sua partida não muda. Não funciona em cavernas ou onde o jogo define a hora. Energia solar e afins ficam como estão." },
+      "weather": { "name": "Clima", "about": "Muda o céu, a chuva e a neve só para a foto; o clima da sua partida não muda. Sem chuva nem neve onde o jogo as mantém afastadas, como em cavernas." },
+      "clouds": { "name": "Nebulosidade", "about": "Quanto do céu as nuvens cobrem." },
+      "fog": { "name": "Neblina", "about": "Enche o ar de névoa e neblina." },
+      "resetWorld": { "name": "Redefinir o mundo", "about": "Volta a hora e o clima para como estão na sua partida." },
       "guide": { "name": "Guia", "about": "Linhas para ajudar na composição. Elas não aparecem na foto." },
       "aspect": { "name": "Proporção", "about": "O formato da foto. O que fica fora do quadro não entra no arquivo." },
       "mask": { "name": "Fora do quadro", "about": "Como a parte que fica fora da foto é mostrada." },
@@ -445,6 +452,8 @@
       "open": "Abrir",
       "reset": "Redefinir"
     },
+    "weather": { "asis": "Como está", "clear": "Limpo", "overcast": "Nublado", "rain": "Chuva", "storm": "Tempestade", "snow": "Neve", "fog": "Neblina" },
+    "world": { "online": "A hora e o clima só podem ser mudados no modo um jogador, onde o mundo fica pausado.", "version": "A hora e o clima não podem ser mudados nesta versão do jogo." },
     "preset": {
       "none": "Nenhum",
       "goldenHour": "Hora dourada",

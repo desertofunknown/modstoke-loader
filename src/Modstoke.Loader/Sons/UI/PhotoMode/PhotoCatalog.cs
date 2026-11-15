@@ -16,7 +16,10 @@ namespace Modstoke.Loader
     /// </summary>
     internal static class PhotoCatalog
     {
-        internal static IReadOnlyList<string> TabIds { get; } = new[] { "camera", "lens", "look", "frame", "capture" };
+        // Ten minutes a step: an hour for half a second's hold on a key or the stick.
+        private const float HourStep = 1f / 6;
+
+        internal static IReadOnlyList<string> TabIds { get; } = new[] { "camera", "lens", "look", "world", "frame", "capture" };
 
         internal static OptionTab Tab(string id, PhotoSession session)
         {
@@ -89,6 +92,7 @@ namespace Modstoke.Loader
                         Shown("screenEffects", () => s.ScreenEffects, value => s.ScreenEffects = value, false),
                         new OptionAction("resetLook", session.ResetLook, () => Text["photo.value.reset"]))
                 }),
+                "world" => World(session),
                 "frame" => new OptionTab(id, new[]
                 {
                     Section("guides",
@@ -117,6 +121,33 @@ namespace Modstoke.Loader
                         new OptionAction("openFolder", () => PhotoLibrary.OpenFolder(s.Pictures), () => Text["photo.value.open"]))
                 })
             };
+        }
+
+        // Online, or where the game's clocks cannot be held, the tab is empty and says why instead. The rows start at
+        // the world as photo mode found it; clouds and fog start at the chosen weather's own until moved.
+        private static OptionTab World(PhotoSession session)
+        {
+            var world = session.World;
+            if (world.Unavailable != null) return new OptionTab("world", Array.Empty<OptionSection>());
+            var s = session.Settings;
+            var look = session.Look;
+            return new OptionTab("world", new[]
+            {
+                Section("time",
+                    new NumberRow("time", () => float.IsNaN(s.Hour) ? world.EntryHour : s.Hour,
+                        value => s.Hour = Mathf.Abs(value - world.EntryHour) < HourStep / 2 ? float.NaN : value,
+                        0, 24, HourStep, () => world.EntryHour, Clock) { When = () => world.CanSetTime }),
+                Section("weather",
+                    Only(Choice("weather", () => s.Weather, s.ChooseWeather, "asis",
+                        world.Weathers.Select(weather => (weather, "photo.weather." + weather)).ToArray()), () => world.CanSetWeather),
+                    new NumberRow("clouds", () => float.IsNaN(s.Clouds) ? world.CloudsFor(s.Weather) : s.Clouds,
+                        value => s.Clouds = Mathf.Abs(value - world.CloudsFor(s.Weather)) < 0.025f ? float.NaN : value,
+                        0, 1, 0.05f, () => world.CloudsFor(s.Weather), Percent) { When = () => world.CanSetWeather },
+                    new NumberRow("fog", () => PhotoWorld.FogAmount(s),
+                        value => s.Fog = Mathf.Abs(value - PhotoWorld.FogFor(s.Weather)) < 0.025f ? float.NaN : value,
+                        0, 1, 0.05f, () => PhotoWorld.FogFor(s.Weather), Percent) { When = () => look.FogShown },
+                    new OptionAction("resetWorld", session.ResetWorld, () => Text["photo.value.reset"]))
+            });
         }
 
         // The sizes this machine can take, as the capture offers them; 4K unless the graphics card is short of memory.
@@ -196,5 +227,9 @@ namespace Modstoke.Loader
 
         private static string Metres(float value)
             => Unit("m", value, value < 1 ? "0.00" : value < 10 ? "0.0" : "0");
+
+        // The player's own clock style; the right end of the slider is midnight again.
+        private static string Clock(float hours)
+            => DateTime.Today.AddMinutes(Mathf.RoundToInt(hours * 60f) % (24 * 60)).ToString("t", Culture);
     }
 }

@@ -369,7 +369,7 @@
     "title": "Mode photo",
     "online": "En ligne · le monde continue",
     "onlineShort": "En ligne",
-    "tab": { "camera": "Caméra", "lens": "Objectif", "look": "Rendu", "frame": "Cadre", "capture": "Prise de vue" },
+    "tab": { "camera": "Caméra", "lens": "Objectif", "look": "Rendu", "world": "Monde", "frame": "Cadre", "capture": "Prise de vue" },
     "section": {
       "camera": "Caméra",
       "subject": "Dans le cadre",
@@ -380,6 +380,8 @@
       "light": "Lumière et couleur",
       "texture": "Texture",
       "effects": "Effets d’écran",
+      "time": "Heure",
+      "weather": "Météo",
       "guides": "Repères",
       "image": "Image",
       "save": "Enregistrement"
@@ -412,6 +414,11 @@
       "grainSize": { "name": "Taille du grain", "about": "Un grain plus ou moins fin." },
       "screenEffects": { "name": "Sang, givre et pluie", "about": "Si le sang, le givre et les gouttes de pluie sur l’écran apparaissent sur la photo." },
       "resetLook": { "name": "Réinitialiser le rendu", "about": "Remet le filtre, la couleur et l’objectif tels que le jeu les affiche." },
+      "time": { "name": "Heure du jour", "about": "Déplace le soleil et la lune pour la photo seulement. L’heure de votre partie ne change pas. Pas dans les grottes ni là où le jeu fixe l’heure. L’énergie solaire, entre autres, reste telle quelle." },
+      "weather": { "name": "Météo", "about": "Change le ciel, la pluie et la neige pour la photo seulement. La météo de votre partie ne change pas. Pas de pluie ni de neige là où le jeu les tient à l’écart, comme dans les grottes." },
+      "clouds": { "name": "Couverture nuageuse", "about": "La part du ciel couverte de nuages." },
+      "fog": { "name": "Brouillard", "about": "Charge l’air de brume et de brouillard." },
+      "resetWorld": { "name": "Réinitialiser le monde", "about": "Remet l’heure et la météo telles qu’elles sont dans votre partie." },
       "guide": { "name": "Repère", "about": "Des lignes pour vous aider à composer. Elles ne figurent pas sur la photo." },
       "aspect": { "name": "Format", "about": "La forme de la photo. Ce qui dépasse du cadre n’est pas enregistré." },
       "mask": { "name": "Hors cadre", "about": "La façon dont la partie exclue de la photo est affichée." },
@@ -445,6 +452,8 @@
       "open": "Ouvrir",
       "reset": "Réinitialiser"
     },
+    "weather": { "asis": "Inchangée", "clear": "Dégagé", "overcast": "Couvert", "rain": "Pluie", "storm": "Orage", "snow": "Neige", "fog": "Brouillard" },
+    "world": { "online": "L’heure et la météo ne peuvent être changées qu’en solo, où le monde est en pause.", "version": "L’heure et la météo ne peuvent pas être changées dans cette version du jeu." },
     "preset": {
       "none": "Aucun",
       "goldenHour": "Heure dorée",

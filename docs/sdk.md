@@ -1691,3 +1691,13 @@ direction never see it, and puts everything back the moment it closes.
   player's camera.
 - Render callbacks that move the main camera themselves (the Optics cheek weld)
   should stand down while `PhotoMode.Active`, or their undo lands on the photo pose.
+- In single player the World tab sets the time of day, weather, cloud cover and fog
+  for the photo. The time goes on the game's visual override, so
+  `ClockSnapshot.EffectiveTime` reads the photo's hour while `GameTime` never moves;
+  the weather is drawn (locked clouds, wet ground, a frozen copy of the rain or snow
+  effect, an HDRP fog override) and the game's own weather state is left as it was.
+  Once the tab has changed anything, `WeatherSystem.Update`,
+  `TemperatureManager.UpdateTime`, `VailWorldSimulation.UpdateTimeVars`,
+  `PowerGrid.UpdateTime` and `TimeOfDayTrigger.UpdateTime` are skipped until photo
+  mode closes and has put everything back, so solar power and objects switched by
+  the hour keep their real-time state. The tab is empty online.

@@ -62,6 +62,7 @@ namespace Modstoke.Loader
 
         internal PhotoSettings Settings { get; }
         internal PhotoLook Look { get; private set; }
+        internal PhotoWorld World { get; private set; }
         internal PhotoScreen Screen { get; set; }
         internal bool FromWorld { get; }
         internal bool Online { get; private set; }
@@ -150,15 +151,16 @@ namespace Modstoke.Loader
         /// <summary>
         /// Takes the photo asked for this frame, once the grass is queued for it: right after the grass draw
         /// (<paramref name="afterGrass"/>), or from the Loader's late update where the grass leaves the photo pose
-        /// alone or has not drawn for a frame. Waits while the look is still settling. Never throws, as both callers
-        /// run inside the game's late update.
+        /// alone or has not drawn for a frame. Waits while the look or the world is still settling. Never throws, as
+        /// both callers run inside the game's late update.
         /// </summary>
         internal static void DevelopQueued(bool afterGrass)
         {
             try
             {
                 var session = Current;
-                if (session == null || session._queued == null || session.Ended || session.Look == null || !session.Look.Settled) return;
+                if (session == null || session._queued == null || session.Ended || session.Look == null || !session.Look.Settled
+                    || !session.World.Settled) return;
                 // The grass draws later this frame unless it has stopped drawing.
                 if (!afterGrass && PhotoPatches.GrassFollows && PhotoPatches.GrassFrame >= Time.frameCount - 1) return;
                 session.Develop();
@@ -224,6 +226,9 @@ namespace Modstoke.Loader
             });
             Look = new PhotoLook(_main);
             _undo.Add("the photo look", Look.Dispose);
+            // Reads only; the world changes, and records its undo, when the World tab is first used.
+            Settings.ResetWorld();
+            World = new PhotoWorld(_undo, _eye, Online);
             _hider = new PhotoUiHider(_undo);
             _hider.Begin(Online);
             _overlay = new PhotoOverlay(Online);
@@ -304,6 +309,7 @@ namespace Modstoke.Loader
                 if (follow) _focus = Mathf.Lerp(_focus, _rig.FocusDistance(Settings) ?? 300f, 1f - Mathf.Exp(-FocusRate * dt));
                 else _focus = float.IsNaN(Settings.FocusDistance) ? 10f : Settings.FocusDistance;
                 _hider.Tick(dt, !Settings.ScreenEffects);
+                if (World.Apply(Settings)) _hooks.ResetHistory();
                 if (Look.Settle(_hider.Clear, !Settings.ScreenEffects)) Settled();
                 Look.Focal = _rig.Focal;
                 Look.FocusDistance = _focus;
@@ -422,6 +428,12 @@ namespace Modstoke.Loader
             Screen?.Repaint();
         }
 
+        internal void ResetWorld()
+        {
+            Settings.ResetWorld();
+            Screen?.Repaint();
+        }
+
         /// <summary>Depth of field on or off; the first time, it focuses on whatever is at the centre.</summary>
         internal void SetDepthOfField(bool on)
         {
@@ -437,13 +449,15 @@ namespace Modstoke.Loader
             if (id is "resolution" or "detail" or "folder" or "steam") Settings.SaveCapture();
         }
 
-        /// <summary>The console's "photo" command: open, close, shoot [size] and status.</summary>
+        /// <summary>The console's "photo" command: open, close, shoot [size], world [setting value] and status.</summary>
         internal static string RunCommand(string arguments)
         {
             var words = (arguments ?? "").Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var verb = words.Length > 0 ? words[0].ToLowerInvariant() : "status";
             switch (verb)
             {
+                case "world":
+                    return Current == null ? "Photo mode is not open." : Current.WorldCommand(words);
                 case "open":
                     if (Current != null) return "Photo mode is already open.";
                     if (PauseHost.Open) return PhotoScreen.Open(false) ? "Photo mode opened." : "Photo mode did not open: " + (LastProblem ?? "see the pause screen.");
@@ -476,6 +490,49 @@ namespace Modstoke.Loader
             }
         }
 
+        // "photo world time 18:30", "weather rain", "clouds 0.6", "fog 0.4" (or "asis" for any of them) and "reset";
+        // the change shows from the next frame, as a row's would.
+        private string WorldCommand(string[] words)
+        {
+            if (World.Unavailable != null) return "The World tab is off here: " + FrontEnd.Text[World.Unavailable];
+            var setting = words.Length > 1 ? words[1].ToLowerInvariant() : "";
+            var value = words.Length > 2 ? words[2].ToLowerInvariant() : "";
+            var asIs = value == "asis";
+            var number = float.NaN;
+            switch (setting)
+            {
+                case "time":
+                    if (!World.CanSetTime) return "The game holds the time of day here.";
+                    if (asIs) Settings.Hour = float.NaN;
+                    else if (TimeSpan.TryParseExact(value, new[] { @"h\:mm", @"hh\:mm" }, CultureInfo.InvariantCulture, out var time) && time.TotalHours < 24)
+                        Settings.Hour = (float)time.TotalHours;
+                    else return "Give the time as 18:30.";
+                    break;
+                case "weather":
+                    if (!World.CanSetWeather) return "There is no weather here to change.";
+                    if (Array.IndexOf(World.Weathers, value) < 0)
+                        return (Array.IndexOf(PhotoSettings.Weathers, value) < 0 ? "No weather \"" + value + "\"" : "The game keeps rain and snow out here")
+                            + "; choose " + string.Join(", ", World.Weathers) + ".";
+                    Settings.ChooseWeather(value);
+                    break;
+                case "clouds" or "fog":
+                    if (!asIs && (!float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out number) || number < 0 || number > 1))
+                        return "Give " + setting + " as a number from 0 to 1.";
+                    if (setting == "clouds") Settings.Clouds = number;
+                    else Settings.Fog = number;
+                    break;
+                case "reset":
+                    Settings.ResetWorld();
+                    break;
+                case "":
+                    return "World: " + World.Describe() + ".";
+                default:
+                    return "Use photo world time 18:30, weather " + string.Join("|", World.Weathers) + ", clouds 0.6, fog 0.4 or reset.";
+            }
+            Screen?.Repaint();
+            return "World set; it shows from the next frame.";
+        }
+
         private static string Status()
         {
             var parts = new List<string>
@@ -495,6 +552,7 @@ namespace Modstoke.Loader
             if (!string.IsNullOrEmpty(LastProblem)) parts.Add("last problem: " + LastProblem);
             if (Current?._rig != null) parts.Add(string.Format(CultureInfo.InvariantCulture, "camera {0:0.0} m from the player at {1:0} mm",
                 Vector3.Distance(Current._rig.Position, Current._rig.Anchor), Current._rig.Focal));
+            if (Current?.World != null) parts.Add("world " + Current.World.Describe());
             return "Photo mode: " + string.Join("; ", parts) + ".";
         }
 

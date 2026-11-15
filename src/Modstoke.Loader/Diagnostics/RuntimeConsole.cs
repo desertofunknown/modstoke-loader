@@ -99,7 +99,7 @@ namespace Modstoke.Loader
                 new("boltwidths", "Report the bit width of each networked item-id field (writes UserData/bolt-widths.txt).", true, false),
                 new("crafting", "crafting check: ask the crafting mat which recipe each mod recipe's ingredients would make.", true, false, true),
                 new("language", "Show the language in use; \"language reload\" reads language files again.", true, false, true),
-                new("photo", "photo open | close | shoot [screen|4k|...] | status: drive photo mode and report its last photo.", true, false, true)
+                new("photo", "photo open | close | shoot [screen|4k|...] | world [time 18:30|weather rain|clouds 0.6|fog 0.4|reset] | status: drive photo mode and report its last photo.", true, false, true)
             };
             commands.AddRange(HostCommands.Catalog());
             Routes.Clear();

@@ -369,7 +369,7 @@
     "title": "Fotoläge",
     "online": "Online · världen fortsätter",
     "onlineShort": "Online",
-    "tab": { "camera": "Kamera", "lens": "Objektiv", "look": "Utseende", "frame": "Bildutsnitt", "capture": "Bild" },
+    "tab": { "camera": "Kamera", "lens": "Objektiv", "look": "Utseende", "world": "Värld", "frame": "Bildutsnitt", "capture": "Bild" },
     "section": {
       "camera": "Kamera",
       "subject": "I bild",
@@ -380,6 +380,8 @@
       "light": "Ljus och färg",
       "texture": "Struktur",
       "effects": "Skärmeffekter",
+      "time": "Tid",
+      "weather": "Väder",
       "guides": "Hjälplinjer",
       "image": "Bild",
       "save": "Spara"
@@ -412,6 +414,11 @@
       "grainSize": { "name": "Kornstorlek", "about": "Hur fint eller grovt kornet är." },
       "screenEffects": { "name": "Blod, frost och regn", "about": "Om blod, frost och regndroppar på skärmen syns på fotot." },
       "resetLook": { "name": "Återställ utseendet", "about": "Återställer filter, färg och objektiv som spelet visar dem." },
+      "time": { "name": "Tid på dygnet", "about": "Flyttar solen och månen bara för bilden; klockan i ditt spel ändras inte. Inte i grottor eller där spelet själv bestämmer tiden. Solenergi och liknande förblir som det är." },
+      "weather": { "name": "Väder", "about": "Ändrar himlen, regnet och snön bara för bilden; vädret i ditt spel ändras inte. Inget regn eller snö där spelet håller dem borta, till exempel i grottor." },
+      "clouds": { "name": "Molntäcke", "about": "Hur mycket av himlen som täcks av moln." },
+      "fog": { "name": "Dimma", "about": "Fyller luften med dis och dimma." },
+      "resetWorld": { "name": "Återställ världen", "about": "Återställer tiden och vädret som de är i ditt spel." },
       "guide": { "name": "Hjälplinje", "about": "Linjer som hjälper dig att komponera. De finns inte på fotot." },
       "aspect": { "name": "Bildformat", "about": "Fotots form. Det som hamnar utanför ramen kommer inte med i filen." },
       "mask": { "name": "Utanför ramen", "about": "Hur delen som utesluts från fotot visas." },
@@ -445,6 +452,8 @@
       "open": "Öppna",
       "reset": "Återställ"
     },
+    "weather": { "asis": "Som det är", "clear": "Klart", "overcast": "Mulet", "rain": "Regn", "storm": "Storm", "snow": "Snö", "fog": "Dimma" },
+    "world": { "online": "Tid och väder kan bara ändras i enspelarläge, där världen är pausad.", "version": "Tid och väder kan inte ändras i den här versionen av spelet." },
     "preset": {
       "none": "Inget",
       "goldenHour": "Gyllene timmen",

@@ -369,7 +369,7 @@
     "title": "Fotoğraf modu",
     "online": "Çevrim içi · dünya akmaya devam ediyor",
     "onlineShort": "Çevrim içi",
-    "tab": { "camera": "Kamera", "lens": "Lens", "look": "Görünüm", "frame": "Kadraj", "capture": "Çekim" },
+    "tab": { "camera": "Kamera", "lens": "Lens", "look": "Görünüm", "world": "Dünya", "frame": "Kadraj", "capture": "Çekim" },
     "section": {
       "camera": "Kamera",
       "subject": "Kadrajda",
@@ -380,6 +380,8 @@
       "light": "Işık ve renk",
       "texture": "Doku",
       "effects": "Ekran efektleri",
+      "time": "Zaman",
+      "weather": "Hava",
       "guides": "Kılavuzlar",
       "image": "Görüntü",
       "save": "Kaydetme"
@@ -412,6 +414,11 @@
       "grainSize": { "name": "Gren boyutu", "about": "Grenin ne kadar ince veya kaba olduğu." },
       "screenEffects": { "name": "Kan, kırağı ve yağmur", "about": "Ekrandaki kan, kırağı ve yağmur damlalarının fotoğrafta görünüp görünmeyeceği." },
       "resetLook": { "name": "Görünümü sıfırla", "about": "Filtreyi, rengi ve lensi oyunun gösterdiği hâle döndürür." },
+      "time": { "name": "Günün saati", "about": "Güneşi ve ayı yalnızca fotoğraf için hareket ettirir; oyununuzdaki saat değişmez. Mağaralarda ve saati oyunun belirlediği yerlerde kullanılamaz. Güneş enerjisi gibi şeyler olduğu gibi kalır." },
+      "weather": { "name": "Hava durumu", "about": "Gökyüzünü, yağmuru ve karı yalnızca fotoğraf için değiştirir; oyununuzdaki hava değişmez. Oyunun yağmuru ve karı dışarıda tuttuğu yerlerde, örneğin mağaralarda eklenemez." },
+      "clouds": { "name": "Bulutluluk", "about": "Gökyüzünün ne kadarını bulutların kapladığı." },
+      "fog": { "name": "Sis", "about": "Havayı pus ve sisle doldurur." },
+      "resetWorld": { "name": "Dünyayı sıfırla", "about": "Saati ve havayı oyununuzdaki hâline döndürür." },
       "guide": { "name": "Kılavuz", "about": "Kompozisyona yardımcı çizgiler. Fotoğrafta yer almazlar." },
       "aspect": { "name": "En boy oranı", "about": "Fotoğrafın şekli. Çerçevenin dışı dosyaya girmez." },
       "mask": { "name": "Çerçeve dışı", "about": "Fotoğrafa girmeyen kısmın nasıl gösterileceği." },
@@ -445,6 +452,8 @@
       "open": "Aç",
       "reset": "Sıfırla"
     },
+    "weather": { "asis": "Olduğu gibi", "clear": "Açık", "overcast": "Kapalı", "rain": "Yağmur", "storm": "Fırtına", "snow": "Kar", "fog": "Sis" },
+    "world": { "online": "Saat ve hava yalnızca dünyanın duraklatıldığı tek oyunculu modda değiştirilebilir.", "version": "Oyunun bu sürümünde saat ve hava değiştirilemez." },
     "preset": {
       "none": "Yok",
       "goldenHour": "Altın saat",

@@ -369,7 +369,7 @@
     "title": "Modo foto",
     "online": "En línea · el mundo sigue",
     "onlineShort": "En línea",
-    "tab": { "camera": "Cámara", "lens": "Objetivo", "look": "Estilo", "frame": "Encuadre", "capture": "Captura" },
+    "tab": { "camera": "Cámara", "lens": "Objetivo", "look": "Estilo", "world": "Mundo", "frame": "Encuadre", "capture": "Captura" },
     "section": {
       "camera": "Cámara",
       "subject": "En la toma",
@@ -380,6 +380,8 @@
       "light": "Luz y color",
       "texture": "Textura",
       "effects": "Efectos de pantalla",
+      "time": "Hora",
+      "weather": "Clima",
       "guides": "Guías",
       "image": "Imagen",
       "save": "Guardado"
@@ -412,6 +414,11 @@
       "grainSize": { "name": "Tamaño del grano", "about": "Lo fino o grueso que es el grano." },
       "screenEffects": { "name": "Sangre, escarcha y lluvia", "about": "Si la sangre, la escarcha y las gotas de lluvia en la pantalla salen en la foto." },
       "resetLook": { "name": "Restablecer el estilo", "about": "Devuelve el filtro, el color y el objetivo a como los muestra el juego." },
+      "time": { "name": "Hora del día", "about": "Mueve el sol y la luna solo para la foto; el reloj de tu partida no cambia. No en cuevas ni donde el juego fija la hora. La energía solar y otros temporizadores se quedan como están." },
+      "weather": { "name": "Clima", "about": "Cambia el cielo, la lluvia y la nieve solo para la foto; el clima de tu partida no cambia. Sin lluvia ni nieve donde el juego no las deja entrar, como en las cuevas." },
+      "clouds": { "name": "Nubosidad", "about": "Cuánto del cielo cubren las nubes." },
+      "fog": { "name": "Niebla", "about": "Llena el aire de bruma y niebla." },
+      "resetWorld": { "name": "Restablecer el mundo", "about": "Devuelve la hora y el clima a como están en tu partida." },
       "guide": { "name": "Guía", "about": "Líneas que te ayudan a componer. No aparecen en la foto." },
       "aspect": { "name": "Relación de aspecto", "about": "La forma de la foto. Lo que queda fuera del encuadre no entra en el archivo." },
       "mask": { "name": "Fuera del encuadre", "about": "Cómo se muestra la parte que queda fuera de la foto." },
@@ -445,6 +452,8 @@
       "open": "Abrir",
       "reset": "Restablecer"
     },
+    "weather": { "asis": "Como está", "clear": "Despejado", "overcast": "Nublado", "rain": "Lluvia", "storm": "Tormenta", "snow": "Nieve", "fog": "Niebla" },
+    "world": { "online": "La hora y el clima solo se pueden cambiar en un jugador, donde el mundo está en pausa.", "version": "La hora y el clima no se pueden cambiar en esta versión del juego." },
     "preset": {
       "none": "Ninguno",
       "goldenHour": "Hora dorada",

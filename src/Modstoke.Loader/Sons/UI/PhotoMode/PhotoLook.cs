@@ -20,6 +20,8 @@ namespace Modstoke.Loader
     internal sealed class PhotoLook : IDisposable
     {
         private const float Priority = 2000f;
+        // How far light carries in the World tab's thickest fog, in metres.
+        private const float ThickFog = 10f;
         // HDRP's quality level that means "use the values set on this override".
         private const int CustomQuality = 3;
         private static readonly Color Neutral = new(0.5f, 0.5f, 0.5f, 1f);
@@ -43,6 +45,7 @@ namespace Modstoke.Loader
         private readonly ChannelMixer _mixer;
         private readonly LiftGammaGain _liftGain;
         private readonly MotionBlur _motion;
+        private readonly Fog _fog;
         private readonly BloodColdPostProcess _screen;
         private readonly SonsVHSTimecodePostProcess _timecode;
         private readonly ClampedFloatParameter[] _channels;
@@ -76,6 +79,7 @@ namespace Modstoke.Loader
             _mixer = Add<ChannelMixer>();
             _liftGain = Add<LiftGammaGain>();
             _motion = Add<MotionBlur>();
+            _fog = Add<Fog>();
             _channels = new[]
             {
                 _mixer.redOutRedIn, _mixer.redOutGreenIn, _mixer.redOutBlueIn,
@@ -107,6 +111,10 @@ namespace Modstoke.Loader
         internal int BaseGrainType { get; private set; }
         internal float BaseChromatic { get; private set; } = 0.02f;
         internal float BaseBloom { get; private set; } = 0.25f;
+        internal float BaseFogDistance { get; private set; } = 400f;
+
+        /// <summary>Whether the game draws fog at all at its current settings; the World tab's fog builds on it.</summary>
+        internal bool FogShown { get; private set; } = true;
 
         /// <summary>The lens as rendered this frame, for depth of field.</summary>
         internal float Focal { get; set; } = 17f;
@@ -170,6 +178,11 @@ namespace Modstoke.Loader
                 }
                 if (Stacked<ChromaticAberration>(stack) is { } fringe) BaseChromatic = fringe.intensity.value;
                 if (Stacked<Bloom>(stack) is { } bloom) BaseBloom = bloom.intensity.value;
+                if (Stacked<Fog>(stack) is { } fog)
+                {
+                    FogShown = fog.enabled.value;
+                    BaseFogDistance = fog.meanFreePath.value;
+                }
             }
             catch (Exception error)
             {
@@ -218,6 +231,11 @@ namespace Modstoke.Loader
             Set(_distortion.scale, 1f + 0.3f * Mathf.Abs(settings.Distortion), settings.Distortion != 0);
             Set(_panini.distance, settings.Panini, settings.Panini > 0);
             Set(_panini.cropToFit, 1f, settings.Panini > 0);
+
+            // The World tab's fog shortens the distance light carries through the game's own, evenly on a log scale.
+            var fog = PhotoWorld.FogAmount(settings);
+            var thick = Mathf.Min(ThickFog, BaseFogDistance);
+            Set(_fog.meanFreePath, BaseFogDistance * Mathf.Pow(thick / BaseFogDistance, fog), graded && FogShown && fog > 0.005f);
 
             var toned = graded && strength > 0 && preset.Shadows != null;
             Set(_split.shadows, Color.Lerp(Neutral, preset.Shadows ?? Neutral, strength), toned);

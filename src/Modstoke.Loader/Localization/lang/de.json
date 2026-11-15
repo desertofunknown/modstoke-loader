@@ -369,7 +369,7 @@
     "title": "Fotomodus",
     "online": "Online · die Welt läuft weiter",
     "onlineShort": "Online",
-    "tab": { "camera": "Kamera", "lens": "Objektiv", "look": "Look", "frame": "Bildausschnitt", "capture": "Aufnahme" },
+    "tab": { "camera": "Kamera", "lens": "Objektiv", "look": "Look", "world": "Welt", "frame": "Bildausschnitt", "capture": "Aufnahme" },
     "section": {
       "camera": "Kamera",
       "subject": "Im Bild",
@@ -380,6 +380,8 @@
       "light": "Licht und Farbe",
       "texture": "Struktur",
       "effects": "Bildschirmeffekte",
+      "time": "Zeit",
+      "weather": "Wetter",
       "guides": "Hilfslinien",
       "image": "Bild",
       "save": "Speichern"
@@ -412,6 +414,11 @@
       "grainSize": { "name": "Korngröße", "about": "Wie fein oder grob das Korn ist." },
       "screenEffects": { "name": "Blut, Frost und Regen", "about": "Ob Blut, Frost und Regentropfen auf dem Bildschirm im Foto zu sehen sind." },
       "resetLook": { "name": "Look zurücksetzen", "about": "Setzt Filter, Farbe und Objektiv so zurück, wie das Spiel sie zeigt." },
+      "time": { "name": "Tageszeit", "about": "Bewegt Sonne und Mond nur für das Foto; die Uhr deines Spiels ändert sich nicht. Nicht in Höhlen und wo das Spiel die Zeit selbst festlegt. Solarstrom und Ähnliches bleibt, wie es ist." },
+      "weather": { "name": "Wetter", "about": "Ändert Himmel, Regen und Schnee nur für das Foto; das Wetter deines Spiels ändert sich nicht. Kein Regen oder Schnee, wo das Spiel ihn fernhält, etwa in Höhlen." },
+      "clouds": { "name": "Bewölkung", "about": "Wie viel vom Himmel Wolken bedecken." },
+      "fog": { "name": "Nebel", "about": "Füllt die Luft mit Dunst und Nebel." },
+      "resetWorld": { "name": "Welt zurücksetzen", "about": "Setzt Zeit und Wetter so zurück, wie sie in deinem Spiel sind." },
       "guide": { "name": "Hilfslinien", "about": "Linien, die beim Gestalten helfen. Sie sind nicht im Foto." },
       "aspect": { "name": "Seitenverhältnis", "about": "Die Form des Fotos. Was außerhalb des Rahmens liegt, kommt nicht in die Datei." },
       "mask": { "name": "Außerhalb des Rahmens", "about": "Wie der Teil angezeigt wird, der nicht ins Foto kommt." },
@@ -445,6 +452,8 @@
       "open": "Öffnen",
       "reset": "Zurücksetzen"
     },
+    "weather": { "asis": "Wie im Spiel", "clear": "Klar", "overcast": "Bedeckt", "rain": "Regen", "storm": "Sturm", "snow": "Schnee", "fog": "Nebel" },
+    "world": { "online": "Zeit und Wetter lassen sich nur im Einzelspieler ändern, wo die Welt pausiert.", "version": "Zeit und Wetter lassen sich in dieser Spielversion nicht ändern." },
     "preset": {
       "none": "Keiner",
       "goldenHour": "Goldene Stunde",

@@ -369,7 +369,7 @@
     "title": "Photo mode",
     "online": "Online · the world keeps going",
     "onlineShort": "Online",
-    "tab": { "camera": "Camera", "lens": "Lens", "look": "Look", "frame": "Frame", "capture": "Capture" },
+    "tab": { "camera": "Camera", "lens": "Lens", "look": "Look", "world": "World", "frame": "Frame", "capture": "Capture" },
     "section": {
       "camera": "Camera",
       "subject": "In the shot",
@@ -380,6 +380,8 @@
       "light": "Light and colour",
       "texture": "Texture",
       "effects": "Screen effects",
+      "time": "Time",
+      "weather": "Weather",
       "guides": "Guides",
       "image": "Image",
       "save": "Saving"
@@ -412,6 +414,11 @@
       "grainSize": { "name": "Grain size", "about": "How fine or coarse the grain is." },
       "screenEffects": { "name": "Blood, frost and rain", "about": "Whether blood, frost and raindrops on the screen show in the shot." },
       "resetLook": { "name": "Reset the look", "about": "Puts the filter, colour and lens back as the game shows them." },
+      "time": { "name": "Time of day", "about": "Moves the sun and moon for the photo only; your game's clock doesn't change. Not in caves or other places where the game sets the time. Solar power and other timed switches stay as they are." },
+      "weather": { "name": "Weather", "about": "Changes the sky, rain and snow for the photo only; your game's weather doesn't change. No rain or snow where the game keeps it out, as in caves." },
+      "clouds": { "name": "Cloud cover", "about": "How much of the sky is covered by cloud." },
+      "fog": { "name": "Fog", "about": "Fills the air with mist and fog." },
+      "resetWorld": { "name": "Reset the world", "about": "Puts the time and weather back as they are in your game." },
       "guide": { "name": "Guide", "about": "Lines to help you compose. They are not in the photo." },
       "aspect": { "name": "Aspect ratio", "about": "The shape of the photo. Outside the frame is left out of the file." },
       "mask": { "name": "Outside the frame", "about": "How the part left out of the photo is shown." },
@@ -445,6 +452,8 @@
       "open": "Open",
       "reset": "Reset"
     },
+    "weather": { "asis": "As it is", "clear": "Clear", "overcast": "Overcast", "rain": "Rain", "storm": "Storm", "snow": "Snow", "fog": "Fog" },
+    "world": { "online": "Time and weather can only be changed in single player, where the world is paused.", "version": "Time and weather cannot be changed on this version of the game." },
     "preset": {
       "none": "None",
       "goldenHour": "Golden hour",

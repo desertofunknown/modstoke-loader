@@ -9,8 +9,8 @@ namespace Modstoke.Loader
 {
     /// <summary>
     /// Photo mode's panel: the settings screen docked at the side over the live world, its tabs for the camera,
-    /// lens, look, frame and capture, and Take photo at its foot. The interface can be hidden for a clear view,
-    /// leaving only the frame's mask; Back first brings it back, then leaves.
+    /// lens, look, world, frame and capture, and Take photo at its foot. The interface can be hidden for a clear
+    /// view, leaving only the frame's mask; Back first brings it back, then leaves.
     /// </summary>
     internal sealed class PhotoScreen : SettingsScreen
     {
@@ -64,6 +64,10 @@ namespace Modstoke.Loader
         protected override void Primary() => Shoot();
         protected override void RowChanged(OptionRow row) => _session.RowChanged(row.Id);
         protected override void Save() => _session.Settings.SaveCapture();
+        // The World tab is empty online and on game builds whose clocks cannot be held; it says which.
+        protected override string EmptyText => PhotoCatalog.TabIds[TabIndex] == "world" && _session.World.Unavailable is { } reason
+            ? Text[reason]
+            : base.EmptyText;
 
         // The world itself is the backdrop; the game's pause blur fades out instead.
         internal override bool Blurs => false;

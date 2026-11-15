@@ -10,7 +10,7 @@ namespace Modstoke.Loader
     /// <summary>
     /// What the photo mode panel is set to. The look and framing last until the player leaves the world, so a
     /// second visit starts where the first ended; the capture choices are kept in the Loader settings. The camera
-    /// itself always starts at the player.
+    /// itself always starts at the player, and the time and weather from the game's own, which may have moved on.
     /// </summary>
     internal sealed class PhotoSettings
     {
@@ -24,6 +24,7 @@ namespace Modstoke.Loader
 
         internal static readonly string[] Guides = { "none", "thirds", "golden", "centre", "diagonal" };
         internal static readonly string[] Aspects = { "screen", "1:1", "4:5", "3:2", "16:9", "2.39:1", "9:16" };
+        internal static readonly string[] Weathers = { "asis", "clear", "overcast", "rain", "storm", "snow", "fog" };
 
         // Camera. The focal length is NaN until a session sets it from the view it opened on.
         internal float Focal = float.NaN;
@@ -46,6 +47,10 @@ namespace Modstoke.Loader
         internal float Grain = float.NaN, GrainResponse = float.NaN;
         internal int GrainType = -1;
         internal bool ScreenEffects;
+
+        // World, single player only. NaN and "asis" leave the game's own.
+        internal float Hour = float.NaN, Clouds = float.NaN, Fog = float.NaN;
+        internal string Weather = "asis";
 
         // Frame.
         internal string Guide = "none", Aspect = "screen";
@@ -103,6 +108,20 @@ namespace Modstoke.Loader
             ScreenEffects = false;
         }
 
+        /// <summary>Takes up a weather; its own clouds and fog show until those rows are moved.</summary>
+        internal void ChooseWeather(string weather)
+        {
+            Weather = weather;
+            Clouds = Fog = float.NaN;
+        }
+
+        /// <summary>The time and weather back as they are in the game.</summary>
+        internal void ResetWorld()
+        {
+            Hour = float.NaN;
+            ChooseWeather("asis");
+        }
+
         /// <summary>A snapshot of every setting, for a photo's own record of how it was made.</summary>
         internal Dictionary<string, object> Describe() => new()
         {
@@ -112,7 +131,8 @@ namespace Modstoke.Loader
             ["vignette"] = Vignette, ["chromatic"] = Chromatic, ["distortion"] = Distortion, ["bloom"] = Bloom, ["panini"] = Panini,
             ["filter"] = Preset, ["filterStrength"] = Strength, ["exposure"] = Exposure, ["contrast"] = Contrast,
             ["saturation"] = Saturation, ["temperature"] = Temperature, ["tint"] = Tint, ["grain"] = Grain, ["grainType"] = GrainType,
-            ["screenEffects"] = ScreenEffects, ["aspect"] = Aspect, ["resolution"] = Resolution, ["fine"] = Fine
+            ["screenEffects"] = ScreenEffects, ["timeOfDay"] = Hour, ["weather"] = Weather, ["cloudCover"] = Clouds, ["fog"] = Fog,
+            ["aspect"] = Aspect, ["resolution"] = Resolution, ["fine"] = Fine
         };
 
         internal void SaveCapture()

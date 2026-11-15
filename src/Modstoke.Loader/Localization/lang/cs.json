@@ -369,7 +369,7 @@
     "title": "Fotorežim",
     "online": "Online · svět jde dál",
     "onlineShort": "Online",
-    "tab": { "camera": "Kamera", "lens": "Objektiv", "look": "Vzhled", "frame": "Záběr", "capture": "Snímek" },
+    "tab": { "camera": "Kamera", "lens": "Objektiv", "look": "Vzhled", "world": "Svět", "frame": "Záběr", "capture": "Snímek" },
     "section": {
       "camera": "Kamera",
       "subject": "V záběru",
@@ -380,6 +380,8 @@
       "light": "Světlo a barva",
       "texture": "Struktura",
       "effects": "Efekty na obrazovce",
+      "time": "Čas",
+      "weather": "Počasí",
       "guides": "Vodítka",
       "image": "Obraz",
       "save": "Ukládání"
@@ -412,6 +414,11 @@
       "grainSize": { "name": "Velikost zrna", "about": "Jak jemné nebo hrubé zrno je." },
       "screenEffects": { "name": "Krev, námraza a déšť", "about": "Zda jsou krev, námraza a kapky deště na obrazovce vidět na fotce." },
       "resetLook": { "name": "Obnovit vzhled", "about": "Vrátí filtr, barvu a objektiv tak, jak je ukazuje hra." },
+      "time": { "name": "Denní doba", "about": "Posune slunce a měsíc jen pro snímek; hodiny ve tvé hře se nezmění. Ne v jeskyních ani tam, kde čas určuje sama hra. Solární energie a podobně zůstanou, jak jsou." },
+      "weather": { "name": "Počasí", "about": "Změní oblohu, déšť a sníh jen pro snímek; počasí ve tvé hře se nezmění. Bez deště a sněhu tam, kam je hra nepouští, třeba v jeskyních." },
+      "clouds": { "name": "Oblačnost", "about": "Jak velkou část oblohy kryjí mraky." },
+      "fog": { "name": "Mlha", "about": "Naplní vzduch oparem a mlhou." },
+      "resetWorld": { "name": "Obnovit svět", "about": "Vrátí čas a počasí tak, jak jsou ve tvé hře." },
       "guide": { "name": "Vodítko", "about": "Čáry, které pomáhají s kompozicí. Na fotce nejsou." },
       "aspect": { "name": "Poměr stran", "about": "Tvar fotky. Co je mimo rámeček, do souboru nepatří." },
       "mask": { "name": "Mimo rámeček", "about": "Jak se zobrazuje část, která na fotku nepatří." },
@@ -445,6 +452,8 @@
       "open": "Otevřít",
       "reset": "Obnovit"
     },
+    "weather": { "asis": "Beze změny", "clear": "Jasno", "overcast": "Zataženo", "rain": "Déšť", "storm": "Bouře", "snow": "Sníh", "fog": "Mlha" },
+    "world": { "online": "Čas a počasí lze měnit jen ve hře jednoho hráče, kde je svět pozastavený.", "version": "V této verzi hry nelze čas a počasí měnit." },
     "preset": {
       "none": "Žádný",
       "goldenHour": "Zlatá hodinka",

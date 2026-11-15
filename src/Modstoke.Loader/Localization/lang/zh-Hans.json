@@ -369,7 +369,7 @@
     "title": "拍照模式",
     "online": "联机 · 世界仍在运转",
     "onlineShort": "联机",
-    "tab": { "camera": "相机", "lens": "镜头", "look": "风格", "frame": "构图", "capture": "拍摄" },
+    "tab": { "camera": "相机", "lens": "镜头", "look": "风格", "world": "世界", "frame": "构图", "capture": "拍摄" },
     "section": {
       "camera": "相机",
       "subject": "画面中",
@@ -380,6 +380,8 @@
       "light": "光线与色彩",
       "texture": "质感",
       "effects": "屏幕效果",
+      "time": "时间",
+      "weather": "天气",
       "guides": "参考线",
       "image": "图像",
       "save": "保存"
@@ -412,6 +414,11 @@
       "grainSize": { "name": "颗粒大小", "about": "颗粒的粗细程度。" },
       "screenEffects": { "name": "血迹、冰霜和雨滴", "about": "屏幕上的血迹、冰霜和雨滴是否出现在照片中。" },
       "resetLook": { "name": "重置风格", "about": "将滤镜、色彩和镜头恢复为游戏原本的样子。" },
+      "time": { "name": "时刻", "about": "仅为照片移动太阳和月亮，游戏中的时钟不会改变。在洞穴等由游戏设定时间的地方不可用。太阳能供电等保持原样。" },
+      "weather": { "name": "天气", "about": "仅为照片改变天空、雨和雪，游戏中的天气不会改变。在洞穴等游戏挡住雨雪的地方无法添加雨雪。" },
+      "clouds": { "name": "云量", "about": "天空被云覆盖的程度。" },
+      "fog": { "name": "雾", "about": "让空气中充满薄雾和浓雾。" },
+      "resetWorld": { "name": "重置世界", "about": "将时间和天气恢复为游戏中的样子。" },
       "guide": { "name": "参考线", "about": "帮助构图的线条。不会出现在照片中。" },
       "aspect": { "name": "画面比例", "about": "照片的形状。画框以外的部分不会保存到文件中。" },
       "mask": { "name": "画框以外", "about": "照片外的部分如何显示。" },
@@ -445,6 +452,8 @@
       "open": "打开",
       "reset": "重置"
     },
+    "weather": { "asis": "保持原样", "clear": "晴朗", "overcast": "阴天", "rain": "雨", "storm": "暴风雨", "snow": "雪", "fog": "雾" },
+    "world": { "online": "只能在单人游戏中更改时间和天气，因为那时世界处于暂停状态。", "version": "此游戏版本无法更改时间和天气。" },
     "preset": {
       "none": "无",
       "goldenHour": "黄金时刻",

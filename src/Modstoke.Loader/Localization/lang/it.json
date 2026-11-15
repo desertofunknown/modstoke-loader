@@ -369,7 +369,7 @@
     "title": "Modalità foto",
     "online": "Online · il mondo va avanti",
     "onlineShort": "Online",
-    "tab": { "camera": "Fotocamera", "lens": "Obiettivo", "look": "Stile", "frame": "Inquadratura", "capture": "Scatto" },
+    "tab": { "camera": "Fotocamera", "lens": "Obiettivo", "look": "Stile", "world": "Mondo", "frame": "Inquadratura", "capture": "Scatto" },
     "section": {
       "camera": "Fotocamera",
       "subject": "Nell’inquadratura",
@@ -380,6 +380,8 @@
       "light": "Luce e colore",
       "texture": "Grana",
       "effects": "Effetti a schermo",
+      "time": "Ora",
+      "weather": "Meteo",
       "guides": "Guide",
       "image": "Immagine",
       "save": "Salvataggio"
@@ -412,6 +414,11 @@
       "grainSize": { "name": "Dimensione della grana", "about": "Quanto è fine o grossa la grana." },
       "screenEffects": { "name": "Sangue, brina e pioggia", "about": "Se sangue, brina e gocce di pioggia sullo schermo compaiono nella foto." },
       "resetLook": { "name": "Ripristina lo stile", "about": "Riporta filtro, colore e obiettivo come li mostra il gioco." },
+      "time": { "name": "Ora del giorno", "about": "Sposta il sole e la luna solo per la foto; l’orologio della tua partita non cambia. Non nelle grotte o dove il gioco fissa l’ora. L’energia solare e simili restano come sono." },
+      "weather": { "name": "Meteo", "about": "Cambia cielo, pioggia e neve solo per la foto; il meteo della tua partita non cambia. Niente pioggia o neve dove il gioco le tiene fuori, come nelle grotte." },
+      "clouds": { "name": "Copertura nuvolosa", "about": "Quanta parte del cielo coprono le nuvole." },
+      "fog": { "name": "Nebbia", "about": "Riempie l’aria di foschia e nebbia." },
+      "resetWorld": { "name": "Ripristina il mondo", "about": "Riporta ora e meteo come sono nella tua partita." },
       "guide": { "name": "Guida", "about": "Linee che aiutano a comporre. Non compaiono nella foto." },
       "aspect": { "name": "Proporzioni", "about": "La forma della foto. Ciò che sta fuori dalla cornice non finisce nel file." },
       "mask": { "name": "Fuori dalla cornice", "about": "Come viene mostrata la parte esclusa dalla foto." },
@@ -445,6 +452,8 @@
       "open": "Apri",
       "reset": "Ripristina"
     },
+    "weather": { "asis": "Com’è", "clear": "Sereno", "overcast": "Nuvoloso", "rain": "Pioggia", "storm": "Temporale", "snow": "Neve", "fog": "Nebbia" },
+    "world": { "online": "Ora e meteo si possono cambiare solo in giocatore singolo, dove il mondo è in pausa.", "version": "Ora e meteo non si possono cambiare in questa versione del gioco." },
     "preset": {
       "none": "Nessuno",
       "goldenHour": "Ora d’oro",

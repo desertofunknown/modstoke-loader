@@ -369,7 +369,7 @@
     "title": "Valokuvaustila",
     "online": "Verkossa · maailma jatkuu",
     "onlineShort": "Verkossa",
-    "tab": { "camera": "Kamera", "lens": "Objektiivi", "look": "Ilme", "frame": "Rajaus", "capture": "Kuvaus" },
+    "tab": { "camera": "Kamera", "lens": "Objektiivi", "look": "Ilme", "world": "Maailma", "frame": "Rajaus", "capture": "Kuvaus" },
     "section": {
       "camera": "Kamera",
       "subject": "Kuvassa",
@@ -380,6 +380,8 @@
       "light": "Valo ja väri",
       "texture": "Pinta",
       "effects": "Näyttötehosteet",
+      "time": "Aika",
+      "weather": "Sää",
       "guides": "Apuviivat",
       "image": "Kuva",
       "save": "Tallennus"
@@ -412,6 +414,11 @@
       "grainSize": { "name": "Rakeen koko", "about": "Kuinka hienoa tai karkeaa rae on." },
       "screenEffects": { "name": "Veri, kuura ja sade", "about": "Näkyvätkö näytön veri, kuura ja sadepisarat kuvassa." },
       "resetLook": { "name": "Palauta ilme", "about": "Palauttaa suotimen, värin ja objektiivin sellaisiksi kuin peli ne näyttää." },
+      "time": { "name": "Vuorokaudenaika", "about": "Siirtää aurinkoa ja kuuta vain kuvaa varten; pelisi kello ei muutu. Ei luolissa eikä siellä, missä peli määrää ajan itse. Aurinkosähkö ja vastaavat pysyvät ennallaan." },
+      "weather": { "name": "Sää", "about": "Muuttaa taivasta, sadetta ja lunta vain kuvaa varten; pelisi sää ei muutu. Ei sadetta tai lunta siellä, minne peli ei niitä päästä, kuten luolissa." },
+      "clouds": { "name": "Pilvisyys", "about": "Kuinka suuren osan taivaasta pilvet peittävät." },
+      "fog": { "name": "Sumu", "about": "Täyttää ilman usvalla ja sumulla." },
+      "resetWorld": { "name": "Palauta maailma", "about": "Palauttaa ajan ja sään sellaisiksi kuin ne ovat pelissäsi." },
       "guide": { "name": "Apuviiva", "about": "Sommittelua helpottavia viivoja. Ne eivät näy kuvassa." },
       "aspect": { "name": "Kuvasuhde", "about": "Kuvan muoto. Kehyksen ulkopuoli jää pois tiedostosta." },
       "mask": { "name": "Kehyksen ulkopuoli", "about": "Miten kuvasta pois jäävä osa näytetään." },
@@ -445,6 +452,8 @@
       "open": "Avaa",
       "reset": "Palauta"
     },
+    "weather": { "asis": "Ennallaan", "clear": "Selkeä", "overcast": "Pilvinen", "rain": "Sade", "storm": "Myrsky", "snow": "Lumisade", "fog": "Sumu" },
+    "world": { "online": "Aikaa ja säätä voi muuttaa vain yksinpelissä, jossa maailma on pysäytetty.", "version": "Aikaa ja säätä ei voi muuttaa tässä peliversiossa." },
     "preset": {
       "none": "Ei mitään",
       "goldenHour": "Kultainen tunti",

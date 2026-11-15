@@ -369,7 +369,7 @@
     "title": "Tryb fotograficzny",
     "online": "Online · świat toczy się dalej",
     "onlineShort": "Online",
-    "tab": { "camera": "Kamera", "lens": "Obiektyw", "look": "Wygląd", "frame": "Kadr", "capture": "Zdjęcie" },
+    "tab": { "camera": "Kamera", "lens": "Obiektyw", "look": "Wygląd", "world": "Świat", "frame": "Kadr", "capture": "Zdjęcie" },
     "section": {
       "camera": "Kamera",
       "subject": "W kadrze",
@@ -380,6 +380,8 @@
       "light": "Światło i kolor",
       "texture": "Faktura",
       "effects": "Efekty ekranowe",
+      "time": "Czas",
+      "weather": "Pogoda",
       "guides": "Linie pomocnicze",
       "image": "Obraz",
       "save": "Zapis"
@@ -412,6 +414,11 @@
       "grainSize": { "name": "Wielkość ziarna", "about": "Jak drobne lub grube jest ziarno." },
       "screenEffects": { "name": "Krew, szron i deszcz", "about": "Czy krew, szron i krople deszczu na ekranie są widoczne na zdjęciu." },
       "resetLook": { "name": "Przywróć wygląd", "about": "Przywraca filtr, kolor i obiektyw do tego, jak pokazuje je gra." },
+      "time": { "name": "Pora dnia", "about": "Przesuwa słońce i księżyc tylko na potrzeby zdjęcia; zegar w twojej grze się nie zmienia. Nie w jaskiniach ani tam, gdzie gra sama ustala czas. Energia słoneczna i podobne pozostają bez zmian." },
+      "weather": { "name": "Pogoda", "about": "Zmienia niebo, deszcz i śnieg tylko na potrzeby zdjęcia; pogoda w twojej grze się nie zmienia. Bez deszczu i śniegu tam, gdzie gra ich nie wpuszcza, np. w jaskiniach." },
+      "clouds": { "name": "Zachmurzenie", "about": "Jaką część nieba zakrywają chmury." },
+      "fog": { "name": "Mgła", "about": "Wypełnia powietrze mgiełką i mgłą." },
+      "resetWorld": { "name": "Przywróć świat", "about": "Przywraca czas i pogodę do tego, jakie są w twojej grze." },
       "guide": { "name": "Linie pomocnicze", "about": "Linie ułatwiające kompozycję. Nie ma ich na zdjęciu." },
       "aspect": { "name": "Proporcje", "about": "Kształt zdjęcia. To, co poza kadrem, nie trafia do pliku." },
       "mask": { "name": "Poza kadrem", "about": "Jak pokazywana jest część pominięta na zdjęciu." },
@@ -445,6 +452,8 @@
       "open": "Otwórz",
       "reset": "Przywróć"
     },
+    "weather": { "asis": "Bez zmian", "clear": "Bezchmurnie", "overcast": "Pochmurno", "rain": "Deszcz", "storm": "Burza", "snow": "Śnieg", "fog": "Mgła" },
+    "world": { "online": "Czas i pogodę można zmieniać tylko w grze jednoosobowej, gdzie świat jest wstrzymany.", "version": "W tej wersji gry nie można zmieniać czasu ani pogody." },
     "preset": {
       "none": "Brak",
       "goldenHour": "Złota godzina",
