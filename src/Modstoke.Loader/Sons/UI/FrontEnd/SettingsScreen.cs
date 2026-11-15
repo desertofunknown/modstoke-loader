@@ -68,6 +68,8 @@ namespace Modstoke.Loader
             internal Image[] PipMarks;
             internal Focusable Focus;
             internal float Height;
+            /// <summary>The screen built this row's control itself and paints it itself.</summary>
+            internal bool Custom;
             internal readonly Ease Slide = new(22f);
         }
 
@@ -171,6 +173,43 @@ namespace Modstoke.Loader
         /// <summary>Whether a slider is being dragged with the mouse.</summary>
         protected bool Dragging => _drag != null;
 
+        /// <summary>Builds a row's control itself, for a value the settings rows do not draw; true when it did.</summary>
+        protected virtual bool BuildControl(OptionRow row, RectTransform control) => false;
+
+        /// <summary>
+        /// Paints a control built by <see cref="BuildControl"/>; <paramref name="plate"/> while its row holds focus,
+        /// dimmed when not <paramref name="available"/>.
+        /// </summary>
+        protected virtual void PaintControl(OptionRow row, bool plate, bool available) { }
+
+        /// <summary>A click, Enter or confirm on a row with a control of its own; true when the row took it.</summary>
+        protected virtual bool ActivateControl(OptionRow row) => false;
+
+        /// <summary>Left or right on a row with a control of its own; true when the row took it.</summary>
+        protected virtual bool AdjustControl(OptionRow row, int direction) => false;
+
+        /// <summary>The height of a strip over the list, such as column names; none by default.</summary>
+        protected virtual float ListHeaderHeight => 0;
+
+        protected virtual void BuildListHeader(RectTransform header) { }
+
+        /// <summary>The focused row; null while focus is on a tab or the main action.</summary>
+        protected OptionRow FocusedRow => _rows.FirstOrDefault(row => ReferenceEquals(row.Focus, Focused))?.Row;
+
+        /// <summary>The row an item belongs to.</summary>
+        protected bool TryRow(Focusable item, out OptionRow row)
+        {
+            row = item == null ? null : _rows.FirstOrDefault(candidate => ReferenceEquals(candidate.Focus, item))?.Row;
+            return row != null;
+        }
+
+        /// <summary>Jolts a row's name, as when its value changed by other means than its own control.</summary>
+        protected void PulseRow(OptionRow row)
+        {
+            var view = _rows.FirstOrDefault(candidate => ReferenceEquals(candidate.Row, row));
+            view?.Focus.Flash?.Pulse(ReferenceEquals(view.Focus, Focused));
+        }
+
         /// <summary>Shows the main action's label and the line over it again, as when what it would do changed.</summary>
         protected void RefreshPrimary()
         {
@@ -233,15 +272,17 @@ namespace Modstoke.Loader
         private void BuildList(RectTransform list)
         {
             MenuKit.Hairline(list, "Top", 0);
-            _viewport = MenuKit.Box(list, "Viewport").Place(0, 0, 1, 1, 0, U(8), 0, U(10));
+            var header = ListHeaderHeight;
+            _viewport = MenuKit.Box(list, "Viewport").Place(0, 0, 1, 1, 0, U(8), 0, U(10 + header));
             _viewport.gameObject.AddComponent<RectMask2D>();
             _content = MenuKit.Box(_viewport, "Rows");
             _content.anchorMin = new Vector2(0, 1);
             _content.anchorMax = new Vector2(1, 1);
             _content.pivot = new Vector2(0.5f, 1);
             _content.offsetMin = _content.offsetMax = Vector2.zero;
+            if (header > 0) BuildListHeader(MenuKit.Box(list, "Header").Strip(U(6), U(header), 0, 0));
             _empty = MenuKit.Text(list, "Empty", "", U(16), false, MenuKit.Muted);
-            _empty.rectTransform.Strip(U(24), U(26), U(16), 0);
+            _empty.rectTransform.Strip(U(24 + header), U(26), U(16), 0);
         }
 
         // A narrow column over the live world: heading and title, the tabs, the list, what the focused setting does,
@@ -426,7 +467,8 @@ namespace Modstoke.Loader
             view.Control = wide
                 ? MenuKit.Box(view.Rect, "Control").Place(0, 0, 1, 1, U(12), 0, U(12), 0)
                 : MenuKit.Box(view.Rect, "Control").Place(1, 0, 1, 1, -U(_layout.ControlWidth + 12), 0, U(12), 0);
-            if (row is TextRow) BuildField(view, wide);
+            if (BuildControl(row, view.Control)) view.Custom = true;
+            else if (row is TextRow) BuildField(view, wide);
             else if (row.Fraction.HasValue) BuildSlider(view);
             else if (row.Open != null) BuildOpen(view);
             else if (row.ReadOnly) BuildInfo(view);
@@ -720,6 +762,7 @@ namespace Modstoke.Loader
 
         private void Activate(RowView view)
         {
+            if (ActivateControl(view.Row)) return;
             var row = view.Row;
             if (row is TextRow text)
             {
@@ -757,6 +800,7 @@ namespace Modstoke.Loader
 
         private void Adjust(RowView view, int direction)
         {
+            if (AdjustControl(view.Row, direction)) return;
             if (view.Row.Open != null || view.Row is TextRow) return;
             Change(view, () => view.Row.Step(direction, false));
         }
@@ -998,16 +1042,6 @@ namespace Modstoke.Loader
             if (view.Label == null) return;
             var row = view.Row;
             var available = row.Available;
-            var editing = ReferenceEquals(view, _editing);
-            string value;
-            try
-            {
-                value = editing ? _draft : row.Value;
-            }
-            catch (Exception)
-            {
-                value = "—";
-            }
             if (view.Picture != null)
             {
                 var picture = row.Picture;
@@ -1022,6 +1056,23 @@ namespace Modstoke.Loader
             {
                 view.Detail.text = row.Detail ?? "";
                 view.Detail.color = !available ? MenuKit.Faint : plate ? MenuKit.OnPlateMuted : MenuKit.Muted;
+            }
+            if (view.Custom)
+            {
+                view.Changed.enabled = !SafeDefault(row);
+                view.Changed.color = plate ? MenuKit.OnPlateMuted : MenuKit.Muted;
+                PaintControl(row, plate, available);
+                return;
+            }
+            var editing = ReferenceEquals(view, _editing);
+            string value;
+            try
+            {
+                value = editing ? _draft : row.Value;
+            }
+            catch (Exception)
+            {
+                value = "—";
             }
             view.Value.text = row.Open != null ? value.ToUpper(Languages.CultureOf(Languages.Current)) : value;
             view.Value.color = !available ? MenuKit.Faint : plate ? MenuKit.OnPlate : row.Tint ?? (row.Open == null ? MenuKit.Ink : MenuKit.Soft);

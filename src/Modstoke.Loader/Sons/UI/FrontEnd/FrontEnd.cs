@@ -282,6 +282,8 @@ namespace Modstoke.Loader
 
         internal static void Tick()
         {
+            // A capture nobody steps any more is ended, and the game's input comes back a moment after one.
+            BindingListener.Watch();
             if (GameBuild.IsDedicatedServer || _failed) return;
             try
             {
@@ -584,6 +586,7 @@ namespace Modstoke.Loader
         {
             for (var i = Stack.Count - 1; i >= 0; i--) Remove(i);
             FrontInput.StickNavigates = FrontInput.SpaceConfirms = true;
+            FrontInput.Listening = false;
             if (_prompts != null && _prompts) Object.Destroy(_prompts.gameObject);
             _prompts = null;
             PromptViews.Clear();

@@ -953,6 +953,10 @@
     <Compile Include="Sons/UI/FrontEnd/OptionsCatalog.cs" />
     <Compile Include="Sons/UI/FrontEnd/SettingsScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/OptionsScreen.cs" />
+    <Compile Include="Sons/UI/FrontEnd/GameBindings.cs" />
+    <Compile Include="Sons/UI/FrontEnd/BindingListener.cs" />
+    <Compile Include="Sons/UI/FrontEnd/BindingsCatalog.cs" />
+    <Compile Include="Sons/UI/FrontEnd/BindingsScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/CustomGameCatalog.cs" />
     <Compile Include="Sons/UI/FrontEnd/CustomGameScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/HostSetupScreen.cs" />

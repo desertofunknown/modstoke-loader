@@ -455,7 +455,7 @@ namespace Modstoke.Loader
             : Mathf.Lerp(_min, _max, Mathf.Clamp01(fraction));
     }
 
-    /// <summary>A row that opens something, such as the game's own bindings screen, or runs something at once.</summary>
+    /// <summary>A row that opens something, such as the bindings screen, or runs something at once.</summary>
     internal sealed class OptionAction : OptionRow
     {
         private readonly Action _open;
@@ -585,7 +585,7 @@ namespace Modstoke.Loader
                     Toggle("sprintToggle", () => new SprintToggleOptionGui()),
                     Slider("inventorySpeed", () => new InventorySpeedSensitivityOptionGui(), OptionFormat.Decimal)),
                 Section("bindings",
-                    new OptionAction("bindings", OpenGameOptions))
+                    new OptionAction("bindings", BindingsScreen.Open, BindingsScreen.Changed))
             }),
             "audio" => new OptionTab(id, new[]
             {
@@ -629,9 +629,11 @@ namespace Modstoke.Loader
                 return true;
             }, @default, choices);
 
-        // Bindings stay on the game's own controls screen for now: over the title its options scene, in a game the
-        // pause menu's own options page.
-        private static void OpenGameOptions()
+        /// <summary>
+        /// The game's own controls screen, for an install whose bindings the Keys and buttons screen can't read: over the
+        /// title its options scene, in a game the pause menu's own options page.
+        /// </summary>
+        internal static void OpenGameOptions()
         {
             if (!FrontEnd.AtTitle)
             {
@@ -701,8 +703,8 @@ namespace Modstoke.Loader
         internal static string Language(string raw)
             => raw != null && Code.IsMatch(raw.Trim()) ? Languages.Describe(raw.Trim()).NativeName : Describe(raw);
 
-        // "HardSurvival", "hard_survival" and "HARD SURVIVAL" all read "Hard survival".
-        private static string Words(string text)
+        /// <summary>An identifier as words: "HardSurvival", "hard_survival" and "HARD SURVIVAL" all read "Hard survival".</summary>
+        internal static string Words(string text)
         {
             var words = new StringBuilder();
             var afterLower = false;

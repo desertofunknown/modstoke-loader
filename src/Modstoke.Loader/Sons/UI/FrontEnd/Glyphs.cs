@@ -24,7 +24,8 @@ namespace Modstoke.Loader
             ["LT"] = "XboxLeftTriggerIcon", ["RT"] = "XboxRightTriggerIcon",
             ["LS"] = "XboxLeftStickIcon", ["RS"] = "XboxRightStickIcon",
             ["VIEW"] = "XboxBackIcon", ["MENU"] = "XboxStartIcon",
-            ["DUP"] = "XboxDpadUpIcon", ["DDOWN"] = "XboxDpadDownIcon", ["DLEFT"] = "XboxDpadLeftIcon", ["DRIGHT"] = "XboxDpadRightIcon"
+            ["DUP"] = "XboxDpadUpIcon", ["DDOWN"] = "XboxDpadDownIcon", ["DLEFT"] = "XboxDpadLeftIcon", ["DRIGHT"] = "XboxDpadRightIcon",
+            ["LMB"] = "MouseLeftClickIcon", ["RMB"] = "MouseRightClickIcon"
         };
         private static readonly Dictionary<string, string> PlayStation = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -32,7 +33,8 @@ namespace Modstoke.Loader
             ["LB"] = "PS4L1Icon", ["RB"] = "PS4R1Icon", ["LT"] = "PS4L2Icon", ["RT"] = "PS4R2Icon",
             ["LS"] = "XboxLeftStickIcon", ["RS"] = "XboxRightStickIcon",
             ["VIEW"] = "PS4TouchPadIcon", ["MENU"] = "PS4OptionsIcon",
-            ["DUP"] = "PS4DPadUpIcon", ["DDOWN"] = "PS4DPadDownIcon", ["DLEFT"] = "PS4DPadLeftIcon", ["DRIGHT"] = "PS4DPadRightIcon"
+            ["DUP"] = "PS4DPadUpIcon", ["DDOWN"] = "PS4DPadDownIcon", ["DLEFT"] = "PS4DPadLeftIcon", ["DRIGHT"] = "PS4DPadRightIcon",
+            ["LMB"] = "MouseLeftClickIcon", ["RMB"] = "MouseRightClickIcon"
         };
         private static readonly Dictionary<string, Texture2D> Found = new(StringComparer.Ordinal);
         private static float _nextScan;
@@ -79,7 +81,8 @@ namespace Modstoke.Loader
                 {
                     if (texture == null) continue;
                     var name = texture.name;
-                    if (name.Length > 4 && (name.StartsWith("Xbox", StringComparison.Ordinal) || name.StartsWith("PS4", StringComparison.Ordinal)))
+                    if (name.Length > 4 && (name.StartsWith("Xbox", StringComparison.Ordinal) || name.StartsWith("PS4", StringComparison.Ordinal)
+                        || name.StartsWith("Mouse", StringComparison.Ordinal)))
                         Found[name] = texture;
                 }
             }
@@ -144,8 +147,14 @@ namespace Modstoke.Loader
         internal TextMeshProUGUI Label { get; }
         internal Vector2 Size => Rect.sizeDelta;
 
-        /// <summary>Shows <paramref name="key"/>, as an icon when <paramref name="pad"/> and the game has one.</summary>
-        internal KeyTag Set(string key, bool pad)
+        /// <summary>Whether the game's icon is showing rather than a keycap.</summary>
+        internal bool Icon => _icon.enabled;
+
+        /// <summary>
+        /// Shows <paramref name="key"/>, as an icon when <paramref name="pad"/> and the game has one; otherwise a keycap
+        /// reading <paramref name="label"/>, or the key's own name.
+        /// </summary>
+        internal KeyTag Set(string key, bool pad, string label = null)
         {
             key ??= "";
             Rect.gameObject.SetActive(key.Length > 0);
@@ -163,9 +172,17 @@ namespace Modstoke.Loader
             }
             _icon.enabled = false;
             _cap.enabled = true;
-            Label.text = key;
-            Rect.sizeDelta = new Vector2(MenuKit.TagWidth(Label, key, _height), _height);
+            Label.text = label ?? key;
+            Rect.sizeDelta = new Vector2(MenuKit.TagWidth(Label, Label.text, _height), _height);
             return this;
+        }
+
+        /// <summary>Colors the keycap and its text, as for a cap on the focus plate, and the icon, as for a dimmed one.</summary>
+        internal void Tint(Color cap, Color label, Color icon)
+        {
+            _cap.color = cap;
+            Label.color = label;
+            _icon.color = icon;
         }
     }
 }

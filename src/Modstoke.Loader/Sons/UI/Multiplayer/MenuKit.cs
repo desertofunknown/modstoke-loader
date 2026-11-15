@@ -39,6 +39,9 @@ namespace Modstoke.Loader
         internal static readonly Color Field = Faded(0.07f);
         internal static readonly Color Disabled = Faded(0.14f);
         internal static readonly Color Scrim = Hex(0x050606, 0.76f);
+        // The band a question sits on. The screen layer blends in linear light, so at 0.92 a third of the screen
+        // underneath still showed through, enough for its keycaps to run into the choices; this leaves a trace.
+        internal static readonly Color Band = Hex(0x050606, 0.985f);
         // What holds focus sits on a bone plate edged in the logo's red, with its text dark on it.
         internal static readonly Color Plate = Hex(0xE9E7E1, 0.97f);
         internal static readonly Color Accent = Hex(0xD9262C);

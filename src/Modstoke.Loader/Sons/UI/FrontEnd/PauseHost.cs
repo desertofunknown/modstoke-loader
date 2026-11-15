@@ -136,7 +136,7 @@ namespace Modstoke.Loader
             Menu?.Close();
         }
 
-        /// <summary>The game's own options page, for the key bindings Modstoke has no screen for yet.</summary>
+        /// <summary>The game's own options page, for key bindings Modstoke's screen can't read on this install.</summary>
         internal static void Options()
         {
             HoldEscape(false);

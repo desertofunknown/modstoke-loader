@@ -51,7 +51,7 @@ namespace Modstoke.Loader
         {
             MenuKit.Fill(MenuKit.Box(Root, "Dim").Place(0, 0, 1, 1), null, MenuKit.Hex(0x000000, 0.45f));
             var band = MenuKit.Box(Root, "Band").Place(0, 0.5f, 1, 0.5f, 0, -U(BandHeight / 2), 0, -U(BandHeight / 2));
-            MenuKit.Fill(band, null, MenuKit.Hex(0x050606, 0.92f));
+            MenuKit.Fill(band, null, MenuKit.Band);
             MenuKit.Fill(MenuKit.Box(band, "Top").Place(0, 1, 1, 1, 0, -Mathf.Max(1f, U(1)), 0, 0), null, MenuKit.Rule);
             MenuKit.Fill(MenuKit.Box(band, "Bottom").Place(0, 0, 1, 0, 0, 0, 0, -Mathf.Max(1f, U(1))), null, MenuKit.Rule);
             var column = MenuKit.Box(band, "Column");

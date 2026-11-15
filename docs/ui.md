@@ -237,6 +237,23 @@ fade (`FrontScreen.Hidden`) and give the left stick or Space another job
 (`FrontInput.StickNavigates`, `FrontInput.SpaceConfirms`), as photo mode's
 camera does; `FrontEnd.Clear` turns both back on.
 
+Options > Controls > Keys and buttons is `BindingsScreen`, at the title and in
+the pause menu alike. Each of the game's changeable binding definitions is a
+row with a keyboard-and-mouse cell and a controller cell (the menus' own are
+read only to warn about clashes); one column holds focus down the list. A row
+can build and paint its own control through `SettingsScreen`'s
+`BuildControl`/`PaintControl`/`ActivateControl`/`AdjustControl` hooks, and a
+list can carry a header strip (`ListHeaderHeight`). Capturing a press is
+`BindingListener`: it switches the game's input to its own binding state, holds
+Modstoke and SDK keybinds through an `InputBindings` focus lease and silences
+the menus with `FrontInput.Listening`; `FrontEnd.Tick` ends a capture nobody
+steps any more. The press is left in the devices' state, and when a capture
+ends `FrontInput.AwaitRelease` keeps the menus quiet until it is let go.
+`GameBindings` applies changes through the game's own model (every action path
+of the definition, then its save), refreshes HUD prompts already on screen, and
+warns only about clashes between maps the game turns on together. Where an install's bindings can't be read, the Options row opens the
+game's own controls screen instead and the log says why.
+
 ## Next UI Refactor Slices
 
 1. Done: `UI/Menus/ModMenuDispatcher.cs` owns native/fallback renderer

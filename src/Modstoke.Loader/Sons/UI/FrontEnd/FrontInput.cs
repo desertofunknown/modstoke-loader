@@ -17,7 +17,7 @@ namespace Modstoke.Loader
         private static readonly bool[] PadDown = new bool[8];
         private static Vector2Int _held;
         private static float _repeatAt, _resumeAt;
-        private static bool _padFailed;
+        private static bool _padFailed, _awaitRelease;
         private static Vector2 _lastPointer;
 
         /// <summary>A step in a direction, repeating while held: x is right, y is down.</summary>
@@ -48,6 +48,9 @@ namespace Modstoke.Loader
         /// <summary>Whether Space confirms; off while a screen gives it another job, as photo mode's "up".</summary>
         internal static bool SpaceConfirms { get; set; } = true;
 
+        /// <summary>Whether a screen is waiting for a key or button to bind; every menu input stays quiet meanwhile.</summary>
+        internal static bool Listening { get; set; }
+
         /// <summary>Whether a controller is the device in use, by the game's own flag.</summary>
         internal static bool PadActive
         {
@@ -61,14 +64,18 @@ namespace Modstoke.Loader
         /// <summary>Ignores presses for a moment, so the press that opened a screen does not also act on it.</summary>
         internal static void Pause(float seconds = 0.25f) => _resumeAt = Mathf.Max(_resumeAt, Time.unscaledTime + seconds);
 
+        /// <summary>
+        /// Ignores presses until nothing the menus read is held, so a key or button pressed for something else, as
+        /// one just bound, does not go on to move focus or press anything when it is still down.
+        /// </summary>
+        internal static void AwaitRelease() => _awaitRelease = true;
+
         internal static void Read()
         {
             Move = Vector2Int.zero;
             Confirm = Back = Alt1 = Alt2 = PreviousTab = NextTab = Click = false;
             Section = 0;
             Scroll = 0;
-            var acting = Time.unscaledTime >= _resumeAt;
-            Held = acting && UnityEngine.Input.GetMouseButton(0);
 
             var position = UnityEngine.Input.mousePosition;
             Pointer = new Vector2(position.x, position.y);
@@ -81,13 +88,20 @@ namespace Modstoke.Loader
             bool confirm = false, back = false, alt1 = false, alt2 = false, previous = false, next = false;
             var section = 0;
             ReadPad(ref held, ref confirm, ref back, ref alt1, ref alt2, ref previous, ref next, ref section);
-            // Index 0 and 2 of the pad's tracked buttons are its confirm and X buttons, held or not.
-            Alt1Held = acting && (UnityEngine.Input.GetKey(KeyCode.Delete) || PadDown[2]);
-            ConfirmHeld = acting && (UnityEngine.Input.GetKey(KeyCode.Return) || UnityEngine.Input.GetKey(KeyCode.KeypadEnter)
-                || SpaceConfirms && UnityEngine.Input.GetKey(KeyCode.Space) || PadDown[0]);
-
             // One axis at a time, vertical first, so a diagonal stick does not skip sideways.
             if (held.y != 0) held.x = 0;
+            var mouse = UnityEngine.Input.GetMouseButton(0);
+            // Index 0 and 2 of the pad's tracked buttons are its confirm and X buttons, held or not.
+            var alt1Held = UnityEngine.Input.GetKey(KeyCode.Delete) || PadDown[2];
+            var confirmHeld = UnityEngine.Input.GetKey(KeyCode.Return) || UnityEngine.Input.GetKey(KeyCode.KeypadEnter)
+                || SpaceConfirms && UnityEngine.Input.GetKey(KeyCode.Space) || PadDown[0];
+            if (_awaitRelease && held == Vector2Int.zero && !mouse && !alt1Held && !confirmHeld && Array.IndexOf(PadDown, true) < 0)
+                _awaitRelease = false;
+            var acting = !Listening && !_awaitRelease && Time.unscaledTime >= _resumeAt;
+            Held = acting && mouse;
+            Alt1Held = acting && alt1Held;
+            ConfirmHeld = acting && confirmHeld;
+
             if (held != _held)
             {
                 _held = held;

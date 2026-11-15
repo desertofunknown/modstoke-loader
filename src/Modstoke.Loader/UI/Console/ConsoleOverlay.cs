@@ -25,7 +25,7 @@ namespace Modstoke.Loader
     /// </summary>
     internal static partial class ConsoleOverlay
     {
-        private const string KeybindId = "modstoke.loader.console";
+        internal const string KeybindId = "modstoke.loader.console";
         private const float OpenSeconds = 0.16f, CloseSeconds = 0.12f, RefreshSeconds = 0.2f;
         private static readonly HarmonyLib.Harmony Patches = new("modstoke.loader.console-input");
         private static readonly UnityAction<Scene> SceneUnloaded = new Action<Scene>(OnSceneUnloaded);

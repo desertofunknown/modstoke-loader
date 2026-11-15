@@ -765,7 +765,10 @@ find an implementation. The main entry points include:
 - Modstoke-native versus legacy compatibility source-family data in mod
   inventory snapshots
 - OpenACAI-owned keybind registration and context gating through `InputBindings`,
-  with pressed/held/released polling, live `SetKey`, and `TryUnregisterKeybind`
+  with pressed/held/released polling, live `SetKey`, and `TryUnregisterKeybind`;
+  Options > Controls > Keys and buttons holds input focus while it waits for a
+  key, so keybinds and SDK `ModKeybind`s stay quiet then, and it names them when a
+  game binding would land on the same key
 - file-backed config parsing and saving helpers through `LoaderConfig`
 - structured OpenACAI config providers through `IConfigProvider`
 - renderer-side editing for structured config providers in the native and

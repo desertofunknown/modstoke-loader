@@ -20,6 +20,7 @@ namespace Modstoke.Loader
     internal sealed class ActionsScreen : FrontScreen
     {
         private const float ColumnWidth = 560, ChoiceHeight = 46, ChoiceGap = 4;
+        private const int LineRows = 3;
         private readonly string _title, _line;
         private readonly IReadOnlyList<MenuAction> _actions;
         private TextMeshProUGUI _titleText, _lineText;
@@ -36,27 +37,34 @@ namespace Modstoke.Loader
 
         protected override void Build()
         {
-            var height = 128 + _actions.Count * (ChoiceHeight + ChoiceGap);
             MenuKit.Fill(MenuKit.Box(Root, "Dim").Place(0, 0, 1, 1), null, MenuKit.Hex(0x000000, 0.45f));
-            var band = MenuKit.Box(Root, "Band").Place(0, 0.5f, 1, 0.5f, 0, -U(height / 2), 0, -U(height / 2));
-            MenuKit.Fill(band, null, MenuKit.Hex(0x050606, 0.92f));
+            var band = MenuKit.Box(Root, "Band");
+            MenuKit.Fill(band, null, MenuKit.Band);
             MenuKit.Fill(MenuKit.Box(band, "Top").Place(0, 1, 1, 1, 0, -Mathf.Max(1f, U(1)), 0, 0), null, MenuKit.Rule);
             MenuKit.Fill(MenuKit.Box(band, "Bottom").Place(0, 0, 1, 0, 0, 0, 0, -Mathf.Max(1f, U(1))), null, MenuKit.Rule);
             var column = MenuKit.Box(band, "Column");
             column.anchorMin = column.anchorMax = column.pivot = new Vector2(0.5f, 0.5f);
-            column.sizeDelta = new Vector2(U(ColumnWidth), U(height));
             _titleText = MenuKit.Text(column, "Title", "", U(30), true, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
             _titleText.characterSpacing = 4;
             _titleText.rectTransform.Strip(U(30), U(42), 0, 0);
-            _lineText = MenuKit.Text(column, "Line", "", U(16), false, MenuKit.Muted);
-            _lineText.rectTransform.Strip(U(72), U(24), 0, 0);
+            // A long line wraps, up to three rows that push the choices down, and past that ends in "…".
+            _lineText = MenuKit.Text(column, "Line", _line ?? "", U(16), false, MenuKit.Muted, TextAlignmentOptions.MidlineLeft, true);
+            _lineText.enableWordWrapping = true;
+            var lineHeight = _lineText.GetPreferredValues("Ag", U(ColumnWidth), 0).y;
+            var lines = string.IsNullOrEmpty(_line) || lineHeight <= 0 ? 1
+                : Mathf.Clamp(Mathf.RoundToInt(_lineText.GetPreferredValues(_line, U(ColumnWidth), 0).y / lineHeight), 1, LineRows);
+            var extra = (lines - 1) * lineHeight;
+            _lineText.rectTransform.Strip(U(72), U(24) + extra, 0, 0);
+            var height = U(128 + _actions.Count * (ChoiceHeight + ChoiceGap)) + extra;
+            band.Place(0, 0.5f, 1, 0.5f, 0, -height / 2, 0, -height / 2);
+            column.sizeDelta = new Vector2(U(ColumnWidth), height);
 
             var mark = new Glide(column, false);
             var rows = new List<RectTransform>();
             for (var i = 0; i < _actions.Count; i++)
             {
                 var action = _actions[i];
-                var rect = MenuKit.Box(column, "Choice " + i).Strip(U(112 + i * (ChoiceHeight + ChoiceGap)), U(ChoiceHeight), 0, 0);
+                var rect = MenuKit.Box(column, "Choice " + i).Strip(U(112 + i * (ChoiceHeight + ChoiceGap)) + extra, U(ChoiceHeight), 0, 0);
                 var label = MenuKit.Text(rect, "Label", "", U(18), true, MenuKit.Soft);
                 label.characterSpacing = 12;
                 label.rectTransform.Place(0, 0, 1, 1, U(18), 0, U(12), 0);
