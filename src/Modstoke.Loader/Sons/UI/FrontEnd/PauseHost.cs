@@ -32,6 +32,9 @@ namespace Modstoke.Loader
             }
         }
 
+        /// <summary>The game's pause menu, once it exists.</summary>
+        internal static PauseMenu Current => Menu;
+
         /// <summary>Whether the pause menu is open on its own first page, the one Modstoke's screen replaces.</summary>
         internal static bool Open
         {

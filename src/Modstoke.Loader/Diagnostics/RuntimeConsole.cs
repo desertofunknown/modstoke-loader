@@ -98,7 +98,8 @@ namespace Modstoke.Loader
                 new("desktop", "Open the desktop console window.", true, false),
                 new("boltwidths", "Report the bit width of each networked item-id field (writes UserData/bolt-widths.txt).", true, false),
                 new("crafting", "crafting check: ask the crafting mat which recipe each mod recipe's ingredients would make.", true, false, true),
-                new("language", "Show the language in use; \"language reload\" reads language files again.", true, false, true)
+                new("language", "Show the language in use; \"language reload\" reads language files again.", true, false, true),
+                new("photo", "photo open | close | shoot [screen|4k|...] | status: drive photo mode and report its last photo.", true, false, true)
             };
             commands.AddRange(HostCommands.Catalog());
             Routes.Clear();
@@ -180,6 +181,11 @@ namespace Modstoke.Loader
                 if (text == "language" || text.StartsWith("language ", StringComparison.Ordinal))
                 {
                     Report(submission, "Info", LocalizationStartup.RunCommand(text.Substring("language".Length)));
+                    return;
+                }
+                if (text == "photo")
+                {
+                    Report(submission, "Info", PhotoSession.RunCommand(submission.Arguments));
                     return;
                 }
                 if (text == "steamrules" || text.StartsWith("steamrules ", StringComparison.Ordinal))

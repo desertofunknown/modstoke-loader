@@ -52,6 +52,8 @@ namespace Modstoke.Loader
         private float _appearStart = -1;
 
         internal RectTransform Root { get; private set; }
+        /// <summary>The screen's fade, for a screen that hides itself without closing, as photo mode does.</summary>
+        protected CanvasGroup Group => _group;
         protected Focusable Focused { get; private set; }
         /// <summary>Whether the focus change or activation being handled came from the mouse.</summary>
         protected bool FromPointer { get; private set; }
@@ -102,7 +104,7 @@ namespace Modstoke.Loader
             if (_appearStart < 0 || _group == null || !_group) return;
             var t = Mathf.Clamp01((Time.unscaledTime - _appearStart) / AppearSeconds);
             var eased = Moving.EaseOut(t);
-            _group.alpha = eased;
+            _group.alpha = Hidden ? 0f : eased;
             var offset = -U(Rise) * (1f - eased);
             Root.offsetMin = new Vector2(0, offset);
             Root.offsetMax = new Vector2(0, offset);
@@ -146,6 +148,12 @@ namespace Modstoke.Loader
 
         /// <summary>Whether the game's logo stays in view; it belongs to the title row and fades under the screens past it.</summary>
         internal virtual bool ShowsLogo => false;
+
+        /// <summary>Whether the prompt bar shows under this screen; read every frame.</summary>
+        internal virtual bool ShowsPrompts => true;
+
+        /// <summary>A screen that has put itself out of sight without closing; it stays so through its arrival fade.</summary>
+        protected virtual bool Hidden => false;
 
         /// <summary>The prompts to show for this screen, left group first.</summary>
         internal virtual IReadOnlyList<PromptSpec> Prompts => Array.Empty<PromptSpec>();

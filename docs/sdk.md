@@ -1667,3 +1667,27 @@ palette, 16-bit and interlaced files throw `NotSupportedException`, so keep
 about 90 MB until it is uploaded, so create the texture soon after the task
 finishes and drop the task if the texture is no longer wanted. Upload one large
 texture per frame when several finish together.
+
+## Photo mode
+
+Photo mode is a free camera inside the pause menu (pause > Photo mode, or F10 in the
+world; rebindable as `openacai.photo.toggle`). It moves the game's own main camera
+only while each frame renders, so gameplay, aim, audio and the networked look
+direction never see it, and puts everything back the moment it closes.
+
+- `PhotoMode.Active` is true from the moment photo mode has set itself up until
+  everything is back; `PhotoMode.Changed` fires on the game thread with the new
+  value.
+- `PhotoMode.WorldFrozen` is true while it is open in single player, where the pause
+  holds the world still. Freeze world effects rather than hiding them then (keep the
+  particles, stop advancing them), so they are in the shot; a mod that hides its
+  effects whenever the pause menu is open makes them vanish from every photo. Online
+  the world keeps going and `WorldFrozen` stays false.
+- Renderers and lights parented to the main camera (a held device's mount, overlay
+  quads) are hidden for the photo camera's cull automatically, so nothing floats in
+  front of a free camera.
+- A mod that takes the view with a camera of its own (a vehicle, a cockpit, a
+  cinematic) keeps it: photo mode refuses to open while `Camera.main` is not the
+  player's camera.
+- Render callbacks that move the main camera themselves (the Optics cheek weld)
+  should stand down while `PhotoMode.Active`, or their undo lands on the photo pose.

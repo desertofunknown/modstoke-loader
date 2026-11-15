@@ -964,6 +964,26 @@
     <Compile Include="Sons/UI/FrontEnd/PlayersHost.cs" />
     <Compile Include="Sons/UI/FrontEnd/PlayersScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/ConfirmScreen.cs" />
+    <Compile Include="Sons/Textures/PngWriter.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoWriter.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoLibrary.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoCapture.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoMode.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoUndo.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoLens.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoPresets.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoSettings.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoInput.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoCamera.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoSubject.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoRenderHooks.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoPatches.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoLook.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoUiHider.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoOverlay.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoCatalog.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoScreen.cs" />
+    <Compile Include="Sons/UI/PhotoMode/PhotoSession.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.UiData.cs" />
     <Compile Include="Sons/Inventory/Items.cs" />
     <Compile Include="Sons/Inventory/Items.Pages.cs" />
@@ -1081,6 +1101,10 @@
     <Reference Include="Sons.Physics" HintPath="$(GameInteropRoot)\Sons.Physics.dll" Private="false" />
     <Reference Include="Crest" HintPath="$(GameInteropRoot)\Crest.dll" Private="false" />
     <Reference Include="Sons.Rendering" HintPath="$(GameInteropRoot)\Sons.Rendering.dll" Private="false" />
+    <Reference Include="Sons.VFX" HintPath="$(GameInteropRoot)\Sons.VFX.dll" Private="false" />
+    <Reference Include="AdvancedTerrainGrass" HintPath="$(GameInteropRoot)\AdvancedTerrainGrass.dll" Private="false" />
+    <Reference Include="com.alteregogames.aeg-fsr.Runtime" HintPath="$(GameInteropRoot)\com.alteregogames.aeg-fsr.Runtime.dll" Private="false" />
+    <Reference Include="com.alteregogames.aeg-fsr.Runtime.HDRP" HintPath="$(GameInteropRoot)\com.alteregogames.aeg-fsr.Runtime.HDRP.dll" Private="false" />
     <Reference Include="Sons.UiElements" HintPath="$(GameInteropRoot)\Sons.UiElements.dll" Private="false" />
     <Reference Include="TheForest.Utils" HintPath="$(GameInteropRoot)\TheForest.Utils.dll" Private="false" />
     <Reference Include="Newtonsoft.Json" HintPath="$(GameInteropRoot)\Newtonsoft.Json.dll" Private="false" />

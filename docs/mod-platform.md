@@ -3075,7 +3075,9 @@ The current public surface already has useful building blocks:
   loader UI keybind state under service key `openacai.loader.input`.
 - `LoaderConfig`: file-backed config reading, simple key/value parsing,
   friendly edits, and saving.
-- `UiState`: current UI surface visibility and tooltip state.
+- `UiState`: current UI surface visibility and tooltip state. `AnyVisible`
+  (Loader 0.4.5) says whether any surface is shown without copying the
+  snapshot, so it can be read every frame.
 - `LoaderRuntime`: compatibility shim health for BepInEx, RedLoader, IL2CPP
   hooks, and SonsSdk compatibility.
 - `Timings`: bounded loader/UI timing diagnostics with a typed state

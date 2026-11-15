@@ -42,7 +42,7 @@ namespace Modstoke.Loader
     {
         public const string PluginGuid = "com.openacai.sotf.endnightloader";
         public const string PluginName = "Modstoke Loader Core";
-        public const string Version = "0.4.4";
+        public const string Version = "0.4.5";
         private const string EnableSonsMenuHarmonyEnvVar = "OPENACAI_ENABLE_SONS_MENU_HARMONY";
         private const string DisableSonsMenuHarmonyEnvVar = "OPENACAI_DISABLE_SONS_MENU_HARMONY";
 
@@ -373,6 +373,7 @@ namespace Modstoke.Loader
                 InstallHooks("sons-impact-audio", ImpactAudioPatch.InstallHarmonyPatch);
                 InstallHooks("sons-game-lifecycle", GameLifecycleFixes.InstallHarmonyPatches, GatheringLifecycleFix.InstallHarmonyPatches);
                 InstallHooks("sons-construction-dirty-cache", ConstructionDirtyPatch.InstallHarmonyPatch);
+                InstallHooks("sons-photo-mode", PhotoPatches.InstallHarmonyPatch);
                 PerformanceCapture.Initialize(_harmonySupportState);
                 InstallHooks("sons-loading-capture", LoadingPerformance.InstallCaptureHooks);
                 InstallHooks("sons-server-player-spawns", ServerPlayerSpawns.InstallHarmonyPatches);

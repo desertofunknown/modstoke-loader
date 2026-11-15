@@ -73,6 +73,7 @@ namespace Modstoke.Loader
                 return;
             UnityLifecycle.InvokeLifecycle(nameof(LateUpdate), LegacyLifecycleBridge.PublishLateUpdate);
             UnityLifecycle.InvokeLifecycle("LateUpdate.NativeMods", () => ModRuntime.Dispatch(ModRuntime.Hook.LateUpdate));
+            UnityLifecycle.InvokeLifecycle("LateUpdate.PhotoMode", () => PhotoSession.DevelopQueued(false));
         }
 
         private void OnGUI()
@@ -91,6 +92,7 @@ namespace Modstoke.Loader
             _quitting = true;
             UnityLifecycle.InvokeLifecycle("Quit.ScreenHost", ScreenHost.Shutdown);
             UnityLifecycle.InvokeLifecycle("Quit.PreviewStage", PreviewStage.Shutdown);
+            UnityLifecycle.InvokeLifecycle("Quit.PhotoMode", () => PhotoSession.EndCurrent("the game is quitting"));
             UnityLifecycle.InvokeLifecycle("Quit.ConsoleOverlay", ConsoleOverlay.Shutdown);
             UnityLifecycle.InvokeLifecycle("Quit.Host", Host.Shutdown);
             UnityLifecycle.InvokeLifecycle("Quit.Console", RuntimeConsole.Shutdown);

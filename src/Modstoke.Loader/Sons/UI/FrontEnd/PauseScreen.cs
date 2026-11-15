@@ -21,8 +21,10 @@ namespace Modstoke.Loader
     internal sealed class PauseScreen : FrontScreen
     {
         private const float StripHeight = 143, ColumnWidth = 420, EntryHeight = 52, EntryGap = 6;
-        private const float PanelWidth = 440, PlayerHeight = 40, RefreshSeconds = 1f;
+        private const float PanelWidth = 440, PlayerHeight = 40, RefreshSeconds = 1f, NoticeSeconds = 6f;
         private const int ShownPlayers = 6;
+        private static string _notice;
+        private static float _noticeUntil;
 
         private sealed class PlayerView
         {
@@ -41,11 +43,14 @@ namespace Modstoke.Loader
             internal string Key;
             internal Func<string> Name;
             internal Action Run;
+            internal Func<bool> Enabled;
+            internal Focusable Item;
             internal TextMeshProUGUI Label;
         }
 
         private readonly List<Entry> _entries = new();
         private TextMeshProUGUI _heading, _title, _line;
+        private string _mode = "";
 
         protected override void Build()
         {
@@ -66,6 +71,7 @@ namespace Modstoke.Loader
             MenuKit.Hairline(column, "Top", 0);
             var mark = new Glide(column, false);
             AddEntry(column, mark, "pause.resume", PauseHost.Resume);
+            AddEntry(column, mark, "pause.photo", () => PhotoScreen.Open(false), enabled: () => PhotoGate.CanOpen(out _));
             AddEntry(column, mark, "title.options", () => FrontEnd.Push(new OptionsScreen()));
             if (PauseHost.Multiplayer) AddEntry(column, mark, "pause.players", () => FrontEnd.Push(new PlayersScreen()));
             AddEntry(column, mark, "title.mods", MenuController.Show);
@@ -133,8 +139,20 @@ namespace Modstoke.Loader
             return heading;
         }
 
+        /// <summary>A short message under the title, such as why photo mode closed; it goes after a few seconds.</summary>
+        internal static void Notice(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            _notice = text;
+            _noticeUntil = Time.unscaledTime + NoticeSeconds;
+        }
+
         internal override void Tick()
         {
+            // An entry that cannot be used now, as photo mode during a cutscene, is dimmed and passed over.
+            foreach (var entry in _entries)
+                if (entry.Enabled != null && !ReferenceEquals(entry.Item, Focused)) entry.Label.color = Usable(entry) ? MenuKit.Soft : MenuKit.Faint;
+            PaintLine();
             if (Time.unscaledTime < _nextRefresh) return;
             _nextRefresh = Time.unscaledTime + RefreshSeconds;
             PaintPanel();
@@ -178,18 +196,36 @@ namespace Modstoke.Loader
 
         private readonly List<RectTransform> _rects = new();
 
-        private void AddEntry(RectTransform column, Glide mark, string key, Action run, Func<string> name = null)
+        private void AddEntry(RectTransform column, Glide mark, string key, Action run, Func<string> name = null, Func<bool> enabled = null)
         {
             var rect = MenuKit.Box(column, key).Strip(U(22 + _entries.Count * (EntryHeight + EntryGap)), U(EntryHeight), 0, 0);
-            var entry = new Entry { Key = key, Name = name ?? (() => Text[key]), Run = run };
+            var entry = new Entry { Key = key, Name = name ?? (() => Text[key]), Run = run, Enabled = enabled };
             _rects.Add(rect);
             entry.Label = MenuKit.Text(rect, "Label", "", U(24), true, MenuKit.Soft);
             entry.Label.characterSpacing = 12;
             entry.Label.rectTransform.Place(0, 0, 1, 1, U(20), 0, U(16), 0);
             _entries.Add(entry);
-            var item = Add(rect, () => Run(entry), focused => entry.Label.color = focused ? MenuKit.OnPlate : MenuKit.Soft);
+            var item = entry.Item = Add(rect, () => Run(entry),
+                focused => entry.Label.color = focused ? MenuKit.OnPlate : Usable(entry) ? MenuKit.Soft : MenuKit.Faint, enabled: enabled);
             item.Mark = mark;
             item.Flash = Flashing(entry.Label);
+        }
+
+        private static bool Usable(Entry entry)
+        {
+            try { return entry.Enabled == null || entry.Enabled(); }
+            catch (Exception) { return false; }
+        }
+
+        // The game's mode, or for a few seconds a notice in its place.
+        private void PaintLine()
+        {
+            if (_line == null) return;
+            var notice = _notice != null && Time.unscaledTime < _noticeUntil;
+            if (!notice) _notice = null;
+            var text = notice ? _notice : _mode;
+            if (_line.text != text) _line.text = text;
+            _line.color = notice ? MenuKit.Red : MenuKit.Soft;
         }
 
         internal override void Retext()
@@ -198,7 +234,8 @@ namespace Modstoke.Loader
             // A multiplayer game carries on while the menu is open, so it is not called paused there.
             _heading.text = Text[PauseHost.Multiplayer ? "title.multiplayer" : "title.singlePlayer"].ToUpper(culture);
             _title.text = Text[PauseHost.Multiplayer ? "pause.titleOnline" : "pause.title"].ToUpper(culture);
-            _line.text = ModeLine();
+            _mode = ModeLine();
+            PaintLine();
             foreach (var entry in _entries) entry.Label.text = entry.Name().ToUpper(culture);
             _worldLabel.text = Text["custom.tab.world"].ToUpper(culture);
             if (_playersLabel != null) _playersLabel.text = Text["lobby.players"].ToUpper(culture);

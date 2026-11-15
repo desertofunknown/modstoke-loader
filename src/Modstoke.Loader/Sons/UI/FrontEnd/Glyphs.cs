@@ -23,14 +23,16 @@ namespace Modstoke.Loader
             ["LB"] = "XboxLeftShoulderIcon", ["RB"] = "XboxRightShoulderIcon",
             ["LT"] = "XboxLeftTriggerIcon", ["RT"] = "XboxRightTriggerIcon",
             ["LS"] = "XboxLeftStickIcon", ["RS"] = "XboxRightStickIcon",
-            ["VIEW"] = "XboxBackIcon", ["MENU"] = "XboxStartIcon"
+            ["VIEW"] = "XboxBackIcon", ["MENU"] = "XboxStartIcon",
+            ["DUP"] = "XboxDpadUpIcon", ["DDOWN"] = "XboxDpadDownIcon", ["DLEFT"] = "XboxDpadLeftIcon", ["DRIGHT"] = "XboxDpadRightIcon"
         };
         private static readonly Dictionary<string, string> PlayStation = new(StringComparer.OrdinalIgnoreCase)
         {
             ["A"] = "PS4CrossIcon", ["B"] = "PS4CircleIcon", ["X"] = "PS4SquareIcon", ["Y"] = "PS4TriangleIcon",
             ["LB"] = "PS4L1Icon", ["RB"] = "PS4R1Icon", ["LT"] = "PS4L2Icon", ["RT"] = "PS4R2Icon",
             ["LS"] = "XboxLeftStickIcon", ["RS"] = "XboxRightStickIcon",
-            ["VIEW"] = "PS4TouchPadIcon", ["MENU"] = "PS4OptionsIcon"
+            ["VIEW"] = "PS4TouchPadIcon", ["MENU"] = "PS4OptionsIcon",
+            ["DUP"] = "PS4DPadUpIcon", ["DDOWN"] = "PS4DPadDownIcon", ["DLEFT"] = "PS4DPadLeftIcon", ["DRIGHT"] = "PS4DPadRightIcon"
         };
         private static readonly Dictionary<string, Texture2D> Found = new(StringComparer.Ordinal);
         private static float _nextScan;

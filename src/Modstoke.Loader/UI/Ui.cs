@@ -16,8 +16,12 @@ namespace Modstoke.Loader
         private static readonly Dictionary<string, SurfaceLease> Leases = new(StringComparer.OrdinalIgnoreCase);
 
         private static string _lastTooltip;
+        private static volatile bool _anyVisible;
 
         public static event Action<UiSurfaceSnapshot> SurfaceChanged;
+
+        /// <summary>Whether any surface in <see cref="Snapshot"/> is visible. Cheap enough to read every frame.</summary>
+        public static bool AnyVisible => _anyVisible;
 
         internal static void InitializeDefaults()
         {
@@ -26,6 +30,7 @@ namespace Modstoke.Loader
                 Surfaces.Clear();
                 Leases.Clear();
                 _lastTooltip = null;
+                _anyVisible = false;
                 SetSurfaceNoLock(UiSurfaceSnapshot.Create(
                     UiSurfaceIds.ModsMenu,
                     "Mods Menu",
@@ -177,6 +182,10 @@ namespace Modstoke.Loader
             }
 
             Surfaces[snapshot.Id] = snapshot;
+            var any = false;
+            foreach (var surface in Surfaces.Values)
+                if (surface.Visible) { any = true; break; }
+            _anyVisible = any;
         }
 
         private static void PublishServiceNoLock()

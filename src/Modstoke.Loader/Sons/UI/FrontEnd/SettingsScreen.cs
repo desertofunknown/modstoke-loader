@@ -12,6 +12,35 @@ using UnityEngine.UI;
 namespace Modstoke.Loader
 {
     /// <summary>
+    /// Where a settings screen's parts sit, in design units. The full layout fills the screen with the list and a
+    /// details column beside it; the docked one is a narrow panel at the side over the live world, with what the
+    /// focused setting does under the list.
+    /// </summary>
+    internal sealed class SettingsLayout
+    {
+        internal static readonly SettingsLayout Full = new();
+
+        internal static readonly SettingsLayout Docked = new()
+        {
+            Left = 48, Width = 440, RowHeight = 40, ControlWidth = 210, LabelSize = 16, DetailsBelow = true, Backdrop = false,
+            CompactTabs = true
+        };
+
+        internal float Left { get; init; } = 60;
+        /// <summary>The panel's width when docked; the full layout spans the screen.</summary>
+        internal float Width { get; init; }
+        internal float RowHeight { get; init; } = 44;
+        internal float ControlWidth { get; init; } = 380;
+        internal float LabelSize { get; init; } = 18;
+        /// <summary>The panel layout: what the focused setting does sits under the list rather than beside it.</summary>
+        internal bool DetailsBelow { get; init; }
+        /// <summary>The deep veil over the whole screen; without it only the panel's side is darkened.</summary>
+        internal bool Backdrop { get; init; } = true;
+        /// <summary>Tabs that do not fit become one name between the bumpers, with a mark for each tab.</summary>
+        internal bool CompactTabs { get; init; }
+    }
+
+    /// <summary>
     /// A screen of settings: tabs when there is more than one, a list of rows under section headings, and a
     /// column that says what the focused setting does and what it defaults to. Options, custom game rules and
     /// the host's setup are all this screen with different rows; a screen that leads somewhere has its main
@@ -19,8 +48,14 @@ namespace Modstoke.Loader
     /// </summary>
     internal abstract class SettingsScreen : FrontScreen
     {
-        private const float StripHeight = 143, TabsTop = 126, RowHeight = 44, TallHeight = 62, SectionHeight = 44, ControlWidth = 380;
+        private const float StripHeight = 143, TabsTop = 126, TallHeight = 62, SectionHeight = 44;
         private const float DetailsWidth = 400, TagHeight = 24, FactHeight = 32, RefreshSeconds = 0.5f, CaretBlink = 0.53f;
+        // The docked panel. The tabs and the list's top are measured from the top; the main action, the note over it
+        // and what the focused setting does stand on the prompt bar, measured from the bottom, and the list takes
+        // the height between, since a larger menu size leaves fewer design units of screen.
+        private const float DockTabs = 104, DockList = 156, DockFoot = 112, DockPrimaryHeight = 56, DockNoteHeight = 24;
+        // The veil fades out well past the panel, so values at its right edge still read over a bright scene.
+        private const float DockDetailsHeight = 96, DockAbout = 62, DockVeil = 960;
 
         private sealed class RowView
         {
@@ -54,9 +89,11 @@ namespace Modstoke.Loader
         private readonly List<TabView> _tabs = new();
         private readonly List<RowView> _rows = new();
         private readonly List<FactView> _facts = new();
+        private readonly List<Image> _pips = new();
         private readonly Ease _scroll = new(16f);
         private int _tab, _focusIndex;
-        private RectTransform _viewport, _content, _details;
+        private RectTransform _viewport, _content, _details, _tabBar;
+        private SettingsLayout _layout = SettingsLayout.Full;
         private KeyTag _tabLeft, _tabRight;
         private TextMeshProUGUI _heading, _title, _name, _about, _default, _empty, _note, _primaryLabel;
         private Glitch _titleFlash;
@@ -67,7 +104,7 @@ namespace Modstoke.Loader
         private TMP_InputField _padField;
         private string _draft, _padText, _problem;
         private float _nextRefresh, _contentHeight, _editStart, _foot;
-        private bool _built;
+        private bool _built, _paged;
 
         protected SettingsScreen(int tab = 0) => _tab = tab;
 
@@ -125,6 +162,22 @@ namespace Modstoke.Loader
 
         protected int TabIndex => _tab;
 
+        /// <summary>Where the screen's parts sit; read once each time it is built.</summary>
+        protected virtual SettingsLayout Layout => SettingsLayout.Full;
+
+        /// <summary>The docked panel, or the whole screen in the full layout.</summary>
+        protected RectTransform PanelRect { get; private set; }
+
+        /// <summary>Whether a slider is being dragged with the mouse.</summary>
+        protected bool Dragging => _drag != null;
+
+        /// <summary>Shows the main action's label and the line over it again, as when what it would do changed.</summary>
+        protected void RefreshPrimary()
+        {
+            if (_primaryLabel != null && PrimaryLabel != null) _primaryLabel.text = PrimaryLabel.ToUpper(Languages.CultureOf(Languages.Current));
+            PaintNote();
+        }
+
         /// <summary>Builds the open tab's rows again, as when what they list changed; focus returns to the row it was on.</summary>
         protected void Rebuild(string focusId = null)
         {
@@ -145,8 +198,19 @@ namespace Modstoke.Loader
             _primaryFill = null;
             _primaryLabel = _note = null;
             _editing = _drag = null;
-            var pad = U(60);
-            MenuKit.Backdrop(Root, U(StripHeight - 24), U(110));
+            _pips.Clear();
+            _tabBar = null;
+            _layout = Layout ?? SettingsLayout.Full;
+            if (_layout.DetailsBelow)
+            {
+                BuildDocked();
+                BuildRows();
+                _built = true;
+                return;
+            }
+            PanelRect = Root;
+            var pad = U(_layout.Left);
+            if (_layout.Backdrop) MenuKit.Backdrop(Root, U(StripHeight - 24), U(110));
             _heading = MenuKit.Text(Root, "Heading", "", U(14), true, MenuKit.Muted);
             _heading.characterSpacing = 32;
             _heading.rectTransform.At(pad, U(30), U(900), U(18));
@@ -156,11 +220,18 @@ namespace Modstoke.Loader
             _titleFlash = new Glitch(_title);
 
             var tabbed = TabIds.Count > 1;
-            if (tabbed) BuildTabs(pad);
+            if (tabbed) BuildTabs(Root, U(TabsTop), pad, pad);
             var listTop = tabbed ? TabsTop + 58 : TabsTop + 10;
 
             var listRight = pad + U(DetailsWidth + 56);
-            var list = MenuKit.Box(Root, "List").Place(0, 0, 1, 1, pad, U(StripHeight), listRight, U(listTop));
+            BuildList(MenuKit.Box(Root, "List").Place(0, 0, 1, 1, pad, U(StripHeight), listRight, U(listTop)));
+            BuildDetails(pad, listTop);
+            BuildRows();
+            _built = true;
+        }
+
+        private void BuildList(RectTransform list)
+        {
             MenuKit.Hairline(list, "Top", 0);
             _viewport = MenuKit.Box(list, "Viewport").Place(0, 0, 1, 1, 0, U(8), 0, U(10));
             _viewport.gameObject.AddComponent<RectMask2D>();
@@ -171,11 +242,54 @@ namespace Modstoke.Loader
             _content.offsetMin = _content.offsetMax = Vector2.zero;
             _empty = MenuKit.Text(list, "Empty", "", U(16), false, MenuKit.Muted);
             _empty.rectTransform.Strip(U(24), U(26), U(16), 0);
-
-            BuildDetails(pad, listTop);
-            BuildRows();
-            _built = true;
         }
+
+        // A narrow column over the live world: heading and title, the tabs, the list, what the focused setting does,
+        // and the main action at its foot. Only the side it stands on is darkened, so the rest of the view stays clear.
+        private void BuildDocked()
+        {
+            var width = U(_layout.Width);
+            if (_layout.Backdrop) MenuKit.Backdrop(Root, U(StripHeight - 24), U(110));
+            else MenuKit.Fill(MenuKit.Box(Root, "Veil").Place(0, 0, 0, 1, 0, 0, -U(DockVeil), 0), MenuKit.Across, MenuKit.Hex(0x050606, 0.8f));
+            var panel = PanelRect = MenuKit.Box(Root, "Panel").Place(0, 0, 0, 1, U(_layout.Left), 0, -(U(_layout.Left) + width), 0);
+            _heading = MenuKit.Text(panel, "Heading", "", U(14), true, MenuKit.Muted, TextAlignmentOptions.MidlineLeft, true);
+            _heading.characterSpacing = 32;
+            _heading.rectTransform.At(0, U(30), width, U(18));
+            _title = MenuKit.Text(panel, "Title", "", U(38), true, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
+            _title.characterSpacing = 5;
+            _title.rectTransform.At(0, U(46), width, U(52));
+            _titleFlash = new Glitch(_title);
+            if (TabIds.Count > 1) BuildTabs(panel, U(DockTabs), 0, 0);
+            var primary = PrimaryLabel != null;
+            var details = U(DockFoot) + (primary ? U(DockPrimaryHeight + 4 + DockNoteHeight) : 0);
+            BuildList(MenuKit.Box(panel, "List").Place(0, 0, 1, 1, 0, details + U(DockDetailsHeight + 12), 0, U(DockList)));
+
+            _details = Foot(MenuKit.Box(panel, "Details"), details, U(DockDetailsHeight));
+            _facts.Clear();
+            _name = MenuKit.Text(_details, "Name", "", U(15), true, MenuKit.Ink);
+            _name.gameObject.SetActive(false);
+            _about = MenuKit.Text(_details, "About", "", U(15), false, MenuKit.Soft, TextAlignmentOptions.TopLeft);
+            _about.enableWordWrapping = true;
+            _about.overflowMode = TextOverflowModes.Ellipsis;
+            _about.lineSpacing = 4;
+            _about.rectTransform.Strip(0, U(DockAbout), 0, 0);
+            _default = MenuKit.Text(_details, "Default", "", U(14), false, MenuKit.Muted);
+            _foot = 0;
+            if (!primary) return;
+            _note = MenuKit.Text(panel, "Note", "", U(15), false, MenuKit.Muted, TextAlignmentOptions.MidlineLeft, true);
+            Foot(_note.rectTransform, U(DockFoot + DockPrimaryHeight + 4), U(DockNoteHeight));
+            var go = Foot(MenuKit.Box(panel, "Primary"), U(DockFoot), U(DockPrimaryHeight));
+            _primaryFill = MenuKit.Fill(go, MenuKit.Brush, MenuKit.Soft);
+            _primaryLabel = MenuKit.Text(go, "Label", "", U(21), true, MenuKit.Dark, TextAlignmentOptions.Center);
+            _primaryLabel.characterSpacing = 16;
+            _primaryLabel.rectTransform.Place(0, 0, 1, 1);
+            _primary = Add(go, RunPrimary, focused => _primaryFill.color = focused ? MenuKit.Ink : MenuKit.Soft);
+            _primary.Flash = Flashing(_primaryLabel);
+        }
+
+        // A box of fixed height spanning its parent's width, its foot that far above the parent's.
+        private static RectTransform Foot(RectTransform rect, float bottom, float height)
+            => rect.Place(0, 0, 1, 0, 0, bottom, 0, -(bottom + height));
 
         private void BuildDetails(float pad, float top)
         {
@@ -210,9 +324,9 @@ namespace Modstoke.Loader
             _foot = U(foot + 24);
         }
 
-        private void BuildTabs(float pad)
+        private void BuildTabs(RectTransform parent, float top, float left, float right)
         {
-            var bar = MenuKit.Box(Root, "Tabs").Strip(U(TabsTop), U(44), pad, pad);
+            var bar = _tabBar = MenuKit.Box(parent, "Tabs").Strip(top, U(44), left, right);
             _tabLeft = new KeyTag(bar, "Previous", U(TagHeight));
             foreach (var id in TabIds)
             {
@@ -228,6 +342,8 @@ namespace Modstoke.Loader
             }
             _tabRight = new KeyTag(bar, "Next", U(TagHeight));
             _tabMark = new Glide(bar, true);
+            if (!_layout.CompactTabs) return;
+            for (var i = 0; i < TabIds.Count; i++) _pips.Add(MenuKit.Fill(MenuKit.Box(bar, "Pip " + i), null, MenuKit.BarOff));
         }
 
         // One row per setting, under its section's heading; the list scrolls inside its viewport.
@@ -255,7 +371,7 @@ namespace Modstoke.Loader
                 y += y == 0 ? U(SectionHeight) - U(6) : U(SectionHeight);
                 foreach (var row in section.Rows)
                 {
-                    var view = BuildRow(row, y, U(row.Detail != null ? TallHeight : RowHeight));
+                    var view = BuildRow(row, y, U(row.Detail != null ? TallHeight : _layout.RowHeight));
                     _rows.Add(view);
                     arriving.Add(view.Rect);
                     y += view.Height;
@@ -297,8 +413,8 @@ namespace Modstoke.Loader
                 }
                 labelLeft += tile + U(14);
             }
-            view.Label = MenuKit.Text(view.Rect, "Label", ItemName(row), U(18), false, MenuKit.Soft, TextAlignmentOptions.MidlineLeft, true);
-            var labelRight = U(ControlWidth + 28);
+            view.Label = MenuKit.Text(view.Rect, "Label", ItemName(row), U(_layout.LabelSize), false, MenuKit.Soft, TextAlignmentOptions.MidlineLeft, true);
+            var labelRight = U(_layout.ControlWidth + 28);
             if (row.Detail != null)
             {
                 // The name over its second line, the pair centered in the row.
@@ -309,7 +425,7 @@ namespace Modstoke.Loader
             else view.Label.rectTransform.Place(0, 0, 1, 1, labelLeft, 0, labelRight, 0);
             view.Control = wide
                 ? MenuKit.Box(view.Rect, "Control").Place(0, 0, 1, 1, U(12), 0, U(12), 0)
-                : MenuKit.Box(view.Rect, "Control").Place(1, 0, 1, 1, -U(ControlWidth + 12), 0, U(12), 0);
+                : MenuKit.Box(view.Rect, "Control").Place(1, 0, 1, 1, -U(_layout.ControlWidth + 12), 0, U(12), 0);
             if (row is TextRow) BuildField(view, wide);
             else if (row.Fraction.HasValue) BuildSlider(view);
             else if (row.Open != null) BuildOpen(view);
@@ -494,7 +610,7 @@ namespace Modstoke.Loader
                 PaintRows();
             }
             if (FrontInput.Scroll != 0 && RectTransformUtility.RectangleContainsScreenPoint(_viewport, FrontInput.Pointer, null))
-                _scroll.Set(Mathf.Clamp(_scroll.Goal - Math.Sign(FrontInput.Scroll) * U(RowHeight) * 3, 0, MaxScroll));
+                _scroll.Set(Mathf.Clamp(_scroll.Goal - Math.Sign(FrontInput.Scroll) * U(_layout.RowHeight) * 3, 0, MaxScroll));
             var dt = Time.unscaledDeltaTime;
             if (_scroll.Step(dt)) ApplyScroll();
             foreach (var view in _rows)
@@ -537,6 +653,13 @@ namespace Modstoke.Loader
                 FocusRow(0, 1);
                 return;
             }
+            // Paged, the open tab is the only one in view: left and right turn the page, as the bumpers do.
+            if (dx != 0 && dy == 0 && _paged && ReferenceEquals(Focused, _tabs[_tab].Focus))
+            {
+                OnTab(dx);
+                Focus(_tabs[_tab].Focus);
+                return;
+            }
             base.Navigate(dx, dy);
         }
 
@@ -552,10 +675,19 @@ namespace Modstoke.Loader
             }
         }
 
-        // Dragging a slider follows the mouse while the button is held.
+        // Dragging a slider follows the mouse while the button is held. A click on the key beside the tabs steps
+        // through them, which is how the mouse turns a paged strip's page.
         protected override void Pointer(Focusable over)
         {
-            if (_drag == null) return;
+            if (_drag == null)
+            {
+                if (FrontInput.Click && over == null && _tabs.Count > 1)
+                {
+                    if (Hit(_tabLeft?.Rect)) OnTab(-1);
+                    else if (Hit(_tabRight?.Rect)) OnTab(1);
+                }
+                return;
+            }
             if (!FrontInput.Held)
             {
                 _drag = null;
@@ -563,6 +695,9 @@ namespace Modstoke.Loader
             }
             SetFromPointer(_drag);
         }
+
+        private static bool Hit(RectTransform rect)
+            => rect != null && rect && rect.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(rect, FrontInput.Pointer, null);
 
         protected override bool CaptureInput() => _editing != null && Edit();
 
@@ -807,17 +942,42 @@ namespace Modstoke.Loader
             _tabRight.Set(pad ? "RB" : "E", pad);
             var x = 0f;
             var height = U(44);
+            var gap = U(10);
+            // Where the names do not all fit, only the open one shows between the bumpers, with a mark for each tab.
+            var all = _tabLeft.Size.x + _tabRight.Size.x + 2 * gap + _tabs.Sum(tab => tab.Width + U(4));
+            var paged = _paged = _pips.Count == _tabs.Count && _pips.Count > 0 && _tabBar != null && all > _tabBar.rect.width;
             var items = new List<(RectTransform Rect, float Width, float Height)> { (_tabLeft.Rect, _tabLeft.Size.x, _tabLeft.Size.y) };
-            items.AddRange(_tabs.Select(tab => (tab.Rect, tab.Width, height)));
+            for (var i = 0; i < _tabs.Count; i++)
+            {
+                var shown = !paged || i == _tab;
+                if (_tabs[i].Rect.gameObject.activeSelf != shown) _tabs[i].Rect.gameObject.SetActive(shown);
+                if (shown) items.Add((_tabs[i].Rect, _tabs[i].Width, height));
+            }
             items.Add((_tabRight.Rect, _tabRight.Size.x, _tabRight.Size.y));
             foreach (var (rect, width, itemHeight) in items)
             {
                 rect.At(x, (height - itemHeight) / 2, width, itemHeight);
                 x += width + U(itemHeight < height ? 10 : 4);
             }
+            if (_pips.Count > 0) PlacePips(paged, x - U(4));
             for (var i = 0; i < _tabs.Count; i++) PaintTab(_tabs[i], ReferenceEquals(Focused, _tabs[i].Focus));
             _tabMark.Target(_tabs[_tab].Under, false);
             _tabMark.Follow();
+        }
+
+        // A short mark per tab under the pager, the open one lit.
+        private void PlacePips(bool paged, float width)
+        {
+            var size = U(10);
+            var spacing = U(5);
+            var start = (width - (_pips.Count * size + (_pips.Count - 1) * spacing)) / 2;
+            for (var i = 0; i < _pips.Count; i++)
+            {
+                var pip = _pips[i];
+                pip.gameObject.SetActive(paged);
+                pip.rectTransform.At(start + i * (size + spacing), U(44) + U(2), size, Mathf.Max(2f, U(2)));
+                pip.color = i == _tab ? MenuKit.Soft : MenuKit.BarOff;
+            }
         }
 
         private void PaintTab(TabView view, bool focused)
@@ -962,6 +1122,13 @@ namespace Modstoke.Loader
         private void LayoutDetails(IReadOnlyList<(string Label, string Value)> facts)
         {
             var width = _details.rect.width;
+            if (_layout.DetailsBelow)
+            {
+                // Under the list the row's own name is in view already: up to three lines of what it does, then its default.
+                var lines = string.IsNullOrEmpty(_about.text) ? 0 : Mathf.Min(_about.GetPreferredValues(_about.text, width, 0).y, U(DockAbout));
+                _default.rectTransform.Strip(lines + U(4), U(22), 0, 0);
+                return;
+            }
             var nameHeight = string.IsNullOrEmpty(_name.text) ? 0 : _name.GetPreferredValues(_name.text, width, 0).y;
             var y = U(22) + Mathf.Max(U(34), nameHeight) + U(16);
             var count = facts?.Count ?? 0;

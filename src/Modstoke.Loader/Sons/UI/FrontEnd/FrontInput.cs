@@ -42,6 +42,12 @@ namespace Modstoke.Loader
         internal static bool ConfirmHeld { get; private set; }
         internal static float Scroll { get; private set; }
 
+        /// <summary>Whether the left stick moves focus; off while a screen gives the stick another job, as photo mode's camera.</summary>
+        internal static bool StickNavigates { get; set; } = true;
+
+        /// <summary>Whether Space confirms; off while a screen gives it another job, as photo mode's "up".</summary>
+        internal static bool SpaceConfirms { get; set; } = true;
+
         /// <summary>Whether a controller is the device in use, by the game's own flag.</summary>
         internal static bool PadActive
         {
@@ -78,7 +84,7 @@ namespace Modstoke.Loader
             // Index 0 and 2 of the pad's tracked buttons are its confirm and X buttons, held or not.
             Alt1Held = acting && (UnityEngine.Input.GetKey(KeyCode.Delete) || PadDown[2]);
             ConfirmHeld = acting && (UnityEngine.Input.GetKey(KeyCode.Return) || UnityEngine.Input.GetKey(KeyCode.KeypadEnter)
-                || UnityEngine.Input.GetKey(KeyCode.Space) || PadDown[0]);
+                || SpaceConfirms && UnityEngine.Input.GetKey(KeyCode.Space) || PadDown[0]);
 
             // One axis at a time, vertical first, so a diagonal stick does not skip sideways.
             if (held.y != 0) held.x = 0;
@@ -96,7 +102,7 @@ namespace Modstoke.Loader
             if (!acting) return;
 
             Confirm = confirm || UnityEngine.Input.GetKeyDown(KeyCode.Return) || UnityEngine.Input.GetKeyDown(KeyCode.KeypadEnter)
-                || UnityEngine.Input.GetKeyDown(KeyCode.Space);
+                || SpaceConfirms && UnityEngine.Input.GetKeyDown(KeyCode.Space);
             Back = back || UnityEngine.Input.GetKeyDown(KeyCode.Escape);
             Alt1 = alt1 || UnityEngine.Input.GetKeyDown(KeyCode.F5) || UnityEngine.Input.GetKeyDown(KeyCode.Delete);
             Alt2 = alt2 || UnityEngine.Input.GetKeyDown(KeyCode.F2);
@@ -118,10 +124,11 @@ namespace Modstoke.Loader
             {
                 var pad = Gamepad.current;
                 if (pad == null) return;
-                if (pad.dpad.right.isPressed || pad.leftStick.right.isPressed) held.x = 1;
-                else if (pad.dpad.left.isPressed || pad.leftStick.left.isPressed) held.x = -1;
-                if (pad.dpad.down.isPressed || pad.leftStick.down.isPressed) held.y = 1;
-                else if (pad.dpad.up.isPressed || pad.leftStick.up.isPressed) held.y = -1;
+                var stick = StickNavigates;
+                if (pad.dpad.right.isPressed || stick && pad.leftStick.right.isPressed) held.x = 1;
+                else if (pad.dpad.left.isPressed || stick && pad.leftStick.left.isPressed) held.x = -1;
+                if (pad.dpad.down.isPressed || stick && pad.leftStick.down.isPressed) held.y = 1;
+                else if (pad.dpad.up.isPressed || stick && pad.leftStick.up.isPressed) held.y = -1;
                 confirm = Pressed(0, pad.buttonSouth.isPressed);
                 back = Pressed(1, pad.buttonEast.isPressed);
                 alt1 = Pressed(2, pad.buttonWest.isPressed);

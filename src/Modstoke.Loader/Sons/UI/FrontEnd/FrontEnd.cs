@@ -42,10 +42,10 @@ namespace Modstoke.Loader
         private static GameObject _root;
         private static RectTransform _rect, _prompts;
         private static int _width, _height, _stackLayout;
-        private static bool _failed, _pad, _retext, _subscribed, _promptsDirty, _shown, _hostWanted;
+        private static bool _failed, _pad, _retext, _subscribed, _promptsDirty, _shown, _hostWanted, _photoWanted;
         private static long _nextSettingRead;
         private static bool _classic, _plainFonts;
-        private static float _asideUntil, _hostWantedAt, _fontWaitStart = -1;
+        private static float _asideUntil, _hostWantedAt, _photoWantedAt, _fontWaitStart = -1;
         private static PromptView _hoverPrompt;
 
         internal static float S { get; private set; } = 1f;
@@ -214,6 +214,19 @@ namespace Modstoke.Loader
         internal static void CancelHost() => _hostWanted = false;
 
         /// <summary>
+        /// Opens photo mode straight over the pause menu the photo key is opening, in the same frame, so the pause
+        /// screen itself is never seen. A request the pause menu never picks up lapses after a second.
+        /// </summary>
+        internal static void WantPhoto()
+        {
+            _photoWanted = true;
+            _photoWantedAt = Time.unscaledTime;
+        }
+
+        /// <summary>Whether one of the game's own dialogs is up.</summary>
+        internal static bool ModalShowing => ModalOpen();
+
+        /// <summary>
         /// A scene just loaded, before its first frame is drawn: a game menu that Modstoke replaces is made
         /// invisible here, so it never shows even for a frame before Modstoke's screen takes its place.
         /// </summary>
@@ -230,6 +243,8 @@ namespace Modstoke.Loader
         internal static bool OpenModsScreen()
         {
             if (_failed || !_shown || Stack.Count == 0 || _place != Place.Title && _place != Place.Pause) return false;
+            // Photo mode keeps the screen to itself; the key does nothing there.
+            if (Stack[Stack.Count - 1] is PhotoScreen) return true;
             if (Stack[Stack.Count - 1] is ModsScreen) Pop();
             else
             {
@@ -272,6 +287,8 @@ namespace Modstoke.Loader
             {
                 Moving.TickAll();
                 WorldBlur.Want(false);
+                // Before the menus run, so the key that closes photo mode does not open it again in the same frame.
+                PhotoGate.PollHotkey();
                 Run();
                 WorldBlur.Tick();
             }
@@ -281,6 +298,16 @@ namespace Modstoke.Loader
                 _failed = true;
                 RuntimeEntryPoint.LogSource?.LogError("Modstoke's menus stopped and the game's own are back: " + error);
                 Shutdown();
+            }
+            // A photo still developing finishes and is filed after photo mode closes.
+            PhotoSession.TickCapture();
+            try
+            {
+                PhotoLibrary.Tick();
+            }
+            catch (Exception error)
+            {
+                RuntimeEntryPoint.LogSource?.LogWarning("A photo could not be filed: " + error.Message);
             }
         }
 
@@ -327,6 +354,8 @@ namespace Modstoke.Loader
                     RunElsewhere(place);
                     break;
             }
+            // Photo mode lives only while its screen is on top of the pause menu and no game dialog is up.
+            PhotoSession.Watch(place == Place.Pause && Stack.Count > 0 && Stack[Stack.Count - 1] is PhotoScreen && !ModalOpen());
             PaintBusy();
         }
 
@@ -383,6 +412,12 @@ namespace Modstoke.Loader
             Canvas();
             if (Stack.Count > 0 && _stackLayout != LayoutVersion) Rebuild();
             if (Stack.Count == 0) Push(place == Place.Lobby ? new LobbyScreen() : new PauseScreen());
+            if (_photoWanted && place == Place.Pause)
+            {
+                var fresh = Time.unscaledTime - _photoWantedAt < 1f;
+                _photoWanted = false;
+                if (fresh && Stack.Count == 1) PhotoScreen.Open(fromWorld: true);
+            }
             if (place == Place.Lobby) LobbyHost.HideNative();
             else PauseHost.HideNative();
             if (CoveredByModsMenu()) return;
@@ -459,6 +494,8 @@ namespace Modstoke.Loader
                 _promptsDirty = true;
             }
             if (_promptsDirty) BuildPrompts(top);
+            if (_prompts != null && _prompts && _prompts.gameObject.activeSelf != (_shown && top.ShowsPrompts))
+                _prompts.gameObject.SetActive(_shown && top.ShowsPrompts);
             top.Animate();
             // The lobby has its own blurred backdrop and the pause menu its own volume; the title's world is blurred here.
             WorldBlur.Want(top.Blurs && _place == Place.Title);
@@ -546,6 +583,7 @@ namespace Modstoke.Loader
         private static void Clear()
         {
             for (var i = Stack.Count - 1; i >= 0; i--) Remove(i);
+            FrontInput.StickNavigates = FrontInput.SpaceConfirms = true;
             if (_prompts != null && _prompts) Object.Destroy(_prompts.gameObject);
             _prompts = null;
             PromptViews.Clear();
@@ -555,6 +593,7 @@ namespace Modstoke.Loader
         {
             try
             {
+                PhotoSession.Shutdown();
                 Clear();
                 _shown = false;
                 if (_busy != null && _busy) _busy.gameObject.SetActive(false);
@@ -619,9 +658,14 @@ namespace Modstoke.Loader
             }
         }
 
+        /// <summary>Whether the pointer is on a prompt in the bar, where a click belongs to the prompt.</summary>
+        internal static bool OverPrompt => _hoverPrompt != null && _prompts != null && _prompts && _prompts.gameObject.activeInHierarchy;
+
         // Prompts are clickable; true when a click was used here.
         private static bool PromptInput()
         {
+            // A hidden bar takes no clicks, as when photo mode has put its interface away.
+            if (_prompts == null || !_prompts || !_prompts.gameObject.activeInHierarchy) return false;
             PromptView over = null;
             foreach (var view in PromptViews)
                 if (view.Rect && RectTransformUtility.RectangleContainsScreenPoint(view.Rect, FrontInput.Pointer, null))

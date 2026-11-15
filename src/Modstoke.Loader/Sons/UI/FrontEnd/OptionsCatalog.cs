@@ -390,18 +390,86 @@ namespace Modstoke.Loader
         }
     }
 
-    /// <summary>A row that opens something, such as the game's own bindings screen.</summary>
+    /// <summary>
+    /// A number on a slider, read and written through the accessors it is given. On a logarithmic scale, as a
+    /// focal length is, the slider moves by equal ratios and <c>step</c> is a share of its length; otherwise
+    /// values land on whole steps from the low end. The default can follow something that changes, such as the
+    /// game's own value.
+    /// </summary>
+    internal sealed class NumberRow : OptionRow
+    {
+        private readonly Func<float> _read, _default;
+        private readonly Action<float> _write;
+        private readonly Func<float, string> _format;
+        private readonly float _min, _max, _step;
+        private readonly bool _log;
+
+        internal NumberRow(string id, Func<float> read, Action<float> write, float min, float max, float step, Func<float> @default,
+            Func<float, string> format, bool log = false) : base(id)
+        {
+            _read = read;
+            _write = write;
+            _min = Math.Min(min, max);
+            _max = Math.Max(min, max);
+            _step = step;
+            _default = @default;
+            _format = format;
+            _log = log && _min > 0;
+            Ready = _max > _min && step > 0;
+        }
+
+        private float Current => Mathf.Clamp(_read(), _min, _max);
+        internal override float? Fraction => ToFraction(Current);
+        internal override string Value => _format(Current);
+        internal override string DefaultValue => _format(Mathf.Clamp(_default(), _min, _max));
+        internal override bool IsDefault => _log
+            ? Mathf.Abs(ToFraction(Current) - ToFraction(_default())) < _step * 0.5f
+            : Mathf.Abs(Current - _default()) < _step * 0.5f;
+
+        internal override bool Step(int direction, bool wrap)
+            => _log ? Set(FromFraction(ToFraction(Current) + direction * _step)) : Set(Current + direction * _step);
+
+        internal override bool SetFraction(float fraction) => Set(FromFraction(Mathf.Clamp01(fraction)));
+
+        internal override bool Reset() => !IsDefault && Set(_default(), false);
+
+        private bool Set(float value, bool snap = true)
+        {
+            value = Mathf.Clamp(value, _min, _max);
+            if (snap)
+                value = _log
+                    ? FromFraction(Mathf.Round(ToFraction(value) / _step) * _step)
+                    : Mathf.Clamp(_min + Mathf.Round((value - _min) / _step) * _step, _min, _max);
+            var current = Current;
+            if (_log ? Mathf.Abs(ToFraction(value) - ToFraction(current)) < _step * 0.01f : Mathf.Abs(value - current) < _step * 0.01f) return false;
+            _write(value);
+            return true;
+        }
+
+        private float ToFraction(float value) => _log
+            ? Mathf.InverseLerp(Mathf.Log(_min), Mathf.Log(_max), Mathf.Log(Mathf.Clamp(value, _min, _max)))
+            : Mathf.InverseLerp(_min, _max, value);
+
+        private float FromFraction(float fraction) => _log
+            ? Mathf.Clamp(Mathf.Exp(Mathf.Lerp(Mathf.Log(_min), Mathf.Log(_max), Mathf.Clamp01(fraction))), _min, _max)
+            : Mathf.Lerp(_min, _max, Mathf.Clamp01(fraction));
+    }
+
+    /// <summary>A row that opens something, such as the game's own bindings screen, or runs something at once.</summary>
     internal sealed class OptionAction : OptionRow
     {
         private readonly Action _open;
+        private readonly Func<string> _value;
 
-        internal OptionAction(string id, Action open) : base(id)
+        /// <param name="value">What the row says beside its name; "Open" when null.</param>
+        internal OptionAction(string id, Action open, Func<string> value = null) : base(id)
         {
             _open = open;
+            _value = value;
             Ready = true;
         }
 
-        internal override string Value => Text["options.open"];
+        internal override string Value => _value?.Invoke() ?? Text["options.open"];
         internal override string DefaultValue => "";
         internal override bool IsDefault => true;
         internal override bool Step(int direction, bool wrap) => false;

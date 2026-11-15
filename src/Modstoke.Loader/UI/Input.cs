@@ -164,6 +164,15 @@ namespace Modstoke.Loader
                     InputContexts.Any,
                     false,
                     "Return from the current Modstoke menu view."));
+                SetKeybindNoLock(KeybindSnapshot.Create(
+                    KeybindIds.PhotoMode,
+                    "Photo Mode",
+                    "Modstoke Loader",
+                    KeyCode.F10,
+                    true,
+                    InputContexts.InWorld,
+                    false,
+                    "Open photo mode from the world, or close it again."));
                 PublishServiceNoLock();
             }
         }
@@ -593,6 +602,8 @@ namespace Modstoke.Loader
     {
         public const string ToggleModsMenu = "openacai.mods.toggle";
         public const string Back = "openacai.ui.back";
+        /// <summary>Opens photo mode from the world (F10 by default) and closes it again.</summary>
+        public const string PhotoMode = "openacai.photo.toggle";
     }
 
     public static class InputContexts

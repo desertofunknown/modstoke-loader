@@ -222,6 +222,21 @@ scaled from a 1080-line layout to the screen height. It rebuilds the view
 only when the state changes or on the 0.5 s provider poll, not on every
 `OnGUI` pass.
 
+## Front-end screens over the world
+
+`Sons/UI/FrontEnd` screens normally fill the screen. `SettingsScreen` also has
+a docked layout (`SettingsLayout.Docked`): a narrow panel at the side with a
+veil on that side only, tabs that fold into a pager with a mark per tab when
+they don't fit, and what the focused row does under the list. The panel's foot
+(main action, its note and the row's description) stands on the prompt bar and
+the list takes the height left, so it holds at every menu size; the pager's
+key tags take clicks, and left and right on the open tab turn the page. Photo
+mode (`Sons/UI/PhotoMode`) is the first screen to use it. A screen can hide the
+prompt bar (`FrontScreen.ShowsPrompts`), stay out of sight through its arrival
+fade (`FrontScreen.Hidden`) and give the left stick or Space another job
+(`FrontInput.StickNavigates`, `FrontInput.SpaceConfirms`), as photo mode's
+camera does; `FrontEnd.Clear` turns both back on.
+
 ## Next UI Refactor Slices
 
 1. Done: `UI/Menus/ModMenuDispatcher.cs` owns native/fallback renderer
