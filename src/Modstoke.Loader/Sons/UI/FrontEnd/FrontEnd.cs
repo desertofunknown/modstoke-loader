@@ -177,7 +177,7 @@ namespace Modstoke.Loader
         private static void PaintBusy()
         {
             var now = Time.unscaledTime;
-            var busy = _place == Place.Title && now < _asideUntil && !GameMenus.OtherSceneOpen && !GameMenus.DialogOpen;
+            var busy = _place == Place.Title && now < _asideUntil && !GameMenus.OtherSceneOpen && !GameMenus.DialogOpen && !LoadingScreen.Covering;
             if (!busy)
             {
                 if (_busy != null && _busy && _busy.gameObject.activeSelf) _busy.gameObject.SetActive(false);
@@ -404,6 +404,7 @@ namespace Modstoke.Loader
         {
             // Over the pause screen, Escape steps back to it rather than closing the game's whole menu.
             if (place == Place.Pause) PauseHost.HoldEscape(Stack.Count > 1);
+            if (UnderLoadingScreen()) return;
             if (ModalOpen() || Time.unscaledTime < _asideUntil)
             {
                 Show(false);
@@ -435,6 +436,7 @@ namespace Modstoke.Loader
             GameMenus.HideBar(true);
             TakePages();
             GameMenus.CloseReplaced();
+            if (UnderLoadingScreen()) return;
             // The game's own pages and dialogs are under this layer, so it steps aside while one is up.
             if (GameMenus.DialogOpen || ModalOpen() || GameMenus.OtherSceneOpen || Time.unscaledTime < _asideUntil)
             {
@@ -464,6 +466,16 @@ namespace Modstoke.Loader
             if (CoveredByModsMenu()) return;
             Show(true);
             Drive();
+        }
+
+        // While the loading screen fades in, the screen that started the load stays drawn under it, so the bare title or
+        // lobby never shows between the menu and the black; once it covers everything, the screen goes.
+        private static bool UnderLoadingScreen()
+        {
+            if (!LoadingScreen.Covering) return false;
+            if (LoadingScreen.Opaque) Show(false);
+            FrontInput.Pause();
+            return true;
         }
 
         // The mods menu and a mod's own screen (opened from its page, as a character editor is) have a veil of their

@@ -923,6 +923,8 @@ foreach ($consoleFile in @("Modstoke.Console.dll", "Modstoke.Console.exe", "Mods
 Copy-RequiredFile (Join-Path $redCompatibilityOutputRoot "RedLoader.dll") (Join-Path $modstokeCompatibilityDestination "RedLoader.dll")
 Copy-RequiredFile (Join-Path $sonsCompatibilityOutputRoot "SonsSdk.dll") (Join-Path $modstokeCompatibilityDestination "SonsSdk.dll")
 Copy-RequiredFile (Join-Path $suiteRoot "loader.manifest.json") (Join-Path $modstokeRuntimeDestination "openacai-loader.manifest.json")
+# The loading screen's pictures and their list, made by tools/build-loading-art.py.
+Copy-Directory (Join-Path $suiteRoot "src\Modstoke.Loader\Art\Loading") (Join-Path $modstokeRuntimeDestination "Art\Loading")
 
 New-Item -ItemType Directory -Force -Path $bootstrapMirrorDestination | Out-Null
 Copy-RequiredFile (Join-Path $modstokeRuntimeDestination "Modstoke.Loader.dll") (Join-Path $bootstrapMirrorDestination "Modstoke.Loader.dll")

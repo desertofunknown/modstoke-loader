@@ -171,6 +171,8 @@
       "proximityChat": { "name": "Voice chat", "about": "How your microphone works in multiplayer: push to talk, or always on." },
       "menus": { "name": "Menus", "about": "Modstoke's menus, or the game's own as they were. To come back, set classicMenus = false in Modstoke/UserData/openacai-loader.settings.cfg." },
       "menuSize": { "name": "Menu size", "about": "The size of Modstoke's menus and their text." },
+      "loadingScreen": { "name": "Loading screen", "about": "Modstoke's loading screen with pictures of the island and your own photos, or the game's own." },
+      "loadingArt": { "name": "Loading pictures", "about": "Your photos of the world being loaded, then Modstoke's pictures of the island. Or only Modstoke's, or your photos of any world first." },
       "textLanguage": { "name": "Modstoke language", "about": "The language of Modstoke's own text, such as these menus. Following the game uses the game's language." }
     },
 
@@ -235,7 +237,12 @@
       "hard": "Hard",
       "followGame": "Follow the game",
       "modstokeMenus": "Modstoke",
-      "gameMenus": "The game's own"
+      "gameMenus": "The game's own",
+      "modstokeLoading": "Modstoke's",
+      "gameLoading": "The game's",
+      "loadingArtAll": "Your photos and Modstoke's",
+      "loadingArtModstoke": "Modstoke's only",
+      "loadingArtPhotos": "Your photos first"
     }
   },
 
@@ -252,7 +259,7 @@
       "general": "General",
       "hotkeys": "Hotkeys",
       "inventory": "Inventory",
-      "book": "Survival book",
+      "book": "Guide book",
       "blueprints": "Blueprints",
       "freeform": "Free building",
       "drive": "Driving",
@@ -267,8 +274,8 @@
       "general": "Talking to other players, and skipping scenes.",
       "hotkeys": "Takes out the item you put on each number.",
       "inventory": "Handling items while your inventory is open.",
-      "book": "Finding your way around the survival book.",
-      "blueprints": "Placing structures chosen in the survival book.",
+      "book": "Finding your way around the guide book.",
+      "blueprints": "Placing structures chosen in the guide book.",
       "freeform": "Building piece by piece, and taking structures apart.",
       "drive": "Driving the vehicles on the island.",
       "radio": "The vehicle's radio.",
@@ -361,6 +368,113 @@
       "circle": "Circle",
       "square": "Square",
       "triangle": "Triangle"
+    }
+  },
+
+  "loading": {
+    "kind": { "continue": "Continuing", "new": "New game", "host": "Hosting", "join": "Joining", "load": "Loading" },
+    "island": "The island",
+    "day": "Day {day}",
+    "players": { "one": "{count} of {limit} players", "other": "{count} of {limit} players" },
+    "dedicated": "Dedicated server",
+    "yourPhoto": "Your photo · {where}",
+    "phase": {
+      "prepare": "Preparing",
+      "server": "Starting the server",
+      "connect": "Connecting",
+      "stream": "Loading the island",
+      "build": "Building the world",
+      "restore": "Restoring your game",
+      "place": "Preparing your start",
+      "joinWorld": "Joining the world",
+      "settle": "Almost there",
+      "waitHost": "Waiting for the host"
+    },
+    "category": {
+      "survival": "Survival",
+      "building": "Building",
+      "companions": "Companions",
+      "combat": "Combat",
+      "exploring": "Exploring",
+      "seasons": "Seasons",
+      "multiplayer": "Multiplayer",
+      "modstoke": "Modstoke",
+      "creative": "Creative"
+    },
+    "control": {
+      "inventory": "Inventory",
+      "book": "Guide book",
+      "gps": "GPS",
+      "light": "Light",
+      "skipIntro": "Skip intro (hold)",
+      "photo": "Photo mode",
+      "mods": "Mods",
+      "next": "Next tip",
+      "heavyAttack": "Heavy attack",
+      "placeSeveral": "Place several",
+      "takeApart": "Take apart",
+      "putAway": "Put away",
+      "materials": "Materials layout"
+    },
+    "tip": {
+      "survival": {
+        "vitals": "Eat, drink and rest to keep your vitality up. Your stamina can never go higher than it.",
+        "sickness": "Dirty, poisonous or rotten food makes you sick, and sickness lowers your maximum health.",
+        "cold": "Being cold limits your vitality. Some clothes are much warmer than others.",
+        "rest": "Sleeping indoors is more restful than sleeping outside, and a higher comfort rating restores more rest.",
+        "shelter": "Build a shelter early: it's where you sleep and save.",
+        "drying": "Drying racks work better in warmer places, and dried food keeps longer than fresh.",
+        "cooking": "Some cooking recipes give you useful bonuses. Eat well before a long trip.",
+        "strength": "Hard work raises your strength level, which slightly increases your health, melee damage and tree damage."
+      },
+      "building": {
+        "logs": "You can carry two logs at a time. Drop them where you plan to build to save trips.",
+        "placeSeveral": "Hold while placing a structure to put down several in a row.",
+        "takeApart": "Hold to remove a piece you placed, or to pick up a small structure built from the guide book.",
+        "book": "The guide book shows what you can build and lays out each structure where you want it."
+      },
+      "companions": {
+        "kelvin": "Kelvin can't hear you. Give him jobs on his notepad: gathering logs, sticks and stones, or finishing a build."
+      },
+      "combat": {
+        "heavy": "Hold for a heavy attack.",
+        "bushes": "Crouch in bushes to hide from enemies.",
+        "explosives": "Explosives and Molotovs work against most enemies. Make a Molotov from cloth and booze.",
+        "boneArmour": "Burning bodies leaves bones. Bones, rope and duct tape make bone armour.",
+        "putAway": "Press to put away whatever you're holding."
+      },
+      "exploring": {
+        "gps": "Your GPS marks important places on the map. Zoom in for more detail.",
+        "light": "Caves are pitch dark. Equip a light before you go in.",
+        "inventory": "Tap to open your inventory, or hold for quick select.",
+        "hotkeys": "Give items hotkeys in your inventory with the number keys 1 to 0.",
+        "flippers": "Flippers make you faster in water but slow you down on land.",
+        "knight": "Jump twice to get off the Knight V.",
+        "traps": "Build traps to catch small animals while you get on with other work."
+      },
+      "seasons": {
+        "autumn": "Winter follows autumn. Dry food and find warmer clothes before the snow.",
+        "winter": "Winter makes food scarce and nights cold. Keep a fire going and sleep somewhere warm.",
+        "lakes": "In winter the lakes freeze over."
+      },
+      "multiplayer": {
+        "voice": "Choose push to talk or always-on voice in the lobby before the game starts.",
+        "content": "Servers with content mods need the same mods as yours. If they differ, the message says which."
+      },
+      "modstoke": {
+        "photo": "Frame a shot of your world. Photo mode is in the pause menu too.",
+        "photoWorld": "Photo mode's World tab sets the time of day and the weather for your shot.",
+        "photoHere": "Photos you take in a world show here the next time you load it.",
+        "photoFolder": "Photos are saved in Pictures > Sons Of The Forest, and can go to your Steam screenshots too.",
+        "mods": "Open your mods at the title or from the pause menu.",
+        "menuSize": "Menus too small or too large? Change the size in {options} > {modstoke} > {menus}.",
+        "classic": "Prefer the game's original menus? Choose them in {options} > {modstoke} > {menus}.",
+        "language": "Modstoke's menus can use a language of their own: {options} > {modstoke} > {language}.",
+        "loadingArt": "Choose the pictures shown here in {options} > {modstoke} > {menus}."
+      },
+      "creative": {
+        "materials": "In the inventory, switch the building materials layout."
+      }
     }
   },
 

@@ -171,6 +171,8 @@
       "proximityChat": { "name": "음성 채팅", "about": "멀티플레이에서 마이크가 작동하는 방식입니다. 눌러서 말하기 또는 항상 켜기 중에서 고릅니다." },
       "menus": { "name": "메뉴", "about": "Modstoke의 메뉴 또는 원래 그대로인 게임 자체 메뉴입니다. 되돌리려면 Modstoke/UserData/openacai-loader.settings.cfg에서 classicMenus = false로 설정하세요." },
       "menuSize": { "name": "메뉴 크기", "about": "Modstoke 메뉴와 그 텍스트의 크기입니다." },
+      "loadingScreen": { "name": "로딩 화면", "about": "섬 풍경과 내 사진을 보여 주는 Modstoke 로딩 화면 또는 게임 자체 로딩 화면입니다." },
+      "loadingArt": { "name": "로딩 이미지", "about": "불러오는 월드에서 찍은 내 사진을 먼저, 그다음 Modstoke의 섬 이미지를 보여 줍니다. Modstoke 이미지만 쓰거나 모든 월드의 내 사진을 먼저 보여 줄 수도 있습니다." },
       "textLanguage": { "name": "Modstoke 언어", "about": "이 메뉴처럼 Modstoke 자체 텍스트의 언어입니다. ‘게임 따르기’를 선택하면 게임의 언어를 사용합니다." }
     },
 
@@ -235,7 +237,12 @@
       "hard": "어려움",
       "followGame": "게임 따르기",
       "modstokeMenus": "Modstoke",
-      "gameMenus": "게임 자체 메뉴"
+      "gameMenus": "게임 자체 메뉴",
+      "modstokeLoading": "Modstoke",
+      "gameLoading": "게임 자체",
+      "loadingArtAll": "내 사진과 Modstoke",
+      "loadingArtModstoke": "Modstoke만",
+      "loadingArtPhotos": "내 사진 먼저"
     }
   },
 
@@ -252,7 +259,7 @@
       "general": "일반",
       "hotkeys": "단축키",
       "inventory": "인벤토리",
-      "book": "생존 책",
+      "book": "안내서",
       "blueprints": "설계도",
       "freeform": "자유 건설",
       "drive": "운전",
@@ -267,8 +274,8 @@
       "general": "다른 플레이어와 대화하고 장면을 건너뜁니다.",
       "hotkeys": "각 숫자에 넣어 둔 아이템을 꺼냅니다.",
       "inventory": "인벤토리가 열려 있을 때 아이템을 다룹니다.",
-      "book": "생존 책을 넘겨 봅니다.",
-      "blueprints": "생존 책에서 고른 구조물을 배치합니다.",
+      "book": "안내서를 넘겨 봅니다.",
+      "blueprints": "안내서에서 고른 구조물을 배치합니다.",
       "freeform": "조각 단위로 짓고 구조물을 해체합니다.",
       "drive": "섬의 탈것을 운전합니다.",
       "radio": "탈것의 라디오입니다.",
@@ -361,6 +368,113 @@
       "circle": "원",
       "square": "네모",
       "triangle": "세모"
+    }
+  },
+
+  "loading": {
+    "kind": { "continue": "이어서 하기", "new": "새 게임", "host": "호스트", "join": "참가 중", "load": "로딩 중" },
+    "island": "섬",
+    "day": "{day}일차",
+    "players": { "other": "플레이어 {count}/{limit}명" },
+    "dedicated": "전용 서버",
+    "yourPhoto": "내 사진 · {where}",
+    "phase": {
+      "prepare": "준비 중",
+      "server": "서버 시작 중",
+      "connect": "연결 중",
+      "stream": "섬 불러오는 중",
+      "build": "월드 구성 중",
+      "restore": "게임 복원 중",
+      "place": "시작 준비 중",
+      "joinWorld": "월드에 참가 중",
+      "settle": "곧 완료",
+      "waitHost": "호스트를 기다리는 중"
+    },
+    "category": {
+      "survival": "생존",
+      "building": "건설",
+      "companions": "동료",
+      "combat": "전투",
+      "exploring": "탐험",
+      "seasons": "계절",
+      "multiplayer": "멀티플레이",
+      "modstoke": "Modstoke",
+      "creative": "크리에이티브"
+    },
+    "control": {
+      "inventory": "인벤토리",
+      "book": "안내서",
+      "gps": "GPS",
+      "light": "조명",
+      "skipIntro": "인트로 건너뛰기(길게 누르기)",
+      "photo": "사진 모드",
+      "mods": "모드",
+      "next": "다음 팁",
+      "heavyAttack": "강공격",
+      "placeSeveral": "연속 배치",
+      "takeApart": "해체",
+      "putAway": "집어넣기",
+      "materials": "자재 배치 전환"
+    },
+    "tip": {
+      "survival": {
+        "vitals": "먹고, 마시고, 쉬어서 활력을 높게 유지하세요. 스태미나는 활력보다 높아질 수 없습니다.",
+        "sickness": "더럽거나 독성이 있거나 썩은 음식을 먹으면 병에 걸리고, 병은 최대 체력을 낮춥니다.",
+        "cold": "추우면 활력이 제한됩니다. 옷에 따라 보온 효과가 크게 다릅니다.",
+        "rest": "실외보다 실내에서 자야 더 잘 쉴 수 있고, 편안함 등급이 높을수록 휴식이 더 많이 회복됩니다.",
+        "shelter": "일찍 쉼터를 지으세요. 잠을 자고 저장하는 곳입니다.",
+        "drying": "건조대는 따뜻한 곳일수록 잘 작동하고, 말린 음식은 신선한 음식보다 오래갑니다.",
+        "cooking": "일부 요리 레시피는 유용한 보너스를 줍니다. 먼 길을 떠나기 전에 든든히 먹어 두세요.",
+        "strength": "힘든 일을 하면 힘 레벨이 오르고, 체력과 근접 피해, 나무 피해가 조금씩 늘어납니다."
+      },
+      "building": {
+        "logs": "통나무는 한 번에 두 개까지 나를 수 있습니다. 지을 곳에 내려 두면 오가는 수고를 덜 수 있습니다.",
+        "placeSeveral": "구조물을 배치할 때 길게 누르면 여러 개를 연달아 놓을 수 있습니다.",
+        "takeApart": "길게 눌러 배치한 부품을 제거하거나, 안내서로 지은 작은 구조물을 주울 수 있습니다.",
+        "book": "안내서에는 지을 수 있는 것이 나와 있고, 각 구조물을 원하는 곳에 배치할 수 있습니다."
+      },
+      "companions": {
+        "kelvin": "켈빈은 듣지 못합니다. 메모장으로 통나무, 막대기, 돌 모으기나 건설 마무리 같은 일을 맡기세요."
+      },
+      "combat": {
+        "heavy": "길게 눌러 강공격을 합니다.",
+        "bushes": "덤불 속에 웅크려 적에게서 숨으세요.",
+        "explosives": "폭발물과 화염병은 대부분의 적에게 효과적입니다. 화염병은 천과 술로 만들 수 있습니다.",
+        "boneArmour": "시체를 태우면 뼈가 남습니다. 뼈, 밧줄, 덕트 테이프로 뼈 갑옷을 만들 수 있습니다.",
+        "putAway": "눌러서 손에 든 것을 집어넣습니다."
+      },
+      "exploring": {
+        "gps": "GPS는 지도에 중요한 장소를 표시합니다. 확대하면 더 자세히 볼 수 있습니다.",
+        "light": "동굴 안은 칠흑같이 어둡습니다. 들어가기 전에 광원을 장착하세요.",
+        "inventory": "탭하면 인벤토리가 열리고, 길게 누르면 빠른 선택 창이 열립니다.",
+        "hotkeys": "인벤토리에서 숫자 키 1~0으로 아이템에 단축키를 지정하세요.",
+        "flippers": "오리발을 신으면 물속에서는 빨라지지만 땅에서는 느려집니다.",
+        "knight": "두 번 점프하면 Knight V에서 내릴 수 있습니다.",
+        "traps": "덫을 놓아 두면 다른 일을 하는 동안 소형 동물을 잡을 수 있습니다."
+      },
+      "seasons": {
+        "autumn": "가을 다음은 겨울입니다. 눈이 오기 전에 음식을 말리고 더 따뜻한 옷을 구하세요.",
+        "winter": "겨울에는 음식이 귀하고 밤이 춥습니다. 불을 꺼뜨리지 말고 따뜻한 곳에서 잠을 자세요.",
+        "lakes": "겨울에는 호수가 얼어붙습니다."
+      },
+      "multiplayer": {
+        "voice": "게임이 시작되기 전에 로비에서 ‘눌러서 말하기’나 ‘항상 켜기’를 고르세요.",
+        "content": "콘텐츠 모드가 있는 서버에는 같은 모드가 필요합니다. 다르면 어떤 모드인지 메시지에 나옵니다."
+      },
+      "modstoke": {
+        "photo": "나의 월드를 사진에 담아 보세요. 사진 모드는 일시 정지 메뉴에도 있습니다.",
+        "photoWorld": "사진 모드의 월드 탭에서 촬영할 시간대와 날씨를 정할 수 있습니다.",
+        "photoHere": "월드에서 찍은 사진은 다음에 그 월드를 불러올 때 여기에 표시됩니다.",
+        "photoFolder": "사진은 사진 > Sons Of The Forest에 저장되며, Steam 스크린샷에도 추가할 수 있습니다.",
+        "mods": "모드는 타이틀 화면이나 일시 정지 메뉴에서 열 수 있습니다.",
+        "menuSize": "메뉴가 너무 작거나 큰가요? {options} > {modstoke} > {menus}에서 크기를 바꾸세요.",
+        "classic": "게임 원래 메뉴가 더 좋으신가요? {options} > {modstoke} > {menus}에서 선택하세요.",
+        "language": "Modstoke 메뉴는 별도의 언어를 쓸 수 있습니다: {options} > {modstoke} > {language}.",
+        "loadingArt": "여기에 표시할 이미지는 {options} > {modstoke} > {menus}에서 고를 수 있습니다."
+      },
+      "creative": {
+        "materials": "인벤토리에서 건축 자재 배치를 전환합니다."
+      }
     }
   },
 

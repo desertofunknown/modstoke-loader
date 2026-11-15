@@ -171,6 +171,8 @@
       "proximityChat": { "name": "Puhechat", "about": "Miten mikrofonisi toimii moninpelissä: paina puhuaksesi tai aina päällä." },
       "menus": { "name": "Valikot", "about": "Modstoken valikot tai pelin omat valikot sellaisina kuin ne olivat. Palaa takaisin asettamalla classicMenus = false tiedostossa Modstoke/UserData/openacai-loader.settings.cfg." },
       "menuSize": { "name": "Valikoiden koko", "about": "Modstoken valikoiden ja niiden tekstin koko." },
+      "loadingScreen": { "name": "Latausnäyttö", "about": "Modstoken latausnäyttö, jossa on kuvia saaresta ja omia kuviasi, tai pelin oma latausnäyttö." },
+      "loadingArt": { "name": "Latauskuvat", "about": "Omat kuvasi ladattavasta maailmasta, sitten Modstoken kuvat saaresta. Tai vain Modstoken kuvat, tai ensin omat kuvasi mistä tahansa maailmasta." },
       "textLanguage": { "name": "Modstoken kieli", "about": "Modstoken omien tekstien, kuten näiden valikoiden, kieli. ”Seuraa peliä” käyttää pelin kieltä." }
     },
 
@@ -235,7 +237,12 @@
       "hard": "Vaikea",
       "followGame": "Seuraa peliä",
       "modstokeMenus": "Modstoke",
-      "gameMenus": "Pelin omat"
+      "gameMenus": "Pelin omat",
+      "modstokeLoading": "Modstoke",
+      "gameLoading": "Pelin oma",
+      "loadingArtAll": "Omat kuvat ja Modstoke",
+      "loadingArtModstoke": "Vain Modstoke",
+      "loadingArtPhotos": "Omat kuvat ensin"
     }
   },
 
@@ -252,7 +259,7 @@
       "general": "Yleiset",
       "hotkeys": "Pikanäppäimet",
       "inventory": "Inventaario",
-      "book": "Selviytymiskirja",
+      "book": "Opaskirja",
       "blueprints": "Piirustukset",
       "freeform": "Vapaa rakentaminen",
       "drive": "Ajaminen",
@@ -267,8 +274,8 @@
       "general": "Puhuminen muille pelaajille ja kohtausten ohittaminen.",
       "hotkeys": "Ottaa esiin kuhunkin numeroon asettamasi esineen.",
       "inventory": "Esineiden käsittely inventaarion ollessa auki.",
-      "book": "Liikkuminen selviytymiskirjassa.",
-      "blueprints": "Selviytymiskirjasta valittujen rakennelmien sijoittaminen.",
+      "book": "Liikkuminen opaskirjassa.",
+      "blueprints": "Opaskirjasta valittujen rakennelmien sijoittaminen.",
       "freeform": "Rakentaminen pala palalta ja rakennelmien purkaminen.",
       "drive": "Saaren ajoneuvoilla ajaminen.",
       "radio": "Ajoneuvon radio.",
@@ -361,6 +368,113 @@
       "circle": "Ympyrä",
       "square": "Neliö",
       "triangle": "Kolmio"
+    }
+  },
+
+  "loading": {
+    "kind": { "continue": "Jatketaan", "new": "Uusi peli", "host": "Isännöidään", "join": "Liitytään", "load": "Ladataan" },
+    "island": "Saari",
+    "day": "Päivä {day}",
+    "players": { "one": "{count}/{limit} pelaajaa", "other": "{count}/{limit} pelaajaa" },
+    "dedicated": "Dedikoitu palvelin",
+    "yourPhoto": "Oma kuvasi · {where}",
+    "phase": {
+      "prepare": "Valmistellaan",
+      "server": "Käynnistetään palvelinta",
+      "connect": "Yhdistetään",
+      "stream": "Ladataan saarta",
+      "build": "Rakennetaan maailmaa",
+      "restore": "Palautetaan peliäsi",
+      "place": "Valmistellaan aloitusta",
+      "joinWorld": "Liitytään maailmaan",
+      "settle": "Melkein valmista",
+      "waitHost": "Odotetaan isäntää"
+    },
+    "category": {
+      "survival": "Selviytyminen",
+      "building": "Rakentaminen",
+      "companions": "Kumppanit",
+      "combat": "Taistelu",
+      "exploring": "Tutkiminen",
+      "seasons": "Vuodenajat",
+      "multiplayer": "Moninpeli",
+      "modstoke": "Modstoke",
+      "creative": "Luova"
+    },
+    "control": {
+      "inventory": "Inventaario",
+      "book": "Opaskirja",
+      "gps": "GPS",
+      "light": "Valo",
+      "skipIntro": "Ohita intro (pidä pohjassa)",
+      "photo": "Valokuvaustila",
+      "mods": "Modit",
+      "next": "Seuraava vinkki",
+      "heavyAttack": "Voimakas hyökkäys",
+      "placeSeveral": "Aseta useita",
+      "takeApart": "Pura",
+      "putAway": "Laita pois",
+      "materials": "Materiaaliasettelu"
+    },
+    "tip": {
+      "survival": {
+        "vitals": "Syö, juo ja lepää, niin elinvoimasi pysyy korkeana. Kestävyytesi ei voi koskaan nousta sitä korkeammaksi.",
+        "sickness": "Likainen, myrkyllinen tai pilaantunut ruoka sairastuttaa, ja sairaus laskee enimmäisterveyttäsi.",
+        "cold": "Paleleminen rajoittaa elinvoimaasi. Jotkin vaatteet lämmittävät paljon paremmin kuin toiset.",
+        "rest": "Sisällä nukkuminen antaa enemmän lepoa kuin ulkona nukkuminen, ja korkeampi mukavuusarvo palauttaa enemmän lepoa.",
+        "shelter": "Rakenna suoja ajoissa: siellä nukut ja tallennat.",
+        "drying": "Kuivaustelineet toimivat paremmin lämpimissä paikoissa, ja kuivattu ruoka säilyy tuoretta pidempään.",
+        "cooking": "Jotkin ruokareseptit antavat hyödyllisiä bonuksia. Syö hyvin ennen pitkää retkeä.",
+        "strength": "Raskas työ nostaa vahvuuttasi: hieman lisää terveyttä, lähitaisteluvahinkoa ja vahinkoa puihin."
+      },
+      "building": {
+        "logs": "Voit kantaa kahta tukkia kerralla. Jätä ne sinne, minne aiot rakentaa, niin säästät kävelyä.",
+        "placeSeveral": "Pidä pohjassa rakennetta asettaessasi, niin voit asettaa useita peräkkäin.",
+        "takeApart": "Pidä pohjassa poistaaksesi asettamasi osan tai nostaaksesi opaskirjasta rakennetun pienen rakenteen.",
+        "book": "Opaskirja näyttää, mitä voit rakentaa, ja merkitsee jokaisen rakenteen juuri sinne, minne haluat."
+      },
+      "companions": {
+        "kelvin": "Kelvin ei kuule sinua. Anna hänelle tehtäviä muistilehtiöstä: tukkien, keppien ja kivien keräämistä tai rakennuksen viimeistelyä."
+      },
+      "combat": {
+        "heavy": "Pidä pohjassa, niin teet voimakkaan hyökkäyksen.",
+        "bushes": "Kyyristy pensaisiin piiloon vihollisilta.",
+        "explosives": "Räjähteet ja molotovin cocktailit tehoavat useimpiin vihollisiin. Molotovin saat liinasta ja viinasta.",
+        "boneArmour": "Poltetuista ruumiista jää luita. Luista, köydestä ja ilmastointiteipistä syntyy luupanssari.",
+        "putAway": "Paina, niin laitat pois sen, mitä pidät kädessäsi."
+      },
+      "exploring": {
+        "gps": "GPS merkitsee kartalle tärkeät paikat. Zoomaa lähemmäs nähdäksesi enemmän.",
+        "light": "Luolat ovat pilkkopimeitä. Ota valonlähde käyttöön ennen kuin menet sisään.",
+        "inventory": "Napauta avataksesi inventaarion tai pidä pohjassa pikavalintaa varten.",
+        "hotkeys": "Anna esineille pikanäppäimet inventaariossa numeronäppäimillä 1–0.",
+        "flippers": "Räpylöillä olet vedessä nopeampi, mutta maalla ne hidastavat.",
+        "knight": "Pääset pois Knight V:n kyydistä hyppäämällä kahdesti.",
+        "traps": "Rakenna ansoja, jotka pyydystävät pieniä eläimiä sillä välin, kun teet muuta."
+      },
+      "seasons": {
+        "autumn": "Syksyä seuraa talvi. Kuivaa ruokaa ja hanki lämpimämpiä vaatteita ennen lumen tuloa.",
+        "winter": "Talvella ruokaa on niukasti ja yöt ovat kylmiä. Pidä tuli palamassa ja nuku lämpimässä.",
+        "lakes": "Talvella järvet jäätyvät."
+      },
+      "multiplayer": {
+        "voice": "Valitse aulassa ennen pelin alkua ”Paina puhuaksesi” tai ”Aina päällä”.",
+        "content": "Sisältömodeja käyttävät palvelimet vaativat samat modit kuin sinulla. Jos ne eroavat, viesti kertoo mitkä."
+      },
+      "modstoke": {
+        "photo": "Ikuista maailmasi kuvaan. Valokuvaustila löytyy myös taukovalikosta.",
+        "photoWorld": "Valokuvaustilan Maailma-välilehdellä asetat kuvaasi vuorokaudenajan ja sään.",
+        "photoHere": "Maailmassa ottamasi kuvat näkyvät täällä, kun lataat sen seuraavan kerran.",
+        "photoFolder": "Kuvat tallentuvat kansioon Kuvat > Sons Of The Forest, ja ne voivat mennä myös Steam-kuvakaappauksiisi.",
+        "mods": "Avaa modisi niminäytössä tai taukovalikosta.",
+        "menuSize": "Ovatko valikot liian pieniä tai suuria? Muuta kokoa kohdassa {options} > {modstoke} > {menus}.",
+        "classic": "Haluatko mieluummin pelin alkuperäiset valikot? Valitse ne kohdassa {options} > {modstoke} > {menus}.",
+        "language": "Modstoken valikoilla voi olla oma kielensä: {options} > {modstoke} > {language}.",
+        "loadingArt": "Valitse täällä näytettävät kuvat kohdassa {options} > {modstoke} > {menus}."
+      },
+      "creative": {
+        "materials": "Vaihda inventaariossa rakennusmateriaalien asettelua."
+      }
     }
   },
 

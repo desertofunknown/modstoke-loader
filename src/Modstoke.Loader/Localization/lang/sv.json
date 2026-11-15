@@ -171,6 +171,8 @@
       "proximityChat": { "name": "Röstchatt", "about": "Hur din mikrofon fungerar i flerspelarläge: tryck för att tala eller alltid på." },
       "menus": { "name": "Menyer", "about": "Modstokes menyer eller spelets egna som de var. Ställ in classicMenus = false i Modstoke/UserData/openacai-loader.settings.cfg för att komma tillbaka." },
       "menuSize": { "name": "Menystorlek", "about": "Storleken på Modstokes menyer och deras text." },
+      "loadingScreen": { "name": "Laddningsskärm", "about": "Modstokes laddningsskärm med bilder från ön och dina egna foton, eller spelets egen." },
+      "loadingArt": { "name": "Laddningsbilder", "about": "Dina foton från världen som laddas, sedan Modstokes bilder från ön. Eller bara Modstokes, eller först dina foton från valfri värld." },
       "textLanguage": { "name": "Modstokes språk", "about": "Språket i Modstokes egna texter, till exempel de här menyerna. ”Följ spelet” använder spelets språk." }
     },
 
@@ -235,7 +237,12 @@
       "hard": "Svår",
       "followGame": "Följ spelet",
       "modstokeMenus": "Modstoke",
-      "gameMenus": "Spelets egna"
+      "gameMenus": "Spelets egna",
+      "modstokeLoading": "Modstoke",
+      "gameLoading": "Spelets egen",
+      "loadingArtAll": "Dina foton och Modstoke",
+      "loadingArtModstoke": "Bara Modstoke",
+      "loadingArtPhotos": "Dina foton först"
     }
   },
 
@@ -252,7 +259,7 @@
       "general": "Allmänt",
       "hotkeys": "Snabbtangenter",
       "inventory": "Inventarie",
-      "book": "Överlevnadsbok",
+      "book": "Guidebok",
       "blueprints": "Ritningar",
       "freeform": "Fritt byggande",
       "drive": "Körning",
@@ -267,8 +274,8 @@
       "general": "Prata med andra spelare och hoppa över scener.",
       "hotkeys": "Tar fram föremålet du lagt på varje siffra.",
       "inventory": "Hantera föremål medan inventariet är öppet.",
-      "book": "Hitta i överlevnadsboken.",
-      "blueprints": "Placera byggen som valts i överlevnadsboken.",
+      "book": "Hitta i guideboken.",
+      "blueprints": "Placera byggen som valts i guideboken.",
       "freeform": "Bygga bit för bit och riva byggen.",
       "drive": "Köra fordonen på ön.",
       "radio": "Fordonets radio.",
@@ -361,6 +368,113 @@
       "circle": "Cirkel",
       "square": "Fyrkant",
       "triangle": "Triangel"
+    }
+  },
+
+  "loading": {
+    "kind": { "continue": "Fortsätter", "new": "Nytt spel", "host": "Du är värd", "join": "Går med", "load": "Laddar" },
+    "island": "Ön",
+    "day": "Dag {day}",
+    "players": { "one": "{count} av {limit} spelare", "other": "{count} av {limit} spelare" },
+    "dedicated": "Dedikerad server",
+    "yourPhoto": "Ditt foto · {where}",
+    "phase": {
+      "prepare": "Förbereder",
+      "server": "Startar servern",
+      "connect": "Ansluter",
+      "stream": "Laddar ön",
+      "build": "Bygger världen",
+      "restore": "Återställer ditt spel",
+      "place": "Förbereder din start",
+      "joinWorld": "Går in i världen",
+      "settle": "Snart klart",
+      "waitHost": "Väntar på värden"
+    },
+    "category": {
+      "survival": "Överlevnad",
+      "building": "Byggande",
+      "companions": "Följeslagare",
+      "combat": "Strid",
+      "exploring": "Utforskning",
+      "seasons": "Årstider",
+      "multiplayer": "Flerspelarläge",
+      "modstoke": "Modstoke",
+      "creative": "Kreativ"
+    },
+    "control": {
+      "inventory": "Inventarie",
+      "book": "Guidebok",
+      "gps": "GPS",
+      "light": "Ljus",
+      "skipIntro": "Hoppa över intro (håll)",
+      "photo": "Fotoläge",
+      "mods": "Moddar",
+      "next": "Nästa tips",
+      "heavyAttack": "Kraftfull attack",
+      "placeSeveral": "Placera flera",
+      "takeApart": "Ta isär",
+      "putAway": "Lägg undan",
+      "materials": "Materiallayout"
+    },
+    "tip": {
+      "survival": {
+        "vitals": "Ät, drick och vila för att hålla livskraften uppe. Uthålligheten kan aldrig bli högre än den.",
+        "sickness": "Smutsig, giftig eller rutten mat gör dig sjuk, och sjukdom sänker din maxhälsa.",
+        "cold": "Kyla begränsar din livskraft. Vissa kläder värmer mycket bättre än andra.",
+        "rest": "Att sova inomhus ger mer vila än att sova utomhus, och en högre komfortnivå återställer mer vila.",
+        "shelter": "Bygg ett skydd tidigt: där sover du och sparar.",
+        "drying": "Torkställ fungerar bättre på varmare platser, och torkad mat håller längre än färsk.",
+        "cooking": "Vissa recept ger användbara bonusar. Ät ordentligt före en lång tur.",
+        "strength": "Hårt arbete höjer din styrkenivå, vilket ökar din hälsa, närstridsskada och trädskada något."
+      },
+      "building": {
+        "logs": "Du kan bära två stockar åt gången. Lägg dem där du tänker bygga så sparar du vändor.",
+        "placeSeveral": "Håll in medan du placerar en struktur för att sätta ut flera i rad.",
+        "takeApart": "Håll in för att ta bort en del du placerat, eller för att plocka upp en liten struktur byggd från guideboken.",
+        "book": "Guideboken visar vad du kan bygga och lägger ut varje struktur där du vill ha den."
+      },
+      "companions": {
+        "kelvin": "Kelvin hör dig inte. Ge honom uppgifter via hans anteckningsblock: samla stockar, grenar och stenar eller bygga klart."
+      },
+      "combat": {
+        "heavy": "Håll in för en kraftfull attack.",
+        "bushes": "Huka dig i buskar för att gömma dig för fiender.",
+        "explosives": "Sprängämnen och molotovcocktails fungerar mot de flesta fiender. Gör en molotov av tyg och sprit.",
+        "boneArmour": "Brända kroppar lämnar ben efter sig. Av ben, rep och silvertejp gör du en benrustning.",
+        "putAway": "Tryck för att lägga undan det du håller i."
+      },
+      "exploring": {
+        "gps": "Din GPS markerar viktiga platser på kartan. Zooma in för fler detaljer.",
+        "light": "Grottor är beckmörka. Ta fram en ljuskälla innan du går in.",
+        "inventory": "Tryck för att öppna inventariet, eller håll in för snabbval.",
+        "hotkeys": "Ge föremål snabbtangenter i inventariet med siffertangenterna 1 till 0.",
+        "flippers": "Med simfötter är du snabbare i vattnet men långsammare på land.",
+        "knight": "Hoppa två gånger för att stiga av Knight V.",
+        "traps": "Bygg fällor som fångar smådjur medan du gör annat."
+      },
+      "seasons": {
+        "autumn": "Efter hösten kommer vintern. Torka mat och skaffa varmare kläder innan snön kommer.",
+        "winter": "På vintern är maten knapp och nätterna kalla. Håll en eld vid liv och sov någonstans varmt.",
+        "lakes": "På vintern fryser sjöarna till."
+      },
+      "multiplayer": {
+        "voice": "Välj ”Tryck för att tala” eller ”Alltid på” i lobbyn innan spelet startar.",
+        "content": "Servrar med innehållsmoddar kräver samma moddar som du har. Om de skiljer sig står det i meddelandet vilka."
+      },
+      "modstoke": {
+        "photo": "Fånga en bild av din värld. Fotoläget finns även i pausmenyn.",
+        "photoWorld": "Fotolägets flik Värld ställer in tid på dygnet och väder för din bild.",
+        "photoHere": "Foton du tar i en värld visas här nästa gång du laddar den.",
+        "photoFolder": "Foton sparas i Bilder > Sons Of The Forest och kan även hamna bland dina Steam-skärmbilder.",
+        "mods": "Öppna dina moddar från huvudmenyn eller pausmenyn.",
+        "menuSize": "Är menyerna för små eller för stora? Ändra storleken under {options} > {modstoke} > {menus}.",
+        "classic": "Föredrar du spelets ursprungliga menyer? Välj dem under {options} > {modstoke} > {menus}.",
+        "language": "Modstokes menyer kan ha ett eget språk: {options} > {modstoke} > {language}.",
+        "loadingArt": "Välj vilka bilder som visas här under {options} > {modstoke} > {menus}."
+      },
+      "creative": {
+        "materials": "Växla layouten för byggmaterial i inventariet."
+      }
     }
   },
 

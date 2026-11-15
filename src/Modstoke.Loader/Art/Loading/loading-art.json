@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "art": [
+    {"file": "loading-lake-day.dds", "season": "Summer", "light": "day", "focus": [0.45, 0.45]},
+    {"file": "loading-lake-mist.dds", "season": "Summer", "light": "day", "focus": [0.45, 0.4]},
+    {"file": "loading-coast-sunset.dds", "season": "Summer", "light": "night", "focus": [0.62, 0.4]},
+    {"file": "loading-river-rain.dds", "season": "Summer", "light": "day", "focus": [0.45, 0.35]},
+    {"file": "loading-forest-rain.dds", "season": "Summer", "light": "day", "focus": [0.72, 0.3]},
+    {"file": "loading-winter-lake-day.dds", "season": "Winter", "light": "day", "focus": [0.6, 0.4]},
+    {"file": "loading-winter-lake-dusk.dds", "season": "Winter", "light": "night", "focus": [0.55, 0.38]}
+  ]
+}

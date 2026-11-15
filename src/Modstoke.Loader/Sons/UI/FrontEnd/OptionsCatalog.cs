@@ -610,7 +610,18 @@ namespace Modstoke.Loader
                     Loader("menuSize", "menuScale", "1", new[] { 0.9f, 1f, 1.1f, 1.2f }
                         .Select(scale => (scale.ToString(CultureInfo.InvariantCulture),
                             (Func<string>)(() => scale.ToString("P0", Languages.CultureOf(Languages.Current)))))
-                        .ToArray(), FrontEnd.ScaleChanged)),
+                        .ToArray(), FrontEnd.ScaleChanged),
+                    Loader("loadingScreen", "loadingScreen", "true", new (string, Func<string>)[]
+                    {
+                        ("true", () => FrontEnd.Text["options.value.modstokeLoading"]),
+                        ("false", () => FrontEnd.Text["options.value.gameLoading"])
+                    }, LoadingScreen.SettingChanged),
+                    Loader("loadingArt", "loadingArt", "all", new (string, Func<string>)[]
+                    {
+                        ("all", () => FrontEnd.Text["options.value.loadingArtAll"]),
+                        ("modstoke", () => FrontEnd.Text["options.value.loadingArtModstoke"]),
+                        ("photos", () => FrontEnd.Text["options.value.loadingArtPhotos"])
+                    }, LoadingScreen.SettingChanged)),
                 Section("language",
                     Loader("textLanguage", "language", "auto",
                         new (string, Func<string>)[] { ("auto", () => FrontEnd.Text["options.value.followGame"]) }

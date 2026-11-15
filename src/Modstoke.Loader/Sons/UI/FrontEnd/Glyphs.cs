@@ -69,6 +69,11 @@ namespace Modstoke.Loader
             return Found.TryGetValue(name, out texture) && texture != null && texture;
         }
 
+        /// <summary>Whether the icon for a button was found already, so drawing it needs no search of the game's textures.</summary>
+        internal static bool Has(string button)
+            => !string.IsNullOrEmpty(button) && (PlayStationPad ? PlayStation : Xbox).TryGetValue(button, out var name)
+                && Found.TryGetValue(name, out var texture) && texture != null && texture;
+
         // The icons are loaded with the game's own input prompts; they are found by name once that has happened.
         private static void Scan()
         {

@@ -171,6 +171,8 @@
       "proximityChat": { "name": "Chat vocal", "about": "Le fonctionnement de votre micro en multijoueur : appuyer pour parler, ou toujours actif." },
       "menus": { "name": "Menus", "about": "Les menus de Modstoke, ou ceux du jeu tels qu’ils étaient. Pour revenir, définissez classicMenus = false dans Modstoke/UserData/openacai-loader.settings.cfg." },
       "menuSize": { "name": "Taille des menus", "about": "La taille des menus de Modstoke et de leur texte." },
+      "loadingScreen": { "name": "Écran de chargement", "about": "L’écran de chargement de Modstoke, avec des images de l’île et vos propres photos, ou celui du jeu." },
+      "loadingArt": { "name": "Images de chargement", "about": "Vos photos du monde en cours de chargement, puis les images de l’île de Modstoke. Ou seulement celles de Modstoke, ou d’abord vos photos de tous vos mondes." },
       "textLanguage": { "name": "Langue de Modstoke", "about": "La langue des textes propres à Modstoke, comme ces menus. « Suivre le jeu » utilise la langue du jeu." }
     },
 
@@ -235,7 +237,12 @@
       "hard": "Difficile",
       "followGame": "Suivre le jeu",
       "modstokeMenus": "Modstoke",
-      "gameMenus": "Ceux du jeu"
+      "gameMenus": "Ceux du jeu",
+      "modstokeLoading": "Modstoke",
+      "gameLoading": "Celui du jeu",
+      "loadingArtAll": "Vos photos et Modstoke",
+      "loadingArtModstoke": "Modstoke uniquement",
+      "loadingArtPhotos": "Vos photos d’abord"
     }
   },
 
@@ -252,7 +259,7 @@
       "general": "Général",
       "hotkeys": "Raccourcis",
       "inventory": "Inventaire",
-      "book": "Livre de survie",
+      "book": "Livre guide",
       "blueprints": "Plans",
       "freeform": "Construction libre",
       "drive": "Conduite",
@@ -267,8 +274,8 @@
       "general": "Parler aux autres joueurs et passer les scènes.",
       "hotkeys": "Sort l’objet placé sur chaque chiffre.",
       "inventory": "Manipuler les objets quand l’inventaire est ouvert.",
-      "book": "Se repérer dans le livre de survie.",
-      "blueprints": "Placer les structures choisies dans le livre de survie.",
+      "book": "Se repérer dans le livre guide.",
+      "blueprints": "Placer les structures choisies dans le livre guide.",
       "freeform": "Construire pièce par pièce et démonter les structures.",
       "drive": "Conduire les véhicules de l’île.",
       "radio": "La radio du véhicule.",
@@ -361,6 +368,113 @@
       "circle": "Rond",
       "square": "Carré",
       "triangle": "Triangle"
+    }
+  },
+
+  "loading": {
+    "kind": { "continue": "Reprise", "new": "Nouvelle partie", "host": "Hébergement", "join": "Entrée dans la partie", "load": "Chargement" },
+    "island": "L’île",
+    "day": "Jour {day}",
+    "players": { "one": "{count} joueur sur {limit}", "other": "{count} joueurs sur {limit}" },
+    "dedicated": "Serveur dédié",
+    "yourPhoto": "Votre photo · {where}",
+    "phase": {
+      "prepare": "Préparation",
+      "server": "Démarrage du serveur",
+      "connect": "Connexion",
+      "stream": "Chargement de l’île",
+      "build": "Construction du monde",
+      "restore": "Restauration de votre partie",
+      "place": "Préparation de votre départ",
+      "joinWorld": "Arrivée dans le monde",
+      "settle": "Presque prêt",
+      "waitHost": "En attente de l’hôte"
+    },
+    "category": {
+      "survival": "Survie",
+      "building": "Construction",
+      "companions": "Compagnons",
+      "combat": "Combat",
+      "exploring": "Exploration",
+      "seasons": "Saisons",
+      "multiplayer": "Multijoueur",
+      "modstoke": "Modstoke",
+      "creative": "Créatif"
+    },
+    "control": {
+      "inventory": "Inventaire",
+      "book": "Livre guide",
+      "gps": "GPS",
+      "light": "Lumière",
+      "skipIntro": "Passer l’intro (maintenir)",
+      "photo": "Mode photo",
+      "mods": "Mods",
+      "next": "Astuce suivante",
+      "heavyAttack": "Attaque puissante",
+      "placeSeveral": "Poser plusieurs",
+      "takeApart": "Démonter",
+      "putAway": "Ranger",
+      "materials": "Affichage des matériaux"
+    },
+    "tip": {
+      "survival": {
+        "vitals": "Mangez, buvez et reposez-vous pour garder une vitalité élevée. Votre endurance ne peut jamais la dépasser.",
+        "sickness": "Les aliments sales, toxiques ou pourris vous rendent malade, et la maladie réduit votre santé maximale.",
+        "cold": "Le froid limite votre vitalité. Certains vêtements sont bien plus chauds que d’autres.",
+        "rest": "Dormir à l’intérieur repose davantage que dormir dehors, et plus le confort est élevé, plus vous récupérez.",
+        "shelter": "Construisez vite un abri : c’est là que vous dormez et sauvegardez.",
+        "drying": "Les séchoirs fonctionnent mieux dans les endroits chauds, et la nourriture séchée se conserve plus longtemps.",
+        "cooking": "Certaines recettes donnent des bonus utiles. Mangez bien avant une longue expédition.",
+        "strength": "L’effort fait monter votre niveau de force, ce qui augmente un peu votre santé et vos dégâts au corps à corps et sur les arbres."
+      },
+      "building": {
+        "logs": "Vous pouvez porter deux rondins à la fois. Déposez-les là où vous comptez construire pour éviter les allers-retours.",
+        "placeSeveral": "Maintenez en posant une structure pour en placer plusieurs à la suite.",
+        "takeApart": "Maintenez pour retirer un élément posé, ou pour ramasser une petite structure construite avec le livre guide.",
+        "book": "Le livre guide montre ce que vous pouvez construire et trace chaque structure là où vous la voulez."
+      },
+      "companions": {
+        "kelvin": "Kelvin ne vous entend pas. Confiez-lui des tâches avec son bloc-notes : ramasser rondins, bâtons et pierres, ou finir une construction."
+      },
+      "combat": {
+        "heavy": "Maintenez pour une attaque puissante.",
+        "bushes": "Accroupissez-vous dans les buissons pour vous cacher des ennemis.",
+        "explosives": "Explosifs et cocktails Molotov sont efficaces contre la plupart des ennemis. Fabriquez un Molotov avec du tissu et de l’alcool.",
+        "boneArmour": "Brûler des corps laisse des os. Avec des os, de la corde et du chatterton, fabriquez une armure d’os.",
+        "putAway": "Appuyez pour ranger ce que vous tenez en main."
+      },
+      "exploring": {
+        "gps": "Votre GPS signale les endroits importants sur la carte. Zoomez pour plus de détails.",
+        "light": "Les grottes sont plongées dans le noir. Équipez une source de lumière avant d’entrer.",
+        "inventory": "Appuyez pour ouvrir l’inventaire, ou maintenez pour la sélection rapide.",
+        "hotkeys": "Dans l’inventaire, attribuez des raccourcis aux objets avec les touches 1 à 0.",
+        "flippers": "Les palmes vous rendent plus rapide dans l’eau, mais vous ralentissent sur terre.",
+        "knight": "Sautez deux fois pour descendre du Knight V.",
+        "traps": "Fabriquez des pièges pour capturer de petits animaux pendant que vous vaquez à vos occupations."
+      },
+      "seasons": {
+        "autumn": "L’hiver suit l’automne. Faites sécher de la nourriture et trouvez des vêtements plus chauds avant la neige.",
+        "winter": "En hiver, la nourriture se fait rare et les nuits sont froides. Entretenez un feu et dormez au chaud.",
+        "lakes": "En hiver, les lacs gèlent."
+      },
+      "multiplayer": {
+        "voice": "Choisissez « Appuyer pour parler » ou « Toujours actif » dans le salon, avant le début de la partie.",
+        "content": "Les serveurs avec des mods de contenu exigent les mêmes mods que vous. S’ils diffèrent, le message indique lesquels."
+      },
+      "modstoke": {
+        "photo": "Immortalisez votre monde. Le mode photo est aussi dans le menu pause.",
+        "photoWorld": "L’onglet Monde du mode photo règle l’heure et la météo de votre cliché.",
+        "photoHere": "Les photos prises dans un monde s’affichent ici la prochaine fois que vous le chargez.",
+        "photoFolder": "Les photos sont enregistrées dans Images > Sons Of The Forest et peuvent aussi aller dans vos captures Steam.",
+        "mods": "Ouvrez vos mods depuis l’écran titre ou le menu pause.",
+        "menuSize": "Menus trop petits ou trop grands ? Changez leur taille dans {options} > {modstoke} > {menus}.",
+        "classic": "Vous préférez les menus d’origine du jeu ? Choisissez-les dans {options} > {modstoke} > {menus}.",
+        "language": "Les menus de Modstoke peuvent avoir leur propre langue : {options} > {modstoke} > {language}.",
+        "loadingArt": "Choisissez les images affichées ici dans {options} > {modstoke} > {menus}."
+      },
+      "creative": {
+        "materials": "Dans l’inventaire, changez la disposition des matériaux de construction."
+      }
     }
   },
 

@@ -202,16 +202,25 @@ namespace Modstoke.Loader
                 return;
             }
             if (_rebuild || _layout != FrontEnd.LayoutVersion) Rebuild();
-            // The game's lobby and its dialogs are drawn under this layer, which steps aside for them.
+            // The game's lobby and its dialogs are drawn under this layer, which steps aside for them. The loading screen
+            // covers it from the moment a join's load starts arriving; it stays drawn under the fade, then goes.
             var away = _lobbyDialog != null && _lobbyDialog && _lobbyDialog.gameObject.activeInHierarchy
                 || !_gui.gameObject.activeInHierarchy || GameDialogOpen();
-            if (_rootObject.activeSelf == away) _rootObject.SetActive(!away);
+            var covered = LoadingScreen.Covering;
+            var hidden = away || LoadingScreen.Opaque;
+            if (_rootObject.activeSelf == hidden) _rootObject.SetActive(!hidden);
             // The press that closes a lobby or a dialog must not also act on this screen.
             var now = Time.unscaledTime;
             // The console and the mods menu draw over this screen and take the keyboard while open.
-            if (away || ConsoleOverlay.IsVisible || MenuController.IsVisible) _resumeInputAt = now + InputPauseSeconds;
+            if (away || covered || ConsoleOverlay.IsVisible || MenuController.IsVisible) _resumeInputAt = now + InputPauseSeconds;
             _acting = now >= _resumeInputAt;
-            if (away)
+            if (covered)
+            {
+                // Nor may the game's own Back take the player to the title under it.
+                PauseBacks(true);
+                _backResumeAt = now + InputPauseSeconds;
+            }
+            if (away || covered)
             {
                 ReadDevice("gamepad", ReadPad);
                 return;
@@ -730,6 +739,7 @@ namespace Modstoke.Loader
                 MenuSound.Play(MenuCue.Activate);
                 // A hosted game's lobby says for itself whether its host runs the content check.
                 ContentAgreement.Joining(entry.Dedicated != null ? DeclaredContent(entry) : null);
+                LoadingScreen.Intend(LoadingIntent.FromServerRow(entry.Name, entry.Mode, entry.Players, entry.Limit, entry.Dedicated != null));
                 row.DoJoin();
                 RuntimeEntryPoint.LogSource?.LogInfo("Joining " + entry.Name + ".");
             }

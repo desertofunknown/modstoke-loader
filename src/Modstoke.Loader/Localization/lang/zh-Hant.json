@@ -171,6 +171,8 @@
       "proximityChat": { "name": "語音聊天", "about": "多人遊戲中麥克風的運作方式：按鍵通話或一律開啟。" },
       "menus": { "name": "選單", "about": "使用 Modstoke 的選單，或遊戲原本的選單。如需改回，請在 Modstoke/UserData/openacai-loader.settings.cfg 中設定 classicMenus = false。" },
       "menuSize": { "name": "選單大小", "about": "Modstoke 選單及其文字的大小。" },
+      "loadingScreen": { "name": "載入畫面", "about": "使用帶有島嶼風景和你自己照片的 Modstoke 載入畫面，或遊戲原版的載入畫面。" },
+      "loadingArt": { "name": "載入圖片", "about": "先顯示你在正在載入的世界中拍的照片，再顯示 Modstoke 的島嶼圖片。也可以只用 Modstoke 的圖片，或優先顯示你在任何世界拍的照片。" },
       "textLanguage": { "name": "Modstoke 語言", "about": "Modstoke 本身文字（例如這些選單）的語言。選擇「跟隨遊戲」時會使用遊戲的語言。" }
     },
 
@@ -235,7 +237,12 @@
       "hard": "困難",
       "followGame": "跟隨遊戲",
       "modstokeMenus": "Modstoke",
-      "gameMenus": "遊戲原版"
+      "gameMenus": "遊戲原版",
+      "modstokeLoading": "Modstoke",
+      "gameLoading": "遊戲原版",
+      "loadingArtAll": "你的照片和 Modstoke",
+      "loadingArtModstoke": "僅 Modstoke",
+      "loadingArtPhotos": "優先你的照片"
     }
   },
 
@@ -252,7 +259,7 @@
       "general": "一般",
       "hotkeys": "快捷鍵",
       "inventory": "物品欄",
-      "book": "求生手冊",
+      "book": "指南書",
       "blueprints": "藍圖",
       "freeform": "自由建造",
       "drive": "駕駛",
@@ -267,8 +274,8 @@
       "general": "與其他玩家交談，以及略過場景。",
       "hotkeys": "取出你放在各個數字上的物品。",
       "inventory": "物品欄開啟時處理物品。",
-      "book": "在求生手冊中翻閱。",
-      "blueprints": "放置在求生手冊中選好的建築。",
+      "book": "在指南書中翻閱。",
+      "blueprints": "放置在指南書中選好的建築。",
       "freeform": "逐塊建造，以及拆除建築。",
       "drive": "駕駛島上的載具。",
       "radio": "載具上的收音機。",
@@ -361,6 +368,113 @@
       "circle": "圓",
       "square": "方",
       "triangle": "三角"
+    }
+  },
+
+  "loading": {
+    "kind": { "continue": "繼續遊戲", "new": "新遊戲", "host": "建立遊戲", "join": "加入遊戲", "load": "載入中" },
+    "island": "島嶼",
+    "day": "第 {day} 天",
+    "players": { "other": "{count}/{limit} 名玩家" },
+    "dedicated": "專用伺服器",
+    "yourPhoto": "你的照片 · {where}",
+    "phase": {
+      "prepare": "正在準備",
+      "server": "正在啟動伺服器",
+      "connect": "正在連線",
+      "stream": "正在載入島嶼",
+      "build": "正在建構世界",
+      "restore": "正在恢復遊戲",
+      "place": "正在準備開局",
+      "joinWorld": "正在進入世界",
+      "settle": "即將完成",
+      "waitHost": "正在等待房主"
+    },
+    "category": {
+      "survival": "求生",
+      "building": "建造",
+      "companions": "同伴",
+      "combat": "戰鬥",
+      "exploring": "探索",
+      "seasons": "季節",
+      "multiplayer": "多人遊戲",
+      "modstoke": "Modstoke",
+      "creative": "創造"
+    },
+    "control": {
+      "inventory": "物品欄",
+      "book": "指南書",
+      "gps": "GPS",
+      "light": "光源",
+      "skipIntro": "跳過開場（長按）",
+      "photo": "拍照模式",
+      "mods": "模組",
+      "next": "下一則小提示",
+      "heavyAttack": "重擊",
+      "placeSeveral": "批量放置",
+      "takeApart": "拆解",
+      "putAway": "收起",
+      "materials": "切換材料排列"
+    },
+    "tip": {
+      "survival": {
+        "vitals": "吃喝和休息能讓維生指數維持在高點。你的體力永遠不會超過它。",
+        "sickness": "吃下不潔、有毒或腐爛的食物會生病，而生病會降低最大生命值。",
+        "cold": "寒冷會限制你的維生指數。有些衣物比其他衣物保暖得多。",
+        "rest": "睡在室內比睡在戶外休息得更好，舒適度越高，恢復的休息值越多。",
+        "shelter": "盡早蓋一座庇護所：你要在那裡睡覺和存檔。",
+        "drying": "晾乾架放在溫暖的地方效果更好，晾乾的食物也比新鮮食物保存得更久。",
+        "cooking": "有些食譜能提供實用的附加效果。遠行前記得吃飽。",
+        "strength": "辛苦勞動會提升力量等級，從而略微提高你的生命值、近戰傷害和對樹木的傷害。"
+      },
+      "building": {
+        "logs": "你一次最多能扛兩根原木。把它們放在要建造的地方，可以少跑幾趟。",
+        "placeSeveral": "放置建築物時按住，可以連續放下多個。",
+        "takeApart": "按住可移除已放置的部件，或撿起用指南書建造的小型建築物。",
+        "book": "指南書會列出你能建造的東西，並把每個建築物擺在你想要的位置。"
+      },
+      "companions": {
+        "kelvin": "Kelvin 聽不見你說話。用他的記事本派工作給他：收集原木、木棍和石頭，或完成建造。"
+      },
+      "combat": {
+        "heavy": "按住作出重擊。",
+        "bushes": "蹲伏在灌木叢中可以躲避敵人。",
+        "explosives": "炸藥和汽油彈對大部分敵人都很有效。用布料和酒就能做出汽油彈。",
+        "boneArmour": "焚燒屍體會留下骨頭。用骨頭、繩索和強力膠帶可以製作骨製護甲。",
+        "putAway": "按下可收起手中的物品。"
+      },
+      "exploring": {
+        "gps": "GPS 會在地圖上標出重要地點。放大可查看更多細節。",
+        "light": "洞穴裡伸手不見五指。進去之前先裝備光源。",
+        "inventory": "點擊開啟物品欄，長按開啟快捷選擇欄。",
+        "hotkeys": "在物品欄中用數字鍵 1 到 0 為物品分配快捷鍵。",
+        "flippers": "穿上蛙鞋在水裡更快，但在陸地上會變慢。",
+        "knight": "跳兩次即可從 Knight V 下來。",
+        "traps": "製作陷阱，在你忙別的事時捕捉小型動物。"
+      },
+      "seasons": {
+        "autumn": "秋天過後就是冬天。下雪前把食物晾乾，並找些更保暖的衣物。",
+        "winter": "冬天食物稀少，夜晚寒冷。讓火一直燒著，並在溫暖的地方睡覺。",
+        "lakes": "冬天湖面會結冰。"
+      },
+      "multiplayer": {
+        "voice": "遊戲開始前，在大廳選擇「按鍵通話」或「一律開啟」。",
+        "content": "有內容模組的伺服器要求你裝有相同的模組。如有不同，訊息會列出是哪些。"
+      },
+      "modstoke": {
+        "photo": "為你的世界留下一張照片。暫停選單裡也能開啟拍照模式。",
+        "photoWorld": "拍照模式的「世界」分頁可以設定拍攝時的時間和天氣。",
+        "photoHere": "你在某個世界裡拍的照片，會在下次載入該世界時顯示在這裡。",
+        "photoFolder": "照片儲存在「圖片 > Sons Of The Forest」中，也可以同時加入你的 Steam 截圖。",
+        "mods": "可在標題畫面或暫停選單中開啟模組。",
+        "menuSize": "選單太小或太大？在 {options} > {modstoke} > {menus} 中調整大小。",
+        "classic": "比較喜歡遊戲原版選單？在 {options} > {modstoke} > {menus} 中選擇。",
+        "language": "Modstoke 的選單可以使用單獨的語言：{options} > {modstoke} > {language}。",
+        "loadingArt": "在 {options} > {modstoke} > {menus} 中選擇這裡顯示的圖片。"
+      },
+      "creative": {
+        "materials": "在物品欄中切換建築材料的排列方式。"
+      }
     }
   },
 

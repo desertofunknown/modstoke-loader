@@ -158,6 +158,8 @@ already present, and packages:
 - OpenACAI UnityDoorstop entry files only for comparison builds that pass
   `-UseDoorstopForkNativeHost`
 - transitional RedLoader/SonsSdk compatibility assemblies
+- the loading screen's pictures from `src/Modstoke.Loader/Art/Loading`, built by
+  `tools/build-loading-art.py` from photo-mode masters kept outside the repository
 - a `Modstoke/Mods` native package root plus legacy compatibility roots
 - manifests, notices, and third-party license material
 

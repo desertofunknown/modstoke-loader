@@ -503,7 +503,7 @@ namespace Modstoke.Loader
 
         // The legacy key a Modstoke keybind polls, as an Input System path. Letters go by what the layout prints, as the
         // legacy keys do; the rest by position.
-        private static string PathOf(KeyCode key)
+        internal static string PathOf(KeyCode key)
         {
             if (key >= KeyCode.A && key <= KeyCode.Z) return "<Keyboard>/#(" + (char)('A' + (key - KeyCode.A)) + ")";
             if (key >= KeyCode.Alpha0 && key <= KeyCode.Alpha9) return "<Keyboard>/digit" + (key - KeyCode.Alpha0);

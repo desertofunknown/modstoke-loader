@@ -171,6 +171,8 @@
       "proximityChat": { "name": "Sesli sohbet", "about": "Çok oyunculu oyunda mikrofonunuzun nasıl çalıştığı: bas-konuş veya her zaman açık." },
       "menus": { "name": "Menüler", "about": "Modstoke menüleri veya oyunun eskisi gibi kendi menüleri. Geri dönmek için Modstoke/UserData/openacai-loader.settings.cfg dosyasında classicMenus = false ayarını yapın." },
       "menuSize": { "name": "Menü boyutu", "about": "Modstoke menülerinin ve metinlerinin boyutu." },
+      "loadingScreen": { "name": "Yükleme ekranı", "about": "Ada görüntüleri ve kendi fotoğraflarınızla Modstoke yükleme ekranı ya da oyunun kendi ekranı." },
+      "loadingArt": { "name": "Yükleme görselleri", "about": "Yüklenen dünyadaki fotoğraflarınız, ardından Modstoke’un ada görüntüleri. Ya yalnızca Modstoke’unkiler ya da önce herhangi bir dünyadan fotoğraflarınız." },
       "textLanguage": { "name": "Modstoke dili", "about": "Bu menüler gibi Modstoke’un kendi metinlerinin dili. “Oyunla aynı” seçeneği oyunun dilini kullanır." }
     },
 
@@ -235,7 +237,12 @@
       "hard": "Zor",
       "followGame": "Oyunla aynı",
       "modstokeMenus": "Modstoke",
-      "gameMenus": "Oyunun kendi menüleri"
+      "gameMenus": "Oyunun kendi menüleri",
+      "modstokeLoading": "Modstoke",
+      "gameLoading": "Oyunun kendi ekranı",
+      "loadingArtAll": "Fotoğraflarınız ve Modstoke",
+      "loadingArtModstoke": "Yalnızca Modstoke",
+      "loadingArtPhotos": "Önce fotoğraflarınız"
     }
   },
 
@@ -252,7 +259,7 @@
       "general": "Genel",
       "hotkeys": "Kısayollar",
       "inventory": "Envanter",
-      "book": "Hayatta kalma kitabı",
+      "book": "Kılavuz kitap",
       "blueprints": "Planlar",
       "freeform": "Serbest inşa",
       "drive": "Sürüş",
@@ -267,8 +274,8 @@
       "general": "Diğer oyuncularla konuşmak ve sahneleri atlamak.",
       "hotkeys": "Her numaraya koyduğunuz eşyayı çıkarır.",
       "inventory": "Envanter açıkken eşyaları kullanmak.",
-      "book": "Hayatta kalma kitabında gezinmek.",
-      "blueprints": "Hayatta kalma kitabından seçilen yapıları yerleştirmek.",
+      "book": "Kılavuz kitapta gezinmek.",
+      "blueprints": "Kılavuz kitaptan seçilen yapıları yerleştirmek.",
       "freeform": "Parça parça inşa etmek ve yapıları sökmek.",
       "drive": "Adadaki araçları sürmek.",
       "radio": "Aracın radyosu.",
@@ -361,6 +368,113 @@
       "circle": "Daire",
       "square": "Kare",
       "triangle": "Üçgen"
+    }
+  },
+
+  "loading": {
+    "kind": { "continue": "Devam ediliyor", "new": "Yeni oyun", "host": "Sunucunuz", "join": "Katılınıyor", "load": "Yükleniyor" },
+    "island": "Ada",
+    "day": "{day}. gün",
+    "players": { "one": "{count}/{limit} oyuncu", "other": "{count}/{limit} oyuncu" },
+    "dedicated": "Adanmış sunucu",
+    "yourPhoto": "Fotoğrafınız · {where}",
+    "phase": {
+      "prepare": "Hazırlanıyor",
+      "server": "Sunucu başlatılıyor",
+      "connect": "Bağlanılıyor",
+      "stream": "Ada yükleniyor",
+      "build": "Dünya kuruluyor",
+      "restore": "Oyununuz geri yükleniyor",
+      "place": "Başlangıcınız hazırlanıyor",
+      "joinWorld": "Dünyaya katılınıyor",
+      "settle": "Az kaldı",
+      "waitHost": "Ev sahibi bekleniyor"
+    },
+    "category": {
+      "survival": "Hayatta kalma",
+      "building": "İnşa",
+      "companions": "Yoldaşlar",
+      "combat": "Dövüş",
+      "exploring": "Keşif",
+      "seasons": "Mevsimler",
+      "multiplayer": "Çok oyunculu",
+      "modstoke": "Modstoke",
+      "creative": "Yaratıcı"
+    },
+    "control": {
+      "inventory": "Envanter",
+      "book": "Kılavuz kitap",
+      "gps": "GPS",
+      "light": "Işık",
+      "skipIntro": "Girişi atla (basılı tut)",
+      "photo": "Fotoğraf modu",
+      "mods": "Modlar",
+      "next": "Sonraki ipucu",
+      "heavyAttack": "Ağır saldırı",
+      "placeSeveral": "Birden fazla yerleştir",
+      "takeApart": "Sök",
+      "putAway": "Kaldır",
+      "materials": "Malzeme düzeni"
+    },
+    "tip": {
+      "survival": {
+        "vitals": "Zindeliğinizi yüksek tutmak için yiyin, için ve dinlenin. Metanetiniz zindeliğinizi asla aşamaz.",
+        "sickness": "Kirli, zehirli veya çürümüş yiyecekler sizi hasta eder, hastalık da maksimum sağlığınızı düşürür.",
+        "cold": "Üşümek zindeliğinizi sınırlar. Bazı giysiler diğerlerinden çok daha sıcak tutar.",
+        "rest": "Kapalı alanda uyumak dışarıda uyumaktan daha dinlendiricidir; konfor puanı yükseldikçe daha çok dinlenirsiniz.",
+        "shelter": "Erkenden bir barınak kurun: uyuduğunuz ve kaydettiğiniz yer orası.",
+        "drying": "Kurutmalıklar sıcak yerlerde daha iyi çalışır ve kurutulmuş yiyecekler tazelerden daha uzun dayanır.",
+        "cooking": "Bazı yemek tarifleri faydalı bonuslar verir. Uzun bir yolculuktan önce iyi beslenin.",
+        "strength": "Ağır işler kuvvet seviyenizi yükseltir; bu da sağlığınızı, yakın dövüş hasarınızı ve ağaçlara verdiğiniz hasarı biraz artırır."
+      },
+      "building": {
+        "logs": "Aynı anda iki kütük taşıyabilirsiniz. Boşuna gidip gelmemek için onları inşa edeceğiniz yere bırakın.",
+        "placeSeveral": "Bir yapıyı yerleştirirken art arda birkaç tane koymak için basılı tutun.",
+        "takeApart": "Yerleştirdiğiniz bir parçayı kaldırmak veya kılavuz kitaptan inşa edilen küçük bir yapıyı almak için basılı tutun.",
+        "book": "Kılavuz kitap neler inşa edebileceğinizi gösterir ve her yapının taslağını istediğiniz yere koyar."
+      },
+      "companions": {
+        "kelvin": "Kelvin sizi duyamaz. Ona not defterinden görev verin: kütük, çubuk ve taş toplamak ya da bir yapıyı bitirmek."
+      },
+      "combat": {
+        "heavy": "Ağır saldırı için basılı tutun.",
+        "bushes": "Düşmanlardan saklanmak için çalıların arasında çömelin.",
+        "explosives": "Patlayıcılar ve molotof kokteylleri çoğu düşmana karşı etkilidir. Molotofu kumaş ve alkollü içkiyle yapın.",
+        "boneArmour": "Cesetleri yakmak geride kemik bırakır. Kemik, halat ve tamir bandıyla kemik zırh yapılır.",
+        "putAway": "Elinizdekini kaldırmak için basın."
+      },
+      "exploring": {
+        "gps": "GPS haritada önemli yerleri işaretler. Daha fazla ayrıntı için yakınlaştırın.",
+        "light": "Mağaralar zifiri karanlıktır. İçeri girmeden önce bir ışık kaynağı kuşanın.",
+        "inventory": "Envanterinizi açmak için dokunun, hızlı seçim için basılı tutun.",
+        "hotkeys": "Envanterde 1’den 0’a kadar sayı tuşlarıyla eşyalara kısayol atayın.",
+        "flippers": "Paletler suda sizi hızlandırır ama karada yavaşlatır.",
+        "knight": "Knight V’den inmek için iki kez zıplayın.",
+        "traps": "Siz başka işlerle uğraşırken küçük hayvanları yakalamak için tuzak kurun."
+      },
+      "seasons": {
+        "autumn": "Sonbaharın ardından kış gelir. Kar yağmadan önce yiyecek kurutun ve daha sıcak giysiler bulun.",
+        "winter": "Kışın yiyecek azalır, geceler soğuk olur. Ateşi canlı tutun ve sıcak bir yerde uyuyun.",
+        "lakes": "Kışın göller donar."
+      },
+      "multiplayer": {
+        "voice": "Oyun başlamadan önce lobide sesli sohbet için bas-konuş veya her zaman açık seçeneğini belirleyin.",
+        "content": "İçerik modu kullanan sunucular sizinkiyle aynı modları ister. Farklıysa, mesaj hangileri olduğunu söyler."
+      },
+      "modstoke": {
+        "photo": "Dünyanızın bir karesini yakalayın. Fotoğraf modu duraklatma menüsünde de var.",
+        "photoWorld": "Fotoğraf modunun Dünya sekmesi, çekiminiz için günün saatini ve havayı ayarlar.",
+        "photoHere": "Bir dünyada çektiğiniz fotoğraflar, o dünyayı bir sonraki yükleyişinizde burada görünür.",
+        "photoFolder": "Fotoğraflar Resimler > Sons Of The Forest klasörüne kaydedilir ve Steam ekran görüntülerinize de eklenebilir.",
+        "mods": "Modlarınızı giriş menüsünden veya duraklatma menüsünden açın.",
+        "menuSize": "Menüler çok mu küçük, çok mu büyük? Boyutu {options} > {modstoke} > {menus} bölümünden değiştirin.",
+        "classic": "Oyunun orijinal menülerini mi tercih ediyorsunuz? {options} > {modstoke} > {menus} bölümünden seçin.",
+        "language": "Modstoke menüleri kendi dillerini kullanabilir: {options} > {modstoke} > {language}.",
+        "loadingArt": "Burada gösterilen resimleri {options} > {modstoke} > {menus} bölümünden seçin."
+      },
+      "creative": {
+        "materials": "Envanterde inşa malzemelerinin düzenini değiştirin."
+      }
     }
   },
 

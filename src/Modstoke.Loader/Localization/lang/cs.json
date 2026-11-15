@@ -171,6 +171,8 @@
       "proximityChat": { "name": "Hlasový chat", "about": "Jak funguje váš mikrofon ve hře více hráčů: stisknout a mluvit, nebo stále zapnutý." },
       "menus": { "name": "Nabídky", "about": "Nabídky Modstoke, nebo původní nabídky hry. Pro návrat nastavte classicMenus = false v souboru Modstoke/UserData/openacai-loader.settings.cfg." },
       "menuSize": { "name": "Velikost nabídek", "about": "Velikost nabídek Modstoke a jejich textu." },
+      "loadingScreen": { "name": "Načítací obrazovka", "about": "Načítací obrazovka Modstoke s obrázky ostrova a vašimi fotkami, nebo původní obrazovka hry." },
+      "loadingArt": { "name": "Obrázky při načítání", "about": "Vaše fotky načítaného světa, potom obrázky ostrova od Modstoke. Nebo jen obrázky Modstoke, nebo nejdřív vaše fotky z libovolného světa." },
       "textLanguage": { "name": "Jazyk Modstoke", "about": "Jazyk vlastních textů Modstoke, například těchto nabídek. Volba „Podle hry“ použije jazyk hry." }
     },
 
@@ -235,7 +237,12 @@
       "hard": "Těžké",
       "followGame": "Podle hry",
       "modstokeMenus": "Modstoke",
-      "gameMenus": "Nabídky hry"
+      "gameMenus": "Nabídky hry",
+      "modstokeLoading": "Modstoke",
+      "gameLoading": "Původní",
+      "loadingArtAll": "Vaše fotky a Modstoke",
+      "loadingArtModstoke": "Jen Modstoke",
+      "loadingArtPhotos": "Nejdřív vaše fotky"
     }
   },
 
@@ -252,7 +259,7 @@
       "general": "Obecné",
       "hotkeys": "Rychlé klávesy",
       "inventory": "Inventář",
-      "book": "Kniha přežití",
+      "book": "Průvodce",
       "blueprints": "Plány",
       "freeform": "Volné stavění",
       "drive": "Řízení",
@@ -267,8 +274,8 @@
       "general": "Mluvení s ostatními hráči a přeskakování scén.",
       "hotkeys": "Vytáhne předmět přiřazený ke každému číslu.",
       "inventory": "Práce s předměty při otevřeném inventáři.",
-      "book": "Orientace v knize přežití.",
-      "blueprints": "Umisťování staveb vybraných v knize přežití.",
+      "book": "Orientace v průvodci.",
+      "blueprints": "Umisťování staveb vybraných v průvodci.",
       "freeform": "Stavění kousek po kousku a rozebírání staveb.",
       "drive": "Řízení vozidel na ostrově.",
       "radio": "Rádio ve vozidle.",
@@ -361,6 +368,113 @@
       "circle": "Kolečko",
       "square": "Čtverec",
       "triangle": "Trojúhelník"
+    }
+  },
+
+  "loading": {
+    "kind": { "continue": "Pokračování", "new": "Nová hra", "host": "Hostování", "join": "Vstup do hry", "load": "Načítání" },
+    "island": "Ostrov",
+    "day": "Den {day}",
+    "players": { "one": "{count} z {limit} hráčů", "few": "{count} z {limit} hráčů", "other": "{count} z {limit} hráčů" },
+    "dedicated": "Dedikovaný server",
+    "yourPhoto": "Vaše fotka · {where}",
+    "phase": {
+      "prepare": "Příprava",
+      "server": "Spouštění serveru",
+      "connect": "Připojování",
+      "stream": "Načítání ostrova",
+      "build": "Budování světa",
+      "restore": "Obnovování hry",
+      "place": "Příprava začátku",
+      "joinWorld": "Vstup do světa",
+      "settle": "Skoro hotovo",
+      "waitHost": "Čeká se na hostitele"
+    },
+    "category": {
+      "survival": "Přežití",
+      "building": "Stavění",
+      "companions": "Společníci",
+      "combat": "Boj",
+      "exploring": "Průzkum",
+      "seasons": "Roční období",
+      "multiplayer": "Hra více hráčů",
+      "modstoke": "Modstoke",
+      "creative": "Kreativní"
+    },
+    "control": {
+      "inventory": "Inventář",
+      "book": "Průvodce",
+      "gps": "GPS",
+      "light": "Světlo",
+      "skipIntro": "Přeskočit úvod (podržet)",
+      "photo": "Fotorežim",
+      "mods": "Mody",
+      "next": "Další tip",
+      "heavyAttack": "Silný útok",
+      "placeSeveral": "Postavit víc",
+      "takeApart": "Rozebrat",
+      "putAway": "Schovat",
+      "materials": "Rozložení materiálů"
+    },
+    "tip": {
+      "survival": {
+        "vitals": "Jezte, pijte a odpočívejte, aby vaše vitalita zůstala vysoká. Vaše energie ji nikdy nemůže překročit.",
+        "sickness": "Špinavé, jedovaté nebo shnilé jídlo vám přivodí nemoc a nemoc snižuje vaše maximální zdraví.",
+        "cold": "Chlad omezuje vaši vitalitu. Některé oblečení hřeje mnohem víc než jiné.",
+        "rest": "Spánek pod střechou vás osvěží víc než spaní pod širákem a vyšší pohodlí obnoví víc odpočinku.",
+        "shelter": "Postavte si brzy přístřešek: tam spíte a ukládáte hru.",
+        "drying": "Sušáky fungují lépe v teple a sušené jídlo vydrží déle než čerstvé.",
+        "cooking": "Některá jídla dávají užitečné bonusy. Před dlouhou výpravou se pořádně najezte.",
+        "strength": "Těžká práce zvyšuje vaši úroveň síly, a tím mírně i zdraví, poškození zblízka a poškození stromům."
+      },
+      "building": {
+        "logs": "Unesete dvě klády najednou. Složte je tam, kde chcete stavět, a ušetříte si cesty.",
+        "placeSeveral": "Podržte při umisťování stavby, abyste jich postavili víc za sebou.",
+        "takeApart": "Podržením odstraníte umístěný díl nebo seberete malou stavbu postavenou podle průvodce.",
+        "book": "Průvodce ukazuje, co můžete postavit, a vyznačí každou stavbu přesně tam, kde ji chcete mít."
+      },
+      "companions": {
+        "kelvin": "Kelvin vás neslyší. Úkoly mu zadávejte v jeho bloku: sbírat klády, klacky a kameny nebo dokončit stavbu."
+      },
+      "combat": {
+        "heavy": "Podržením provedete silný útok.",
+        "bushes": "Přikrčte se v křoví a schovejte se před nepřáteli.",
+        "explosives": "Výbušniny a Molotovovy koktejly zaberou na většinu nepřátel. Molotovův koktejl vyrobíte z látky a alkoholu.",
+        "boneArmour": "Spalováním těl získáte kosti. Z kostí, provazu a lepicí pásky vyrobíte kostěnou zbroj.",
+        "putAway": "Stisknutím schováte to, co držíte v ruce."
+      },
+      "exploring": {
+        "gps": "GPS označuje důležitá místa na mapě. Přibližte si ji pro víc podrobností.",
+        "light": "V jeskyních je tma jako v pytli. Než vejdete, vezměte si zdroj světla.",
+        "inventory": "Stisknutím otevřete inventář, podržením rychlý výběr.",
+        "hotkeys": "V inventáři přiřaďte předmětům klávesové zkratky číselnými klávesami 1 až 0.",
+        "flippers": "S ploutvemi jste ve vodě rychlejší, ale na souši vás zpomalují.",
+        "knight": "Dvojitým výskokem sesednete z Knight V.",
+        "traps": "Nastražte pasti na malá zvířata, zatímco se věnujete jiné práci."
+      },
+      "seasons": {
+        "autumn": "Po podzimu přijde zima. Usušte si jídlo a sežeňte teplejší oblečení, než napadne sníh.",
+        "winter": "V zimě je jídla málo a noci jsou studené. Udržujte oheň a spěte v teple.",
+        "lakes": "V zimě jezera zamrzají."
+      },
+      "multiplayer": {
+        "voice": "V lobby před začátkem hry zvolte „Stisknout a mluvit“, nebo „Stále zapnuto“.",
+        "content": "Servery s obsahovými mody vyžadují stejné mody, jaké máte vy. Pokud se liší, zpráva uvede které."
+      },
+      "modstoke": {
+        "photo": "Zachyťte svůj svět na fotce. Fotorežim najdete i v nabídce pauzy.",
+        "photoWorld": "Karta Svět ve fotorežimu nastaví denní dobu a počasí pro váš snímek.",
+        "photoHere": "Fotky pořízené ve světě se tu objeví, až ho příště načtete.",
+        "photoFolder": "Fotky se ukládají do složky Obrázky > Sons Of The Forest a mohou jít i do vašich snímků obrazovky ve Steamu.",
+        "mods": "Mody otevřete na hlavní obrazovce nebo z nabídky pauzy.",
+        "menuSize": "Nabídky moc malé, nebo velké? Velikost změníte v {options} > {modstoke} > {menus}.",
+        "classic": "Dáváte přednost původním nabídkám hry? Zvolte je v {options} > {modstoke} > {menus}.",
+        "language": "Nabídky Modstoke mohou mít vlastní jazyk: {options} > {modstoke} > {language}.",
+        "loadingArt": "Které obrázky se tu zobrazí, zvolíte v {options} > {modstoke} > {menus}."
+      },
+      "creative": {
+        "materials": "V inventáři přepněte rozložení stavebních materiálů."
+      }
     }
   },
 

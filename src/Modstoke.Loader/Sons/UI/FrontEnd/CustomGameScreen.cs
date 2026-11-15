@@ -66,7 +66,7 @@ namespace Modstoke.Loader
                 else
                 {
                     MenuSound.Play(MenuCue.Activate);
-                    FrontEnd.StepAside();
+                    if (!_single || !LoadingScreen.Raise("start a custom game")) FrontEnd.StepAside();
                 }
             }
             catch (Exception error)

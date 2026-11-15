@@ -42,6 +42,7 @@ namespace Modstoke.Loader
         internal static string LegacyRootDirectory => Path.Combine(Paths.GameRootPath, LegacyRootDirectoryName);
         internal static string RuntimeDirectory => _runtimeDirectory ??= Resolve(RuntimeDirectoryName);
         internal static string RuntimeCompatibilityDirectory => Path.Combine(RuntimeDirectory, CompatibilityDirectoryName);
+        internal static string LoadingArtDirectory => Path.Combine(RuntimeDirectory, "Art", "Loading");
         internal static string ModsDirectory => _modsDirectory ??= Resolve(ModsDirectoryName);
         internal static string UserDataDirectory => _userDataDirectory ??= Resolve(UserDataDirectoryName);
         internal static string ValidationProbesDirectory => _validationProbesDirectory ??= Resolve(ValidationProbesDirectoryName);

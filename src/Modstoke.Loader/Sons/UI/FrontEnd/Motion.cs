@@ -19,7 +19,21 @@ namespace Modstoke.Loader
 
         protected abstract bool Alive { get; }
 
+        /// <summary>Ticked but changing nothing on screen, as a glitch waiting for its next flicker.</summary>
+        protected virtual bool Resting => false;
+
         protected abstract void Step(float dt);
+
+        /// <summary>Whether nothing on the layer is moving, for work that would show as a stutter in an animation.</summary>
+        internal static bool Idle
+        {
+            get
+            {
+                foreach (var item in Active)
+                    if (item.Alive && !item.Resting) return false;
+                return true;
+            }
+        }
 
         protected void Start()
         {
@@ -94,6 +108,9 @@ namespace Modstoke.Loader
         }
 
         protected override bool Alive => _bar != null && _bar;
+
+        // With no target in view (nothing holds focus, or its screen is put away) it waits, hidden, to follow it again.
+        protected override bool Resting => _target == null || !_target || !_target.gameObject.activeInHierarchy;
 
         /// <summary>Moves to an item, or hides with null; <paramref name="snap"/> opens there without gliding.</summary>
         internal void Target(RectTransform target, bool snap = false)
@@ -215,6 +232,20 @@ namespace Modstoke.Loader
         internal Glitch(TextMeshProUGUI text) => _text = text;
 
         protected override bool Alive => _text != null && _text;
+
+        // A jolt caught as its screen was put away waits unseen, so it moves nothing either.
+        protected override bool Resting => !_shown || !_text.isActiveAndEnabled;
+
+        /// <summary>
+        /// Makes the band copies now and fills them with the text as it stands, for a jolt due at a moment when nothing
+        /// should be created, as the loading screen's title landing during a load.
+        /// </summary>
+        internal void Prepare()
+        {
+            if (!Alive) return;
+            if (_rig == null || !_rig) Build();
+            Sync();
+        }
 
         /// <summary>
         /// Glitches the text as focus lands on it or its value changes. With <paramref name="hold"/> it keeps

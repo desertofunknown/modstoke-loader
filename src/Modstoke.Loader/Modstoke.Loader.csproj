@@ -968,6 +968,14 @@
     <Compile Include="Sons/UI/FrontEnd/PlayersHost.cs" />
     <Compile Include="Sons/UI/FrontEnd/PlayersScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/ConfirmScreen.cs" />
+    <Compile Include="Sons/UI/Loading/LoadingIntent.cs" />
+    <Compile Include="Sons/UI/Loading/SaveSeason.cs" />
+    <Compile Include="Sons/UI/Loading/ControlGlyphs.cs" />
+    <Compile Include="Sons/UI/Loading/LoadingTips.cs" />
+    <Compile Include="Sons/UI/Loading/LoadingTrack.cs" />
+    <Compile Include="Sons/UI/Loading/LoadingArt.cs" />
+    <Compile Include="Sons/UI/Loading/LoadingView.cs" />
+    <Compile Include="Sons/UI/Loading/LoadingScreen.cs" />
     <Compile Include="Sons/Textures/PngWriter.cs" />
     <Compile Include="Sons/UI/PhotoMode/PhotoWriter.cs" />
     <Compile Include="Sons/UI/PhotoMode/PhotoLibrary.cs" />

@@ -171,6 +171,8 @@
       "proximityChat": { "name": "ボイスチャット", "about": "マルチプレイでのマイクの動作を、プッシュトゥトークか常時オンから選びます。" },
       "menus": { "name": "メニュー", "about": "Modstokeのメニューか、元のままのゲーム本来のメニューを使います。戻すには、Modstoke/UserData/openacai-loader.settings.cfg で classicMenus = false に設定してください。" },
       "menuSize": { "name": "メニューのサイズ", "about": "Modstokeのメニューとその文字のサイズです。" },
+      "loadingScreen": { "name": "ロード画面", "about": "島の風景やあなたの写真を表示するModstokeのロード画面か、ゲーム本来のロード画面を使います。" },
+      "loadingArt": { "name": "ロード画面の画像", "about": "ロードするワールドで撮った写真、次にModstokeの島の画像を表示します。Modstokeの画像だけにしたり、どのワールドの写真でも先に表示したりもできます。" },
       "textLanguage": { "name": "Modstokeの言語", "about": "このメニューなど、Modstoke独自のテキストの言語です。「ゲームに合わせる」ではゲームの言語を使います。" }
     },
 
@@ -235,7 +237,12 @@
       "hard": "ハード",
       "followGame": "ゲームに合わせる",
       "modstokeMenus": "Modstoke",
-      "gameMenus": "ゲーム本来のメニュー"
+      "gameMenus": "ゲーム本来のメニュー",
+      "modstokeLoading": "Modstoke",
+      "gameLoading": "ゲーム本来",
+      "loadingArtAll": "あなたの写真とModstoke",
+      "loadingArtModstoke": "Modstokeのみ",
+      "loadingArtPhotos": "あなたの写真を優先"
     }
   },
 
@@ -252,7 +259,7 @@
       "general": "全般",
       "hotkeys": "ホットキー",
       "inventory": "インベントリ",
-      "book": "サバイバルブック",
+      "book": "ガイドブック",
       "blueprints": "設計図",
       "freeform": "自由建築",
       "drive": "運転",
@@ -267,8 +274,8 @@
       "general": "ほかのプレイヤーとの会話と、シーンのスキップです。",
       "hotkeys": "各数字に登録したアイテムを取り出します。",
       "inventory": "インベントリを開いているときのアイテム操作です。",
-      "book": "サバイバルブック内の移動です。",
-      "blueprints": "サバイバルブックで選んだ建物を設置します。",
+      "book": "ガイドブック内の移動です。",
+      "blueprints": "ガイドブックで選んだ建物を設置します。",
       "freeform": "パーツごとの建築と、建物の解体です。",
       "drive": "島の乗り物の運転です。",
       "radio": "乗り物のラジオです。",
@@ -361,6 +368,113 @@
       "circle": "マル",
       "square": "シカク",
       "triangle": "サンカク"
+    }
+  },
+
+  "loading": {
+    "kind": { "continue": "続きから", "new": "新しいゲーム", "host": "ホスト", "join": "参加中", "load": "ロード中" },
+    "island": "島",
+    "day": "{day}日目",
+    "players": { "other": "プレイヤー {count}/{limit}人" },
+    "dedicated": "専用サーバー",
+    "yourPhoto": "あなたの写真 · {where}",
+    "phase": {
+      "prepare": "準備中",
+      "server": "サーバーを起動中",
+      "connect": "接続中",
+      "stream": "島をロード中",
+      "build": "ワールドを構築中",
+      "restore": "ゲームを復元中",
+      "place": "スタートを準備中",
+      "joinWorld": "ワールドに参加中",
+      "settle": "まもなく完了",
+      "waitHost": "ホストを待っています"
+    },
+    "category": {
+      "survival": "サバイバル",
+      "building": "建築",
+      "companions": "仲間",
+      "combat": "戦闘",
+      "exploring": "探索",
+      "seasons": "季節",
+      "multiplayer": "マルチプレイ",
+      "modstoke": "Modstoke",
+      "creative": "クリエイティブ"
+    },
+    "control": {
+      "inventory": "インベントリ",
+      "book": "ガイドブック",
+      "gps": "GPS",
+      "light": "ライト",
+      "skipIntro": "イントロをスキップ（長押し）",
+      "photo": "フォトモード",
+      "mods": "MOD",
+      "next": "次のヒント",
+      "heavyAttack": "強攻撃",
+      "placeSeveral": "連続配置",
+      "takeApart": "解体",
+      "putAway": "しまう",
+      "materials": "資材の表示切替"
+    },
+    "tip": {
+      "survival": {
+        "vitals": "食べて、飲んで、休んで活力を高く保ちましょう。スタミナが活力を上回ることはありません。",
+        "sickness": "汚れた物や毒のある物、腐った物を食べると病気になり、最大体力が下がります。",
+        "cold": "寒さは活力を制限します。服によって暖かさは大きく違います。",
+        "rest": "屋外より屋内で寝るほうがよく休めます。快適度が高いほど、休息も多く回復します。",
+        "shelter": "早めにシェルターを建てましょう。眠る場所であり、セーブする場所にもなります。",
+        "drying": "乾燥棚は暖かい場所ほどよく働き、乾燥させた食料は生より長持ちします。",
+        "cooking": "料理のレシピには便利なボーナスがつくものもあります。遠出の前はしっかり食べましょう。",
+        "strength": "体を使う作業で腕力レベルが上がり、体力、近接攻撃と木へのダメージがわずかに増えます。"
+      },
+      "building": {
+        "logs": "丸太は一度に2本まで運べます。建てる場所に置いておけば往復の手間が省けます。",
+        "placeSeveral": "構造物を配置するときに長押しすると、続けて複数配置できます。",
+        "takeApart": "長押しで、配置したパーツを取り外したり、ガイドブックで作った小さな構造物を拾ったりできます。",
+        "book": "ガイドブックには作れるものが載っていて、好きな場所に構造物の設計図を置けます。"
+      },
+      "companions": {
+        "kelvin": "ケルビンには声が届きません。メモ帳で丸太・棒・石集めや建築の仕上げなどの仕事を頼みましょう。"
+      },
+      "combat": {
+        "heavy": "長押しで強攻撃を繰り出します。",
+        "bushes": "茂みでしゃがめば、敵から身を隠せます。",
+        "explosives": "爆発物や火炎瓶は多くの敵に効果的です。火炎瓶は布と酒で作れます。",
+        "boneArmour": "死体を燃やすと骨が残ります。骨、ロープ、ダクトテープで骨の鎧を作れます。",
+        "putAway": "押すと、手に持っているものをしまいます。"
+      },
+      "exploring": {
+        "gps": "GPSはマップ上の重要な場所を示します。ズームすると細部まで見られます。",
+        "light": "洞窟の中は真っ暗です。入る前に光源を装備しましょう。",
+        "inventory": "タップでインベントリを開き、長押しでクイック選択を開きます。",
+        "hotkeys": "インベントリで数字キーの1〜0を押すと、アイテムをホットキーに割り当てられます。",
+        "flippers": "水かきを履くと水中では速くなりますが、陸上では遅くなります。",
+        "knight": "2回ジャンプするとKnight Vから降りられます。",
+        "traps": "罠を仕掛けておけば、ほかの作業をしている間に小動物を捕まえられます。"
+      },
+      "seasons": {
+        "autumn": "秋の次は冬です。雪が降る前に食料を乾燥させ、暖かい服を見つけておきましょう。",
+        "winter": "冬は食料が乏しく、夜は冷え込みます。火を絶やさず、暖かい場所で眠りましょう。",
+        "lakes": "冬になると湖が凍ります。"
+      },
+      "multiplayer": {
+        "voice": "ゲーム開始前に、ロビーで「プッシュトゥトーク」か「常時オン」を選びましょう。",
+        "content": "コンテンツを追加するMODを使うサーバーには、同じMODが必要です。違う場合は、どのMODかがメッセージに表示されます。"
+      },
+      "modstoke": {
+        "photo": "あなたのワールドを一枚に収めましょう。フォトモードはポーズメニューからも開けます。",
+        "photoWorld": "フォトモードの「ワールド」タブで、撮影する時刻と天候を設定できます。",
+        "photoHere": "ワールドで撮った写真は、次にそのワールドをロードするときにここに表示されます。",
+        "photoFolder": "写真は「ピクチャ > Sons Of The Forest」に保存され、Steamのスクリーンショットにも追加できます。",
+        "mods": "MODはタイトル画面やポーズメニューから開けます。",
+        "menuSize": "メニューが小さすぎたり大きすぎたりする場合は、{options} > {modstoke} > {menus} でサイズを変えられます。",
+        "classic": "ゲーム本来のメニューがお好みなら、{options} > {modstoke} > {menus} で選べます。",
+        "language": "Modstokeのメニューには個別に言語を設定できます（{options} > {modstoke} > {language}）。",
+        "loadingArt": "ここに表示する画像は {options} > {modstoke} > {menus} で選べます。"
+      },
+      "creative": {
+        "materials": "インベントリで建築資材のレイアウトを切り替えます。"
+      }
     }
   },
 

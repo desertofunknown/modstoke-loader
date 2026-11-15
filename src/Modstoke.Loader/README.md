@@ -35,6 +35,7 @@ outside `Sons/`; game-specific code lives inside it.
 | Save lifecycle | [Sons/Saves](Sons/Saves) |
 | Audio, settings and game UI | [Sons/Audio](Sons/Audio), [Sons/Settings](Sons/Settings), [Sons/UI](Sons/UI) |
 | Textures decoded off the game thread | [Sons/Textures](Sons/Textures) |
+| Loading screen pictures, shipped to `Modstoke/Runtime/Art/Loading` | [Art/Loading](Art/Loading), built by [build-loading-art.py](../../tools/build-loading-art.py) |
 | Game diagnostics | [Sons/Diagnostics](Sons/Diagnostics) |
 
 `Sons/Players` contains player ownership and presentation code; `Sons/Server`

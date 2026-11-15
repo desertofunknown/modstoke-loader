@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Modstoke.Localization;
 using Modstoke.Sons;
+using Sons.Gameplay.GameSetup;
 using Sons.Gui.Options;
 using Sons.Settings;
 using TheForest.Utils;
@@ -673,6 +674,24 @@ namespace Modstoke.Loader
         private string Metadata(int width, int height)
         {
             var world = new Dictionary<string, object>();
+            // The world as its save knows it, so its photos can be found again when it loads: the game id the save keeps
+            // as GameId (multiplayer worlds only) and the save slot, which is all a single player world has.
+            if (GameSetupManager.TryGetInstance(out var setup) && setup)
+            {
+                if (setup._gameId is { Length: > 0 } gameId) world["gameId"] = gameId;
+                if (setup._saveId != 0)
+                {
+                    world["saveType"] = setup._saveGameType.ToString();
+                    world["saveId"] = setup._saveId;
+                }
+            }
+            // The game clears its own slot once the world is in; the loading screen kept the save it loaded.
+            if (!world.ContainsKey("saveId") && LoadingScreen.Entered is { SaveId: not 0 } entered)
+            {
+                world["saveType"] = entered.Type.ToString();
+                world["saveId"] = entered.SaveId;
+                if (!world.ContainsKey("gameId") && entered.GameId.Length > 0) world["gameId"] = entered.GameId;
+            }
             if (EnvironmentReads.TryReadClock(out var clock, out _)) world["time"] = clock.EffectiveTime.ToString("c", CultureInfo.InvariantCulture);
             if (EnvironmentReads.TryReadSeason(out var season, out _)) world["season"] = season.ActiveSeason?.ToString();
             if (EnvironmentReads.TryReadWeather(out var weather, out _))

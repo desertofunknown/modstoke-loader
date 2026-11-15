@@ -226,6 +226,7 @@ namespace Modstoke.Loader
             if (!LobbyHost.Ready || LobbyHost.Starting) return;
             MenuSound.Play(MenuCue.Activate);
             LobbyHost.Start();
+            LoadingScreen.Raise("host start");
             Refresh();
         }
 

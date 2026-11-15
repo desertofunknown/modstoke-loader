@@ -254,6 +254,20 @@ of the definition, then its save), refreshes HUD prompts already on screen, and
 warns only about clashes between maps the game turns on together. Where an install's bindings can't be read, the Options row opens the
 game's own controls screen instead and the log says why.
 
+World loads show `Sons/UI/Loading`'s screen in place of the game's: a
+DontDestroyOnLoad canvas at sort order 4550, built hidden at the title and
+raised by the menu that starts the load (`LoadingScreen.Intend`), or by the
+loading scene itself for starts no Modstoke menu saw. It switches the game's
+`TitleGui` canvas off, shows the player's photos of the world being loaded (photo
+mode files them under the save; `LoadingScreen.Entered` keeps the slot the game
+clears once the world is in), then the curated pictures in
+`Modstoke/Runtime/Art/Loading` matched by season and light, and lowers when the
+game starts its opening. Progress comes from field reads of the game's loader,
+weighted by the last five loads of the same kind (`UserData/loading-screen.json`);
+pictures are decoded on workers and uploaded only while the menu is idle. Any
+exception turns the game's own loading screen back on. Options > Modstoke >
+Menus has `loadingScreen` and `loadingArt`.
+
 ## Next UI Refactor Slices
 
 1. Done: `UI/Menus/ModMenuDispatcher.cs` owns native/fallback renderer

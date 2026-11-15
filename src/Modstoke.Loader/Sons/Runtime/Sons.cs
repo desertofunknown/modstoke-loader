@@ -206,6 +206,8 @@ namespace Modstoke.Sons
                 }
                 LocalizationStartup.Tick();
                 LoadingPerformance.Tick();
+                // Before the front end, which hides its screen once the loading screen covers it.
+                using (Timings.MeasureCapture("Sons.LoadingScreen")) LoadingScreen.Tick();
                 ContentCatalog.Tick();
                 LootTables.Tick();
                 PrinterBlueprints.Tick();

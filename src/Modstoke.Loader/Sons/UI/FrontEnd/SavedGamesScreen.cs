@@ -27,8 +27,8 @@ namespace Modstoke.Loader
         private sealed class Save
         {
             internal uint Id;
-            internal string Name = "", Mode = "";
-            internal int Days;
+            internal string Name = "", Mode = "", GameId = "";
+            internal int Days, Hours = -1;
             internal DateTime Saved;
             internal bool Read, Unreadable;
         }
@@ -281,6 +281,7 @@ namespace Modstoke.Loader
                 _saves.Sort((a, b) => b.Saved.CompareTo(a.Saved));
                 if (selected != null) _selected = _saves.IndexOf(selected) + 1;
                 Paint();
+                PreferSelected();
             }
             else LoadOneThumbnail();
             TickHold();
@@ -329,6 +330,13 @@ namespace Modstoke.Loader
             PaintDetails();
             PaintNote();
             FrontEnd.RefreshPrompts();
+            PreferSelected();
+        }
+
+        // The loading screen gets the selected world's picture ready in case it is continued.
+        private void PreferSelected()
+        {
+            if (SelectedSave() is { Read: true } save) LoadingScreen.Prefer(_type, save.Id, save.GameId, save.Hours);
         }
 
         private void FocusSelectedRow()
@@ -372,7 +380,9 @@ namespace Modstoke.Loader
                 }
                 save.Name = (data.GameName ?? "").Trim();
                 save.Mode = data.GameType ?? "";
+                save.GameId = data.GameId ?? "";
                 save.Days = data.GameDays;
+                save.Hours = data.GameHours;
                 // The save's own time, written in the round-trip format.
                 if (DateTime.TryParse(data.SaveTime, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var saved))
                     save.Saved = saved.ToLocalTime();
@@ -447,11 +457,11 @@ namespace Modstoke.Loader
                 _problem = null;
                 start();
                 // Custom rules and the host's options open on Modstoke's own screens next; anything else is now
-                // loading.
+                // loading, under the loading screen when it is on.
                 if (FrontEnd.TakePages()) MenuSound.Play(MenuCue.Forward);
                 else
                 {
-                    if (!GameMenus.DialogOpen) FrontEnd.StepAside();
+                    if (!GameMenus.DialogOpen && !LoadingScreen.Raise(what)) FrontEnd.StepAside();
                     MenuSound.Play(MenuCue.Activate);
                 }
                 RuntimeEntryPoint.LogSource?.LogInfo("The menu asked the game to " + what + ".");
@@ -613,10 +623,11 @@ namespace Modstoke.Loader
         private static string ModeAndDay(Save save)
             => Text.Get("games.modeAndDay", ("mode", ModeName(save.Mode)), ("days", save.Days));
 
-        private static string WhenOf(Save save)
-            => save.Read && save.Saved != default
-                ? Text.Get("games.saved", ("when", save.Saved.ToString("g", Languages.CultureOf(Languages.Current))))
-                : "";
+        private static string WhenOf(Save save) => save.Read ? WhenOf(save.Saved) : "";
+
+        /// <summary>"Saved 14/11/2026 18:40", in the player's language; empty for an unknown time.</summary>
+        internal static string WhenOf(DateTime saved)
+            => saved != default ? Text.Get("games.saved", ("when", saved.ToString("g", Languages.CultureOf(Languages.Current)))) : "";
 
         private static string ModeName(string mode)
         {

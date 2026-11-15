@@ -151,6 +151,7 @@ namespace Modstoke.Loader
             var page = Page(CustomPage) ?? throw new InvalidOperationException("The game's custom game page was not found.");
             var manager = page.GetComponentInChildren<CustomGameSetupGuiManager>(true)
                 ?? throw new InvalidOperationException("The game's custom game handler was not found.");
+            LoadingScreen.Intend(LoadingIntent.FromCustom(SetupType(SaveGameType.SinglePlayer)));
             // The page wires its handlers while it is open, so it opens for the moment its start takes.
             page.SetActive(true);
             try
@@ -171,6 +172,7 @@ namespace Modstoke.Loader
         {
             var page = Page(HostPage) ?? throw new InvalidOperationException("The game's host options were not found.");
             MultiplayerUtilities.SetServerName(name);
+            LoadingScreen.Intend(LoadingIntent.ForHost(name));
             page.SetActive(true);
             try
             {
@@ -283,6 +285,8 @@ namespace Modstoke.Loader
             if (slot == null) throw new InvalidOperationException("The game's new game slot was not found.");
             slot.SetAndApply(0);
             Press(single ? "SinglePlayerOptionsDialog" : "MultiPlayerOptionsDialog", mode + "Button");
+            // After the press, so the starting season is the one the mode's rules just set.
+            LoadingScreen.Intend(LoadingIntent.FromNew(type, mode));
         }
 
         /// <summary>
@@ -315,7 +319,9 @@ namespace Modstoke.Loader
             ApplyType(type);
             var menu = Find<LoadMenu>(type == SaveGameType.SinglePlayer ? "SinglePlayerLoadPanel" : "MultiPlayerLoadPanel")
                 ?? throw new InvalidOperationException("The game's load menu was not found.");
-            menu.LoadSlotActivated(id, SaveGameManager.GetData<GameStateData>(type, id));
+            var data = SaveGameManager.GetData<GameStateData>(type, id);
+            if (data != null) LoadingScreen.Intend(LoadingIntent.FromSave(type, saveId, data));
+            menu.LoadSlotActivated(id, data);
         }
 
         /// <summary>Loads the game's server browser scene, where the Modstoke Join screen opens.</summary>
