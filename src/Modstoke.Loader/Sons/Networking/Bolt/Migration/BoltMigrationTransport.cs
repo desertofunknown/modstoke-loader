@@ -26,17 +26,16 @@ namespace Modstoke.Sons
     public static class BoltMigrationTransport
     {
         private const string ChannelName = "Modstoke.OwnershipMigration.v1";
-        private const int ChannelId = 2;
         private const int ChannelPriority = 1;
         private const int MaxPacketBytes = BoltMigrationProtocol.SnapshotHeaderLength
             + BoltMigrationProtocol.MaxPayloadBytes;
         private static volatile bool _selected;
         private static volatile int _ownerThread;
         private static volatile Run _run;
+        private static int _channelId;
         private static bool _registrationAttempted;
         private static bool _sending;
         private static bool _receiving;
-        private static int _reportedFailure;
 
         public static bool IsSelected => _selected;
 
@@ -111,6 +110,8 @@ namespace Modstoke.Sons
                 if (socket == null || socket.WasCollected || socket.State != UdpSocketState.Created)
                     return;
                 var channel = BoltNetwork.CreateStreamChannel(ChannelName, UdpChannelMode.Reliable, ChannelPriority);
+                // Registered right after the negotiation channel, which follows the game's own, on both peers alike.
+                _channelId = channel != null && !channel.WasCollected ? channel.Id : 0;
                 var currentSocket = BoltCore._udpSocket;
                 if (!MatchesChannel(channel) || socket.WasCollected || socket.State != UdpSocketState.Created
                     || currentSocket == null || currentSocket.WasCollected || currentSocket.Pointer != socket.Pointer)
@@ -129,6 +130,7 @@ namespace Modstoke.Sons
         {
             if (!OnOwnerThread) return;
             _run = null;
+            _channelId = 0;
             _registrationAttempted = false;
             // Keep selection/subscriptions and any in-progress dispatch guard across shutdown re-entry.
         }
@@ -202,7 +204,7 @@ namespace Modstoke.Sons
         private static bool OnOwnerThread => _ownerThread != 0 && Environment.CurrentManagedThreadId == _ownerThread;
 
         private static bool MatchesChannel(UdpChannelName channel) => channel != null && !channel.WasCollected
-            && channel.Id == ChannelId && string.Equals(channel.Name, ChannelName, StringComparison.Ordinal);
+            && channel.Id == _channelId && channel.Id > 0 && string.Equals(channel.Name, ChannelName, StringComparison.Ordinal);
 
         private static bool TryResolve(Run run, ControlPeer peer, out BoltConnection connection,
             ulong capabilities = BoltMigrationProtocol.Capability)
@@ -265,7 +267,7 @@ namespace Modstoke.Sons
         {
             if (!OnOwnerThread || !IsAvailable || _receiving || request == null) return;
             var context = request.Context;
-            if (context.ChannelId != ChannelId || !string.Equals(context.ChannelName, ChannelName, StringComparison.Ordinal))
+            if (context.ChannelId != _channelId || !string.Equals(context.ChannelName, ChannelName, StringComparison.Ordinal))
                 return;
             _receiving = true;
             try
@@ -324,16 +326,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportFailure(string area, Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Bolt migration transport " + area
-                    + " failed (" + error.GetType().FullName + "). Further failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Bolt migration transport " + area, error);
 
         private sealed class Run
         {

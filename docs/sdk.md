@@ -324,6 +324,96 @@ dispatch, and cancel tracking when their world, session or attachment changes.
 Later position observations do not acknowledge a native movement request or
 prove destination safety. `QueueSpawnAssignment` retains its existing queued
 and uncertain-send semantics; this API adds no teleport or retry behavior.
+`QueueRelocation` (below) is the variant that watches for arrival.
+
+## Session status and joined players
+
+`ServerSession.Status` is `Current`, `Paused` or `Closed`. Session tracking
+suspends itself for a frame or two when one of its callbacks fails, then
+recovers; during that window open handles read `Paused` and `IsCurrent` is
+false. Treat only `Closed` as the player having left: hold leases, seats and
+pilots while `Paused`. A client that disconnects during a pause closes its handle
+at once, and a tracking failure that repeats until the next server start reads
+`Closed` too. `ServerSessions.Sessions` is empty while tracking is unavailable,
+as before. Each recovery logs how long tracking was paused, how many paused
+sessions it kept and how many it closed because they left meanwhile.
+
+`ServerSessions.PlayerJoined` is queued once per session when the client's
+character first attaches on the host, after `Opened` and the client's world
+load (often 10 to 15 seconds). On a host that checks clients, the enrollment
+gate holds a client's game traffic until it is admitted, so the character cannot
+attach earlier. `PlayerLeft` is queued just before `Closed` for a joined session.
+`ServerSessions.Players` lists joined clients in join order, and
+`ServerSession.Player` is that client's `ServerPlayer` once joined. A
+`ServerPlayer` carries the `Session`, `JoinedAt`, `JoinDelay` (session open to
+attach) and `Binding`, the latest `PlayerHandle`; if the game replaces the
+character the host captures the new attachment within about a second. The
+listen host's own player is not included. Subscribe, then read `Players` for
+clients that joined before the mod loaded. Keep loss-tolerant handshakes
+retrying on their own; the event replaces polling for the binding, not a
+client's hello. The host log gets `Player joined on connection N, X s after
+connecting` and `Player left from connection N after X s`.
+
+## Movement grants
+
+`ServerMovementGrants` records which host mod is moving or carrying a player,
+so movement checks read the reason by player instead of guessing from
+positions. Only host code opens grants, on the SDK's game thread:
+
+```csharp
+var status = ServerMovementGrants.TryOpen(binding, MovementGrantKind.Seat, "Spacecraft", "crew seat",
+    TimeSpan.FromSeconds(5), out var grant, anchor: () => SeatPosition(seat), anchorTolerance: 2.5f);
+// every second while seated
+grant.Renew(TimeSpan.FromSeconds(5));
+// on leaving the seat
+grant.Close();
+```
+
+Kinds are `Seat` (the anchor is the seat on a moving carrier), `Flight`,
+`Teleport` (the anchor is the destination) and `RegionChange` (orbit, a station
+or another place the island's ground and water rules do not describe). The
+anchor is called on the game thread when a check needs it and returns where the
+player should be now, or null when unknown; `MaxSpeed` is an optional envelope
+in metres per second. Renew with a lifetime of a few seconds every second rather
+than reopening: a long host frame then never ends a ride, and a mod that stops
+renewing has its grant end as `Expired`. Grants also end as `PlayerLeft`,
+`PlayerReplaced` (the handle retired) or `ServerStopped`. At most eight grants
+are open per player.
+
+`TryRead(binding, out grant)` returns the most recent open grant for that player,
+otherwise the latest one closed within `SettleTime` (five seconds), without
+allocating, and `Read(binding)` returns them all in a new list. A player can
+hold a seat and a relocation at once, so a check that needs every reason reads
+them all. `grant.Check(position)` compares a host-side position with the anchor
+and answers `Inside`, `Outside` or `Unknown`. What the answer means depends on
+the kind:
+
+- `Seat`, `Flight` and `RegionChange`: treat the open grant as the movement
+  mode and the settle window as a reason to re-baseline. An `Outside` or
+  `Unknown` answer is uncertain evidence and never a violation.
+- `Teleport`: the grant explains only an `Inside` sample, the arrival at the
+  destination, open or settling. Any other sample gets the usual rules, so a
+  client that ignores a relocation gains no exemption from it.
+
+Expiry and the settle window run on the monotonic clock; `OpenedAt`,
+`ExpiresAt` and `ClosedAt` are for display. `Opened` and `Closed` are raised on
+the game thread, and the host log records each open and end with owner, kind,
+reason and duration.
+
+`ServerPlayerSpawns.QueueRelocation(binding, position, rotation, owner, reason,
+out relocation)` queues the same spawn assignment as `QueueSpawnAssignment`
+under a `Teleport` grant. The grant ends as `Arrived` once the host's own copy
+of the player is within `arrivalRadius` (five metres by default) of the
+destination, or as `TimedOut` after `timeout` (15 seconds by default). Arrival
+comes from position replication, so it works for vanilla clients and trusts the
+client no further than replication does. Until the player arrives, movement
+checks keep judging them as usual. A `TimedOut` relocation is context, not
+proof: the client may be slow or may have ignored the move, so it never adds a
+strike by itself, and a later violation may queue a new correction. The log
+reads `Relocating connection N to (x, y, z) ...`, then `Relocation of
+connection N arrived X s after it was sent, D m from the destination` or a
+warning that it was not seen to arrive, with the last distance. A
+`SendUncertain` assignment keeps its grant.
 
 ## Current Locator Records
 
@@ -988,7 +1078,16 @@ qualification; compilation does not establish multiplayer enforcement.
 dispatch before forwarding or native application. It exposes the raw index,
 requested value and routing targets, the registered name resolved at that index,
 and the exact current source session when remote. A synchronous `Reject()` skips
-that event. Local dispatch has no authenticated player identity.
+that event. Local dispatch has no authenticated player identity. A remote
+request whose session cannot be resolved, such as while session tracking
+recovers, reaches subscribers with a null `SourceSession` instead of being
+refused silently; a policy that needs the player's identity rejects it.
+
+The requesting client applies the change to its own copy of the state before
+sending it. When a remote request is refused, the host resends its replicated
+value for that index, so the requester's copy, vanilla clients included, goes
+back to the host's value through the game's own sync. Effects a client script
+already started from its local change are not undone.
 
 `TryReadRegistry` returns a bounded, copied list of current native indices and
 names on the server game thread. Persist names when defining policies; indices
@@ -998,6 +1097,23 @@ transition, keycard ownership or successful native completion.
 
 See [Named world-state access](NAMED_STATE_ACCESS.md) for callback lifetime,
 registry limits, native coverage and the limits of vanilla-client enforcement.
+
+## Refusal reasons
+
+`NamedStateRequest`, `VehicleRequest` and `TransportRequest` also offer
+`Reject(string reason)`. It rejects like `Reject()`, keeps the first reason in
+`RejectReason`, and shows it to the player as a notice when their client
+negotiated Modstoke notices; vanilla clients see nothing. Each notice is a
+reliable event, so a player gets at most three per five seconds, whatever the
+reasons, and the same reason at most once in that time.
+
+The host logs the first refusal for each connection and reason in a
+five-second window, for example `Refused a named-state change Door = 1
+(resent the host's 0) from connection 3: Restricted to the station crew (told
+the player).` The rest are counted per connection and written when the window
+ends: `Refused 9 more requests in the last 5 s (connection 3: 9); 6 refusal
+notices to players held back.` Vehicle and transport refusals send no native
+correction.
 
 ## Server voice routing
 
@@ -1655,6 +1771,16 @@ inventory-mat models and the Client's devices and character body use it. The
 player's camera only exists in the fade's last part, so setup that needs it keeps
 retrying until it does. `IsInWorld` stays false throughout, so anything the player
 interacts with still waits for the world.
+
+## World lifetime
+
+`GameRuntime.IsWorldLoaded` is true while a world is loaded: the game scene is
+current, not unloading, and no scene or save load is running. `IsInWorld`
+follows the player's view and goes false whenever the inventory, a book or the
+pause menu is open, so it is the wrong test for tearing things down. Keep
+per-world objects (bodies, held models, scopes, attachments) while
+`IsWorldLoaded` holds, clear them when it goes false, and use
+`IsInWorld || IsWorldStarting` only to decide when a first setup may start.
 
 ## PNG textures off the game thread
 

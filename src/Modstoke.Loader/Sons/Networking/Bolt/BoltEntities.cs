@@ -19,7 +19,6 @@ namespace Modstoke.Sons
         private static BoltEntityHookState _state = new(BoltEntityHookStatus.NotAttempted,
             "Entity lifecycle observation has not been registered.");
         private static int _installationAttempted;
-        private static int _reportedFailure;
         private static int _attachedMask;
         private static int _controlMask;
         [ThreadStatic] private static ObservationScope _current;
@@ -182,13 +181,7 @@ namespace Modstoke.Sons
             catch (Exception error) { ReportFailure(error); }
         }
 
-        private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0) return;
-            try { RuntimeEntryPoint.LogSource?.LogWarning("Entity lifecycle observation could not complete ("
-                + error.GetType().FullName + "). Further observation failures will not be logged."); }
-            catch (Exception) { }
-        }
+        private static void ReportFailure(Exception error) => NetworkFailures.Report("Entity lifecycle observation", error);
 
         private sealed class ObservationScope(string operation, Action<BoltEntityChange>[] handlers,
             ObservationScope parent)

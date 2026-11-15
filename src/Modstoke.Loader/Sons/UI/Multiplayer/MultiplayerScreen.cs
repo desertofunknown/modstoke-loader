@@ -825,7 +825,8 @@ namespace Modstoke.Loader
                 row.Setup(entry.Info, index, all, browser);
                 MenuSound.Play(MenuCue.Activate);
                 // A hosted game's lobby says for itself whether its host runs the content check.
-                ContentAgreement.Joining(entry.Dedicated != null ? DeclaredContent(entry) : null);
+                var (content, negotiation) = entry.Dedicated != null ? Declared(entry) : (null, null);
+                ContentAgreement.Joining(content, negotiation);
                 LoadingScreen.Intend(LoadingIntent.FromServerRow(entry.Name, entry.Mode, entry.Players, entry.Limit, entry.Dedicated != null));
                 row.DoJoin();
                 RuntimeEntryPoint.LogSource?.LogInfo("Joining " + entry.Name + ".");
@@ -1058,12 +1059,13 @@ namespace Modstoke.Loader
             return details.Content.Length == 0 && _mine.Length > 0 ? ModState.AddsItems : ModState.Match;
         }
 
-        // The content fingerprint a dedicated server published, "" for one that publishes none (a vanilla server
-        // answers without Modstoke details), or null while its rules are not in yet.
-        private static string DeclaredContent(Entry entry)
+        // The content fingerprint and negotiation label a dedicated server published. The fingerprint is "" for one
+        // that publishes none (a vanilla server answers without Modstoke details); both are null while its rules are
+        // not in yet.
+        private static (string Content, string Negotiation) Declared(Entry entry)
         {
-            if (entry.Key == null || !ServerBrowserBadges.TryRead(entry.Key, out _, out var details)) return null;
-            return details?.Content ?? "";
+            if (entry.Key == null || !ServerBrowserBadges.TryRead(entry.Key, out _, out var details)) return (null, null);
+            return (details?.Content ?? "", details?.Negotiation);
         }
 
         private static void Ask(Entry entry)

@@ -475,9 +475,12 @@ namespace Modstoke.Sons
             if (__runOriginal) SaveLifecycle.PublishAfterSave(dir, gameName, savePlayerOnly);
         }
 
-        internal static Exception LoadFinalizer(Exception __exception, WorldRecordLoad __state)
+        // A load that throws skips the postfix, but subscribers still need its After to leave their loading state.
+        internal static Exception LoadFinalizer(Exception __exception, string dir, SaveGameType saveGameType, WorldRecordLoad __state)
         {
-            if (__exception != null) WorldRecords.AfterNativeLoad(__state, false);
+            if (__exception == null) return null;
+            WorldRecords.AfterNativeLoad(__state, false);
+            SaveLifecycle.PublishAfterLoad(dir, saveGameType.ToString(), TryGetSelectedSaveId(), false);
             return __exception;
         }
 

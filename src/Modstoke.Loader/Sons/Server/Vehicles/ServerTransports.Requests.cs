@@ -40,6 +40,8 @@ namespace Modstoke.Sons
         /// <summary>Host BoltNetwork.frame at dispatch: a fixed-step count, not the sender's frame or a Unity frame.</summary>
         public int ReceivedBoltFrame { get; }
         public bool IsRejected => Volatile.Read(ref _rejected);
+        /// <summary>The reason given to the first <see cref="Reject(string)"/>, or null.</summary>
+        public string RejectReason { get; private set; }
 
         /// <summary>
         /// Skips this receiver only, without undoing earlier actions or refunding items.
@@ -50,6 +52,18 @@ namespace Modstoke.Sons
             if (Environment.CurrentManagedThreadId != _dispatchThreadId || !_acceptingDecisions)
                 return false;
             Volatile.Write(ref _rejected, true);
+            return true;
+        }
+
+        /// <summary>
+        /// Rejects like <see cref="Reject()"/> and shows <paramref name="reason"/> to the player when their client
+        /// negotiated Modstoke notices. The host log records it either way.
+        /// </summary>
+        public bool Reject(string reason)
+        {
+            if (!Reject())
+                return false;
+            RejectReason ??= string.IsNullOrWhiteSpace(reason) ? null : reason;
             return true;
         }
 

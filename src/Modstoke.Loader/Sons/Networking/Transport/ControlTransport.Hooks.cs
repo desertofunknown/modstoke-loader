@@ -36,7 +36,8 @@ namespace Modstoke.Sons
 
                 var harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-control-transport");
                 harmony.Patch(begin, prefix: Hook(nameof(BeforeStart)));
-                harmony.Patch(channels, prefix: Hook(nameof(CreateChannel)));
+                // After the game's listeners: the game's only stream channel (Voice) keeps the id a vanilla peer gives it.
+                harmony.Patch(channels, postfix: Hook(nameof(CreateChannel)));
                 // Session tracking's first-priority prefix runs before this postfix.
                 harmony.Patch(connected, postfix: Hook(nameof(AfterConnected)));
                 harmony.Patch(disconnected, prefix: Hook(nameof(BeforeDisconnected)));
@@ -54,9 +55,11 @@ namespace Modstoke.Sons
             }
         }
 
+        // Just below session tracking's First on the shared start, shutdown and disconnect hooks: its start prefix
+        // resumes suspended tracking, which the content check needs, and these hooks go in before it does.
         private static HarmonyMethod Hook(string name) => new(typeof(ControlTransport), name)
         {
-            priority = Priority.First
+            priority = Priority.VeryHigh
         };
 
         private static bool OnOwnerThread => Environment.CurrentManagedThreadId == _ownerThreadId;
@@ -68,29 +71,18 @@ namespace Modstoke.Sons
             BeforeShutdown();
             // The last word on this start's selection, after any plugin chose its own. Bolt sets its mode from
             // this command only after BeginStart runs, so the role comes from the command itself.
-            try { ContentAgreement.PrepareForStart(__0 != null && __0.Mode == BoltNetworkModes.Server); }
+            var server = __0 != null && __0.Mode == BoltNetworkModes.Server;
+            try { ContentAgreement.PrepareForStart(server); }
             catch (Exception error) { ReportFailure(error); }
+            RuntimeEntryPoint.LogSource?.LogInfo("Modstoke negotiation for this " + (server ? "hosted" : "joined")
+                + " session: " + ClientEnrollment.SelectionSummary + ".");
         }
 
-        /// <summary>Installs the start hooks ahead of any selection, so the content check can join a later start.</summary>
-        internal static bool PrepareHooks() => OnOwnerThread && InstallHooks();
-
-        // Selection from inside the start hook: the socket exists but the negotiation channel does not yet.
-        internal static bool SelectForStart()
-        {
-            if (!_hooksInstalled || !OnOwnerThread) return false;
-            lock (Gate)
-            {
-                if (_run != null) return false;
-                _selected = true;
-                _state = ControlState.Selected;
-            }
-            return true;
-        }
-
+        // Every Loader registers this channel on every start, so two Loaders always agree on its id, and a host
+        // that runs no check this session can still answer a client's hello instead of losing the connection.
         private static void CreateChannel()
         {
-            if (!_hooksInstalled || !OnOwnerThread || !_selected)
+            if (!_hooksInstalled || !OnOwnerThread)
                 return;
             try
             {
@@ -106,19 +98,16 @@ namespace Modstoke.Sons
                 lock (Gate)
                 {
                     _run = new Run(socket.Pointer, channel);
-                    if (channel.Id != 1)
-                        FailRun();
-                    else
-                        _state = ControlState.Active;
+                    _state = ControlState.Active;
                 }
-                if (State == ControlState.Active)
+                // A vanilla peer's Voice channel is 1, so 2 here means the game's ids are untouched.
+                RuntimeEntryPoint.LogSource?.LogInfo("Registered Modstoke negotiation as stream channel " + channel.Id
+                    + ", after the game's own " + (channel.Id - 1) + ".");
+                try { BoltMigrationTransport.RegisterForStart(); }
+                catch (Exception migrationError)
                 {
-                    try { BoltMigrationTransport.RegisterForStart(); }
-                    catch (Exception migrationError)
-                    {
-                        BoltMigrationTransport.ResetForStart();
-                        ReportFailure(migrationError);
-                    }
+                    BoltMigrationTransport.ResetForStart();
+                    ReportFailure(migrationError);
                 }
             }
             catch (Exception error)
@@ -188,10 +177,17 @@ namespace Modstoke.Sons
                 }
                 var peer = new ControlPeer(run.Id, connection.Pointer, udp.Pointer, socket.Pointer,
                     connection.ConnectionId, session);
-                run.Peers[udp.Pointer] = new PeerRecord(peer);
+                var record = new PeerRecord(peer);
+                run.Peers[udp.Pointer] = record;
                 run.PeerSnapshot = null;
                 if (!EnqueueEvent(peer, true))
+                {
                     FailRun();
+                    return;
+                }
+                if (run.Early.Remove(udp.Pointer, out var early) && early.ConnectionId == connection.ConnectionId)
+                    foreach (var payload in early.Frames)
+                        Accept(run, record, payload);
             }
         }
 
@@ -242,6 +238,8 @@ namespace Modstoke.Sons
             try
             {
                 ClientEnrollment.DisconnectingForGate(__0);
+                // By connection, not by peer record: the pump may already have pruned a peer whose transport closed.
+                Datagrams.ReleaseConnection(__0.Pointer, __0.ConnectionId);
                 lock (Gate)
                 {
                     if (_run == null)
@@ -251,6 +249,11 @@ namespace Modstoke.Sons
                     foreach (var record in _run.Peers.Values)
                         if (record.Peer.ConnectionPointer == __0.Pointer)
                             Retire(_run, record);
+                    List<IntPtr> early = null;
+                    foreach (var pair in _run.Early)
+                        if (pair.Value.ConnectionId == __0.ConnectionId) (early ??= new List<IntPtr>()).Add(pair.Key);
+                    if (early != null)
+                        foreach (var pointer in early) _run.Early.Remove(pointer);
                 }
             }
             catch (Exception error) { ReportFailure(error); }
@@ -269,15 +272,17 @@ namespace Modstoke.Sons
                 _state = _selected ? ControlState.Selected : ControlState.Disabled;
             }
             // A managed failure must not escape into native Bolt start or shutdown, or stop the other resets.
-            ResetForStart(ClientEnrollment.ResetForStart);
-            ResetForStart(BoltMigrationTransport.ResetForStart);
-            ResetForStart(PlayerBridge.ResetForStart);
-            ResetForStart(PlayerRoles.ResetForStart);
+            Isolate(ClientEnrollment.ResetForStart);
+            Isolate(BoltMigrationTransport.ResetForStart);
+            Isolate(PlayerBridge.ResetForStart);
+            Isolate(PlayerRoles.ResetForStart);
+            Isolate(Datagrams.ResetForStart);
+            Isolate(ServerNotices.ResetForStart);
         }
 
-        private static void ResetForStart(Action reset)
+        private static void Isolate(Action action)
         {
-            try { reset(); }
+            try { action(); }
             catch (Exception error) { ReportFailure(error); }
         }
 
@@ -302,9 +307,15 @@ namespace Modstoke.Sons
                 {
                     run = _run;
                     if (run == null || run.Failed || socket.Pointer != run.SocketPointer || channel.Id != run.Channel.Id
-                        || !run.Peers.TryGetValue(connection.Pointer, out record) || !record.Open
-                        || connection.ConnectionId != record.Peer.ConnectionId
                         || connection.State != UdpConnectionState.Connected)
+                        return false;
+                    if (!run.Peers.TryGetValue(connection.Pointer, out record))
+                    {
+                        // The peer is bound on the game thread after Connected; keep its first frames until then.
+                        KeepEarly(run, connection, __0, __1, __2);
+                        return false;
+                    }
+                    if (!record.Open || connection.ConnectionId != record.Peer.ConnectionId)
                         return false;
                     if (record.Pending >= MaxPendingPerPeer
                         || Incoming.Count >= MaxPendingFrames)
@@ -319,19 +330,10 @@ namespace Modstoke.Sons
                 {
                     if (!ReferenceEquals(run, _run) || Find(record.Peer) != record || !record.Open)
                         return false;
-                    var modAdmission = valid && record.ModAdmissionBudget && ModAdmissionWire.MatchesMagic(payload);
-                    var exhausted = modAdmission ? record.ModAdmissionReceives >= MaxModAdmissionFramesPerPeer
-                        : record.Receives >= MaxReceivesPerPeer;
-                    if (!valid || exhausted || record.Pending >= MaxPendingPerPeer
-                        || Incoming.Count >= MaxPendingFrames)
+                    if (!valid)
                         Retire(run, record);
                     else
-                    {
-                        if (modAdmission) record.ModAdmissionReceives++;
-                        else record.Receives++;
-                        record.Pending++;
-                        Incoming.Enqueue(new Frame(record.Peer, payload));
-                    }
+                        Accept(run, record, payload);
                 }
                 // Own this channel's receive path, including after retirement. No native reassembly is created.
                 return false;
@@ -348,6 +350,38 @@ namespace Modstoke.Sons
             }
         }
 
+        // Runs under Gate. Queues a validated frame for the game thread within the peer's bounds, or retires the peer.
+        private static void Accept(Run run, PeerRecord record, byte[] payload)
+        {
+            var modAdmission = record.ModAdmissionBudget && ModAdmissionWire.MatchesMagic(payload);
+            var exhausted = modAdmission ? record.ModAdmissionReceives >= MaxModAdmissionFramesPerPeer
+                : record.Receives >= MaxReceivesPerPeer;
+            if (exhausted || record.Pending >= MaxPendingPerPeer || Incoming.Count >= MaxPendingFrames)
+            {
+                Retire(run, record);
+                return;
+            }
+            if (modAdmission) record.ModAdmissionReceives++;
+            else record.Receives++;
+            record.Pending++;
+            Incoming.Enqueue(new Frame(record.Peer, payload));
+        }
+
+        // Runs under Gate. Early frames count against the same per-peer bounds once delivered.
+        private static void KeepEarly(Run run, UdpConnection connection, Il2CppStructArray<byte> data, int offset, int length)
+        {
+            if (!run.Early.TryGetValue(connection.Pointer, out var early))
+            {
+                if (run.Early.Count >= MaxPeers)
+                    return;
+                run.Early[connection.Pointer] = early = new EarlyFrames(connection.ConnectionId);
+            }
+            if (early.ConnectionId != connection.ConnectionId || early.Frames.Count >= MaxPendingPerPeer
+                || !ControlWire.TryReadBlock(data, offset, length, out var payload))
+                return;
+            early.Frames.Add(payload);
+        }
+
         private static void Tick()
         {
             if (!_hooksInstalled || !OnOwnerThread || _ticking)
@@ -355,63 +389,76 @@ namespace Modstoke.Sons
             _ticking = true;
             try
             {
-                Run run;
-                lock (Gate) run = _run;
-                if (run != null)
+                try { Pump(); }
+                catch (Exception error)
                 {
-                    var socket = BoltCore._udpSocket;
-                    if (socket == null || socket.WasCollected || socket.Pointer != run.SocketPointer
-                        || socket.State == UdpSocketState.Shutdown)
-                        BeforeShutdown();
-                    else
+                    lock (Gate) FailRun();
+                    ReportFailure(error);
+                }
+                // Consumers fail alone: one throwing must not take the transport away from every connection.
+                Isolate(ClientEnrollment.Tick);
+                Isolate(ModAdmission.Tick);
+                Isolate(ClientEnrollment.TickGate);
+                Isolate(ContentAgreement.Tick);
+                Isolate(Datagrams.Tick);
+                Isolate(ModuleStorage.Tick);
+            }
+            finally { _ticking = false; }
+        }
+
+        private static void Pump()
+        {
+            Run run;
+            lock (Gate) run = _run;
+            if (run != null)
+            {
+                var socket = BoltCore._udpSocket;
+                if (socket == null || socket.WasCollected || socket.Pointer != run.SocketPointer
+                    || socket.State == UdpSocketState.Shutdown)
+                    BeforeShutdown();
+                else
+                {
+                    // With nothing negotiating, a peer only answers a hello, and Send revalidates it; a few checks a
+                    // second keep closed ones pruned without walking every connection each frame.
+                    if (ClientEnrollment.Selected || Environment.TickCount64 >= _nextRevalidation)
                     {
+                        _nextRevalidation = Environment.TickCount64 + RevalidationMilliseconds;
                         // A peer held by paused session tracking is checked again on a later frame.
                         foreach (var peer in GetPeers())
                             if (Resolve(peer, out var held) == null && !held) FailPeer(peer);
-                        BindDeferred(run);
                     }
+                    BindDeferred(run);
                 }
-                // Snapshot the work count so reentrant subscribers cannot extend this frame indefinitely.
-                int eventCount;
-                int frameCount;
-                lock (Gate) { eventCount = Events.Count; frameCount = Incoming.Count; }
-                for (var i = 0; i < eventCount; i++)
-                {
-                    PeerEvent item;
-                    lock (Gate)
-                    {
-                        if (Events.Count == 0) break;
-                        item = Events.Dequeue();
-                    }
-                    if (!item.Opened || Resolve(item.Peer) != null)
-                        PublishPeerEvent(item);
-                }
-                for (var i = 0; i < frameCount; i++)
-                {
-                    Frame frame;
-                    lock (Gate)
-                    {
-                        if (Incoming.Count == 0) break;
-                        frame = Incoming.Dequeue();
-                        var record = Find(frame.Peer);
-                        if (record != null) record.Pending--;
-                    }
-                    if (Resolve(frame.Peer) != null)
-                        PublishMessage(frame);
-                }
-                lock (Gate) PruneClosedPeers();
-                ClientEnrollment.Tick();
-                ModAdmission.Tick();
-                ClientEnrollment.TickGate();
-                Datagrams.Tick();
-                ModuleStorage.Tick();
             }
-            catch (Exception error)
+            // Snapshot the work count so reentrant subscribers cannot extend this frame indefinitely.
+            int eventCount;
+            int frameCount;
+            lock (Gate) { eventCount = Events.Count; frameCount = Incoming.Count; }
+            for (var i = 0; i < eventCount; i++)
             {
-                lock (Gate) FailRun();
-                ReportFailure(error);
+                PeerEvent item;
+                lock (Gate)
+                {
+                    if (Events.Count == 0) break;
+                    item = Events.Dequeue();
+                }
+                if (!item.Opened || Resolve(item.Peer) != null)
+                    PublishPeerEvent(item);
             }
-            finally { _ticking = false; }
+            for (var i = 0; i < frameCount; i++)
+            {
+                Frame frame;
+                lock (Gate)
+                {
+                    if (Incoming.Count == 0) break;
+                    frame = Incoming.Dequeue();
+                    var record = Find(frame.Peer);
+                    if (record != null) record.Pending--;
+                }
+                if (Resolve(frame.Peer) != null)
+                    PublishMessage(frame);
+            }
+            lock (Gate) PruneClosedPeers();
         }
     }
 }

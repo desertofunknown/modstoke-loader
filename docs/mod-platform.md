@@ -3989,26 +3989,36 @@ the colour as its map. This covers every layout made through the SDK.
 
 ### Mod content agreement
 
-Processes that reserve networked item ids (`ItemIds.TryReserve`, Networked band)
-check at join that client and server declare the same reservations. The check
-rides on client enrollment (capability `1 << 61`): the server sends a SHA-256
-digest of its sorted reservations with a short summary, and the client answers
-with its own.
+Client and server declare their networked mods at join and must agree on them.
+The check rides on client enrollment (capability `1 << 61`); see
+[Join admission](BOLT_NETWORKING.md#join-admission) for the exchange.
 
-- A server with content refuses clients whose content differs. By default it
-  also refuses clients that never take part, such as vanilla clients, by
-  holding their packets until the check passes. The disconnect notice names
-  the content the server needs.
+- Required mods are those that reserve networked item ids (`ItemIds.TryReserve`,
+  Networked band) or declare a required protocol. Every player must run them at
+  the same version, or the same declared protocol, with the same item ranges.
+- Mods that register SDK packet channels are compared by version too, but only
+  when both sides run them. `ContentAgreement.DeclareNetworkProtocol(modId,
+  protocol)` makes peers compare that number instead of the exact version;
+  `required: true` makes the mod required. The Loader's own protocol
+  (`ContentAgreement.LoaderProtocol`) is always compared.
+- A server with required mods refuses clients that differ, and by default also
+  clients that never take part, such as vanilla clients. The disconnect notice
+  says what to install, switch or turn off.
 - `allowVanillaClients=true` in `Modstoke/UserData/openacai-loader.settings.cfg`
-  lets clients that don't take part join; Modstoke clients with content are
-  still checked and refused when they differ.
-- Clients with content log the server's summary next to their own when they
-  differ. Processes without reservations are unaffected.
+  lets clients that don't take part join; Modstoke clients are still checked.
+- A client takes part only with a host that said beforehand it runs the
+  negotiation: a hosted game labels its Steam lobby, a dedicated server puts the
+  same labels (`ms_content`, `ms_negotiation`) in its Steam rules, and the
+  Modstoke server list passes them to the join. A dedicated server joined
+  another way, such as by IP, can't be checked, so one that requires the check
+  refuses the player and says to join from the Modstoke server list. A host on
+  another negotiation version is left at once with that reason.
 - A server requires the capability in its enrollment challenge exactly when it
   refuses clients that don't take part. A client whose content matches reads
   that as every admitted player sharing it, which is what lets held mod items
-  show in other players' hands. Nothing extra goes on the wire, so older and
-  newer Loaders keep working with each other.
+  show in other players' hands.
+- Servers without required mods are unaffected, and a client joins a server that
+  declares none, vanilla ones among them, as the game does.
 
 ### Weapon attachments
 
@@ -4563,9 +4573,11 @@ preserve an existing server requirements selection. Configured settings and
 observed selection must be reported separately, especially after a live reload
 that requires a new session or application restart.
 
-Enrollment capability bit 63 is reserved for this protocol. The existing
-56-byte enrollment protocol and channel identity are unchanged. Only explicitly
-selected peers that negotiate the capability can exchange admission documents.
+Enrollment capability bit 63 is reserved for this protocol. It runs on
+enrollment protocol 2 (56-byte frames: the client's `Hello`, the host's
+challenge, and `Admitted` once every check has passed), described under
+[Join admission](BOLT_NETWORKING.md#join-admission). Only explicitly selected
+peers that negotiate the capability can exchange admission documents.
 The server sends its requirements; the client returns the native activation
 snapshot described above. The server compares every requirement, preserving
 missing, inactive, ambiguous, unavailable and version-mismatch results.
@@ -4588,17 +4600,18 @@ holds the covered ordinary client gameplay packet paths until admission, then
 requests disconnection on rejection. Server-to-client initialization and
 replication remain unchanged; this is not a private-world-data boundary.
 
-A joining client whose host sends no enrollment frame within the 15-second
-negotiation window is released instead: its enrollment state becomes
-`HostNotParticipating`, ordinary gameplay resumes, and features that require an
-enrolled host (strict combat, migration, SDK datagrams) stay off. Vanilla hosts
-and Modstoke hosts that did not select enrollment behave this way; a host that
-enrolls without the admission capability still disconnects a client that
-selected admission. If the host's
-first frame arrives later, enrollment negotiates normally with a fresh window,
-unless the client already sent gameplay while released; then enrollment ends
-with `HostAnsweredLate` and the client disconnects so the player can rejoin
-cleanly. A host that participates is never released.
+A joining client says `Hello` only to a host that said beforehand it runs the
+negotiation (see the content agreement above). Otherwise, or when the host
+answers `Rejected(NotParticipating)`, the client is released at once: its
+enrollment state becomes `HostNotParticipating`, ordinary gameplay resumes, and
+features that require an enrolled host (strict combat, migration, SDK datagrams)
+stay off. A host that said it answers but stays silent for 15 seconds is a
+fault, not a vanilla host, so the client leaves with that reason instead of
+being released. The client consults its own admission only when the host
+required the capability. If a host's first frame arrives after a release,
+enrollment negotiates normally with a fresh window, unless the client already
+sent gameplay while released; then enrollment ends with `HostAnsweredLate` and
+the client disconnects so the player can rejoin cleanly.
 
 `TryRead(peer, out snapshot)` and `TryRead(session, out snapshot)` expose the
 local decision, per-requirement results and reported native entries. Reports

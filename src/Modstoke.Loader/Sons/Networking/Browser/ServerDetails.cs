@@ -13,13 +13,14 @@ namespace Modstoke.Sons
 {
     /// <summary>
     /// The Modstoke details a dedicated server publishes as Steam server rules, so the server browser can show
-    /// them before a join: the Loader version, the mod content fingerprint, whether vanilla players are let in,
-    /// and the listed mods with their versions.
+    /// them before a join: the Loader version, the mod content fingerprint, the join negotiation label, whether
+    /// vanilla players are let in, and the listed mods with their versions.
     /// </summary>
     internal sealed class ServerDetails
     {
         internal const string FormatKey = "ms_format";
         private const string LoaderKey = "ms_loader", ContentKey = "ms_content", VanillaKey = "ms_vanilla";
+        private const string NegotiationKey = "ms_negotiation";
         private const string ModCountKey = "ms_mods", ModChunkKey = "ms_mod", ChunkCountKey = "ms_modchunks";
         private const string Format = "1";
         // Rule values are kept short so they survive every Steam rules reply.
@@ -30,6 +31,11 @@ namespace Modstoke.Sons
 
         internal string Loader { get; private init; } = "";
         internal string Content { get; private init; } = "";
+        /// <summary>
+        /// The server's <see cref="ContentAgreement.NegotiationLabel"/>, or null when its rules carry none: an older
+        /// Loader, or an empty label, since Steam drops a rule set to "".
+        /// </summary>
+        internal string Negotiation { get; private init; }
         internal bool AllowsVanilla { get; private init; }
         internal IReadOnlyList<Mod> Mods { get; private init; } = Array.Empty<Mod>();
         /// <summary>How many mods the server has; more than <see cref="Mods"/> when the list did not fit.</summary>
@@ -42,6 +48,7 @@ namespace Modstoke.Sons
             {
                 Loader = ShortVersion(RuntimeEntryPoint.Version),
                 Content = ContentAgreement.Fingerprint,
+                Negotiation = ContentAgreement.NegotiationLabel,
                 AllowsVanilla = ContentAgreement.AllowsVanilla,
                 Mods = mods,
                 ModCount = mods.Count
@@ -73,6 +80,7 @@ namespace Modstoke.Sons
             yield return new(FormatKey, Format);
             yield return new(LoaderKey, Fit(Loader));
             yield return new(ContentKey, Content);
+            yield return new(NegotiationKey, Negotiation ?? "");
             yield return new(VanillaKey, AllowsVanilla ? "1" : "0");
             yield return new(ModCountKey, ModCount.ToString());
             var chunks = new List<string>();
@@ -113,6 +121,7 @@ namespace Modstoke.Sons
             {
                 Loader = Get(rules, LoaderKey),
                 Content = Get(rules, ContentKey),
+                Negotiation = rules.TryGetValue(NegotiationKey, out var negotiation) ? negotiation ?? "" : null,
                 AllowsVanilla = Get(rules, VanillaKey) == "1",
                 Mods = mods,
                 ModCount = int.TryParse(Get(rules, ModCountKey), out var modCount) ? Math.Max(modCount, mods.Count) : mods.Count
@@ -149,9 +158,10 @@ namespace Modstoke.Sons
     internal static class ServerDetailsPublisher
     {
         private const double RepublishSeconds = 60;
-        private static double _next;
+        private static double _next, _refresh;
         private static bool _published, _failed;
         private static int _errors;
+        private static string _negotiation;
         private static readonly HashSet<string> Keys = new(StringComparer.Ordinal);
 
         private static double Now => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
@@ -159,12 +169,16 @@ namespace Modstoke.Sons
         internal static void Tick()
         {
             if (_failed || !Host.IsServer || Now < _next) return;
-            _next = Now + (_published ? RepublishSeconds : 2);
+            _next = Now + 2;
+            // The negotiation label appears once Bolt has started, and a joiner reads it before connecting, so it is
+            // compared on every check; everything else is refreshed once a minute.
+            if (_published && Now < _refresh && ContentAgreement.NegotiationLabel == _negotiation) return;
             try
             {
                 // The mod list is complete once discovery finished, and Steam takes rules once logged on.
                 if (LoaderState.CurrentInventory?.DiscoveryComplete != true || !SteamGameServer.BLoggedOn()) return;
-                var rules = ServerDetails.Local().ToRules().ToList();
+                var details = ServerDetails.Local();
+                var rules = details.ToRules().ToList();
                 foreach (var stale in Keys.Except(rules.Select(rule => rule.Key)).ToArray())
                 {
                     SteamGameServer.SetKeyValue(stale, "");
@@ -175,10 +189,17 @@ namespace Modstoke.Sons
                     SteamGameServer.SetKeyValue(rule.Key, rule.Value);
                     Keys.Add(rule.Key);
                 }
-                if (_published) return;
-                _published = true;
-                RuntimeEntryPoint.LogSource?.LogInfo("Publishing this server's Modstoke details to the server browser ("
-                    + rules.Count + " Steam rules).");
+                _refresh = Now + RepublishSeconds;
+                var negotiationChanged = details.Negotiation != _negotiation;
+                _negotiation = details.Negotiation;
+                if (!_published)
+                {
+                    _published = true;
+                    RuntimeEntryPoint.LogSource?.LogInfo("Publishing this server's Modstoke details to the server browser ("
+                        + rules.Count + " Steam rules, negotiation label " + Label(_negotiation) + ").");
+                }
+                else if (negotiationChanged)
+                    RuntimeEntryPoint.LogSource?.LogInfo("The server browser's negotiation label is now " + Label(_negotiation) + ".");
             }
             catch (InvalidOperationException)
             {
@@ -196,5 +217,8 @@ namespace Modstoke.Sons
                     + error.Message);
             }
         }
+
+        private static string Label(string negotiation)
+            => string.IsNullOrEmpty(negotiation) ? "none" : "\"" + negotiation + "\"";
     }
 }

@@ -16,7 +16,6 @@ namespace Modstoke.Sons
             BoltStateHookStatus.NotAttempted, "The replicated-state observation hook has not been registered.");
         private static int _installationAttempted;
         private static int _ownerThread;
-        private static int _reportedFailure;
         [ThreadStatic] private static bool _observing;
 
         /// <summary>
@@ -156,16 +155,7 @@ namespace Modstoke.Sons
             catch (Exception) { }
         }
 
-        private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0) return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Replicated-state observation failed ("
-                    + error.GetType().FullName + "). Native work is unchanged; further observation failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+        private static void ReportFailure(Exception error) => NetworkFailures.Report("Replicated-state observation", error);
 
         private struct ReadSnapshot
         {

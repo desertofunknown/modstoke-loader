@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Alex Cooper
 
 using System;
+using System.Collections.Generic;
 using HarmonyLib;
 using Modstoke.Loader;
 using UdpKit;
@@ -10,31 +11,59 @@ namespace Modstoke.Sons
 {
     public static partial class ClientEnrollment
     {
+        private const string RejoinNotice = "Your game started playing before this server let it in, so the "
+            + "connection is out of step. Rejoin to play.";
+        private const string VersionNotice = "This server runs a different Modstoke version. Install the version "
+            + "the server uses to join.";
+        private const string AdmissionNotice = "This server checks your installed mods before letting you in, and "
+            + "your Modstoke doesn't take part in that check. Turn on mod admission in Modstoke, then rejoin.";
+        private const string NotTakingPartNotice = "This server checks mods before letting players in. Install "
+            + "Modstoke and join it from the Modstoke server list.";
+        private const string ModAdmissionNotTakingPartNotice = "This server checks your installed mods before letting "
+            + "players in. Install Modstoke, turn on mod admission in it, then join this server from the Modstoke server list.";
+        private static readonly Dictionary<(IntPtr, uint), HeldTraffic> Held = new();
+        // Once admitted, a connection stays open for the rest of its life: a later transport fault or a failed
+        // check elsewhere must never turn into dropped gameplay for players already in. A client latches the same
+        // way, once admitted or once released by a host that doesn't take part.
+        private static readonly HashSet<(IntPtr, uint)> AdmittedConnections = new();
         private static HarmonySupportSnapshot _gateSupport;
         private static bool _gatePatchAttempted;
         private static bool _gateHooksInstalled;
         private static volatile bool _gateSelected;
+        private static volatile bool _contentGate;
         private static IntPtr _disconnectClientPointer;
         private static uint _disconnectClientConnectionId;
         private static Guid _clientPeerId;
         private static bool _clientDisconnectAttempted;
+        private static (IntPtr, uint) _clientAdmitted;
+        private static (IntPtr, uint) _clientReleased;
+        private static bool _clientSentWhileReleased;
+        private static int _clientHeldSends;
 
-        internal static bool GameplayGateSelected => _gateSelected;
+        internal static bool GameplayGateSelected => _gateSelected || _contentGate;
 
         internal static bool AllowsGameTraffic(ControlPeer peer)
         {
-            if (!_gateSelected || !OnOwnerThread) return false;
+            if (!GameplayGateSelected || !OnOwnerThread) return false;
             var connection = ControlTransport.Resolve(peer);
             // SDK traffic needs an enrolled peer; a released connection only resumes ordinary Bolt gameplay.
             return connection != null && ReadGate(connection) == GateDecision.Allow
                 && Entries.TryGetValue(peer.PeerId, out var entry) && entry.State == EnrollmentState.Enrolled;
         }
 
+        /// <summary>Whether this client may send gameplay to its server: no gate, or the server let it in.</summary>
+        internal static bool ClientReleased(BoltConnection server)
+            => !GameplayGateSelected || OnOwnerThread && server != null && ReadGate(server) == GateDecision.Allow;
+
+        /// <summary>Whether the current server admitted this client through the negotiation.</summary>
+        internal static bool ClientWasAdmitted => _clientAdmitted.Item1 != IntPtr.Zero;
+
         /// <summary>
         /// Selects enrollment with a temporary gameplay-packet gate before Bolt starts.
-        /// Servers reject client game packets until enrollment; clients pause ordinary Bolt
+        /// Servers hold client game packets until admission; clients pause ordinary Bolt
         /// serialization while still receiving server state. Rejection requests disconnect. A host
-        /// that sends no enrollment within the negotiation window releases the client instead.
+        /// that says it does not take part, or never said it runs the negotiation, releases the client; one
+        /// that said it does but stays silent through the negotiation window makes the client leave.
         /// This does not enforce combat or make client capability claims trustworthy.
         /// </summary>
         public static ControlResult SelectGatedForNextStart(bool selected,
@@ -62,7 +91,7 @@ namespace Modstoke.Sons
             }
             catch (Exception error)
             {
-                ReportFailure(error);
+                NetworkFailures.Report("Modstoke client enrollment", error);
                 return ControlResult.Failed;
             }
         }
@@ -91,7 +120,7 @@ namespace Modstoke.Sons
             }
             catch (Exception error)
             {
-                ReportFailure(error);
+                NetworkFailures.Report("Modstoke client enrollment", error);
                 return false;
             }
         }
@@ -100,7 +129,7 @@ namespace Modstoke.Sons
         {
             if (!__runOriginal)
                 return false;
-            if (!_gateSelected)
+            if (!GameplayGateSelected)
                 return true;
             try
             {
@@ -112,11 +141,20 @@ namespace Modstoke.Sons
                     var decision = ReadGate(__instance);
                     if (decision == GateDecision.Allow)
                         return true;
-                    if (decision == GateDecision.Reject)
+                    // UdpKit acknowledged this packet before any hook ran, so the sender will never resend it. SDK
+                    // packets are unreliable by contract; a Bolt game packet means the sender is not holding as a
+                    // negotiating client does, and its reliable streams would be missing this packet for good.
+                    if (Hold(__instance, __0) || decision == GateDecision.Reject)
                         DisconnectServerPeer(__instance);
                 }
             }
-            catch (Exception error) { ReportFailure(error); }
+            catch (Exception error)
+            {
+                NetworkFailures.Report("Modstoke enrollment gate", error);
+                // The packet is dropped below either way, so the connection must not carry on without it.
+                try { if (BoltNetwork.isServer) __instance.Disconnect(); }
+                catch (Exception disconnectError) { NetworkFailures.Report("Modstoke enrollment gate", disconnectError); }
+            }
 
             // The original owns disposal only when it runs. Do not retry disposal after an exception.
             try
@@ -124,15 +162,32 @@ namespace Modstoke.Sons
                 if (__0 != null && !__0.WasCollected && !__0.IsPooled)
                     __0.Dispose();
             }
-            catch (Exception error) { ReportFailure(error); }
+            catch (Exception error) { NetworkFailures.Report("Modstoke enrollment gate", error); }
             return false;
+        }
+
+        // Counts a held packet; true when it was gameplay, which ends the connection's negotiation.
+        private static bool Hold(BoltConnection connection, UdpPacket packet)
+        {
+            var key = (connection.Pointer, connection.ConnectionId);
+            if (!Held.TryGetValue(key, out var held))
+                Held[key] = held = new HeldTraffic();
+            if (global::Modstoke.Loader.Packets.IsSdkPacket(packet))
+            {
+                held.Sdk++;
+                return false;
+            }
+            held.Game++;
+            var entry = FindEntry(connection);
+            if (entry != null) Retire(entry, EnrollmentEndReason.GameplayBeforeAdmission);
+            return true;
         }
 
         private static bool BeforeGameSend(BoltConnection __instance, bool __runOriginal)
         {
             if (!__runOriginal)
                 return false;
-            if (!_gateSelected)
+            if (!GameplayGateSelected)
                 return true;
             try
             {
@@ -142,30 +197,43 @@ namespace Modstoke.Sons
                     return true;
                 if (!BoltNetwork.isClient || !IsCurrentServer(__instance))
                     return false;
+                // Ahead of the peer lookup: a negotiation peer lost after the latch must not freeze a player in.
+                var key = (__instance.Pointer, __instance.ConnectionId);
+                if (_clientAdmitted == key)
+                    return true;
+                if (_clientReleased == key)
+                {
+                    _clientSentWhileReleased = true;
+                    return true;
+                }
                 // A listener can attempt a send before Connected's postfix observes its control peer.
                 // Hold that send; the normal update reconciles setup before deciding to disconnect.
                 var peer = ControlTransport.FindPeer(__instance);
                 if (peer == null)
+                {
+                    _clientHeldSends++;
                     return false;
+                }
                 ObserveClientGeneration(__instance, peer);
                 var decision = ReadGate(__instance, peer);
                 if (decision == GateDecision.Reject)
                     DisconnectClient(__instance);
-                else if (decision == GateDecision.Allow && Entries.TryGetValue(peer.PeerId, out var entry)
-                    && ReferenceEquals(entry.Peer, peer) && entry.State == EnrollmentState.HostNotParticipating)
-                    entry.SentWhileReleased = true;
+                else if (decision == GateDecision.Allow && _clientReleased == key)
+                    _clientSentWhileReleased = true;
+                if (decision != GateDecision.Allow)
+                    _clientHeldSends++;
                 return decision == GateDecision.Allow;
             }
             catch (Exception error)
             {
-                ReportFailure(error);
+                NetworkFailures.Report("Modstoke enrollment gate", error);
                 return false;
             }
         }
 
         internal static void TickGate()
         {
-            if (!_gateSelected || !OnOwnerThread)
+            if (!GameplayGateSelected || !OnOwnerThread)
                 return;
             try
             {
@@ -191,12 +259,15 @@ namespace Modstoke.Sons
                         DisconnectClient(server);
                 }
             }
-            catch (Exception error) { ReportFailure(error); }
+            catch (Exception error) { NetworkFailures.Report("Modstoke enrollment gate", error); }
         }
 
         private static GateDecision ReadGate(BoltConnection connection, ControlPeer peer = null)
         {
-            if (!_gateHooksInstalled || !_selected || _faulted
+            var key = (connection.Pointer, connection.ConnectionId);
+            if (BoltNetwork.isServer ? AdmittedConnections.Contains(key) : _clientAdmitted == key || _clientReleased == key)
+                return GateDecision.Allow;
+            if (!_gateHooksInstalled || !Selected || _faulted
                 || ControlTransport.State != ControlState.Active)
                 return GateDecision.Reject;
             peer ??= ControlTransport.FindPeer(connection);
@@ -210,41 +281,151 @@ namespace Modstoke.Sons
                 : _clientDisconnectAttempted && _disconnectClientPointer == connection.Pointer
                     && _disconnectClientConnectionId == connection.ConnectionId)
                 return GateDecision.Reject;
-            Refresh(entry, Now);
-            return entry.State switch
+            Refresh(entry);
+            switch (entry.State)
             {
-                EnrollmentState.Pending => GateDecision.Hold,
-                EnrollmentState.HostNotParticipating => GateDecision.Allow,
-                EnrollmentState.Enrolled => ContentAgreement.Admits(peer) switch
-                {
-                    null => GateDecision.Hold,
-                    false => GateDecision.Reject,
-                    _ => ModAdmission.ReadGate(peer) switch
+                case EnrollmentState.Pending:
+                    return GateDecision.Hold;
+                case EnrollmentState.HostNotParticipating:
+                    _clientReleased = key;
+                    return GateDecision.Allow;
+                case EnrollmentState.Enrolled when peer.ServerSession != null:
+                    return entry.Admitted ? GateDecision.Allow : TryAdmit(entry);
+                case EnrollmentState.Enrolled:
+                    if (!entry.Admitted)
+                        return GateDecision.Hold;
+                    // Mod admission is the host's to require; when it did not, its Admitted is the whole answer.
+                    if ((entry.RequiredCapabilities & ModAdmission.ProtocolCapability) != 0)
                     {
-                        ModAdmissionState.Pending => GateDecision.Hold,
-                        ModAdmissionState.Admitted => GateDecision.Allow,
-                        _ => GateDecision.Reject
+                        var admission = ModAdmission.ReadGate(peer);
+                        if (admission != ModAdmissionState.Admitted)
+                            return admission == ModAdmissionState.Pending ? GateDecision.Hold : GateDecision.Reject;
                     }
-                },
-                _ => GateDecision.Reject
+                    _clientAdmitted = key;
+                    return GateDecision.Allow;
+                default:
+                    return GateDecision.Reject;
+            }
+        }
+
+        // The host lets a client in once enrollment, the content check and mod admission all pass, and tells it so;
+        // the client sends no gameplay before that, so nothing arrives while the host would still be holding.
+        private static GateDecision TryAdmit(Enrollment entry)
+        {
+            var decision = ContentAgreement.Admits(entry.Peer) switch
+            {
+                null => GateDecision.Hold,
+                false => GateDecision.Reject,
+                _ => ModAdmission.ReadGate(entry.Peer) switch
+                {
+                    ModAdmissionState.Pending => GateDecision.Hold,
+                    ModAdmissionState.Admitted => GateDecision.Allow,
+                    _ => GateDecision.Reject
+                }
             };
+            if (decision != GateDecision.Allow)
+                return decision;
+            var connection = ControlTransport.Resolve(entry.Peer);
+            if (connection == null)
+                return GateDecision.Hold;
+            if (!Send(entry, EnrollmentMessageKind.Admitted))
+                return GateDecision.Reject;
+            entry.Admitted = true;
+            entry.Deadline = _clock + HelloWatchSeconds;
+            var key = (connection.Pointer, connection.ConnectionId);
+            AdmittedConnections.Add(key);
+            Held.TryGetValue(key, out var held);
+            RuntimeEntryPoint.LogSource?.LogInfo("Admitted connection " + entry.Peer.ConnectionId + " after "
+                + Milliseconds(entry.OpenedAt) + " ms (hello at " + (long)((entry.HelloAt - entry.OpenedAt) * 1000)
+                + " ms, enrolled at " + (long)((entry.EnrolledAt - entry.OpenedAt) * 1000) + " ms, mod content "
+                + ContentAgreement.Read(entry.Peer) + (ModAdmission.Selected ? ", mod admission passed" : "") + "); "
+                + (held?.Sdk ?? 0) + " SDK packets were dropped while it was held.");
+            return GateDecision.Allow;
         }
 
         private static void DisconnectServerPeer(BoltConnection connection)
         {
             var session = ServerSessions.ResolveSource(connection);
             if (session != null)
+            {
                 Refuse(session, connection);
+                return;
+            }
+            // Paused session tracking leaves no notice to give, but a connection missing a packet still has to end.
+            if (!Held.TryGetValue((connection.Pointer, connection.ConnectionId), out var held) || held.Disconnected)
+                return;
+            held.Disconnected = true;
+            RuntimeEntryPoint.LogSource?.LogInfo("Refused connection " + connection.ConnectionId + " while session "
+                + "tracking was paused, with no notice. Held " + held.Game + " game and " + held.Sdk + " SDK packets.");
+            connection.Disconnect();
         }
 
-        // A refusal over mod content or required mods says which mods; other gate refusals keep the plain disconnect.
+        // Every refusal is logged once with its reason, and the player is told why whenever there is a reason to give.
         private static void Refuse(ServerSession session, BoltConnection connection)
         {
             if (ServerSessions.HasDisconnectAttempt(session)) return;
             var peer = ControlTransport.FindPeer(connection);
-            var notice = ContentAgreement.RefusalNotice(peer) ?? ModAdmission.RefusalNotice(peer);
+            var entry = FindEntry(connection);
+            Held.TryGetValue((connection.Pointer, connection.ConnectionId), out var held);
+            var notice = RefusalNotice(peer, entry);
+            RuntimeEntryPoint.LogSource?.LogInfo("Refused connection " + connection.ConnectionId
+                + (entry == null ? "" : " after " + Milliseconds(entry.OpenedAt) + " ms") + ": " + Describe(peer, entry)
+                + ". Held " + (held?.Game ?? 0) + " game and " + (held?.Sdk ?? 0) + " SDK packets."
+                + (notice == null ? "" : " Told the player: " + notice));
             if (notice == null || ServerSessions.DisconnectWithNotice(session, notice) != DisconnectResult.Requested)
                 ServerSessions.Disconnect(session);
+        }
+
+        private static string RefusalNotice(ControlPeer peer, Enrollment entry)
+        {
+            // Vanilla and a Modstoke without mod admission look alike here, so a mod admission host names both steps.
+            if (entry == null || entry.HelloAt == 0)
+                return ContentAgreement.NotTakingPartNotice()
+                    ?? (ModAdmission.Selected ? ModAdmissionNotTakingPartNotice : NotTakingPartNotice);
+            switch (entry.Reason)
+            {
+                case EnrollmentEndReason.GameplayBeforeAdmission:
+                    return RejoinNotice;
+                case EnrollmentEndReason.IncompatibleCapabilities:
+                case EnrollmentEndReason.RemoteRejected:
+                    // The hello's offer names what the client lacks; it is only a claim, so it only picks the wording.
+                    return (entry.RequiredCapabilities & ~entry.OfferedCapabilities & ModAdmission.ProtocolCapability) != 0
+                        ? AdmissionNotice : VersionNotice;
+                case EnrollmentEndReason.ProtocolMismatch:
+                    return VersionNotice;
+            }
+            return ContentAgreement.RefusalNotice(peer) ?? ModAdmission.RefusalNotice(peer)
+                ?? (entry.State == EnrollmentState.Retired
+                    ? "Joining this server didn't finish (" + entry.Reason + "). Rejoin to try again." : null);
+        }
+
+        private static string Describe(ControlPeer peer, Enrollment entry)
+        {
+            if (entry == null)
+                return "it never opened Modstoke negotiation";
+            if (entry.HelloAt == 0)
+                return entry.Reason == EnrollmentEndReason.GameplayBeforeAdmission
+                    ? "it sent gameplay without opening Modstoke negotiation (vanilla, another Modstoke version, or a "
+                        + "join that did not know this server checks mods)"
+                    : "it never opened Modstoke negotiation";
+            return entry.Reason switch
+            {
+                EnrollmentEndReason.None => ContentAgreement.Describe(peer) ?? "mod admission refused it",
+                EnrollmentEndReason.GameplayBeforeAdmission => "it sent gameplay before it was admitted",
+                EnrollmentEndReason.Expired => "negotiation did not finish in " + NegotiationSeconds + " s",
+                EnrollmentEndReason.RemoteRejected => "it cannot meet this server's requirements ("
+                    + entry.RemoteRejection + ")",
+                EnrollmentEndReason.ProtocolMismatch => "it speaks another Modstoke negotiation version",
+                _ => "negotiation ended: " + entry.Reason
+            };
+        }
+
+        private static Enrollment FindEntry(BoltConnection connection)
+        {
+            foreach (var entry in Entries.Values)
+                if (entry.Peer.ConnectionPointer == connection.Pointer && entry.Peer.ConnectionId == connection.ConnectionId)
+                    return entry;
+            return null;
         }
 
         private static bool IsCurrentServer(BoltConnection connection)
@@ -272,8 +453,24 @@ namespace Modstoke.Sons
                 return;
             // A throw does not prove that the native disconnect event was never queued.
             _clientDisconnectAttempted = true;
+            // A lost peer or transport says nothing new, and must not replace a reason the content check already gave.
+            var entry = FindEntry(connection);
+            if (entry is { State: EnrollmentState.Retired } && entry.Reason != EnrollmentEndReason.HostAnsweredLate)
+                KickReason.Expect(LeavingReason(entry), "Rejoin to try again. If it keeps happening, install the "
+                    + "Modstoke version the server uses.");
             connection.Disconnect();
         }
+
+        // What the player reads when this client leaves on its own; a refusal the host sends first replaces it.
+        private static string LeavingReason(Enrollment entry) => entry.Reason switch
+        {
+            EnrollmentEndReason.Expired => "The server didn't finish letting your game in through Modstoke's join check in time.",
+            EnrollmentEndReason.IncompatibleCapabilities or EnrollmentEndReason.RemoteRejected
+                => "This server's Modstoke join check needs something your Modstoke doesn't offer.",
+            EnrollmentEndReason.InvalidMessage or EnrollmentEndReason.ProtocolMismatch
+                => "This server's Modstoke join check doesn't match yours.",
+            _ => "Modstoke's join check with this server broke off."
+        };
 
         private static void ResetGateConnection()
         {
@@ -283,14 +480,41 @@ namespace Modstoke.Sons
             _clientDisconnectAttempted = false;
         }
 
+        private static void ResetAdmissions()
+        {
+            Held.Clear();
+            AdmittedConnections.Clear();
+            ResetClientLatch();
+        }
+
+        private static void ResetClientLatch()
+        {
+            _clientAdmitted = _clientReleased = default;
+            _clientSentWhileReleased = false;
+            _clientHeldSends = 0;
+        }
+
         internal static void DisconnectingForGate(BoltConnection connection)
         {
-            if (_gateSelected && OnOwnerThread && connection != null
-                && connection.Pointer == _disconnectClientPointer
-                && connection.ConnectionId == _disconnectClientConnectionId)
+            if (!OnOwnerThread || connection == null)
+                return;
+            var key = (connection.Pointer, connection.ConnectionId);
+            Held.Remove(key);
+            AdmittedConnections.Remove(key);
+            if (connection.Pointer == _disconnectClientPointer && connection.ConnectionId == _disconnectClientConnectionId)
+            {
                 ResetGateConnection();
+                ResetClientLatch();
+            }
         }
 
         private enum GateDecision { Hold, Allow, Reject }
+
+        private sealed class HeldTraffic
+        {
+            internal int Sdk;
+            internal int Game;
+            internal bool Disconnected;
+        }
     }
 }

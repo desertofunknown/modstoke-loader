@@ -14,16 +14,33 @@ namespace Modstoke.Sons
     /// Negotiates protocol participation for an exact connection. Enrollment is not account
     /// authentication, proof of unmodified software, permission, or gameplay admission.
     /// </summary>
+    /// <remarks>
+    /// The joining client speaks first, and only to a host it knows runs this negotiation: a stream block on a
+    /// channel the receiver never registered makes UdpKit drop the whole connection. The host answers a hello with
+    /// a challenge, or says it does not take part; after enrollment and its own checks it sends Admitted, and only
+    /// then does a gated client send gameplay. A game packet that reaches the host's gate before that is never
+    /// silently discarded: it ends the connection with a reason. Admission then holds for the connection's life.
+    /// </remarks>
     public static partial class ClientEnrollment
     {
         public const ushort ProtocolVersion = EnrollmentWire.ProtocolVersion;
         private const double NegotiationSeconds = 15;
-        private const double RetrySeconds = 1;
-        private const int MaxAttemptsPerMessage = 8;
+        private const double AdmissionSeconds = 15;
+        // A content declaration (8 frames at most), Admitted and one mod admission window.
+        private const int MaxAfterAccepted = 16;
+        // An admitted Modstoke client sends its notices hello at once; silence this long points at a stalled
+        // reliable event stream rather than a slow handshake.
+        private const double HelloWatchSeconds = 10;
+        private const double MaxTickSeconds = 1;
         private static readonly Dictionary<Guid, Enrollment> Entries = new();
         private static int _ownerThreadId;
-        private static int _reportedFailure;
+        // Negotiation windows run on this clock, which moves at most MaxTickSeconds per tick: a main-thread stall
+        // (a world load, an autosave) must not use up a window while the peer's answer waits in the queue.
+        private static double _clock, _clockReadAt;
+        // _selected and the capabilities are what plugins asked for; the content check adds to them per start.
         private static bool _selected;
+        private static bool _contentSelected;
+        private static bool _contentRequired;
         private static bool _faulted;
         private static ulong _localCapabilities;
         private static ulong _requiredClientCapabilities;
@@ -43,6 +60,8 @@ namespace Modstoke.Sons
         /// protocol; received claims only describe compatibility and cannot grant authority.
         /// Selection reserves the negotiation transport and does not enable strict combat.
         /// </summary>
+        /// <remarks>A selected client opens negotiation only with a host that said beforehand that it answers it,
+        /// through its Steam lobby label or its server rules; with any other host it plays as the game does.</remarks>
         public static ControlResult SelectForNextStart(bool selected,
             ulong localCapabilities, ulong requiredClientCapabilities)
         {
@@ -74,14 +93,14 @@ namespace Modstoke.Sons
                 return EnrollmentReadStatus.Unavailable;
             if (!OnOwnerThread)
                 return EnrollmentReadStatus.WrongThread;
-            if (!_selected || _faulted)
+            if (!Selected || _faulted)
                 return EnrollmentReadStatus.Unavailable;
             if (peer == null || !Entries.TryGetValue(peer.PeerId, out var entry)
                 || !ReferenceEquals(entry.Peer, peer))
                 return EnrollmentReadStatus.PeerUnavailable;
             try
             {
-                Refresh(entry, Now);
+                Refresh(entry);
                 snapshot = new EnrollmentSnapshot(peer, entry.State, entry.Reason,
                     entry.RequiredCapabilities, entry.OfferedCapabilities);
                 return EnrollmentReadStatus.Success;
@@ -89,7 +108,7 @@ namespace Modstoke.Sons
             catch (Exception error)
             {
                 Retire(entry, EnrollmentEndReason.TransportUnavailable);
-                ReportFailure(error);
+                NetworkFailures.Report("Modstoke client enrollment", error);
                 return EnrollmentReadStatus.Failed;
             }
         }
@@ -103,7 +122,7 @@ namespace Modstoke.Sons
                 return EnrollmentReadStatus.Unavailable;
             if (!OnOwnerThread)
                 return EnrollmentReadStatus.WrongThread;
-            if (!_selected || _faulted)
+            if (!Selected || _faulted)
                 return EnrollmentReadStatus.Unavailable;
             if (session != null)
                 foreach (var entry in Entries.Values)
@@ -114,6 +133,28 @@ namespace Modstoke.Sons
 
         private static bool OnOwnerThread => Environment.CurrentManagedThreadId == _ownerThreadId;
         private static double Now => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
+        /// <summary>Whether this start negotiates at all, for a plugin or for the content check.</summary>
+        internal static bool Selected => _selected || _contentSelected;
+        // Every Loader that speaks this version can answer a content declaration, with or without mods of its own.
+        private static ulong LocalCapabilities => _localCapabilities | ContentAgreement.Capability;
+        private static ulong RequiredClientCapabilities => _requiredClientCapabilities
+            | (_contentRequired ? ContentAgreement.Capability : 0);
+
+        /// <summary>What this start negotiates, for the one log line each Bolt start writes.</summary>
+        internal static string SelectionSummary
+        {
+            get
+            {
+                if (!Selected)
+                    return "off (a client's hello is still answered)";
+                var parts = new List<string>();
+                if (_contentSelected) parts.Add(_contentRequired ? "mod content check, required" : "mod content check");
+                if (ModAdmission.Selected) parts.Add("mod admission");
+                if (_selected && !ModAdmission.Selected) parts.Add("plugin enrollment");
+                parts.Add(GameplayGateSelected ? "gameplay held until admitted" : "no gameplay gate");
+                return string.Join(", ", parts);
+            }
+        }
 
         internal static bool TryGetModAdmissionNonce(ControlPeer peer, out byte[] nonce)
         {
@@ -133,10 +174,10 @@ namespace Modstoke.Sons
 
         private static Enrollment FindModAdmissionEntry(ControlPeer peer)
         {
-            if (!OnOwnerThread || !_selected || _faulted || peer == null
+            if (!OnOwnerThread || !Selected || _faulted || peer == null
                 || !Entries.TryGetValue(peer.PeerId, out var entry) || !ReferenceEquals(entry.Peer, peer))
                 return null;
-            Refresh(entry, Now);
+            Refresh(entry);
             if (entry.State != EnrollmentState.Enrolled || entry.Nonce == null
                 || (entry.RequiredCapabilities & ModAdmission.ProtocolCapability) == 0
                 || (entry.OfferedCapabilities & ModAdmission.ProtocolCapability) == 0)
@@ -151,15 +192,24 @@ namespace Modstoke.Sons
             Entries.Clear();
             ModAdmission.ResetForStart();
             _faulted = false;
+            _contentSelected = false;
+            _contentRequired = false;
+            _contentGate = false;
+            _clockReadAt = Now;
             ResetGateConnection();
+            ResetAdmissions();
         }
 
         internal static void Tick()
         {
-            if (!OnOwnerThread || !_selected || _faulted)
+            if (!OnOwnerThread || !Selected || _faulted)
                 return;
             try
             {
+                // After the transport's pump, so frames that queued up during a stall are handled first.
+                var now = Now;
+                _clock += Math.Clamp(now - _clockReadAt, 0, MaxTickSeconds);
+                _clockReadAt = now;
                 List<Guid> closed = null;
                 foreach (var entry in Entries.Values)
                     if (!entry.Peer.IsCurrent) (closed ??= new List<Guid>()).Add(entry.Peer.PeerId);
@@ -169,26 +219,25 @@ namespace Modstoke.Sons
                 // Lifecycle notifications are bounded, so reconcile the current handles as well.
                 foreach (var peer in ControlTransport.GetPeers())
                     Observe(peer);
-                var now = Now;
                 foreach (var entry in Entries.Values)
                 {
-                    Refresh(entry, now);
-                    SendNext(entry, now);
+                    Refresh(entry);
+                    Advance(entry);
                 }
-                ContentAgreement.Tick();
             }
             catch (Exception error)
             {
+                // Connections already admitted stay latched open; only those still negotiating are refused.
                 _faulted = true;
                 foreach (var entry in Entries.Values)
                     Retire(entry, EnrollmentEndReason.TransportUnavailable);
-                ReportFailure(error);
+                NetworkFailures.Report("Modstoke client enrollment", error);
             }
         }
 
         private static Enrollment Observe(ControlPeer peer)
         {
-            if (peer == null || !_selected || _faulted
+            if (peer == null || !Selected || _faulted
                 || ControlTransport.State != ControlState.Active
                 || ControlTransport.Resolve(peer) == null)
                 return null;
@@ -196,23 +245,24 @@ namespace Modstoke.Sons
                 return ReferenceEquals(existing.Peer, peer) ? existing : null;
             if (Entries.Count >= ControlTransport.MaxPeers)
                 return null;
-            var entry = new Enrollment(peer, Now + NegotiationSeconds);
+            var entry = new Enrollment(peer, Now, _clock + NegotiationSeconds);
             if (peer.ServerSession != null)
             {
                 entry.Nonce = RandomNumberGenerator.GetBytes(EnrollmentWire.NonceBytes);
-                entry.RequiredCapabilities = _requiredClientCapabilities;
-                entry.Outgoing = EnrollmentMessageKind.Challenge;
+                entry.RequiredCapabilities = RequiredClientCapabilities;
             }
+            else
+                entry.HelloNonce = RandomNumberGenerator.GetBytes(EnrollmentWire.NonceBytes);
             Entries.Add(peer.PeerId, entry);
             return entry;
         }
 
         private static void OnOpened(ControlPeer peer)
         {
-            if (!OnOwnerThread || !_selected || _faulted)
+            if (!OnOwnerThread || !Selected || _faulted)
                 return;
             var entry = Observe(peer);
-            if (entry != null) SendNext(entry, Now);
+            if (entry != null) Advance(entry);
         }
 
         private static void OnClosed(ControlPeer peer)
@@ -224,7 +274,47 @@ namespace Modstoke.Sons
             }
         }
 
-        private static void Refresh(Enrollment entry, double now)
+        // Sends what this side owes next. The stream channel is reliable, so every frame is sent once; it resends a lost
+        // frame on its own, so frames can arrive out of order, which the receivers allow for.
+        private static void Advance(Enrollment entry)
+        {
+            if (entry.State == EnrollmentState.Retired)
+                return;
+            if (entry.Peer.ServerSession == null)
+            {
+                if (entry.State == EnrollmentState.Pending && !entry.HelloSent)
+                {
+                    entry.HelloSent = true;
+                    // UdpKit drops the whole connection over a block on a channel the host lacks: never send one to a
+                    // vanilla or older host, or to one whose negotiation channel has another id than this game's.
+                    if (ContentAgreement.HostNegotiates)
+                        Send(entry, EnrollmentMessageKind.Hello);
+                    else if (ContentAgreement.HostChannel > 0)
+                        ReleaseClient(entry, "This server answers Modstoke's join negotiation on stream channel "
+                            + ContentAgreement.HostChannel + ", but this game registered it as " + ControlTransport.ChannelId
+                            + " (the two games register different stream channels), so it isn't asked; playing as the "
+                            + "game does.");
+                    else
+                        ReleaseClient(entry, "This server didn't say it runs Modstoke's join negotiation, so it isn't "
+                            + "asked; playing as the game does.");
+                }
+                return;
+            }
+            if (entry.State == EnrollmentState.Enrolled && !entry.Admitted)
+                TryAdmit(entry);
+            else if (entry.Admitted && !entry.HelloChecked && _clock >= entry.Deadline)
+            {
+                entry.HelloChecked = true;
+                if (ServerNotices.HooksInstalled
+                    && !ServerNotices.HelloArrived(entry.Peer.ConnectionPointer, entry.Peer.ConnectionId))
+                    RuntimeEntryPoint.LogSource?.LogWarning("Connection " + entry.Peer.ConnectionId + " was admitted "
+                        + HelloWatchSeconds + " s ago, but its Modstoke notices hello has not arrived. Its reliable "
+                        + "events may not be reaching this server; the player should rejoin if chat, building or "
+                        + "pickups stop working for them.");
+            }
+        }
+
+        private static void Refresh(Enrollment entry)
         {
             if (entry.State == EnrollmentState.Retired)
                 return;
@@ -235,17 +325,18 @@ namespace Modstoke.Sons
                 // Paused session tracking holds the peer; the transport settles it on a later frame.
                 if (!held) Retire(entry, EnrollmentEndReason.TransportUnavailable);
             }
-            else if (entry.State == EnrollmentState.Pending && now >= entry.Deadline)
-            {
-                // A host that never challenged is not taking part. Release the client until its first frame.
-                if (entry.Peer.ServerSession == null && entry.Nonce == null)
-                {
-                    entry.State = EnrollmentState.HostNotParticipating;
-                    ModAdmission.HostNotParticipating(entry.Peer);
-                }
-                else
-                    Retire(entry, EnrollmentEndReason.Expired);
-            }
+            // A client says hello only to a host that said it answers, so that host's silence is a fault, not a sign it
+            // doesn't take part: releasing the client's gameplay would only get it refused, or kicked by a late answer.
+            else if (_clock >= entry.Deadline && (entry.State == EnrollmentState.Pending
+                || entry.State == EnrollmentState.Enrolled && !entry.Admitted && entry.Peer.ServerSession == null))
+                Retire(entry, EnrollmentEndReason.Expired);
+        }
+
+        private static void ReleaseClient(Enrollment entry, string message)
+        {
+            entry.State = EnrollmentState.HostNotParticipating;
+            ModAdmission.HostNotParticipating(entry.Peer);
+            RuntimeEntryPoint.LogSource?.LogInfo(message);
         }
 
         private static void Retire(Enrollment entry, EnrollmentEndReason reason)
@@ -255,52 +346,56 @@ namespace Modstoke.Sons
             entry.State = EnrollmentState.Retired;
             entry.Reason = reason;
             entry.Nonce = null;
+            // A host explains its refusals when it disconnects the peer; a client has only this line.
+            if (entry.Peer.ServerSession == null)
+                RuntimeEntryPoint.LogSource?.LogInfo("Modstoke negotiation with the server ended after "
+                    + Milliseconds(entry.OpenedAt) + " ms: " + reason + ".");
         }
 
-        private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Modstoke client enrollment failed ("
-                    + error.GetType().FullName + ").");
-            }
-            catch (Exception) { }
-        }
+        private static long Milliseconds(double since) => (long)((Now - since) * 1000);
 
         private sealed class Enrollment
         {
             internal readonly ControlPeer Peer;
+            internal readonly double OpenedAt;
+            // When the current step times out, on the negotiation clock: hello and response, the host's checks
+            // up to Admitted on a client, and the notices hello watch once a host admitted the peer.
             internal double Deadline;
             internal EnrollmentState State;
             internal EnrollmentEndReason Reason;
+            internal EnrollmentRejection RemoteRejection;
             internal byte[] Nonce;
+            internal byte[] HelloNonce;
             internal ulong RequiredCapabilities;
             internal ulong OfferedCapabilities;
-            internal EnrollmentMessageKind Outgoing;
-            internal int Attempts;
-            internal double NextSend;
-            internal bool SentWhileReleased;
+            internal bool HelloSent;
+            internal double HelloAt;
+            internal double EnrolledAt;
+            internal bool Admitted;
+            internal bool HelloChecked;
+            // Frames the host sent behind Accepted that overtook it, replayed once it arrives.
+            internal List<byte[]> AfterAccepted;
 
-            internal Enrollment(ControlPeer peer, double deadline)
+            internal Enrollment(ControlPeer peer, double openedAt, double deadline)
             {
                 Peer = peer;
+                OpenedAt = openedAt;
                 Deadline = deadline;
             }
         }
     }
 
     /// <summary>
-    /// HostNotParticipating is a joining client whose host sent no enrollment frame in time. Its
-    /// gameplay is released. A later host frame returns it to Pending for ordinary negotiation, unless
-    /// gameplay was already sent while released: then it retires with HostAnsweredLate and disconnects.
+    /// HostNotParticipating is a joining client whose host said it does not take part, or never said it runs this
+    /// negotiation. Its gameplay is released for the rest of the connection. A later host frame returns it to
+    /// Pending for ordinary negotiation, unless gameplay was already sent while released: then it retires with
+    /// HostAnsweredLate and disconnects.
     /// </summary>
     public enum EnrollmentState { Pending, Enrolled, Retired, HostNotParticipating }
     public enum EnrollmentEndReason
     {
         None, TransportUnavailable, Expired, IncompatibleCapabilities, InvalidMessage, RemoteRejected, SendFailed,
-        HostAnsweredLate
+        HostAnsweredLate, ProtocolMismatch, GameplayBeforeAdmission
     }
     public enum EnrollmentReadStatus { Success, Unavailable, WrongThread, PeerUnavailable, Failed }
 

@@ -18,8 +18,6 @@ namespace Modstoke.Sons
             BoltEventHookStatus.NotAttempted, "Command framework hooks have not been registered.");
         private static int _installationAttempted;
         private static int _admissionInstalled;
-        private static int _reportedFailure;
-        private static int _reportedAdmissionFailure;
         [ThreadStatic] private static bool _receiving;
         [ThreadStatic] private static bool _executing;
         [ThreadStatic] private static bool _admittingChannel;
@@ -262,27 +260,9 @@ namespace Modstoke.Sons
             catch (Exception) { }
         }
 
-        private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0) return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Command observation failed ("
-                    + error.GetType().FullName + "). Native work is unchanged; further observation failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+        private static void ReportFailure(Exception error) => NetworkFailures.Report("Command observation", error);
 
-        private static void ReportAdmissionFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedAdmissionFailure, 1) != 0) return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Command channel admission failed ("
-                    + error.GetType().FullName + "). Rejection requires an accepted receive-guard abort; further admission failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+        private static void ReportAdmissionFailure(Exception error) => NetworkFailures.Report("Command channel admission", error);
 
         private struct ExecutionObservation
         {

@@ -23,9 +23,11 @@ namespace Modstoke.Sons
         internal const int MaxModAdmissionFramesPerPeer = 512;
 
         private const string ChannelName = "Modstoke.ClientNegotiation.v1";
-        private const int MaxPendingPerPeer = 8;
+        // Room for the host's burst after enrollment: Accepted, a content declaration and a mod admission window.
+        private const int MaxPendingPerPeer = 16;
         private const int MaxPendingFrames = 256;
         private const int MaxPendingEvents = MaxPeers * 2;
+        private const long RevalidationMilliseconds = 250;
         private static readonly object Gate = new();
         private static readonly Queue<Frame> Incoming = new();
         private static readonly Queue<PeerEvent> Events = new();
@@ -33,15 +35,19 @@ namespace Modstoke.Sons
         private static Action<string> _warning;
         private static Run _run;
         private static int _ownerThreadId;
-        private static int _reportedFailure;
+        private static int _warned;
         private static volatile bool _selected;
         private static bool _ticking;
+        private static long _nextRevalidation;
         private static bool _patchAttempted;
         private static volatile bool _hooksInstalled;
         private static ControlState _state;
 
         /// <summary>Local setup state only; Active does not prove remote compatibility or delivery.</summary>
         public static ControlState State { get { lock (Gate) return _state; } }
+
+        /// <summary>The stream channel id the negotiation channel got in this Bolt run, or 0 without a working run.</summary>
+        internal static int ChannelId { get { lock (Gate) return _run == null || _run.Failed ? 0 : _run.Channel.Id; } }
 
         /// <summary>
         /// Game-thread notifications for observed connection lifetimes. Notifications are bounded;
@@ -56,19 +62,20 @@ namespace Modstoke.Sons
         /// </summary>
         public static event Action<ControlMessage> Received;
 
+        // The start hooks go in at startup: a dedicated server can start Bolt before any later poll would notice.
         internal static void Initialize(HarmonySupportSnapshot support, Action<string> warning)
         {
-            if (Interlocked.CompareExchange(ref _ownerThreadId, Environment.CurrentManagedThreadId, 0) == 0)
-            {
-                _support = support;
-                _warning = warning;
-            }
+            if (Interlocked.CompareExchange(ref _ownerThreadId, Environment.CurrentManagedThreadId, 0) != 0)
+                return;
+            _support = support;
+            _warning = warning;
+            InstallHooks();
         }
 
         /// <summary>
-        /// Select before Bolt starts, on both peers. Selection reserves the first stream channel
-        /// before game listeners; subsequent channel registrations must have compatible ordering.
-        /// No channel is registered by default. Selection does not enable strict combat.
+        /// Select before Bolt starts, on both peers. The negotiation channel itself is registered on
+        /// every start, after the game's own stream channels, so it never shifts their ids.
+        /// Selection does not enable strict combat.
         /// </summary>
         public static ControlResult SelectForNextStart(bool selected)
         {
@@ -281,16 +288,11 @@ namespace Modstoke.Sons
 
         private static void ReportFailure(Exception error)
         {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
+            NetworkFailures.Report("Modstoke connection negotiation", error);
+            // The status page shows the first one; the log keeps every later one counted.
+            if (Environment.CurrentManagedThreadId != _ownerThreadId || Interlocked.Exchange(ref _warned, 1) != 0)
                 return;
-            var message = "Modstoke connection negotiation failed (" + error.GetType().FullName + ").";
-            try
-            {
-                if (Environment.CurrentManagedThreadId == _ownerThreadId)
-                    _warning?.Invoke(message);
-                else
-                    RuntimeEntryPoint.LogSource?.LogWarning(message);
-            }
+            try { _warning?.Invoke("Modstoke connection negotiation failed (" + error.GetType().FullName + ")."); }
             catch (Exception) { }
         }
     }

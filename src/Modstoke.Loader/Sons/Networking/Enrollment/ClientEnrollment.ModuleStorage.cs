@@ -29,29 +29,22 @@ namespace Modstoke.Sons
             }
             catch (Exception error)
             {
-                ReportFailure(error);
+                NetworkFailures.Report("Modstoke client enrollment", error);
                 return ControlResult.Failed;
             }
         }
 
-        // Called from the Bolt start hook, so it adds to whatever selection plugins made rather than replacing it.
+        // Called from the Bolt start hook after the per-start reset, so it only ever lasts for this start and
+        // adds to whatever selection plugins made. A client that takes part always holds its gameplay until the
+        // host admits it; a host gates only when it refuses clients that don't take part.
         internal static bool AddContentForStart(bool server, bool requireClients)
         {
             if (!OnOwnerThread || _faulted) return false;
-            if (!_selected)
-            {
-                _selected = true;
-                _localCapabilities = 0;
-                _requiredClientCapabilities = 0;
-                _gateSelected = false;
-                Entries.Clear();
-            }
-            _localCapabilities |= ContentAgreement.Capability;
-            if (!requireClients) return true;
-            _requiredClientCapabilities |= ContentAgreement.Capability;
-            // Holding packets until the check passes is what keeps unchecked (vanilla) clients out.
-            if (!_gateSelected && (!ServerSessions.HooksInstalled || !InstallGateHooks())) return false;
-            _gateSelected = true;
+            var gate = !server || requireClients;
+            if (gate && (server && !ServerSessions.HooksInstalled || !InstallGateHooks())) return false;
+            _contentSelected = true;
+            _contentRequired = requireClients;
+            _contentGate = gate;
             return true;
         }
 

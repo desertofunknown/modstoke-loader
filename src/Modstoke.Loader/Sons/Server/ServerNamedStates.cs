@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Alex Cooper
 
+extern alias SonsGame;
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -8,12 +10,14 @@ using System.Threading;
 using HarmonyLib;
 using Il2CppInterop.Runtime;
 using Modstoke.Loader;
+using NativeServerInfo = SonsGame::CoopServerInfo;
 
 namespace Modstoke.Sons
 {
     /// <summary>
     /// Server policy before native ChangeIdObjectState routing. Does not cover host direct updates,
-    /// save restoration, or native event completion; rejection cannot undo sender-local state.
+    /// save restoration, or native event completion. A refused remote request has the host's replicated value
+    /// resent, which puts back the requester's own copy of the state; scripted effects it already started stay.
     /// </summary>
     public static class ServerNamedStates
     {
@@ -29,8 +33,9 @@ namespace Modstoke.Sons
 
         /// <summary>
         /// Runs synchronously before server dispatch, including routes that would forward to clients.
-        /// Required unresolved context, rejection, or handler exceptions skip dispatch when subscribed.
-        /// No subscribers leaves native behavior unchanged. This is not state-completion notification.
+        /// Rejection, an unreadable name or handler exceptions skip dispatch when subscribed; a remote request whose
+        /// session cannot be resolved arrives with a null SourceSession. No subscribers leaves native behavior
+        /// unchanged. This is not state-completion notification.
         /// </summary>
         public static event Action<NamedStateRequest> Changing;
 
@@ -127,16 +132,20 @@ namespace Modstoke.Sons
             var pointer = __0.Pointer;
             if (!active.Add(pointer)) return false; // The outer dispatch owns storage.
             bool forward = false;
+            NamedStateRequest request = null;
+            uint? sourceConnectionId = null;
             try
             {
                 if (!BoltNetwork.isRunning || !BoltNetwork.isServer) { forward = true; return true; }
                 if (!OnOwnerThread() || _publishing) return false;
                 var connection = __0.RaisedBy;
+                sourceConnectionId = connection?.ConnectionId;
+                // An unresolved remote session reaches policies as a null source, so they decide instead of a silent
+                // refusal; a policy that needs the player's identity rejects it.
                 var session = ServerSessions.ResolveSource(connection);
-                if (connection != null && (session == null || !session.IsCurrent)) return false;
                 int index = change.Id;
                 if (!TryReadName(index, out var name)) return false;
-                var request = new NamedStateRequest(index, change.StateValue, name,
+                request = new NamedStateRequest(index, change.StateValue, name,
                     connection == null ? NamedStateOrigin.ServerLocalDispatch : NamedStateOrigin.RemoteDispatch,
                     session, __0.Targets, DateTimeOffset.UtcNow);
                 if (!Publish(request, handlers)) return false;
@@ -152,7 +161,7 @@ namespace Modstoke.Sons
                 }
                 else if (currentConnection == null || currentConnection.Pointer != connection.Pointer
                     || !ReferenceEquals(session, ServerSessions.ResolveSource(currentConnection))
-                    || !session.IsCurrent) return false;
+                    || session?.IsCurrent == false) return false;
                 forward = true;
                 return true;
             }
@@ -165,7 +174,49 @@ namespace Modstoke.Sons
                     try { __0.FreeStorage(); }
                     catch (Exception error) { ReportFailure(error); }
                 }
+                // Released before reporting: a stale entry would make a later event at this address look re-entrant.
                 active.Remove(pointer);
+                if (!forward && request != null)
+                    Refuse(request, sourceConnectionId);
+            }
+        }
+
+        // The requesting client applied the change to its own copy before sending it, so a refusal resends the
+        // host's value to put that copy back.
+        private static void Refuse(NamedStateRequest request, uint? sourceConnectionId)
+        {
+            try
+            {
+                var change = "a named-state change " + request.RegisteredName + " = " + request.RequestedValue;
+                if (request.Origin == NamedStateOrigin.RemoteDispatch && ResendHostValue(request.RequestedIndex) is { } value)
+                    change += " (resent the host's " + value + ")";
+                ServerDispatchGate.ReportRefusal(change, request.SourceSession, sourceConnectionId, request.RejectReason);
+            }
+            catch (Exception error) { ReportFailure(error); }
+        }
+
+        // Bolt sends a state property when it was marked changed during the frame. Stepping the replicated value
+        // away and straight back marks it without changing it, so every client, vanilla included, receives the
+        // host's value again and the game's own array callback rewrites its copy.
+        private static int? ResendHostValue(int index)
+        {
+            try
+            {
+                var info = NativeServerInfo._instance;
+                var entity = info is null || info.WasCollected || !info ? null : info.entity;
+                if (entity is null || entity.WasCollected || !entity || !entity.isAttached || !entity.isOwner) return null;
+                var state = info.state;
+                var values = state is null || state.WasCollected ? null : state.IdObjectStates;
+                if (values is null || values.WasCollected || index < 0 || index >= values.Length) return null;
+                var value = values[index];
+                values[index] = unchecked(value + 1);
+                values[index] = value;
+                return value;
+            }
+            catch (Exception error)
+            {
+                ReportFailure(error);
+                return null;
             }
         }
 

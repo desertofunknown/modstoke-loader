@@ -20,16 +20,20 @@ namespace Modstoke.Sons
             "Game-packet admission has not been registered.");
         private static int _installationAttempted;
         private static int _ownerThread;
-        private static int _reportedFailure;
         [ThreadStatic] private static HashSet<IntPtr> _active;
         [ThreadStatic] private static bool _callingPolicy;
 
         /// <summary>
         /// Runs after SDK enrollment and custom-datagram handling, before Bolt acquires its channel
-        /// packet. Rejection drops the entire game payload, including unrelated channel updates.
-        /// Exceptions reject this packet. No default policy, disconnect, or rate limit is imposed.
+        /// packet. Rejection drops the entire game payload, including unrelated channel updates, and
+        /// disconnects the sender. Exceptions reject this packet. No default policy or rate limit is imposed.
         /// Unsubscribe on unload. Never recursively feed packets from a policy callback.
         /// </summary>
+        /// <remarks>
+        /// UdpKit acknowledged the packet before this hook runs, so the sender never resends it. A
+        /// connection that lost one keeps a permanent gap in its reliable events, which is why a
+        /// rejection always ends the connection rather than leaving it desynchronized.
+        /// </remarks>
         public static event Action<BoltPacketRequest> Receiving;
 
         public static BoltPacketHookState State => Volatile.Read(ref _state);
@@ -86,7 +90,7 @@ namespace Modstoke.Sons
                 var active = _active ??= new HashSet<IntPtr>();
                 __state = new PacketScope(__0, active);
                 active.Add(__state.Pointer);
-                if (_callingPolicy) return false;
+                if (_callingPolicy) return Disconnect(__instance);
                 if (Environment.CurrentManagedThreadId != _ownerThread)
                     throw new InvalidOperationException("Game-packet admission requires the game thread.");
                 request = new BoltPacketRequest(__instance, __0);
@@ -95,7 +99,7 @@ namespace Modstoke.Sons
                 foreach (var handler in Delegate.EnumerateInvocationList(handlers))
                 {
                     handler(request);
-                    if (request.IsRejected) return false;
+                    if (request.IsRejected) return Disconnect(__instance);
                 }
                 if (!request.MatchesCurrentContext()) return false;
                 __state.Rejected = false;
@@ -105,13 +109,33 @@ namespace Modstoke.Sons
             {
                 ReportFailure(error);
                 // Before taking ownership, leave cleanup to the native receiver.
-                return __state == null;
+                return __state == null || Disconnect(__instance);
             }
             finally
             {
                 request?.Close();
                 if (enteredPolicy) _callingPolicy = false;
             }
+        }
+
+        // Always false: the rejected packet is dropped either way.
+        private static bool Disconnect(BoltConnection connection)
+        {
+            try
+            {
+                var session = ServerSessions.ResolveSource(connection);
+                if (session != null && ServerSessions.HasDisconnectAttempt(session)) return false;
+                RuntimeEntryPoint.LogSource?.LogInfo("Game-packet policy refused a packet from connection "
+                    + connection.ConnectionId + "; disconnecting it, since an acknowledged packet cannot be recovered.");
+                // Without session tracking there is no notice to give, but the connection must still end.
+                if (session == null)
+                    connection.Disconnect();
+                else if (ServerSessions.DisconnectWithNotice(session, "This server refused data from your game. Rejoin to play.")
+                    != DisconnectResult.Requested)
+                    ServerSessions.Disconnect(session);
+            }
+            catch (Exception error) { ReportFailure(error); }
+            return false;
         }
 
         private static void FinishReceive(PacketScope __state)
@@ -141,13 +165,7 @@ namespace Modstoke.Sons
             try { warning?.Invoke(message); } catch (Exception) { }
         }
 
-        private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0) return;
-            try { RuntimeEntryPoint.LogSource?.LogWarning("Game-packet admission failed ("
-                + error.GetType().FullName + "). Further failures will not be logged."); }
-            catch (Exception) { }
-        }
+        private static void ReportFailure(Exception error) => NetworkFailures.Report("Game-packet admission", error);
 
         private sealed class PacketScope(UdpPacket packet, HashSet<IntPtr> active)
         {

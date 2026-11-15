@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Modstoke.Loader;
 using UdpKit;
 
 namespace Modstoke.Sons
@@ -17,6 +18,8 @@ namespace Modstoke.Sons
             internal readonly Dictionary<IntPtr, PeerRecord> Peers = new();
             // Connection pointer to ID for connections that opened while session tracking was paused.
             internal readonly Dictionary<IntPtr, uint> Deferred = new();
+            // Transport pointer to frames that arrived before the peer was bound.
+            internal readonly Dictionary<IntPtr, EarlyFrames> Early = new();
             internal IReadOnlyList<ControlPeer> PeerSnapshot;
             internal bool Failed;
 
@@ -38,6 +41,13 @@ namespace Modstoke.Sons
             internal int ModAdmissionSends;
             internal int ModAdmissionReceives;
             internal PeerRecord(ControlPeer peer) => Peer = peer;
+        }
+
+        private sealed class EarlyFrames
+        {
+            internal readonly uint ConnectionId;
+            internal readonly List<byte[]> Frames = new();
+            internal EarlyFrames(uint connectionId) => ConnectionId = connectionId;
         }
 
         private readonly record struct Frame(ControlPeer Peer, byte[] Payload);
@@ -129,6 +139,54 @@ namespace Modstoke.Sons
                     ReportFailure(error);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Failure reports for the networking layer. A site's first failure is logged in full; repeats are counted and
+    /// summed up at most once a minute, so a failure that recurs every frame neither floods the log nor goes quiet.
+    /// </summary>
+    internal static class NetworkFailures
+    {
+        private const long SummaryMilliseconds = 60_000;
+        private static readonly Dictionary<string, Site> Sites = new();
+
+        /// <remarks>withMessage false keeps the message out where it could carry a client's token or text.</remarks>
+        internal static void Report(string site, Exception error, bool withMessage = true)
+        {
+            try
+            {
+                string line;
+                lock (Sites)
+                {
+                    var now = Environment.TickCount64;
+                    if (!Sites.TryGetValue(site, out var entry))
+                    {
+                        Sites[site] = new Site { Next = now + SummaryMilliseconds };
+                        line = site + " failed: " + (withMessage ? error.ToString()
+                            : error.GetType().FullName + Environment.NewLine + error.StackTrace);
+                    }
+                    else
+                    {
+                        entry.Repeats++;
+                        entry.Last = error.GetType().FullName;
+                        if (now < entry.Next) return;
+                        line = site + " failed " + entry.Repeats + " more times since its last report (last: "
+                            + entry.Last + ").";
+                        entry.Repeats = 0;
+                        entry.Next = now + SummaryMilliseconds;
+                    }
+                }
+                RuntimeEntryPoint.LogSource?.LogWarning(line);
+            }
+            catch (Exception) { }
+        }
+
+        private sealed class Site
+        {
+            internal long Next;
+            internal int Repeats;
+            internal string Last;
         }
     }
 }

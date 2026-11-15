@@ -67,14 +67,38 @@ namespace Modstoke.Sons
         private const int MaxSdkEvents = 16;
         private const int MaxPrefixLength = 24;
         private const int MaxEventIdLength = 64;
+        private const long EnrollmentCheckMs = 1000;
         private static readonly ConditionalWeakTable<ServerSession, Record> Records = new();
 
         internal static long ReadRevision(ServerSession session) =>
             Records.TryGetValue(session, out var record) ? record.Revision : 0;
 
+        // Host SDK packets, broadcast and relayed alike, are for clients that run a loader: one that sent a notice
+        // handshake or any SDK marker packet, or completed enrollment. RedLoader clients never send the handshake.
+        // True holds for the session, through a tracking pause too. False means nothing shown yet, which a lost
+        // handshake also explains, so a sender holds packets rather than drop them. Null means tracking cannot
+        // tell, and a sender delivers as it always has.
+        internal static bool? ShowsLoader(BoltConnection connection)
+        {
+            var session = ServerSessions.ResolveHeld(connection);
+            if (session == null)
+                return ServerSessions.HooksInstalled ? false : null;
+            var record = Records.GetOrCreateValue(session);
+            var now = Environment.TickCount64;
+            if (!record.ShowsLoader && now >= record.NextEnrollmentCheck)
+            {
+                // Enrollment has no callback into this record, and a sender asks per packet and recipient.
+                record.NextEnrollmentCheck = now + EnrollmentCheckMs;
+                record.ShowsLoader = ClientEnrollment.TryRead(session, out var enrollment) == EnrollmentReadStatus.Success
+                    && enrollment.State == EnrollmentState.Enrolled;
+            }
+            return record.ShowsLoader;
+        }
+
         internal static void RecordHello(ServerSession session, NoticeProtocol.Frame frame)
         {
             var record = Change(session);
+            record.ShowsLoader = true;
             var claim = new ClientHelloClaim(DateTimeOffset.UtcNow, frame.ReceiptVersion, frame.CommandVersion,
                 frame.CommandReplyVersion, frame.MessengerVersion, frame.Loader, frame.LoaderVersion,
                 frame.NativeMods, frame.LegacyMods);
@@ -89,6 +113,7 @@ namespace Modstoke.Sons
         {
             if (!TryChange(source, out var record))
                 return;
+            record.ShowsLoader = true;
             if (registered)
             {
                 record.SdkPackets++;
@@ -170,7 +195,7 @@ namespace Modstoke.Sons
 
         private static bool TryChange(BoltConnection source, out Record record)
         {
-            var session = ServerSessions.ResolveObserved(source);
+            var session = ServerSessions.ResolveHeld(source);
             record = session == null ? null : Change(session);
             return record != null;
         }
@@ -223,6 +248,8 @@ namespace Modstoke.Sons
             internal int TunnelChats;
             internal readonly List<string> TunnelPrefixes = new();
             internal DateTimeOffset? FirstUnexpectedAt;
+            internal bool ShowsLoader;
+            internal long NextEnrollmentCheck;
 
             internal void MarkUnexpected() => FirstUnexpectedAt ??= DateTimeOffset.UtcNow;
         }

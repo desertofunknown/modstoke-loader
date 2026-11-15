@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using System.Threading;
 using Bolt;
@@ -25,6 +26,8 @@ namespace Modstoke.Sons
         private const int RecoveryIdle = 0;
         private const int RecoveryWaiting = 1;
         private const int RecoveryReady = 2;
+        private const int JoinCheckMs = 250;
+        private const int JoinValidationMs = 1000;
 
         private static readonly UTF8Encoding DisconnectMessageKeyEncoding = new(false, true);
         private static readonly Dictionary<IntPtr, ServerSession> Current = new();
@@ -33,6 +36,7 @@ namespace Modstoke.Sons
         private static ServerSessionState _state = new(ServerSessionHookStatus.NotAttempted,
             "Server session hooks have not been installed.");
         private static IReadOnlyList<ServerSession> _sessions = Array.Empty<ServerSession>();
+        private static IReadOnlyList<ServerPlayer> _players = Array.Empty<ServerPlayer>();
         private static Queue<PendingEvent> _pending = new();
         private static int _installationAttempted;
         private static int _ownerThreadId;
@@ -47,6 +51,9 @@ namespace Modstoke.Sons
         private static bool _shutdown;
         private static bool _ticking;
         private static long _nextRefresh;
+        private static long _pausedAt;
+        private static long _nextJoinCheck;
+        private static long _nextJoinValidation;
 
         /// <summary>
         /// All hooks were installed and tracking is currently active. A failure suspends tracking until it
@@ -57,7 +64,10 @@ namespace Modstoke.Sons
         /// <summary>Hook registration and recovery state, also published under <see cref="ServiceKey"/>.</summary>
         public static ServerSessionState State => Volatile.Read(ref _state);
 
-        /// <summary>Immutable membership snapshot of last-observed remote clients, not real-time network liveness.</summary>
+        /// <summary>
+        /// Immutable membership snapshot of last-observed remote clients, not real-time network liveness. Empty while
+        /// tracking is unavailable; retained handles then report <see cref="ServerSessionStatus.Paused"/> during a recovery.
+        /// </summary>
         public static IReadOnlyList<ServerSession> Sessions => HooksInstalled
             ? Volatile.Read(ref _sessions) : Array.Empty<ServerSession>();
 
@@ -67,6 +77,24 @@ namespace Modstoke.Sons
         public static event Action<ServerSession> Closed;
         /// <summary>Queued metadata change. The handle exposes the latest observed registration.</summary>
         public static event Action<ServerSession> RegistrationChanged;
+
+        /// <summary>Remote clients whose character exists on this host, in join order. The listen host is not included.</summary>
+        public static IReadOnlyList<ServerPlayer> Players => HooksInstalled
+            ? Volatile.Read(ref _players) : Array.Empty<ServerPlayer>();
+
+        /// <summary>
+        /// Queued once per session when the client's character first attaches on this host, after
+        /// <see cref="Opened"/>. Subscribe, then read <see cref="Players"/> for clients that joined earlier.
+        /// </summary>
+        /// <remarks>
+        /// The client's world load sits between the two events, often 10 to 15 seconds. On a host that checks
+        /// clients, the enrollment gate holds a client's game traffic until it is admitted, so its character
+        /// cannot attach before then. Loss-tolerant mod handshakes should still retry on their own.
+        /// </remarks>
+        public static event Action<ServerPlayer> PlayerJoined;
+
+        /// <summary>Queued when a joined session closes, just before <see cref="Closed"/>.</summary>
+        public static event Action<ServerPlayer> PlayerLeft;
 
         /// <summary>
         /// Requests a native disconnect for this exact live session on the game thread.
@@ -250,6 +278,19 @@ namespace Modstoke.Sons
                 && session.IsCurrent && session.ConnectionId == connection.ConnectionId ? session : null;
         }
 
+        // ResolveObserved that also finds an open handle while tracking recovers, so what was recorded about a
+        // session before the pause still answers for it.
+        internal static ServerSession ResolveHeld(BoltConnection connection)
+        {
+            if (HooksInstalled)
+                return ResolveObserved(connection);
+            if (!Recovering || Environment.CurrentManagedThreadId != _ownerThreadId
+                || connection == null || connection.WasCollected) return null;
+            var pointer = connection.Pointer;
+            return !Tombstones.Contains(pointer) && Current.TryGetValue(pointer, out var session)
+                && session.ClosedAt == null && session.ConnectionId == connection.ConnectionId ? session : null;
+        }
+
         internal static BoltConnection ResolveCurrent(ServerSession session)
         {
             if (!HooksInstalled || Environment.CurrentManagedThreadId != _ownerThreadId || session == null)
@@ -339,7 +380,8 @@ namespace Modstoke.Sons
         }
 
         // Suspended tracking still follows native connect and disconnect callbacks, so recovery
-        // cannot revive a connection that departed in the meantime.
+        // cannot revive a connection that departed in the meantime. A departing handle closes at once, so a paused
+        // or suspended session never keeps a player's leases alive; its Closed event follows recovery or the next start.
         private static void TrackSuspended(BoltConnection connection, bool disconnected)
         {
             if (!Volatile.Read(ref _patched) || Environment.CurrentManagedThreadId != _ownerThreadId)
@@ -348,10 +390,19 @@ namespace Modstoke.Sons
             {
                 if (connection == null || connection.WasCollected)
                     return;
-                if (disconnected)
-                    Tombstones.Add(connection.Pointer);
-                else
-                    Tombstones.Remove(connection.Pointer);
+                var pointer = connection.Pointer;
+                if (!disconnected)
+                {
+                    Tombstones.Remove(pointer);
+                    return;
+                }
+                Tombstones.Add(pointer);
+                if (Current.TryGetValue(pointer, out var leaving) && leaving.ConnectionId == connection.ConnectionId
+                    && leaving.ClosedAt == null)
+                {
+                    leaving.Departure = ReadDeparture(leaving, connection);
+                    leaving.Close();
+                }
             }
             catch (Exception error) { Disable(error); }
         }
@@ -493,6 +544,12 @@ namespace Modstoke.Sons
 
         private static void Tick()
         {
+            // Grants expire and refusal counts are written on time, so both keep ticking while tracking recovers.
+            if (Volatile.Read(ref _patched) && Environment.CurrentManagedThreadId == _ownerThreadId)
+            {
+                ServerMovementGrants.Tick();
+                ServerDispatchGate.FlushRefusals();
+            }
             if (!HooksInstalled && !Recover())
                 return;
             if (!EnterCallback() || _ticking)
@@ -500,10 +557,14 @@ namespace Modstoke.Sons
             _ticking = true;
             try
             {
-                if (CanObserve() && Environment.TickCount64 >= _nextRefresh)
+                if (CanObserve())
                 {
-                    _nextRefresh = Environment.TickCount64 + 1000;
-                    RefreshRegistry(ReadClients());
+                    if (Environment.TickCount64 >= _nextRefresh)
+                    {
+                        _nextRefresh = Environment.TickCount64 + 1000;
+                        RefreshRegistry(ReadClients());
+                    }
+                    ObservePlayers();
                 }
 
                 if (Volatile.Read(ref _pending).Count == 0)
@@ -532,6 +593,12 @@ namespace Modstoke.Sons
                             break;
                         case EventKind.RegistrationChanged:
                             Modding.Dispatch("ServerSessions.RegistrationChanged", RegistrationChanged, item.Session);
+                            break;
+                        case EventKind.PlayerJoined:
+                            Modding.Dispatch("ServerSessions.PlayerJoined", PlayerJoined, item.Player);
+                            break;
+                        case EventKind.PlayerLeft:
+                            Modding.Dispatch("ServerSessions.PlayerLeft", PlayerLeft, item.Player);
                             break;
                     }
                 }
@@ -568,6 +635,7 @@ namespace Modstoke.Sons
                 else
                 {
                     // Handles whose exact connection is still live stay valid; departed ones close as usual.
+                    var paused = new List<ServerSession>(Current.Values);
                     List<IntPtr> departed = null;
                     foreach (var pointer in Current.Keys)
                         if (Tombstones.Contains(pointer))
@@ -577,10 +645,15 @@ namespace Modstoke.Sons
                             Retire(pointer);
                     RefreshRegistry(ReadClients());
                     _nextRefresh = Environment.TickCount64 + 1000;
+                    var kept = paused.FindAll(static session => session.ClosedAt == null).Count;
+                    RuntimeEntryPoint.LogSource?.LogInfo("Server session tracking recovered after "
+                        + (Environment.TickCount64 - Volatile.Read(ref _pausedAt)) + " ms; kept " + kept
+                        + " paused sessions and closed " + (paused.Count - kept) + " that left meanwhile.");
                 }
                 Publish();
             }
             finally { _recovering = false; }
+            Volatile.Write(ref _pausedAt, 0);
             Volatile.Write(ref _recovery, RecoveryIdle);
             Volatile.Write(ref _hooksInstalled, true);
             PublishState(ServerSessionHookStatus.Installed, detail);
@@ -673,21 +746,27 @@ namespace Modstoke.Sons
                 DisconnectAttempts.Remove(session);
                 session.Close();
                 ServerWorld.ForgetPlayerIdentity(session);
+                if (Leave(session))
+                    PublishPlayers();
                 Enqueue(EventKind.Closed, session);
             }
         }
 
         private static void RetireAll()
         {
+            var joined = false;
             foreach (var session in Current.Values)
             {
                 session.Close();
+                joined |= Leave(session);
                 Enqueue(EventKind.Closed, session);
             }
             Current.Clear();
             ServerWorld.ResetPlayerIdentities();
             DisconnectAttempts.Clear();
             Publish();
+            if (joined)
+                PublishPlayers();
         }
 
         // Migration cohorts use snapshot identity to detect membership changes, even if the same
@@ -695,10 +774,73 @@ namespace Modstoke.Sons
         private static void Publish() => Volatile.Write(ref _sessions,
             new List<ServerSession>(Current.Values).AsReadOnly());
 
-        private static void Enqueue(EventKind kind, ServerSession session)
+        // Pending sessions are checked four times a second; joined characters are revalidated once a second so a
+        // replaced character gets a fresh handle. Iterates the published snapshot: captures can retire sessions.
+        private static void ObservePlayers()
+        {
+            var now = Environment.TickCount64;
+            if (now < _nextJoinCheck)
+                return;
+            _nextJoinCheck = now + JoinCheckMs;
+            var validate = now >= _nextJoinValidation;
+            if (validate)
+                _nextJoinValidation = now + JoinValidationMs;
+
+            foreach (var session in Volatile.Read(ref _sessions))
+            {
+                var player = session.Player;
+                if (player == null)
+                {
+                    if (ServerWorld.TryCapturePlayerBinding(session, out var binding, out _))
+                        Join(session, binding);
+                    continue;
+                }
+                if (validate && !ServerWorld.TryValidatePlayerBinding(player.Binding, out _) && player.Binding.IsRetired
+                    && ServerWorld.TryCapturePlayerBinding(session, out var replacement, out _))
+                    player.Binding = replacement;
+            }
+        }
+
+        private static void Join(ServerSession session, PlayerHandle binding)
+        {
+            var player = new ServerPlayer(session, binding);
+            session.Join(player);
+            PublishPlayers();
+            Enqueue(EventKind.PlayerJoined, session, player);
+            RuntimeEntryPoint.LogSource?.LogInfo("Player joined on connection " + session.ConnectionId + ", "
+                + Seconds(player.JoinDelay) + " s after connecting; " + Volatile.Read(ref _players).Count + " joined.");
+        }
+
+        private static bool Leave(ServerSession session)
+        {
+            var player = session.Player;
+            if (player == null)
+                return false;
+            // Mods keep closed handles; the departed character's native objects must not stay pinned through them.
+            // Any read would retire this binding anyway once the session is closed.
+            player.Binding.Retire();
+            Enqueue(EventKind.PlayerLeft, session, player);
+            RuntimeEntryPoint.LogSource?.LogInfo("Player left from connection " + session.ConnectionId + " after "
+                + Seconds(DateTimeOffset.UtcNow - player.JoinedAt) + " s.");
+            return true;
+        }
+
+        private static void PublishPlayers()
+        {
+            var players = new List<ServerPlayer>();
+            foreach (var session in Current.Values)
+                if (session.Player != null && session.ClosedAt == null)
+                    players.Add(session.Player);
+            players.Sort(static (left, right) => left.JoinedAt.CompareTo(right.JoinedAt));
+            Volatile.Write(ref _players, players.AsReadOnly());
+        }
+
+        private static string Seconds(TimeSpan span) => span.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture);
+
+        private static void Enqueue(EventKind kind, ServerSession session, ServerPlayer player = null)
         {
             if (HooksInstalled || _recovering)
-                Volatile.Read(ref _pending).Enqueue(new PendingEvent(kind, session));
+                Volatile.Read(ref _pending).Enqueue(new PendingEvent(kind, session, player));
         }
 
         private static void Disable(Exception error)
@@ -707,6 +849,7 @@ namespace Modstoke.Sons
             // Undelivered notifications stay queued for delivery after recovery.
             Volatile.Write(ref _hooksInstalled, false);
             Volatile.Write(ref _sessions, Array.Empty<ServerSession>());
+            Interlocked.CompareExchange(ref _pausedAt, Environment.TickCount64, 0);
             Volatile.Write(ref _recovery, RecoveryWaiting);
             var exhausted = Interlocked.Increment(ref _failures) > MaxRecoveries;
             try
@@ -737,8 +880,8 @@ namespace Modstoke.Sons
             Modding.SetService(ServiceKey, state);
         }
 
-        private enum EventKind { Opened, Closed, RegistrationChanged }
-        private readonly record struct PendingEvent(EventKind Kind, ServerSession Session);
+        private enum EventKind { Opened, Closed, RegistrationChanged, PlayerJoined, PlayerLeft }
+        private readonly record struct PendingEvent(EventKind Kind, ServerSession Session, ServerPlayer Player);
         private readonly record struct Observation(IntPtr Pointer, uint ConnectionId, ulong? RegisteredSteamId);
     }
 
@@ -767,6 +910,15 @@ namespace Modstoke.Sons
         public string Detail { get; }
     }
 
+    public enum ServerSessionStatus
+    {
+        Current,
+        /// <summary>Tracking is recovering from a failure; the client has not been seen to leave.</summary>
+        Paused,
+        /// <summary>The client left, or tracking stopped until the next server start.</summary>
+        Closed
+    }
+
     public enum DisconnectResult
     {
         Requested,
@@ -787,6 +939,7 @@ namespace Modstoke.Sons
     public sealed class ServerSession
     {
         private Metadata _metadata;
+        private ServerPlayer _player;
 
         internal ServerSession(IntPtr connectionPointer, uint connectionId, ulong? registeredSteamId)
         {
@@ -811,8 +964,21 @@ namespace Modstoke.Sons
         /// <summary>Observed retirement time, or null if no retirement was observed before tracking became unavailable.</summary>
         public DateTimeOffset? ClosedAt => Volatile.Read(ref _metadata).ClosedAt;
 
+        /// <summary>
+        /// Current, Paused while tracking recovers from a failure (hold the player's state, it resumes within a
+        /// frame or two), or Closed. Treat only Closed as the player having left.
+        /// </summary>
+        public ServerSessionStatus Status => ClosedAt != null ? ServerSessionStatus.Closed
+            : ServerSessions.HooksInstalled ? ServerSessionStatus.Current
+            : ServerSessions.Recovering ? ServerSessionStatus.Paused : ServerSessionStatus.Closed;
+
+        /// <summary>This client's character once it has joined, else null. Kept after the session closes.</summary>
+        public ServerPlayer Player => Volatile.Read(ref _player);
+
         // Game thread. Set only when the native disconnect callback retired this handle.
         internal SessionDeparture Departure { get; set; }
+
+        internal void Join(ServerPlayer player) => Volatile.Write(ref _player, player);
 
         internal bool RefreshRegistration(ulong? registeredSteamId)
         {
@@ -831,6 +997,30 @@ namespace Modstoke.Sons
         }
 
         private sealed record Metadata(ulong? RegisteredSteamId, DateTimeOffset? ClosedAt);
+    }
+
+    /// <summary>A remote client's character on this host, from its first attachment until its session closes.</summary>
+    public sealed class ServerPlayer
+    {
+        internal ServerPlayer(ServerSession session, PlayerHandle binding)
+        {
+            Session = session;
+            Binding = binding;
+            JoinedAt = DateTimeOffset.UtcNow;
+        }
+
+        public ServerSession Session { get; }
+
+        /// <summary>
+        /// The latest captured attachment; game thread only. If the game replaces the character, the host captures
+        /// the new one within about a second.
+        /// </summary>
+        public PlayerHandle Binding { get; internal set; }
+
+        public DateTimeOffset JoinedAt { get; }
+
+        /// <summary>From the session opening to the character attaching, mostly the client's world load.</summary>
+        public TimeSpan JoinDelay => JoinedAt - Session.FirstObservedAt;
     }
 
     /// <summary>

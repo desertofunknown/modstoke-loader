@@ -35,7 +35,6 @@ namespace Modstoke.Sons
         private static int _ownerThreadId;
         private static int _outstandingSends;
         private static int _receivedThisTick;
-        private static int _reportedFailure;
         private static bool _patchAttempted;
         private static bool _hooksInstalled;
         private static bool _ticking;
@@ -45,8 +44,8 @@ namespace Modstoke.Sons
         public static event Action<Datagram> Received;
 
         /// <summary>
-        /// Includes retired peers and uncertain native sends. Only native completion releases a slot;
-        /// a stalled or failed native transport can keep sending unavailable until process restart.
+        /// Includes uncertain native sends. Native completion releases a slot; so does the end of the
+        /// peer's connection or of the Bolt run, since the native queue that held the packet is gone.
         /// </summary>
         public static int OutstandingSends { get { lock (SendGate) return _outstandingSends; } }
 
@@ -153,7 +152,7 @@ namespace Modstoke.Sons
                 payload.CopyTo(data.AsSpan().Slice(packetBytes - payload.Length));
                 packet.Ptr = packetBytes * 8;
                 GC.KeepAlive(data);
-                ticket = new SendTicket(peer.PeerId, udp.Pointer, packet);
+                ticket = new SendTicket(peer.PeerId, connection.Pointer, connection.ConnectionId, udp.Pointer, packet);
                 lock (SendGate)
                 {
                     Pending.Add(packet.Pointer, ticket);
@@ -275,7 +274,7 @@ namespace Modstoke.Sons
                     if (!Pending.TryGetValue(packet.Pointer, out var ticket)) return true;
                     owned = true;
                     var connection = __0.Object0?.TryCast<UdpConnection>();
-                    if (connection == null || connection.WasCollected || connection.Pointer != ticket.ConnectionPointer)
+                    if (connection == null || connection.WasCollected || connection.Pointer != ticket.TransportPointer)
                         return false;
                     Pending.Remove(packet.Pointer);
                     ReleaseSlot(ticket.PeerId);
@@ -346,31 +345,70 @@ namespace Modstoke.Sons
             Incoming.Clear();
             PeerReceives.Clear();
             _receivedThisTick = 0;
-            // Outstanding sends survive selection changes, disconnects and restarts. Native queues
-            // may still retain them; lifecycle notifications do not release a reservation.
+            // Outstanding sends survive selection changes: native queues may still retain them.
         }
 
-        private static void ReportFailure(Exception error)
+        // Runs as Bolt reports the connection gone. Its native queue goes with it, so its sends can never complete.
+        // A completion that still arrives finds no ticket and passes on to Bolt, whose packet hooks stop it: it
+        // carries none of Bolt's packet records.
+        internal static void ReleaseConnection(IntPtr connection, uint connectionId)
         {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0) return;
-            try
+            int released = 0;
+            lock (SendGate)
             {
-                RuntimeEntryPoint.LogSource?.LogWarning("Modstoke gameplay datagram failed ("
-                    + error.GetType().FullName + "). Further failures will not be logged.");
+                List<IntPtr> packets = null;
+                foreach (var pair in Pending)
+                    if (pair.Value.ConnectionPointer == connection && pair.Value.ConnectionId == connectionId)
+                        (packets ??= new List<IntPtr>()).Add(pair.Key);
+                if (packets == null) return;
+                foreach (var pointer in packets)
+                {
+                    Pending.Remove(pointer, out var ticket);
+                    ReleaseSlot(ticket.PeerId);
+                    released++;
+                }
             }
-            catch (Exception) { }
+            RuntimeEntryPoint.LogSource?.LogInfo("Released " + released + " datagram send slots of connection "
+                + connectionId + " as it closed.");
         }
+
+        // Runs at every Bolt start and shutdown. Packets of the old socket never complete, so their slots go back
+        // here; a late completion passes on to Bolt as above.
+        internal static void ResetForStart()
+        {
+            if (!OnOwnerThread) return;
+            int released;
+            lock (SendGate)
+            {
+                released = Pending.Count;
+                Pending.Clear();
+                PeerSends.Clear();
+                _outstandingSends = 0;
+            }
+            ClearIncoming();
+            if (released > 0)
+                RuntimeEntryPoint.LogSource?.LogInfo("Released " + released
+                    + " datagram send slots still waiting on the previous session's socket.");
+        }
+
+        private static void ReportFailure(Exception error) => NetworkFailures.Report("Modstoke gameplay datagram", error);
 
         private sealed class SendTicket
         {
-            internal SendTicket(Guid peerId, IntPtr connectionPointer, UdpPacket packet)
+            internal SendTicket(Guid peerId, IntPtr connectionPointer, uint connectionId, IntPtr transportPointer,
+                UdpPacket packet)
             {
                 PeerId = peerId;
                 ConnectionPointer = connectionPointer;
+                ConnectionId = connectionId;
+                TransportPointer = transportPointer;
                 Packet = packet;
             }
             internal readonly Guid PeerId;
+            // The Bolt connection, which outlives the transport's peer record until Bolt reports it gone.
             internal readonly IntPtr ConnectionPointer;
+            internal readonly uint ConnectionId;
+            internal readonly IntPtr TransportPointer;
             internal readonly UdpPacket Packet;
         }
     }

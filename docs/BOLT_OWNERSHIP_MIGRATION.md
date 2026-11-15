@@ -95,7 +95,9 @@ Position or prefab equality alone never identifies a replacement.
 `SelectForNextStart(true, out detail)` selects the dedicated reliable stream
 `Modstoke.OwnershipMigration.v1`. It does not enable or reset mod admission.
 Both sides must separately require and offer capability 15 and register the
-same channel order: negotiation uses ID 1 and migration requires ID 2.
+same channel order: negotiation is registered after the game's own stream
+channels (ID 2, after Voice at 1) and migration right after it. Both IDs come
+from registration, not constants.
 
 `SendSnapshot` and `SendReceipt` validate the exact enrolled peer and native
 stream configuration. `Queued` means only that the native send returned;

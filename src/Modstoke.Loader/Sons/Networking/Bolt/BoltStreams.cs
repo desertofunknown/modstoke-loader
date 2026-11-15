@@ -18,7 +18,6 @@ namespace Modstoke.Sons
             "Stream observation and rejection have not been registered.");
         private static int _installationAttempted;
         private static int _ownerThread;
-        private static int _reportedFailure;
         [ThreadStatic] private static bool _receiving;
         [ThreadStatic] private static bool _enforcing;
 
@@ -203,13 +202,8 @@ namespace Modstoke.Sons
             try { warning?.Invoke(message); } catch (Exception) { }
         }
 
-        private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0) return;
-            try { RuntimeEntryPoint.LogSource?.LogWarning("Stream hook callback or context failed ("
-                + error.GetType().FullName + "). Policy-covered dispatch fails closed; observation alone does not reject. Further failures will not be logged."); }
-            catch (Exception) { }
-        }
+        // Policy-covered dispatch fails closed; observation alone does not reject.
+        private static void ReportFailure(Exception error) => NetworkFailures.Report("Stream hook callback or context", error);
 
         internal sealed class StreamDecision
         {

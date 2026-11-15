@@ -11,7 +11,10 @@ namespace Modstoke.Sons
         Challenge = 1,
         Response = 2,
         Accepted = 3,
-        Rejected = 4
+        Rejected = 4,
+        // Version 2: the client opens with Hello, and the host releases its gameplay with Admitted.
+        Hello = 5,
+        Admitted = 6
     }
 
     internal enum EnrollmentRejection : byte
@@ -19,7 +22,8 @@ namespace Modstoke.Sons
         None = 0,
         IncompatibleCapabilities = 1,
         InvalidMessage = 2,
-        Expired = 3
+        Expired = 3,
+        NotParticipating = 4
     }
 
     internal sealed class EnrollmentFrame
@@ -46,17 +50,27 @@ namespace Modstoke.Sons
 
     internal static class EnrollmentWire
     {
-        internal const ushort ProtocolVersion = 1;
+        // Version 1 peers registered the channel ahead of the game's and had the host speak first; the two cannot
+        // share a channel, so version 2 is told apart before Bolt starts (see ContentAgreement.Fingerprint).
+        internal const ushort ProtocolVersion = 2;
         internal const int NonceBytes = 32;
         internal const int FrameBytes = 56;
         private const uint Magic = 0x4E45534D;
 
+        internal static bool MatchesMagic(ReadOnlySpan<byte> payload)
+            => payload.Length >= 6 && BinaryPrimitives.ReadUInt32LittleEndian(payload) == Magic;
+
+        internal static ushort ReadVersion(ReadOnlySpan<byte> payload)
+            => BinaryPrimitives.ReadUInt16LittleEndian(payload.Slice(4, 2));
+
+        internal static bool IsKind(ReadOnlySpan<byte> payload, EnrollmentMessageKind kind)
+            => payload.Length == FrameBytes && MatchesMagic(payload) && ReadVersion(payload) == ProtocolVersion
+                && payload[6] == (byte)kind;
+
         internal static bool TryRead(ReadOnlySpan<byte> payload, out EnrollmentFrame frame)
         {
             frame = null;
-            if (payload.Length != FrameBytes
-                || BinaryPrimitives.ReadUInt32LittleEndian(payload) != Magic
-                || BinaryPrimitives.ReadUInt16LittleEndian(payload.Slice(4, 2)) != ProtocolVersion)
+            if (payload.Length != FrameBytes || !MatchesMagic(payload) || ReadVersion(payload) != ProtocolVersion)
                 return false;
 
             var kind = (EnrollmentMessageKind)payload[6];
@@ -64,7 +78,7 @@ namespace Modstoke.Sons
             var nonce = payload.Slice(8, NonceBytes);
             var requiredCapabilities = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(40, 8));
             var offeredCapabilities = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(48, 8));
-            if (!IsValid(kind, nonce, offeredCapabilities, rejection))
+            if (!IsValid(kind, nonce, requiredCapabilities, offeredCapabilities, rejection))
                 return false;
 
             frame = new EnrollmentFrame(kind, nonce, requiredCapabilities,
@@ -76,7 +90,7 @@ namespace Modstoke.Sons
             ulong requiredCapabilities, ulong offeredCapabilities,
             EnrollmentRejection rejection = EnrollmentRejection.None)
         {
-            if (!IsValid(kind, nonce, offeredCapabilities, rejection))
+            if (!IsValid(kind, nonce, requiredCapabilities, offeredCapabilities, rejection))
                 throw new ArgumentException("Invalid enrollment frame fields.");
 
             var payload = new byte[FrameBytes];
@@ -91,7 +105,7 @@ namespace Modstoke.Sons
         }
 
         private static bool IsValid(EnrollmentMessageKind kind, ReadOnlySpan<byte> nonce,
-            ulong offeredCapabilities, EnrollmentRejection rejection)
+            ulong requiredCapabilities, ulong offeredCapabilities, EnrollmentRejection rejection)
         {
             if (nonce.Length != NonceBytes)
                 return false;
@@ -102,8 +116,13 @@ namespace Modstoke.Sons
                     if (offeredCapabilities != 0 || rejection != EnrollmentRejection.None)
                         return false;
                     break;
+                case EnrollmentMessageKind.Hello:
+                    if (requiredCapabilities != 0 || rejection != EnrollmentRejection.None)
+                        return false;
+                    break;
                 case EnrollmentMessageKind.Response:
                 case EnrollmentMessageKind.Accepted:
+                case EnrollmentMessageKind.Admitted:
                     if (rejection != EnrollmentRejection.None)
                         return false;
                     break;
@@ -111,7 +130,8 @@ namespace Modstoke.Sons
                     if (offeredCapabilities != 0
                         || rejection is not (EnrollmentRejection.IncompatibleCapabilities
                             or EnrollmentRejection.InvalidMessage
-                            or EnrollmentRejection.Expired))
+                            or EnrollmentRejection.Expired
+                            or EnrollmentRejection.NotParticipating))
                         return false;
                     break;
                 default:

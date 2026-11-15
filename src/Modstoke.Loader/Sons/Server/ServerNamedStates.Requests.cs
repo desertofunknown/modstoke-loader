@@ -64,20 +64,39 @@ namespace Modstoke.Sons
         /// <summary>Copied registry name, or null if unresolved; not typed object or state-validity proof.</summary>
         public string RegisteredName { get; }
         public NamedStateOrigin Origin { get; }
+        /// <summary>
+        /// The exact current source session. Null for a server-local dispatch, and for a remote dispatch whose
+        /// session could not be resolved, such as while session tracking recovers; reject those when identity matters.
+        /// </summary>
         public ServerSession SourceSession { get; }
         public int RoutingTargets { get; }
         public DateTimeOffset ReceivedAt { get; }
         public bool IsRejected => Volatile.Read(ref _rejected);
+        /// <summary>The reason given to the first <see cref="Reject(string)"/>, or null.</summary>
+        public string RejectReason { get; private set; }
 
         /// <summary>
-        /// Skips this dispatch; does not undo sender-local state. Returns false after the callback
-        /// window or on another thread. Rejection cannot be undone and is not a completion receipt.
+        /// Skips this dispatch. A remote requester's own copy of the state is put back by resending the host's
+        /// value. Returns false after the callback window or on another thread. Rejection cannot be undone and is
+        /// not a completion receipt.
         /// </summary>
         public bool Reject()
         {
             if (Environment.CurrentManagedThreadId != _dispatchThreadId || !_acceptingDecisions)
                 return false;
             Volatile.Write(ref _rejected, true);
+            return true;
+        }
+
+        /// <summary>
+        /// Rejects like <see cref="Reject()"/> and shows <paramref name="reason"/> to the player when their client
+        /// negotiated Modstoke notices. The host log records it either way.
+        /// </summary>
+        public bool Reject(string reason)
+        {
+            if (!Reject())
+                return false;
+            RejectReason ??= string.IsNullOrWhiteSpace(reason) ? null : reason;
             return true;
         }
 

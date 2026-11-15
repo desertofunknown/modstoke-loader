@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Bolt;
 using HarmonyLib;
@@ -23,10 +24,18 @@ namespace Modstoke.Sons
     {
         private const int MaxCachedClasses = 1024;
         private const ulong Unclassified = ulong.MaxValue;
+        private const long RefusalWindowMs = 5000;
+        private const int NoticesPerWindow = 3;
+        private const int MaxLoggedRefusals = 16;
         private static readonly Dictionary<IntPtr, ulong> Classes = new();
+        private static readonly ConditionalWeakTable<ServerSession, SentNotices> Notices = new();
+        private static readonly HashSet<(string Source, string Reason)> LoggedRefusals = new();
+        private static readonly Dictionary<string, int> UnloggedRefusals = new();
         private static ulong _routes;
         private static int _thread;
         private static bool _patched;
+        private static long _refusalWindowEnd;
+        private static int _heldNotices;
         [ThreadStatic] private static HashSet<IntPtr> _retained;
 
         /// <summary>Enables a route, patching Dispatch on first use. Throws when the patch fails.</summary>
@@ -63,6 +72,83 @@ namespace Modstoke.Sons
 
         internal static void Remove(DispatchRoute route) =>
             Volatile.Write(ref _routes, Volatile.Read(ref _routes) & ~Bit(route));
+
+        /// <summary>
+        /// Tells a refused client why when it negotiated notices, and logs the refusal. Within five seconds each source
+        /// and reason is logged once; the rest are counted per source and summed when the window ends. Game thread;
+        /// shared by the policy hooks that offer Reject(reason).
+        /// </summary>
+        internal static void ReportRefusal(string request, ServerSession source, uint? connectionId, string reason)
+        {
+            FlushRefusals();
+            var now = Environment.TickCount64;
+            var told = reason != null && source != null && Tell(source, reason, now);
+            var from = connectionId.HasValue ? "connection " + connectionId : "the host";
+            if (_refusalWindowEnd == 0)
+                _refusalWindowEnd = now + RefusalWindowMs;
+            if (LoggedRefusals.Count >= MaxLoggedRefusals || !LoggedRefusals.Add((from, reason)))
+            {
+                UnloggedRefusals.TryGetValue(from, out var count);
+                UnloggedRefusals[from] = count + 1;
+                return;
+            }
+            Log("Refused " + request + " from " + from + (reason == null ? "" : ": " + reason)
+                + (told ? " (told the player)." : "."));
+        }
+
+        // The session tick calls this every frame, so a burst's count is written when its window ends instead of
+        // waiting for the next refusal, which may never come.
+        internal static void FlushRefusals()
+        {
+            if (_refusalWindowEnd == 0 || Environment.TickCount64 < _refusalWindowEnd)
+                return;
+            _refusalWindowEnd = 0;
+            LoggedRefusals.Clear();
+            if (UnloggedRefusals.Count == 0 && _heldNotices == 0)
+                return;
+            var total = 0;
+            var sources = "";
+            foreach (var (from, count) in UnloggedRefusals)
+            {
+                total += count;
+                sources += (sources.Length == 0 ? "" : ", ") + from + ": " + count;
+            }
+            var held = _heldNotices > 0 ? _heldNotices + " refusal notices to players held back" : "";
+            Log(total == 0 ? held + " in the last 5 s."
+                : "Refused " + total + " more requests in the last 5 s (" + sources + ")"
+                    + (held.Length == 0 ? "." : "; " + held + "."));
+            UnloggedRefusals.Clear();
+            _heldNotices = 0;
+        }
+
+        // Each notice is a reliable event the host sends because of a client request. A session gets at most three
+        // per five seconds whatever the reasons, and the same reason once in that time, however fast the client asks.
+        private static bool Tell(ServerSession session, string reason, long now)
+        {
+            var sent = Notices.GetOrCreateValue(session);
+            if (now >= sent.WindowEnd)
+            {
+                sent.WindowEnd = now + RefusalWindowMs;
+                sent.Count = 0;
+            }
+            if (sent.Count >= NoticesPerWindow || reason == sent.LastReason && now < sent.LastAt + RefusalWindowMs)
+            {
+                _heldNotices++;
+                return false;
+            }
+            if (ServerNotices.SendToSession(session, reason) != NoticeSendResult.Queued)
+                return false;
+            sent.Count++;
+            sent.LastReason = reason;
+            sent.LastAt = now;
+            return true;
+        }
+
+        private static void Log(string line)
+        {
+            try { RuntimeEntryPoint.LogSource?.LogInfo(line); }
+            catch (Exception) { }
+        }
 
         /// <summary>Retains an event until the gate finalizer. Null when an outer dispatch already holds it.</summary>
         internal static DispatchScope Retain(Bolt.Event source)
@@ -223,6 +309,14 @@ namespace Modstoke.Sons
             internal readonly Bolt.Event Source = source;
             internal readonly HashSet<IntPtr> Active = active;
             internal bool Rejected = true;
+        }
+
+        private sealed class SentNotices
+        {
+            internal long WindowEnd;
+            internal int Count;
+            internal string LastReason;
+            internal long LastAt;
         }
     }
 

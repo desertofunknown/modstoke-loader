@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Alex Cooper
 
 using System;
-using System.Threading;
 using Bolt;
 using Endnight.Extensions;
 using HarmonyLib;
@@ -20,7 +19,6 @@ namespace Modstoke.Loader
         internal static readonly global::Modstoke.Loader.Packets Instance = new();
         public static bool EnforcesClientRelayPolicy => true;
         private const ushort PacketMarker = 6969;
-        private static int _reportedReceiveFailure;
         private static bool _initialized;
 
         private Packets() { }
@@ -206,6 +204,9 @@ namespace Modstoke.Loader
             return new(packet, GlobalTargets.OnlySelf, targetConnectionId);
         }
 
+        /// <summary>Whether a received packet is an SDK packet or datagram rather than a Bolt game packet.</summary>
+        internal static bool IsSdkPacket(UdpPacket packet) => HasMarker(packet);
+
         private static bool HasMarker(UdpPacket packet)
         {
             if (packet == null || packet.WasCollected) return false;
@@ -276,16 +277,9 @@ namespace Modstoke.Loader
             return true;
         }
 
+        // A mod's Read throwing lands here too, so the first stack names the mod.
         private static void ReportReceiveFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedReceiveFailure, 1) != 0) return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("SDK packet receive failed ("
-                    + error.GetType().FullName + "). Further packet failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => global::Modstoke.Sons.NetworkFailures.Report("SDK packet receive", error);
 
         private sealed class NetworkingPatches
         {

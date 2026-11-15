@@ -23,7 +23,6 @@ namespace Modstoke.Sons
         private static IReadOnlyList<NoticePeer> _peers = Array.Empty<NoticePeer>();
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedFailure;
         private static bool _hooksInstalled;
         private static bool _clientReady;
         private static bool _clientSupportsReceipts;
@@ -188,6 +187,22 @@ namespace Modstoke.Sons
             finally { _ticking = false; }
         }
 
+        /// <summary>Whether this connection's hello reached the server, answered or not.</summary>
+        internal static bool HelloArrived(IntPtr connection, uint connectionId)
+            => Environment.CurrentManagedThreadId == _ownerThreadId && ServerPeers.TryGetValue(connection, out var peer)
+                && peer.Snapshot.ConnectionId == connectionId;
+
+        // Runs at every Bolt start and shutdown. Connection ids restart with Bolt, so the once-per-connection
+        // handshake lines start over as well.
+        internal static void ResetForStart()
+        {
+            if (Environment.CurrentManagedThreadId != _ownerThreadId)
+                return;
+            ClearClient();
+            ClearServer();
+            ReportedHandshakes.Clear();
+        }
+
         private static void RefreshSession()
         {
             if (!BoltNetwork.isRunning)
@@ -230,6 +245,10 @@ namespace Modstoke.Sons
             }
 
             ClearClient();
+            // A client in Modstoke's join check sends nothing until the server admits it, so the hello and its retry
+            // timer start from there rather than ageing in Bolt's queue.
+            if (!ClientEnrollment.ClientReleased(server))
+                return;
             _clientServer = server.Pointer;
             _clientServerConnectionId = server.ConnectionId;
             _clientToken = RandomNumberGenerator.GetBytes(32);
@@ -253,10 +272,16 @@ namespace Modstoke.Sons
             if (_clientReportedOutcome)
                 return;
             _clientReportedOutcome = true;
-            RuntimeEntryPoint.LogSource?.LogInfo(ClientReady
-                ? "Server notices: the server answered but did not enable commands for this connection after "
-                    + (_clientHelloRetries + 1) + " requests."
-                : "Server notices: no answer after " + (_clientHelloRetries + 1)
+            var requests = _clientHelloRetries + 1;
+            if (ClientReady)
+                RuntimeEntryPoint.LogSource?.LogInfo("Server notices: the server answered but did not enable commands "
+                    + "for this connection after " + requests + " requests.");
+            else if (ClientEnrollment.ClientWasAdmitted)
+                RuntimeEntryPoint.LogSource?.LogWarning("Server notices: no answer after " + requests + " requests, "
+                    + "although the server admitted this connection through Modstoke's join check. This game's "
+                    + "reliable events may not be reaching the server; rejoin if chat, building or pickups stop working.");
+            else
+                RuntimeEntryPoint.LogSource?.LogInfo("Server notices: no answer after " + requests
                     + " requests; the server runs no Modstoke notices, or an older build that cannot answer.");
         }
 
@@ -720,17 +745,9 @@ namespace Modstoke.Sons
             Volatile.Write(ref _peers, Array.Empty<NoticePeer>());
         }
 
+        // Exception messages can carry frame text or tokens, so only the type and stack are logged.
         private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Optional server notices encountered "
-                    + error.GetType().FullName + ". Further errors are suppressed; no message or token is logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Optional server notices", error, withMessage: false);
 
         private sealed class Peer
         {

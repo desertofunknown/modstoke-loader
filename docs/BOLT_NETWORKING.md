@@ -10,7 +10,7 @@ an unqualified dedicated-server binary is not enabled automatically.
 
 | API | Boundary | Can reject? |
 | --- | --- | --- |
-| `BoltPackets.Receiving` | Whole game packet before Bolt channel decoding, after enrollment and SDK datagrams | Yes, the entire packet |
+| `BoltPackets.Receiving` | Whole game packet before Bolt channel decoding, after enrollment and SDK datagrams | Yes, the entire packet, then disconnects the sender |
 | `ServerEvents.Receiving` | Native event dispatch before routing and listeners | Yes, this dispatch |
 | `BoltStreams.Receiving` / `ClientReceiving` | Reassembled stream on the server / client before policy | No; storage ownership is unchanged |
 | `BoltStreams.Rejection` / `ClientRejection` | Reassembled stream on the server / client before internal consumers and native listeners | Yes, suppresses this stream's consumers and listeners |
@@ -27,6 +27,84 @@ Subscribe during mod initialization and unsubscribe on unload. Each API exposes
 registered, not runtime or multiplayer qualification. Observation records contain
 managed copies; they never grant ownership of native objects or storage.
 
+## Join admission
+
+Every Loader registers the negotiation stream channel
+`Modstoke.ClientNegotiation.v1` on every Bolt start, after the game's own
+listeners have registered theirs, so the game's Voice channel keeps the id a
+vanilla peer gives it (1) and the negotiation channel is 2 on every Loader. A
+stream block on a channel id the receiver never registered makes UdpKit end the
+whole connection, so neither side speaks on it to a peer that has not shown it
+runs this negotiation.
+
+A joining client takes part when the host said beforehand that it runs the
+check: a hosted game labels its Steam lobby (`ms_content`), a dedicated server
+publishes the same fingerprint in its rules, and the Modstoke server list passes
+that to the join. The fingerprint starts with the negotiation version (`v2:`);
+a client that sees another version leaves with that reason as soon as it
+connects. A host also publishes `ms_negotiation` (`ContentAgreement.NegotiationLabel`),
+content or not: the negotiation version and the channel id this run registered,
+such as `2:2`, and empty while it cannot answer a hello (no working channel, or
+no session tracking to bind the peer). A client opens negotiation only when
+that id equals its own, so a mod that adds a stream channel on one side only
+cannot cost the connection. A dedicated server publishes the label in its rules
+too, refreshed as soon as it changes; when the rules carry none (an older
+Loader, or an empty label, which Steam drops), a `v2:` fingerprint stands in for
+it. With a host that said neither, a client plays as the game does. The
+Modstoke server list and the badge's details dialog pass a dedicated server's
+labels to the join; a join by IP or from the game's own list carries none. The
+hint lasts for one Bolt start.
+
+1. The client sends `Hello` and holds every Bolt send (`BoltConnection.Send`)
+   while still receiving the host's state. SDK packets are not held; they are
+   unreliable by contract and the host drops them while it holds the peer.
+2. The host answers with a `Challenge`, or with `Rejected(NotParticipating)` when
+   this session runs no check, which releases the client at once. A host that
+   said it answers but stays silent for 15 seconds makes the client leave with
+   that reason; releasing it would only get it refused.
+3. `Response`, then `Accepted` and the host's content declaration. The client
+   answers with its own declaration; mod admission runs here when selected.
+4. Once enrollment, the content check and mod admission have all passed, the
+   host sends `Admitted` and lets the connection's game packets through. The
+   client sends nothing before `Admitted` arrives.
+
+The stream channel is reliable but resends a lost frame on its own, so frames
+can arrive out of order. A client keeps any declaration, admission frame or
+`Admitted` that overtakes `Accepted` and handles it once `Accepted` arrives.
+The negotiation windows advance at most a second per frame, so a world load or
+autosave that stalls the game does not use them up while an answer waits in the
+queue. A client consults its own mod admission only when the host required it.
+
+A Bolt game packet that reaches a host still holding that connection is never
+dropped silently: the connection is refused with a reason (rejoin, or "join from
+the Modstoke server list" for a client that never opened negotiation). Admission
+is latched per connection on both sides, and so is a client's release by a host
+that does not take part: a later transport fault, enrollment failure,
+session-tracking pause or lost negotiation peer never turns that player's
+packets into drops or a disconnect.
+
+Each side logs one line per connection: the host's "Admitted connection N after
+X ms (hello at, enrolled at, mod content ...); K SDK packets were dropped while
+it was held", the client's "The server admitted this connection after X ms ...;
+N game sends were held until then", or a "Refused connection N" line with the
+reason and the held counts. Ten seconds after admission the host warns if that
+client's notices hello has not arrived, which points at a stalled reliable
+event stream.
+
+### Content declaration
+
+The declaration lists the Loader's protocol (`ContentAgreement.LoaderProtocol`)
+and every networked mod with its version, its declared protocol and its
+networked item ranges. Mods that reserve networked item ids are required: every
+player must run them, at the same version or declared protocol. Mods that own
+SDK packet channels are compared by version when both sides run them, and may be
+missing on either side. `ContentAgreement.DeclareNetworkProtocol(modId,
+protocol)` makes peers compare that number instead of the exact version, still
+only when both sides run the mod; `required: true` makes a mod without items
+required, so its servers refuse vanilla players by default. The refusal notice names
+what to install, switch or turn off. The published fingerprint covers the
+required part only. A server runs the check only when it has required mods.
+
 ## Whole-packet decisions
 
 `BoltPacketRequest` contains the exact source connection ID, packet
@@ -41,10 +119,14 @@ packet metadata are checked before and after policy; a resolved session is also
 revalidated. Numeric connection IDs alone are not durable identities.
 
 Rejecting drops the entire game packet, including unrelated state, scene,
-command and event channels in that packet. It does not rewind client prediction,
-undo transport acknowledgement, or disconnect the sender. Handler exceptions
-also reject. Recursive delivery of the same packet cannot acquire or dispose it
-twice; new packets fed recursively from a policy callback are rejected.
+command and event channels in that packet, and disconnects the sender with a
+"rejoin" notice. UdpKit acknowledged the packet before any hook ran, so the
+sender never resends it, and Bolt's ordered reliable events (its reliable
+receive buffer releases them in sequence) would be left with a permanent gap
+that stalls every later reliable event from that client. Rejection does not rewind client prediction. Handler
+exceptions also reject. Recursive delivery of the same packet cannot acquire or
+dispose it twice; new packets fed recursively from a policy callback are
+rejected the same way.
 
 This boundary is after UdpKit transport processing. It is not a transport parser,
 handshake firewall, or selective state validator. Bolt channels share a bit
@@ -84,8 +166,8 @@ the dispatcher and voice consumer have no incoming payload-pool return obligatio
 The SDK therefore performs no manual payload free. `State.CanReject` indicates
 registered capability, not runtime acceptance. Rejection deliberately skips native
 listener work, which can include voice delivery. It is after allocation/reassembly,
-does not undo transport acknowledgements, and leaves the earlier reserved SDK
-control channel unchanged. It is not a stream-allocation or bandwidth defense.
+does not undo transport acknowledgements, and leaves the SDK negotiation channel
+unchanged. It is not a stream-allocation or bandwidth defense.
 
 ## Replicated state
 

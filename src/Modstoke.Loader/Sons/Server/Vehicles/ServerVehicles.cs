@@ -57,21 +57,24 @@ namespace Modstoke.Sons
         {
             var grab = SledGrabbing;
             if (grab != null && source.TryCast<SledGrab>() is { } grabEvent)
-                return Dispatch(grabEvent, grab, static value => new SledGrabRequest((SledGrab)value));
+                return Dispatch(grabEvent, grab, "a sled grab", static value => new SledGrabRequest((SledGrab)value));
             var release = SledReleasing;
             if (release != null && source.TryCast<SledRelease>() is { } releaseEvent)
-                return Dispatch(releaseEvent, release, static value => new SledReleaseRequest((SledRelease)value));
+                return Dispatch(releaseEvent, release, "a sled release",
+                    static value => new SledReleaseRequest((SledRelease)value));
             var shove = GolfCartShoving;
             if (shove != null && source.TryCast<GolfCartShoveEvent>() is { } shoveEvent)
-                return Dispatch(shoveEvent, shove, static value => new GolfCartShoveRequest((GolfCartShoveEvent)value));
+                return Dispatch(shoveEvent, shove, "a golf cart shove",
+                    static value => new GolfCartShoveRequest((GolfCartShoveEvent)value));
             var slot = GolfCartSlotChanging;
             if (slot != null && source.TryCast<GolfCartConnectSlotEvent>() is { } slotEvent)
-                return Dispatch(slotEvent, slot, static value => new GolfCartSlotRequest((GolfCartConnectSlotEvent)value));
+                return Dispatch(slotEvent, slot, "a golf cart seat change",
+                    static value => new GolfCartSlotRequest((GolfCartConnectSlotEvent)value));
             return DispatchVerdict.Forward;
         }
 
         private static DispatchVerdict Dispatch<TRequest>(Bolt.Event source, Action<TRequest> handlers,
-            Func<Bolt.Event, TRequest> readRequest) where TRequest : VehicleRequest
+            string description, Func<Bolt.Event, TRequest> readRequest) where TRequest : VehicleRequest
         {
             TRequest request = null;
             try
@@ -88,7 +91,11 @@ namespace Modstoke.Sons
                 {
                     handler(request);
                     if (request.IsRejected)
+                    {
+                        ServerDispatchGate.ReportRefusal(description, request.SourceSession, request.SourceConnectionId,
+                            request.RejectReason);
                         return DispatchVerdict.Reject;
+                    }
                 }
                 return DispatchVerdict.Forward;
             }

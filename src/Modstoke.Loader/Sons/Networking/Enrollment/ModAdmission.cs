@@ -25,7 +25,7 @@ namespace Modstoke.Sons
         public const int MaxRecentObservations = 32;
         private const int WindowChunks = 4;
         private const int DataFramesPerTick = 32;
-        private const double AdmissionSeconds = 120;
+        internal const double AdmissionSeconds = 120;
         private static readonly Dictionary<Guid, Admission> Entries = new();
         private static readonly Dictionary<Guid, (ControlPeer Peer, long Sequence)> Released = new();
         private static readonly SortedDictionary<long, ModAdmissionObservation> Recent = new();
@@ -34,7 +34,6 @@ namespace Modstoke.Sons
         private static readonly List<Guid> TickClosed = new();
         private static readonly List<Admission> TickEntries = new();
         private static int _ownerThreadId;
-        private static int _reportedFailure;
         private static int _sendCursor;
         private static bool _selected;
         private static Guid _selectionRevision;
@@ -49,8 +48,8 @@ namespace Modstoke.Sons
         /// <summary>
         /// Select on both peers before Bolt starts. A server must supply its parsed requirements;
         /// a joining client supplies null. Selection holds ordinary client gameplay until the
-        /// requirements and report exchange succeeds, or until the negotiation window ends on a
-        /// host that sends no enrollment at all. The default remains unselected.
+        /// host admits the client after the requirements and report exchange, or until the host
+        /// says it does not take part. The default remains unselected.
         /// </summary>
         public static ControlResult SelectForNextStart(bool selected,
             ModRequirementsDocument serverRequirements = null,
@@ -504,17 +503,7 @@ namespace Modstoke.Sons
                     ModAdmissionWire.WriteRejected(entry.Nonce, reason));
         }
 
-        private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Modstoke mod admission failed ("
-                    + error.GetType().FullName + ").");
-            }
-            catch (Exception) { }
-        }
+        private static void ReportFailure(Exception error) => NetworkFailures.Report("Modstoke mod admission", error);
 
         private sealed class Admission
         {

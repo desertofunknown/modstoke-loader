@@ -68,6 +68,32 @@ namespace Modstoke.Sons
         public static bool IsInWorld => State.IsInWorld;
 
         /// <summary>
+        /// True while a world is loaded: the game scene is current and not unloading, and no scene or save load is
+        /// running. Unlike <see cref="IsInWorld"/>, which follows the player's view and is false while the inventory,
+        /// a book or the pause menu is open, this stays true for the whole world. Keep per-world objects (bodies,
+        /// models, attachments) alive while it holds and tear them down when it goes false.
+        /// </summary>
+        public static bool IsWorldLoaded
+        {
+            get
+            {
+                var state = State;
+                if (!string.Equals(state.SceneKind, SceneKind.Game, StringComparison.Ordinal)
+                    || IsUnloadPhase(state.ScenePhase))
+                    return false;
+                try
+                {
+                    return !global::Sons.Loading.LoadScene._isLoading
+                        && !(global::Sons.Save.SaveGameManager.TryGetInstance(out var saves) && saves && saves._loadingInProgress);
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
         /// True from the loading screen closing until the player's view reaches the world: a few seconds of black and
         /// then the game's fade in, with the world and the player already loaded. One-time setup for a new world
         /// (models, attachments, inventory layouts) belongs here instead of on the first frame the player can see.
@@ -198,7 +224,6 @@ namespace Modstoke.Sons
                 using (Timings.MeasureCapture("Sons.WeaponAttachments")) global::Modstoke.Sons.WeaponAttachments.Tick();
                 using (Timings.MeasureCapture("Sons.Networking"))
                 {
-                    global::Modstoke.Sons.ContentAgreement.EnsureHooks();
                     global::Modstoke.Sons.ContentAgreement.LabelHostedLobby();
                     global::Modstoke.Sons.KickReason.Tick();
                     global::Modstoke.Sons.ServerDetailsPublisher.Tick();

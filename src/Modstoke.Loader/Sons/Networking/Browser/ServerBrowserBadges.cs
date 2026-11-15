@@ -300,7 +300,8 @@ namespace Modstoke.Sons
         internal static (string Color, string Verdict) Judge(ServerDetails details)
         {
             var mine = ContentAgreement.Fingerprint;
-            if (details.Content.Length > 0 && details.Content != mine) return (Red, "mods differ");
+            if (details.Content.Length > 0 && details.Content != mine)
+                return (Red, ContentAgreement.CanCheckWith(details.Content) ? "mods differ" : "needs that version");
             var missing = Missing(details).Count();
             if (missing > 0) return (Amber, missing == 1 ? "1 mod missing" : missing + " mods missing");
             if (details.Content.Length == 0 && mine.Length > 0) return (Amber, "your mods add items");
@@ -320,12 +321,15 @@ namespace Modstoke.Sons
             {
                 if (row.Key == null || !Servers.TryGetValue(row.Key, out var server) || server.Details == null) return;
                 var key = row.Key;
+                var details = server.Details;
                 var dialogs = ModalDialogs.Instance;
-                var dialog = dialogs.Show(string.IsNullOrWhiteSpace(row.Name) ? "Server details" : row.Name, DetailsText(server.Details));
+                var dialog = dialogs.Show(string.IsNullOrWhiteSpace(row.Name) ? "Server details" : row.Name, DetailsText(details));
                 dialogs.SetOption1(dialog, "Join", () => dialogs.Complete(dialog, () =>
                 {
                     // The row may have been recycled for another server while the details were open.
-                    if (row.Item && row.Key == key) row.Item.DoJoin();
+                    if (!row.Item || row.Key != key) return;
+                    ContentAgreement.Joining(details.Content, details.Negotiation);
+                    row.Item.DoJoin();
                 }));
                 dialogs.SetCancel(dialog, () => dialogs.Close(dialog));
             }
@@ -343,12 +347,15 @@ namespace Modstoke.Sons
             text.Append("Modstoke ").Append(details.Loader.Length > 0 ? ModNames.Version(details.Loader) : "(version not given)")
                 .Append(" · you have ").Append(ModNames.Version(RuntimeEntryPoint.Version)).Append('\n');
             if (details.Content.Length == 0)
-                text.Append(mine.Length == 0 ? "No mods with their own items on either side.\n"
-                    : Tint(Amber, "This server has no mods with their own items; yours won't exist there.") + "\n");
+                text.Append(mine.Length == 0 ? "No required mods on either side.\n"
+                    : Tint(Amber, "This server has no required mods; yours won't work there.") + "\n");
             else if (details.Content == mine)
-                text.Append(Tint(Green, "Mod items match yours.")).Append('\n');
+                text.Append(Tint(Green, "Required mods match yours.")).Append('\n');
+            else if (!ContentAgreement.CanCheckWith(details.Content))
+                text.Append(Tint(Red, "This server runs a different Modstoke version, and its mod check can't talk to yours."))
+                    .Append('\n');
             else
-                text.Append(Tint(Red, "Mod items differ from yours, so this server will refuse you.")).Append('\n');
+                text.Append(Tint(Red, "Required mods differ from yours, so this server will refuse you.")).Append('\n');
             if (details.Content.Length > 0)
                 text.Append("Players without Modstoke: ").Append(details.AllowsVanilla ? "allowed" : "not allowed").Append('\n');
 

@@ -73,12 +73,15 @@ namespace Modstoke.Sons
         }
 
         private static bool BeforeAttachZiplineItem(AttachItemToZiplineEvent __0, bool __runOriginal) =>
-            __runOriginal && Dispatch(__0, AttachingZiplineItem, static source => new ZiplineItemRequest(source));
+            __runOriginal && Dispatch(__0, AttachingZiplineItem, "a zipline attachment",
+                static source => new ZiplineItemRequest(source));
 
         private static bool BeforeHandleGlider(PickupGlider __0, bool __runOriginal) =>
-            __runOriginal && Dispatch(__0, HandlingGlider, static source => new GliderRequest(source));
+            __runOriginal && Dispatch(__0, HandlingGlider, "a glider pickup or drop",
+                static source => new GliderRequest(source));
 
-        private static bool Dispatch<TEvent, TRequest>(TEvent source, Action<TRequest> handlers, Func<TEvent, TRequest> capture)
+        private static bool Dispatch<TEvent, TRequest>(TEvent source, Action<TRequest> handlers, string description,
+            Func<TEvent, TRequest> capture)
             where TEvent : Bolt.Event
             where TRequest : TransportRequest
         {
@@ -101,7 +104,11 @@ namespace Modstoke.Sons
                 {
                     handler(request);
                     if (request.IsRejected)
+                    {
+                        ServerDispatchGate.ReportRefusal(description, request.SourceSession, request.SourceConnectionId,
+                            request.RejectReason);
                         return false;
+                    }
                 }
                 return true;
             }
