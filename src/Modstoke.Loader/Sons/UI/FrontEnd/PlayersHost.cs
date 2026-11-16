@@ -57,6 +57,9 @@ namespace Modstoke.Loader
                 if (index >= 0) players[index] = players[index] with { Host = true, Role = Owner };
                 else players.Insert(0, Entry(owner, Owner, true, owner == self));
             }
+            // A client's copy of the server's list can be empty, as on a dedicated server, but the player is still in it.
+            if (self != 0 && players.FindIndex(player => player.Id == self) < 0 && Safe(() => BoltNetwork.isRunning, false))
+                players.Add(Entry(self, 0, false, true));
             players.Sort((a, b) => a.Host != b.Host ? (a.Host ? -1 : 1) : b.Role.CompareTo(a.Role) != 0 ? b.Role.CompareTo(a.Role)
                 : string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
             return players;
