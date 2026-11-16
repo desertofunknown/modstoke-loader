@@ -1887,6 +1887,11 @@ about 90 MB until it is uploaded, so create the texture soon after the task
 finishes and drop the task if the texture is no longer wanted. Upload one large
 texture per frame when several finish together.
 
+`Create` costs over 20 ms for a 4K image in one call. To spread it, call
+`CreateEmpty`, `Load` and `Apply(false, true)` on separate frames; destroy the
+texture yourself if a later step fails. `Image.Data` holds every level's RGBA32
+pixels, for a caller that compresses them on its worker and uploads blocks instead.
+
 ## Photo mode
 
 Photo mode is a free camera inside the pause menu (pause > Photo mode, or F10 in the

@@ -36,7 +36,9 @@ namespace Modstoke.Sons
             public int Width { get; }
             public int Height { get; }
             public int Mips { get; }
-            internal byte[] Data { get; }
+
+            /// <summary>The RGBA32 pixels of every level, for callers that finish the texture themselves.</summary>
+            public byte[] Data { get; }
         }
 
         /// <summary>Rewrites full-size RGBA32 pixels in place before the mip chain is built, such as a packed normal map layout.</summary>
@@ -94,13 +96,10 @@ namespace Modstoke.Sons
         /// <summary>Hands a decoded image to the GPU as a new texture; call on the game thread. The texture is not readable.</summary>
         public static Texture2D Create(Image image, string name, bool linear = false)
         {
-            ArgumentNullException.ThrowIfNull(image);
-            var texture = new Texture2D(image.Width, image.Height, TextureFormat.RGBA32, image.Mips, linear) { name = name };
+            var texture = CreateEmpty(image, name, linear);
             try
             {
-                var pin = GCHandle.Alloc(image.Data, GCHandleType.Pinned);
-                try { texture.LoadRawTextureData(pin.AddrOfPinnedObject(), image.Data.Length); }
-                finally { pin.Free(); }
+                Load(texture, image);
                 texture.Apply(false, true);
                 return texture;
             }
@@ -109,6 +108,28 @@ namespace Modstoke.Sons
                 UnityEngine.Object.Destroy(texture);
                 throw;
             }
+        }
+
+        /// <summary>Create's first step on its own: an empty RGBA32 texture with the image's size and mip count.</summary>
+        /// <remarks>
+        /// For a 4K image Create costs over 20 ms in one call. Splitting it into this, <see cref="Load"/> and
+        /// <c>Apply(false, true)</c> lets a caller spread those over frames. All three run on the game thread, and the
+        /// caller destroys the texture if a later step fails.
+        /// </remarks>
+        public static Texture2D CreateEmpty(Image image, string name, bool linear = false)
+        {
+            ArgumentNullException.ThrowIfNull(image);
+            return new Texture2D(image.Width, image.Height, TextureFormat.RGBA32, image.Mips, linear) { name = name };
+        }
+
+        /// <summary>Copies the image into a texture from <see cref="CreateEmpty"/>; it stays readable until applied.</summary>
+        public static void Load(Texture2D texture, Image image)
+        {
+            ArgumentNullException.ThrowIfNull(texture);
+            ArgumentNullException.ThrowIfNull(image);
+            var pin = GCHandle.Alloc(image.Data, GCHandleType.Pinned);
+            try { texture.LoadRawTextureData(pin.AddrOfPinnedObject(), image.Data.Length); }
+            finally { pin.Free(); }
         }
 
         // Reverses PNG's per-row filters one row at a time and writes RGBA, bottom row first as Unity's data runs.
