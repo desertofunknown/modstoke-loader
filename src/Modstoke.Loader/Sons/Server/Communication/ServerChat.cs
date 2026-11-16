@@ -18,8 +18,6 @@ namespace Modstoke.Sons
             ServerChatHookStatus.NotAttempted, "The chat hook has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
-        private static int _reportedForwardFailure;
 
         /// <summary>
         /// Runs synchronously before the owned SDK command handler. When routing is installed,
@@ -324,16 +322,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportForwardFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedForwardFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Observing forwarded chat failed; the message was still delivered: "
-                    + error.GetType().FullName + ": " + error.Message);
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Observing forwarded chat (the message was still delivered)", error);
 
         private static void PublishState(ServerChatHookStatus status, string detail)
         {
@@ -351,17 +340,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportDispatchFailure(string detail)
-        {
-            // A broken policy must not flood the log with player-triggered exceptions.
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning(
-                    "Server chat policy rejected a message: " + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server chat policy rejected a message", detail);
     }
 
     public enum ServerChatHookStatus

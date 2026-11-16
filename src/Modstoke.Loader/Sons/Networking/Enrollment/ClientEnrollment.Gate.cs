@@ -11,16 +11,6 @@ namespace Modstoke.Sons
 {
     public static partial class ClientEnrollment
     {
-        private const string RejoinNotice = "Your game started playing before this server let it in, so the "
-            + "connection is out of step. Rejoin to play.";
-        private const string VersionNotice = "This server runs a different Modstoke version. Install the version "
-            + "the server uses to join.";
-        private const string AdmissionNotice = "This server checks your installed mods before letting you in, and "
-            + "your Modstoke doesn't take part in that check. Turn on mod admission in Modstoke, then rejoin.";
-        private const string NotTakingPartNotice = "This server checks mods before letting players in. Install "
-            + "Modstoke and join it from the Modstoke server list.";
-        private const string ModAdmissionNotTakingPartNotice = "This server checks your installed mods before letting "
-            + "players in. Install Modstoke, turn on mod admission in it, then join this server from the Modstoke server list.";
         private static readonly Dictionary<(IntPtr, uint), HeldTraffic> Held = new();
         // Once admitted, a connection stays open for the rest of its life: a later transport fault or a failed
         // check elsewhere must never turn into dropped gameplay for players already in. A client latches the same
@@ -200,7 +190,7 @@ namespace Modstoke.Sons
                 // Ahead of the peer lookup: a negotiation peer lost after the latch must not freeze a player in.
                 var key = (__instance.Pointer, __instance.ConnectionId);
                 if (_clientAdmitted == key)
-                    return true;
+                    return !ContentAgreement.HoldsWorld(__instance);
                 if (_clientReleased == key)
                 {
                     _clientSentWhileReleased = true;
@@ -222,7 +212,7 @@ namespace Modstoke.Sons
                     _clientSentWhileReleased = true;
                 if (decision != GateDecision.Allow)
                     _clientHeldSends++;
-                return decision == GateDecision.Allow;
+                return decision == GateDecision.Allow && (_clientAdmitted != key || !ContentAgreement.HoldsWorld(__instance));
             }
             catch (Exception error)
             {
@@ -367,36 +357,40 @@ namespace Modstoke.Sons
             var peer = ControlTransport.FindPeer(connection);
             var entry = FindEntry(connection);
             Held.TryGetValue((connection.Pointer, connection.ConnectionId), out var held);
-            var notice = RefusalNotice(peer, entry);
-            RuntimeEntryPoint.LogSource?.LogInfo("Refused connection " + connection.ConnectionId
+            var refused = "Refused connection " + connection.ConnectionId
                 + (entry == null ? "" : " after " + Milliseconds(entry.OpenedAt) + " ms") + ": " + Describe(peer, entry)
-                + ". Held " + (held?.Game ?? 0) + " game and " + (held?.Sdk ?? 0) + " SDK packets."
-                + (notice == null ? "" : " Told the player: " + notice));
-            if (notice == null || ServerSessions.DisconnectWithNotice(session, notice) != DisconnectResult.Requested)
+                + ". Held " + (held?.Game ?? 0) + " game and " + (held?.Sdk ?? 0) + " SDK packets.";
+            var notice = RefusalNotice(peer, entry) is { } text ? ServerSessions.FitNotice(text) : null;
+            var told = notice == null ? (DisconnectResult?)null : ServerSessions.DisconnectWithNotice(session, notice);
+            if (told != DisconnectResult.Requested)
                 ServerSessions.Disconnect(session);
+            RuntimeEntryPoint.LogSource?.LogInfo(refused + (told == null ? ""
+                : told == DisconnectResult.Requested ? " Told the player: " + notice
+                : " The notice could not be sent (" + told + "): " + notice));
         }
 
+        // In this server's language: the notice travels in the disconnect token, and only the player's game knows theirs.
         private static string RefusalNotice(ControlPeer peer, Enrollment entry)
         {
+            var text = LocalizationStartup.Text;
             // Vanilla and a Modstoke without mod admission look alike here, so a mod admission host names both steps.
             if (entry == null || entry.HelloAt == 0)
                 return ContentAgreement.NotTakingPartNotice()
-                    ?? (ModAdmission.Selected ? ModAdmissionNotTakingPartNotice : NotTakingPartNotice);
+                    ?? text.Get(ModAdmission.Selected ? "kick.installModAdmission" : "kick.installModstoke");
             switch (entry.Reason)
             {
                 case EnrollmentEndReason.GameplayBeforeAdmission:
-                    return RejoinNotice;
+                    return text.Get("kick.outOfStep");
                 case EnrollmentEndReason.IncompatibleCapabilities:
                 case EnrollmentEndReason.RemoteRejected:
                     // The hello's offer names what the client lacks; it is only a claim, so it only picks the wording.
-                    return (entry.RequiredCapabilities & ~entry.OfferedCapabilities & ModAdmission.ProtocolCapability) != 0
-                        ? AdmissionNotice : VersionNotice;
+                    return text.Get((entry.RequiredCapabilities & ~entry.OfferedCapabilities & ModAdmission.ProtocolCapability) != 0
+                        ? "kick.turnOnModAdmission" : "kick.otherVersion");
                 case EnrollmentEndReason.ProtocolMismatch:
-                    return VersionNotice;
+                    return text.Get("kick.otherVersion");
             }
             return ContentAgreement.RefusalNotice(peer) ?? ModAdmission.RefusalNotice(peer)
-                ?? (entry.State == EnrollmentState.Retired
-                    ? "Joining this server didn't finish (" + entry.Reason + "). Rejoin to try again." : null);
+                ?? (entry.State == EnrollmentState.Retired ? text.Get("kick.joinUnfinished", ("reason", entry.Reason)) : null);
         }
 
         private static string Describe(ControlPeer peer, Enrollment entry)
@@ -456,20 +450,18 @@ namespace Modstoke.Sons
             // A lost peer or transport says nothing new, and must not replace a reason the content check already gave.
             var entry = FindEntry(connection);
             if (entry is { State: EnrollmentState.Retired } && entry.Reason != EnrollmentEndReason.HostAnsweredLate)
-                KickReason.Expect(LeavingReason(entry), "Rejoin to try again. If it keeps happening, install the "
-                    + "Modstoke version the server uses.");
+                KickReason.Expect(KickTitle.CouldNotJoin, LocalizationStartup.Text.Get(LeavingReasonKey(entry)),
+                    LocalizationStartup.Text.Get("kick.rejoinHelp"));
             connection.Disconnect();
         }
 
         // What the player reads when this client leaves on its own; a refusal the host sends first replaces it.
-        private static string LeavingReason(Enrollment entry) => entry.Reason switch
+        private static string LeavingReasonKey(Enrollment entry) => entry.Reason switch
         {
-            EnrollmentEndReason.Expired => "The server didn't finish letting your game in through Modstoke's join check in time.",
-            EnrollmentEndReason.IncompatibleCapabilities or EnrollmentEndReason.RemoteRejected
-                => "This server's Modstoke join check needs something your Modstoke doesn't offer.",
-            EnrollmentEndReason.InvalidMessage or EnrollmentEndReason.ProtocolMismatch
-                => "This server's Modstoke join check doesn't match yours.",
-            _ => "Modstoke's join check with this server broke off."
+            EnrollmentEndReason.Expired => "kick.checkTimedOut",
+            EnrollmentEndReason.IncompatibleCapabilities or EnrollmentEndReason.RemoteRejected => "kick.checkNeedsMore",
+            EnrollmentEndReason.InvalidMessage or EnrollmentEndReason.ProtocolMismatch => "kick.checkMismatch",
+            _ => "kick.checkBrokeOff"
         };
 
         private static void ResetGateConnection()

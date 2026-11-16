@@ -20,7 +20,6 @@ namespace Modstoke.Sons
             TreeSpawnHookStatus.NotAttempted, "The tree-spawn hook has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
 
         /// <summary>
         /// Runs synchronously before CoopServerCallbacks.OnEvent(SpawnCutTree) on the server.
@@ -133,17 +132,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportDispatchFailure(string detail)
-        {
-            // Log a broken policy once rather than once per player request.
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning(
-                    "Server tree-spawn policy rejected a request: " + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server tree-spawn policy rejected a request", detail);
     }
 
     /// <summary>Registration status of the server tree-spawn policy hook.</summary>

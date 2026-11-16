@@ -1037,6 +1037,44 @@
 
   "kick": {
     "yourGameHas": "Dein Spiel hat: {content}.",
-    "noModContent": "keine Mod-Inhalte"
+    "noModContent": "keine Mod-Inhalte",
+    "title": {
+      "modsDontMatch": "Mods passen nicht",
+      "couldNotJoin": "Beitritt nicht möglich"
+    },
+    "modsDiffer": "Deine Mods passen nicht zu denen dieses Servers.",
+    "install": "Installiere {mods}.",
+    "switchTo": "Wechsle zu {mods}.",
+    "turnOff": "Deaktiviere {mods}.",
+    "youHave": "{mod} (du hast {version})",
+    "differentBuild": "einen anderen Build",
+    "needsMods": "Dieser Server braucht Mods, die du nicht hast.",
+    "updateTo": "Aktualisiere auf {mods}.",
+    "turnOn": "Aktiviere {mods}.",
+    "checkUnfinished": "Dein Spiel hat die Mod-Prüfung dieses Servers nicht abgeschlossen. Aktualisiere Modstoke auf die Version des Servers und tritt erneut bei.",
+    "checksMods": "Dieser Server prüft Mods, bevor er Spieler hereinlässt. Installiere das aktuelle Modstoke und dieselben Mods und tritt dann über die Modstoke-Serverliste bei: {mods}.",
+    "installModstoke": "Dieser Server prüft Mods, bevor er Spieler hereinlässt. Installiere Modstoke und tritt über die Modstoke-Serverliste bei.",
+    "installModAdmission": "Dieser Server prüft installierte Mods, bevor er Spieler hereinlässt. Installiere Modstoke, aktiviere dort die Mod-Zulassung und tritt dann über die Modstoke-Serverliste bei.",
+    "turnOnModAdmission": "Dieser Server prüft deine installierten Mods, bevor er dich hereinlässt, und dein Modstoke nimmt an dieser Prüfung nicht teil. Aktiviere die Mod-Zulassung in Modstoke und tritt erneut bei.",
+    "otherVersion": "Dieser Server nutzt eine andere Modstoke-Version. Installiere die Version des Servers, um beizutreten.",
+    "otherCheck": "Dieser Server nutzt eine andere Modstoke-Version, und seine Mod-Prüfung kann sich nicht mit deiner verständigen.",
+    "otherCheckHelp": "Installiere die Modstoke-Version des Servers oder bitte den Host, zu aktualisieren.",
+    "outOfStep": "Dein Spiel hat angefangen zu spielen, bevor dieser Server es hereingelassen hat, deshalb ist die Verbindung aus dem Takt. Tritt erneut bei, um zu spielen.",
+    "refusedData": "Dieser Server hat Daten deines Spiels abgelehnt. Tritt erneut bei, um zu spielen.",
+    "joinUnfinished": "Der Beitritt zu diesem Server wurde nicht abgeschlossen ({reason}). Tritt erneut bei, um es noch einmal zu versuchen.",
+    "answeredLate": "Der Server hat Modstoke zu spät geantwortet, als dein Spiel schon angefangen hatte.",
+    "rejoinToPlay": "Tritt erneut bei, um zu spielen.",
+    "rejoinHelp": "Tritt erneut bei, um es noch einmal zu versuchen. Wenn es wieder passiert, installiere die Modstoke-Version des Servers.",
+    "checkTimedOut": "Der Server hat dein Spiel nicht rechtzeitig durch die Beitrittsprüfung von Modstoke gelassen.",
+    "checkNeedsMore": "Die Modstoke-Beitrittsprüfung dieses Servers braucht etwas, das dein Modstoke nicht bietet.",
+    "checkMismatch": "Die Modstoke-Beitrittsprüfung dieses Servers passt nicht zu deiner.",
+    "checkBrokeOff": "Die Modstoke-Beitrittsprüfung mit diesem Server wurde abgebrochen."
+  },
+
+  "content": {
+    "checking": "Die Mods werden noch mit dem Server abgeglichen.",
+    "vanillaAllowed": "Dieser Server lässt auch Spieler ohne Mods herein, deshalb können Gegenstände aus Mods hier nicht geteilt werden.",
+    "serverLacks": "Dieser Server nutzt deine Mods nicht, deshalb können ihre Gegenstände hier nicht geteilt werden.",
+    "unchecked": "Diese Sitzung prüft keine Mods, deshalb können Gegenstände aus Mods hier nicht geteilt werden."
   }
 }

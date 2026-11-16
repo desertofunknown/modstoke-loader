@@ -19,7 +19,7 @@ public static class ServerNpcParties
     private const float ReleaseAgeHours = 1.25f;
     private static NpcPartyState _state = new(NpcPartyHookStatus.NotAttempted,
         "NPC party scheduling hooks have not been installed.");
-    private static int _installationAttempted, _ownerThread, _reportedFailure;
+    private static int _installationAttempted, _ownerThread;
     private static int _frame = -1, _candidates;
     [ThreadStatic] private static int _updateDepth, _directDepth, _runDepth;
     [ThreadStatic] private static UpdateScope _scope;
@@ -258,10 +258,5 @@ public static class ServerNpcParties
     private static void SetState(NpcPartyHookStatus status, string detail) =>
         Volatile.Write(ref _state, new NpcPartyState(status, detail));
     private static void ReportFailure(Exception error)
-    {
-        if (Interlocked.Exchange(ref _reportedFailure, 1) != 0) return;
-        try { RuntimeEntryPoint.LogSource?.LogWarning("NPC party pacing unavailable ("
-            + error.GetType().FullName + "). Native scheduling continues; further failures will not be logged."); }
-        catch (Exception) { }
-    }
+        => NetworkFailures.Report("NPC party pacing (native scheduling continues)", error);
 }

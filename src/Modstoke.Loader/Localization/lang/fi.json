@@ -1037,6 +1037,44 @@
 
   "kick": {
     "yourGameHas": "Pelissäsi on: {content}.",
-    "noModContent": "ei modisisältöä"
+    "noModContent": "ei modisisältöä",
+    "title": {
+      "modsDontMatch": "Modit eivät täsmää",
+      "couldNotJoin": "Liittyminen ei onnistunut"
+    },
+    "modsDiffer": "Modisi eivät täsmää tämän palvelimen modien kanssa.",
+    "install": "Asenna {mods}.",
+    "switchTo": "Vaihda versioon {mods}.",
+    "turnOff": "Poista käytöstä {mods}.",
+    "youHave": "{mod} (sinulla on {version})",
+    "differentBuild": "eri koontiversio",
+    "needsMods": "Tämä palvelin vaatii modeja, joita sinulla ei ole.",
+    "updateTo": "Päivitä versioon {mods}.",
+    "turnOn": "Ota käyttöön {mods}.",
+    "checkUnfinished": "Pelisi ei saanut tämän palvelimen modien tarkistusta valmiiksi. Päivitä Modstoke palvelimen versioon ja liity uudelleen.",
+    "checksMods": "Tämä palvelin tarkistaa modit ennen kuin päästää pelaajia sisään. Asenna nykyinen Modstoke ja samat modit ja liity sitten Modstoken palvelinluettelosta: {mods}.",
+    "installModstoke": "Tämä palvelin tarkistaa modit ennen kuin päästää pelaajia sisään. Asenna Modstoke ja liity Modstoken palvelinluettelosta.",
+    "installModAdmission": "Tämä palvelin tarkistaa asennetut modit ennen kuin päästää pelaajia sisään. Asenna Modstoke, ota siinä käyttöön modien hyväksyntä ja liity sitten tälle palvelimelle Modstoken palvelinluettelosta.",
+    "turnOnModAdmission": "Tämä palvelin tarkistaa asennetut modisi ennen kuin päästää sinut sisään, eikä Modstokesi osallistu tähän tarkistukseen. Ota modien hyväksyntä käyttöön Modstokessa ja liity uudelleen.",
+    "otherVersion": "Tällä palvelimella on eri Modstoke-versio. Asenna palvelimen käyttämä versio liittyäksesi.",
+    "otherCheck": "Tällä palvelimella on eri Modstoke-versio, eikä sen modien tarkistus pysty keskustelemaan sinun versiosi kanssa.",
+    "otherCheckHelp": "Asenna palvelimen käyttämä Modstoke-versio tai pyydä isäntää päivittämään.",
+    "outOfStep": "Pelisi alkoi pelata ennen kuin palvelin päästi sen sisään, joten yhteys on epätahdissa. Liity uudelleen pelataksesi.",
+    "refusedData": "Tämä palvelin hylkäsi pelisi lähettämiä tietoja. Liity uudelleen pelataksesi.",
+    "joinUnfinished": "Liittyminen tälle palvelimelle ei valmistunut ({reason}). Liity uudelleen yrittääksesi uudestaan.",
+    "answeredLate": "Palvelin vastasi Modstokelle liian myöhään, kun pelisi oli jo alkanut.",
+    "rejoinToPlay": "Liity uudelleen pelataksesi.",
+    "rejoinHelp": "Liity uudelleen yrittääksesi uudestaan. Jos näin käy jatkuvasti, asenna palvelimen käyttämä Modstoke-versio.",
+    "checkTimedOut": "Palvelin ei ehtinyt päästää peliäsi sisään Modstoken liittymistarkistuksen kautta ajoissa.",
+    "checkNeedsMore": "Tämän palvelimen Modstoke-liittymistarkistus vaatii jotain, mitä Modstokesi ei tarjoa.",
+    "checkMismatch": "Tämän palvelimen Modstoke-liittymistarkistus ei vastaa sinun tarkistustasi.",
+    "checkBrokeOff": "Modstoken liittymistarkistus tämän palvelimen kanssa katkesi."
+  },
+
+  "content": {
+    "checking": "Modeja tarkistetaan vielä palvelimen kanssa.",
+    "vanillaAllowed": "Tämä palvelin päästää sisään myös pelaajia ilman modeja, joten modien esineitä ei voi jakaa täällä.",
+    "serverLacks": "Tällä palvelimella ei ole modejasi, joten niiden esineitä ei voi jakaa täällä.",
+    "unchecked": "Tämä istunto ei tarkista modeja, joten modien esineitä ei voi jakaa täällä."
   }
 }

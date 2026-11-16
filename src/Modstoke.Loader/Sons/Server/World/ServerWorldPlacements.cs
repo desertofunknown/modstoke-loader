@@ -18,7 +18,6 @@ namespace Modstoke.Sons
             WorldPlacementHookStatus.NotAttempted, "The actor-drop hook has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
 
         /// <summary>Runs synchronously before CoopServerCallbacks.OnEvent(PlaceDryingFood) on the server.</summary>
         public static event Action<DryingFoodPlacementRequest> PlacingDryingFood;
@@ -129,16 +128,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportDispatchFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server world-placement policy rejected a callback: "
-                    + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server world-placement policy rejected a callback", detail);
     }
 
     public enum WorldPlacementHookStatus { NotAttempted, Disabled, Installing, Installed, Failed }

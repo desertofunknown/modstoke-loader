@@ -17,7 +17,7 @@ public static partial class ServerMeleeImpacts
     public const string ServiceKey = "openacai.sons.serverMeleeImpacts";
     public const int MaximumImpactsPerFrame = 128;
     private const int MaximumContactDepth = 8;
-    private static int _attempted, _thread, _reported;
+    private static int _attempted, _thread;
     private static int _budgetFrame;
     private static int _impactReads;
     private static WorldRecordContext _budgetWorld;
@@ -206,11 +206,5 @@ public static partial class ServerMeleeImpacts
         Modding.SetService(ServiceKey, state);
     }
 
-    internal static void Report(Exception error)
-    {
-        if (Interlocked.Exchange(ref _reported, 1) != 0) return;
-        try { RuntimeEntryPoint.LogSource?.LogWarning("NPC melee contact observation failed (" + error.GetType().Name
-            + "). Further observation failures will not be logged."); }
-        catch { }
-    }
+    internal static void Report(Exception error) => NetworkFailures.Report("NPC melee contact observation", error);
 }

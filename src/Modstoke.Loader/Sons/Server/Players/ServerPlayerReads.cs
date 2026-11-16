@@ -120,6 +120,43 @@ namespace Modstoke.Sons
             }
         }
 
+        /// <summary>
+        /// Copies the weapon-mod hashes a player's replicated state shows on one held weapon item, on the server game
+        /// thread. Empty when the item isn't held or shows no mods; held tells the two apart.
+        /// </summary>
+        /// <remarks>The owner's game writes this list, so it is what other players are shown, not proof of what the
+        /// weapon carries. Compare hashes with <see cref="WeaponAttachments.HashOf"/>.</remarks>
+        public static bool TryReadHeldWeaponMods(PlayerHandle binding, int weaponItemId, out bool held,
+            out int[] modHashes, out WorldReadStatus status)
+        {
+            held = false;
+            modHashes = Array.Empty<int>();
+            try
+            {
+                if (!TryValidatePlayerBinding(binding, out status))
+                    return false;
+                var state = binding.Player.GetState<IPlayerState>();
+                if (state is null || state.WasCollected)
+                {
+                    status = WorldReadStatus.PlayerStateUnavailable;
+                    return false;
+                }
+                held = WeaponAttachments.Holds(state, weaponItemId);
+                if (held)
+                    modHashes = WeaponAttachments.ReadHeldModHashes(state, weaponItemId);
+                return true;
+            }
+            catch (Exception error)
+            {
+                RetireEndedPlayerBinding(binding);
+                held = false;
+                modHashes = Array.Empty<int>();
+                status = WorldReadStatus.Failed;
+                ReportFailure(error);
+                return false;
+            }
+        }
+
         private static Bolt.NetworkArray_Integer CopyPlayerStateArmour(IPlayerState state,
             out int count, out int[] ids)
         {

@@ -67,7 +67,6 @@ namespace Modstoke.Sons
         private const int MaxSdkEvents = 16;
         private const int MaxPrefixLength = 24;
         private const int MaxEventIdLength = 64;
-        private const long EnrollmentCheckMs = 1000;
         private static readonly ConditionalWeakTable<ServerSession, Record> Records = new();
 
         internal static long ReadRevision(ServerSession session) =>
@@ -76,23 +75,20 @@ namespace Modstoke.Sons
         // Host SDK packets, broadcast and relayed alike, are for clients that run a loader: one that sent a notice
         // handshake or any SDK marker packet, or completed enrollment. RedLoader clients never send the handshake.
         // True holds for the session, through a tracking pause too. False means nothing shown yet, which a lost
-        // handshake also explains, so a sender holds packets rather than drop them. Null means tracking cannot
-        // tell, and a sender delivers as it always has.
+        // handshake also explains, so the host holds that client's packets for a while rather than drop them. Null
+        // means tracking cannot tell, and a sender delivers as it always has.
         internal static bool? ShowsLoader(BoltConnection connection)
         {
             var session = ServerSessions.ResolveHeld(connection);
             if (session == null)
                 return ServerSessions.HooksInstalled ? false : null;
-            var record = Records.GetOrCreateValue(session);
-            var now = Environment.TickCount64;
-            if (!record.ShowsLoader && now >= record.NextEnrollmentCheck)
-            {
-                // Enrollment has no callback into this record, and a sender asks per packet and recipient.
-                record.NextEnrollmentCheck = now + EnrollmentCheckMs;
-                record.ShowsLoader = ClientEnrollment.TryRead(session, out var enrollment) == EnrollmentReadStatus.Success
-                    && enrollment.State == EnrollmentState.Enrolled;
-            }
-            return record.ShowsLoader;
+            return Records.TryGetValue(session, out var record) && record.ShowsLoader;
+        }
+
+        internal static void RecordEnrolled(ServerSession session)
+        {
+            if (session != null)
+                Records.GetOrCreateValue(session).ShowsLoader = true;
         }
 
         internal static void RecordHello(ServerSession session, NoticeProtocol.Frame frame)
@@ -124,6 +120,12 @@ namespace Modstoke.Sons
             record.UnregisteredSdkPackets++;
             if (record.UnregisteredSdkHashes.Count < MaxNames && !record.UnregisteredSdkHashes.Contains(eventHash))
                 record.UnregisteredSdkHashes.Add(eventHash);
+        }
+
+        internal static void RecordOverBudgetSdkPacket(BoltConnection source)
+        {
+            if (TryChange(source, out var record))
+                record.OverBudgetSdkPackets++;
         }
 
         internal static void RecordMalformedNotice(BoltConnection source)
@@ -178,6 +180,7 @@ namespace Modstoke.Sons
             var traffic = new ClientTrafficSignals(record.SdkPackets,
                 Array.AsReadOnly(record.SdkEventHashes.Select(DescribeSdkEvent).ToArray()),
                 record.UnregisteredSdkPackets, Array.AsReadOnly(record.UnregisteredSdkHashes.ToArray()),
+                record.OverBudgetSdkPackets,
                 record.MalformedNotices, record.UnexpectedNotices, record.UnknownCommands,
                 Array.AsReadOnly(record.UnknownCommandNames.ToArray()), record.RateLimitedCommands,
                 record.ReplayedCommands, record.TunnelChats, Array.AsReadOnly(record.TunnelPrefixes.ToArray()),
@@ -239,6 +242,7 @@ namespace Modstoke.Sons
             internal readonly List<int> SdkEventHashes = new();
             internal int UnregisteredSdkPackets;
             internal readonly List<int> UnregisteredSdkHashes = new();
+            internal int OverBudgetSdkPackets;
             internal int MalformedNotices;
             internal int UnexpectedNotices;
             internal int UnknownCommands;
@@ -249,7 +253,6 @@ namespace Modstoke.Sons
             internal readonly List<string> TunnelPrefixes = new();
             internal DateTimeOffset? FirstUnexpectedAt;
             internal bool ShowsLoader;
-            internal long NextEnrollmentCheck;
 
             internal void MarkUnexpected() => FirstUnexpectedAt ??= DateTimeOffset.UtcNow;
         }
@@ -343,15 +346,16 @@ namespace Modstoke.Sons
     public sealed class ClientTrafficSignals
     {
         internal ClientTrafficSignals(int sdkPackets, IReadOnlyList<string> sdkEvents, int unregisteredSdkPackets,
-            IReadOnlyList<int> unregisteredSdkEventHashes, int malformedNoticeFrames, int unexpectedNoticeFrames,
-            int unknownCommands, IReadOnlyList<string> unknownCommandNames, int rateLimitedCommands,
-            int replayedCommands, int tunnelChatMessages, IReadOnlyList<string> tunnelChatPrefixes,
+            IReadOnlyList<int> unregisteredSdkEventHashes, int overBudgetSdkPackets, int malformedNoticeFrames,
+            int unexpectedNoticeFrames, int unknownCommands, IReadOnlyList<string> unknownCommandNames,
+            int rateLimitedCommands, int replayedCommands, int tunnelChatMessages, IReadOnlyList<string> tunnelChatPrefixes,
             DateTimeOffset? firstUnexpectedAt)
         {
             SdkPackets = sdkPackets;
             SdkEvents = sdkEvents;
             UnregisteredSdkPackets = unregisteredSdkPackets;
             UnregisteredSdkEventHashes = unregisteredSdkEventHashes;
+            OverBudgetSdkPackets = overBudgetSdkPackets;
             MalformedNoticeFrames = malformedNoticeFrames;
             UnexpectedNoticeFrames = unexpectedNoticeFrames;
             UnknownCommands = unknownCommands;
@@ -371,6 +375,11 @@ namespace Modstoke.Sons
         public int UnregisteredSdkPackets { get; }
         /// <summary>Their event id hashes, first 8 distinct. The ids themselves never cross the wire.</summary>
         public IReadOnlyList<int> UnregisteredSdkEventHashes { get; }
+        /// <summary>
+        /// SDK packets this host dropped because the session sent more than its receive budget (600 a second, bursts
+        /// of 1200). Never counted in the other totals. A spike can come from a mod bug as easily as from abuse.
+        /// </summary>
+        public int OverBudgetSdkPackets { get; }
         /// <summary>Notice-protocol frames with a bad envelope or body.</summary>
         public int MalformedNoticeFrames { get; }
         /// <summary>Well-formed notice frames of a kind only the host sends.</summary>

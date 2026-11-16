@@ -19,7 +19,6 @@ namespace Modstoke.Sons
             VailHitHookStatus.NotAttempted, "The Vail-hit hook has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
 
         /// <summary>
         /// Runs synchronously before the server's VailHitEvent callback and its actor lookup.
@@ -149,16 +148,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportDispatchFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server Vail-hit policy rejected a request: "
-                    + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server Vail-hit policy rejected a request", detail);
     }
 
     public enum VailHitHookStatus

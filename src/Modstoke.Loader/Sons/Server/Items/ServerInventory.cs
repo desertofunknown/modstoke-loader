@@ -20,8 +20,6 @@ namespace Modstoke.Sons
         public const int MaxGrantAmount = 1024;
 
         private static int _ownerThreadId;
-        private static int _reportedFailure;
-        private static int _reportedRemovalFailure;
 
         internal static void Initialize()
         {
@@ -205,28 +203,9 @@ namespace Modstoke.Sons
         }
 
         private static void ReportRemovalFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedRemovalFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server item removal failed ("
-                    + error.GetType().FullName + "). Further removal failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server item removal", error);
 
-        private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server item grant failed ("
-                    + error.GetType().FullName + "). Further grant failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+        private static void ReportFailure(Exception error) => NetworkFailures.Report("Server item grant", error);
     }
 
     public enum ItemRemovalStatus

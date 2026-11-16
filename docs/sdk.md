@@ -395,6 +395,15 @@ the kind:
   destination, open or settling. Any other sample gets the usual rules, so a
   client that ignores a relocation gains no exemption from it.
 
+Positions are host-side. The host's copy of a remote player, which
+`ServerWorld` pose reads return, comes from position replication and carries
+height in a band from about -1024 to 1073 m, so a player above it (in orbit,
+say) shows up with the height wrapped into the band. `Check` compares
+directly, so pass it a position in the frame the anchor uses; a check that
+reads the host's copy should compare an anchor above the band modulo its
+2097.152 m span. Relocation arrival compares the host's copy with the
+destination directly, so relocate only to destinations inside the band.
+
 Expiry and the settle window run on the monotonic clock; `OpenedAt`,
 `ExpiresAt` and `ClosedAt` are for display. `Opened` and `Closed` are raised on
 the game thread, and the host log records each open and end with owner, kind,
@@ -414,6 +423,94 @@ reads `Relocating connection N to (x, y, z) ...`, then `Relocation of
 connection N arrived X s after it was sent, D m from the destination` or a
 warning that it was not seen to arrive, with the last distance. A
 `SendUncertain` assignment keeps its grant.
+
+## Session content sharing
+
+`ContentAgreement.Sharing` tells a mod how far this process's networked content
+(items in a reserved networked range, their pickups and weapon mods) reaches in
+the current session. Read it on the game thread:
+
+- `Offline`: no multiplayer session.
+- `Shared`: the mod check runs and the server refuses players who don't take
+  part, so every player has this content. `PeersShareContent` is true.
+- `Checking`: joining, and the check with the server has not finished.
+- `VanillaAllowed`: the server checks Modstoke players but lets in players
+  without mods (`allowVanillaClients`).
+- `ServerLacksContent`: the joined server declared no mod content, a vanilla
+  server among them.
+- `Unchecked`: no check runs in this session, or it failed.
+
+`CanUseNetworkedContent` is true for `Offline` and `Shared`. Anything else means
+a peer may lack the items, so a mod should keep them on this machine: refuse a
+drop, a craft or an attachment others would see, and say why with
+`DescribeSharing()`, a localized line for the player ("" when sharing is fine).
+The SDK already applies the policy to held mod items, the weapon mod hashes in
+a held weapon's state and mod loot in the container tables.
+
+A joining client whose check agreed holds its Bolt sends from the moment it
+has loaded the server's scene until its networked items exist, so the server
+sends the world only then. Ready means every mod with a reserved networked
+range has published items or had them refused, no registration refused with a
+`*-not-ready` reason was retried in the last two seconds, and nothing was added
+for half a second; the hold lasts 10 seconds at most. Mods that register items
+as soon as `RuntimeRegistrationReady` is true and retry on `*-not-ready` a few
+times a second need do nothing more. The client logs `Holding the server's
+world until this game's mod items are ready (waiting for ...)` and then `Mod
+items were ready X ms after the world loaded` or a warning that it joined
+anyway, or `This game's mod items were ready when the world loaded` when there
+was nothing to hold.
+
+## Held weapon mods
+
+A weapon's mods reach other players through the owner's player state
+(`HeldItemsWeaponMods`), which the game writes only when the weapon goes into
+the hand. `WeaponAttachments.TryAttach` and `TryDetach` on the weapon in hand
+now write it at once, and every Loader redraws another player's rifle when that
+list stops matching what it shows: after such a change, and after a mod reaches
+its catalog later than the rifle was drawn (each registration looks up rifles
+already drawn). Mod hashes stay out of the list
+while `PeersShareContent` is false, so a vanilla peer never gets a mod it
+can't resolve. The owner logs `Other players now see item N with weapon mods
+...`, a viewer `Another player's item N now shows ...`.
+
+`ServerWorld.TryReadHeldWeaponMods(binding, weaponItemId, out held, out
+modHashes, out status)` copies that list on the server game thread for one
+player and weapon item: `held` says whether the item is in the player's
+`HeldItems`, and the hashes compare with `WeaponAttachments.HashOf(modId,
+key)`. It works on dedicated servers, which draw no rifles. The owner's game
+writes the list, so treat it as what other players are shown, not proof.
+
+## SDK packets in multiplayer
+
+- A client whose server negotiates holds its SDK packets until that server
+  admits it, up to 32 (the oldest are dropped first), and sends them on
+  admission: `Sent N SDK packets held until the server admitted this client,
+  X ms after the first`. A host therefore no longer drops a joining client's
+  hellos.
+- The host sends SDK packets, broadcast and targeted alike, only to clients
+  that have shown a loader: enrollment, a notices hello or an SDK packet of
+  their own. Until then it keeps that client's latest 32 and sends them once it
+  shows one, which a Modstoke client does within a second or so of connecting
+  (`Holding SDK packets for connection N until it shows a Modstoke Loader`,
+  then `Connection N showed a Modstoke Loader X ms after its first held SDK
+  packet; sent it K held`). After 30 silent seconds it drops them and sends
+  that client nothing more until it sends an SDK packet itself. A RedLoader
+  client whose mods only listen to the host therefore gets no host packets.
+- A `NetEvent` in a Modstoke mod that does not override `AllowClientRelay` is
+  no longer relayed from one client to others through the host. The host still
+  reads such a packet sent to `Everyone` or `Others` itself, as before; one sent
+  to `AllClients` or a single client is dropped. RedLoader and SonsSdk mods keep
+  the old default. The host logs the first relay it refuses for that reason per
+  event.
+- The host gives each client 600 SDK packets a second with bursts of 1200 and
+  drops the rest before any mod reads them, logging at most every 10 seconds
+  per connection. `ClientTrafficSignals.OverBudgetSdkPackets` counts the drops
+  as evidence only.
+
+Server SDK failures (a policy handler that throws, a read or a send that fails)
+now go through the same reporter as the networking layer: the first failure of
+each kind is logged with its stack, later ones are counted and summed up at most
+once a minute.
 
 ## Current Locator Records
 

@@ -14,7 +14,6 @@ namespace Modstoke.Sons
     public static class ServerWeather
     {
         private static int _ownerThreadId;
-        private static int _reportedFailure;
         private static bool _requestInProgress;
 
         internal static void Initialize()
@@ -205,17 +204,7 @@ namespace Modstoke.Sons
             return found != IntPtr.Zero;
         }
 
-        private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server weather access failed ("
-                    + error.GetType().FullName + "). Further weather failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+        private static void ReportFailure(Exception error) => NetworkFailures.Report("Server weather access", error);
     }
 
     /// <summary>Copied server weather transition fields, not an operation handle or completion forecast.</summary>

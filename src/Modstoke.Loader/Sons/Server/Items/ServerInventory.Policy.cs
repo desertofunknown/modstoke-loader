@@ -16,7 +16,6 @@ namespace Modstoke.Sons
         private static ServerInventoryState _state = new(
             InventoryHookStatus.NotAttempted, "The inventory routing hook has not been installed.");
         private static int _installationAttempted;
-        private static int _reportedDispatchFailure;
 
         /// <summary>
         /// Runs before server dispatch of PlayerAddItem and ItemRemoveFromPlayer, including local sends.
@@ -119,16 +118,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportDispatchFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server inventory policy rejected an event: "
-                    + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server inventory policy rejected an event", detail);
     }
 
     public enum InventoryOperation

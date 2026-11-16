@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Alex Cooper
 
 using System;
-using System.Threading;
 using Modstoke.Loader;
 using global::Sons.Multiplayer;
 
@@ -10,8 +9,6 @@ namespace Modstoke.Sons
 {
     public static partial class ServerSessions
     {
-        private static int _reportedRoleChangeFailure;
-
         /// <summary>
         /// Changes a live session's stored game role only when its identity and previous role still match.
         /// The caller owns authorization. This does not disconnect, force a save or confirm replication.
@@ -84,16 +81,7 @@ namespace Modstoke.Sons
         };
 
         private static void ReportRoleChangeFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedRoleChangeFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server role change failed ("
-                    + error.GetType().FullName + "). Further role change failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server role change", error);
     }
 
     /// <summary>Managed observations around a role change, not a save or client acknowledgement.</summary>

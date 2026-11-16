@@ -1037,6 +1037,44 @@
 
   "kick": {
     "yourGameHas": "W twojej grze: {content}.",
-    "noModContent": "brak zawartości z modów"
+    "noModContent": "brak zawartości z modów",
+    "title": {
+      "modsDontMatch": "Mody się nie zgadzają",
+      "couldNotJoin": "Nie udało się dołączyć"
+    },
+    "modsDiffer": "Twoje mody nie zgadzają się z modami tego serwera.",
+    "install": "Zainstaluj {mods}.",
+    "switchTo": "Przejdź na {mods}.",
+    "turnOff": "Wyłącz {mods}.",
+    "youHave": "{mod} (masz {version})",
+    "differentBuild": "inną kompilację",
+    "needsMods": "Ten serwer wymaga modów, których nie masz.",
+    "updateTo": "Zaktualizuj do {mods}.",
+    "turnOn": "Włącz {mods}.",
+    "checkUnfinished": "Twoja gra nie ukończyła sprawdzania modów na tym serwerze. Zaktualizuj Modstoke do wersji serwera i dołącz ponownie.",
+    "checksMods": "Ten serwer sprawdza mody, zanim wpuści graczy. Zainstaluj aktualny Modstoke i te same mody, a potem dołącz z listy serwerów Modstoke: {mods}.",
+    "installModstoke": "Ten serwer sprawdza mody, zanim wpuści graczy. Zainstaluj Modstoke i dołącz z listy serwerów Modstoke.",
+    "installModAdmission": "Ten serwer sprawdza zainstalowane mody, zanim wpuści graczy. Zainstaluj Modstoke, włącz w nim dopuszczanie modów, a potem dołącz do tego serwera z listy serwerów Modstoke.",
+    "turnOnModAdmission": "Ten serwer sprawdza twoje zainstalowane mody, zanim cię wpuści, a twój Modstoke nie bierze udziału w tym sprawdzaniu. Włącz dopuszczanie modów w Modstoke i dołącz ponownie.",
+    "otherVersion": "Ten serwer używa innej wersji Modstoke. Zainstaluj wersję serwera, aby dołączyć.",
+    "otherCheck": "Ten serwer używa innej wersji Modstoke, a jego sprawdzanie modów nie może porozumieć się z twoim.",
+    "otherCheckHelp": "Zainstaluj wersję Modstoke, której używa serwer, albo poproś hosta o aktualizację.",
+    "outOfStep": "Twoja gra zaczęła grać, zanim serwer ją wpuścił, więc połączenie się rozsynchronizowało. Dołącz ponownie, aby grać.",
+    "refusedData": "Ten serwer odrzucił dane z twojej gry. Dołącz ponownie, aby grać.",
+    "joinUnfinished": "Dołączanie do tego serwera nie zostało ukończone ({reason}). Dołącz ponownie, aby spróbować jeszcze raz.",
+    "answeredLate": "Serwer odpowiedział Modstoke za późno, gdy twoja gra już się zaczęła.",
+    "rejoinToPlay": "Dołącz ponownie, aby grać.",
+    "rejoinHelp": "Dołącz ponownie, aby spróbować jeszcze raz. Jeśli to się powtarza, zainstaluj wersję Modstoke, której używa serwer.",
+    "checkTimedOut": "Serwer nie zdążył wpuścić twojej gry przez sprawdzanie dołączania Modstoke.",
+    "checkNeedsMore": "Sprawdzanie dołączania Modstoke na tym serwerze wymaga czegoś, czego twój Modstoke nie oferuje.",
+    "checkMismatch": "Sprawdzanie dołączania Modstoke na tym serwerze nie zgadza się z twoim.",
+    "checkBrokeOff": "Sprawdzanie dołączania Modstoke z tym serwerem zostało przerwane."
+  },
+
+  "content": {
+    "checking": "Mody są jeszcze sprawdzane z serwerem.",
+    "vanillaAllowed": "Ten serwer wpuszcza też graczy bez modów, więc przedmiotów z modów nie można tu udostępniać.",
+    "serverLacks": "Ten serwer nie używa twoich modów, więc ich przedmiotów nie można tu udostępniać.",
+    "unchecked": "Ta sesja nie sprawdza modów, więc przedmiotów z modów nie można tu udostępniać."
   }
 }

@@ -19,7 +19,6 @@ namespace Modstoke.Sons
             InteractionHookStatus.NotAttempted, "The debug-command hook has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
 
         /// <summary>Runs synchronously before CoopServerCallbacks.OnEvent(ItemPlatingStructureActivateEvent) on the server.</summary>
         public static event Action<ItemPlatingActivationRequest> ActivatingItemPlatingStructure;
@@ -149,16 +148,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportDispatchFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server interaction policy rejected a callback: "
-                    + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server interaction policy rejected a callback", detail);
 
         private enum InteractionKind { ItemPlating, Artifact, DebugCommand }
     }

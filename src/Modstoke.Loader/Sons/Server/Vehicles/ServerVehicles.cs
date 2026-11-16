@@ -16,7 +16,6 @@ namespace Modstoke.Sons
             "The vehicle request hook has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedFailure;
 
         public static event Action<SledGrabRequest> SledGrabbing;
         public static event Action<SledReleaseRequest> SledReleasing;
@@ -122,16 +121,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server vehicle policy rejected a request: "
-                    + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server vehicle policy rejected a request", detail);
     }
 
     public enum VehicleHookStatus { NotAttempted, Disabled, Installing, Installed, Failed }

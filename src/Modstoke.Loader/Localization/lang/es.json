@@ -1037,6 +1037,44 @@
 
   "kick": {
     "yourGameHas": "Tu juego tiene: {content}.",
-    "noModContent": "ningún contenido de mods"
+    "noModContent": "ningún contenido de mods",
+    "title": {
+      "modsDontMatch": "Los mods no coinciden",
+      "couldNotJoin": "No se pudo unir"
+    },
+    "modsDiffer": "Tus mods no coinciden con los de este servidor.",
+    "install": "Instala {mods}.",
+    "switchTo": "Cambia a {mods}.",
+    "turnOff": "Desactiva {mods}.",
+    "youHave": "{mod} (tienes {version})",
+    "differentBuild": "otra compilación",
+    "needsMods": "Este servidor necesita mods que no tienes.",
+    "updateTo": "Actualiza a {mods}.",
+    "turnOn": "Activa {mods}.",
+    "checkUnfinished": "Tu juego no terminó la comprobación de mods de este servidor. Actualiza Modstoke a la versión del servidor y vuelve a unirte.",
+    "checksMods": "Este servidor comprueba los mods antes de dejar entrar a los jugadores. Instala la versión actual de Modstoke y los mismos mods, y luego únete desde la lista de servidores de Modstoke: {mods}.",
+    "installModstoke": "Este servidor comprueba los mods antes de dejar entrar a los jugadores. Instala Modstoke y únete desde la lista de servidores de Modstoke.",
+    "installModAdmission": "Este servidor comprueba los mods instalados antes de dejar entrar a los jugadores. Instala Modstoke, activa en él la admisión de mods y luego únete a este servidor desde la lista de servidores de Modstoke.",
+    "turnOnModAdmission": "Este servidor comprueba tus mods instalados antes de dejarte entrar, y tu Modstoke no participa en esa comprobación. Activa la admisión de mods en Modstoke y vuelve a unirte.",
+    "otherVersion": "Este servidor usa otra versión de Modstoke. Instala la versión del servidor para unirte.",
+    "otherCheck": "Este servidor usa otra versión de Modstoke, y su comprobación de mods no puede comunicarse con la tuya.",
+    "otherCheckHelp": "Instala la versión de Modstoke que usa el servidor o pide al anfitrión que actualice.",
+    "outOfStep": "Tu juego empezó a jugar antes de que este servidor lo dejara entrar, así que la conexión está desincronizada. Vuelve a unirte para jugar.",
+    "refusedData": "Este servidor rechazó datos de tu juego. Vuelve a unirte para jugar.",
+    "joinUnfinished": "La conexión a este servidor no terminó ({reason}). Vuelve a unirte para intentarlo de nuevo.",
+    "answeredLate": "El servidor respondió a Modstoke demasiado tarde, cuando tu juego ya había empezado.",
+    "rejoinToPlay": "Vuelve a unirte para jugar.",
+    "rejoinHelp": "Vuelve a unirte para intentarlo de nuevo. Si sigue pasando, instala la versión de Modstoke que usa el servidor.",
+    "checkTimedOut": "El servidor no terminó a tiempo de dejar entrar a tu juego con la comprobación de acceso de Modstoke.",
+    "checkNeedsMore": "La comprobación de acceso de Modstoke de este servidor necesita algo que tu Modstoke no ofrece.",
+    "checkMismatch": "La comprobación de acceso de Modstoke de este servidor no coincide con la tuya.",
+    "checkBrokeOff": "La comprobación de acceso de Modstoke con este servidor se interrumpió."
+  },
+
+  "content": {
+    "checking": "Todavía se están comprobando los mods con el servidor.",
+    "vanillaAllowed": "Este servidor también deja entrar a jugadores sin mods, así que los objetos de mods no se pueden compartir aquí.",
+    "serverLacks": "Este servidor no usa tus mods, así que sus objetos no se pueden compartir aquí.",
+    "unchecked": "Esta sesión no comprueba los mods, así que los objetos de mods no se pueden compartir aquí."
   }
 }

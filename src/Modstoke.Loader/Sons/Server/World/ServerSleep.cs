@@ -17,7 +17,6 @@ namespace Modstoke.Sons
             SleepHookStatus.NotAttempted, "The sleep policy hook has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
 
         /// <summary>
         /// Runs synchronously before server dispatch, including server-local sleep broadcasts.
@@ -119,16 +118,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportDispatchFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server sleep policy rejected an event: "
-                    + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server sleep policy rejected an event", detail);
     }
 
     public enum SleepHookStatus

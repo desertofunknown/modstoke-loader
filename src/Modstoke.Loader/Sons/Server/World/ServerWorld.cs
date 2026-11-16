@@ -17,7 +17,6 @@ namespace Modstoke.Sons
         public const int MaximumEntityBatchEntries = 128;
 
         private static int _ownerThreadId;
-        private static int _reportedFailure;
 
         internal static void Initialize()
         {
@@ -246,17 +245,7 @@ namespace Modstoke.Sons
                 IsServerOwned, SourceConnectionId, ControllerConnectionId, SourceSession, ControllerSession);
         }
 
-        private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server world read failed ("
-                    + error.GetType().FullName + "). Further read failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+        private static void ReportFailure(Exception error) => NetworkFailures.Report("Server world read", error);
     }
 
     public enum WorldReadStatus

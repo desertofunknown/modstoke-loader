@@ -19,7 +19,6 @@ namespace Modstoke.Sons
             StructureHitHookStatus.NotAttempted, "The structure-hit hook has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
 
         /// <summary>
         /// Runs synchronously before CoopServerCallbacks.OnEvent(StructureHitEvent), including its validation.
@@ -132,16 +131,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportDispatchFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server structure-hit policy rejected a request: "
-                    + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server structure-hit policy rejected a request", detail);
     }
 
     public enum StructureHitHookStatus

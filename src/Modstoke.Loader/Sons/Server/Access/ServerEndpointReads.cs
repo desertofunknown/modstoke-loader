@@ -3,7 +3,6 @@
 
 using System;
 using System.Net;
-using System.Threading;
 using Il2CppInterop.Runtime;
 using Modstoke.Loader;
 
@@ -11,8 +10,6 @@ namespace Modstoke.Sons
 {
     public static partial class ServerSessions
     {
-        private static int _reportedEndpointReadFailure;
-
         /// <summary>
         /// Copies the endpoint of an exact live remote session on the game thread.
         /// Backend-specific values are transport observations, not authentication or permission.
@@ -129,15 +126,7 @@ namespace Modstoke.Sons
             catch (Exception error)
             {
                 status = ConnectionReadStatus.Failed;
-                if (Interlocked.Exchange(ref _reportedEndpointReadFailure, 1) == 0)
-                {
-                    try
-                    {
-                        RuntimeEntryPoint.LogSource?.LogWarning("Server endpoint read failed ("
-                            + error.GetType().FullName + "). Further endpoint failures will not be logged.");
-                    }
-                    catch (Exception) { }
-                }
+                NetworkFailures.Report("Server endpoint read", error, withMessage: false);
                 return false;
             }
         }

@@ -26,7 +26,6 @@ namespace Modstoke.Sons
             ConstructionHookStatus.NotAttempted, "The blueprint-completion observation hooks have not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
 
         /// <summary>
         /// Runs before the server handles StructureCraftingNodeCreate, including placement from held relocation state.
@@ -163,16 +162,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportDispatchFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server construction policy rejected a request: "
-                    + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server construction policy rejected a request", detail);
     }
 
     public enum ConstructionHookStatus

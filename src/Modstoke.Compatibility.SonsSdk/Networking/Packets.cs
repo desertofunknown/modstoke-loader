@@ -152,7 +152,9 @@ public static class Packets
         /// <summary>
         /// Whether the server may forward a client's payload to other clients.
         /// Server-authoritative protocols should return false and send their own
-        /// validated replies. The default preserves existing SDK packet behavior.
+        /// validated replies. The default keeps SonsSdk's relaying for RedLoader
+        /// mods; under the Modstoke driver, an event from a native Modstoke mod
+        /// that does not override this is not relayed.
         /// </summary>
         public virtual bool AllowClientRelay => true;
 

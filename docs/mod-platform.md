@@ -2914,6 +2914,8 @@ reports a later hello in the same session that claimed something different.
 
 - legacy SonsSdk packets for events this host registered, with their ids, and for
   events no host mod registered, with hashes only (ids never cross the wire);
+- SDK packets dropped over the session's receive budget (`OverBudgetSdkPackets`,
+  600 a second with bursts of 1200), which are in no other count;
 - notice frames with a bad envelope or body, and well-formed frames of a kind only
   the host sends;
 - negotiated client commands naming no registered command, rate-limited commands
@@ -4019,6 +4021,16 @@ The check rides on client enrollment (capability `1 << 61`); see
   show in other players' hands.
 - Servers without required mods are unaffected, and a client joins a server that
   declares none, vanilla ones among them, as the game does.
+- `ContentAgreement.Sharing` says how far this process's networked content
+  reaches in the current session (`Offline`, `Shared`, `Checking`,
+  `VanillaAllowed`, `ServerLacksContent`, `Unchecked`), and
+  `CanUseNetworkedContent` is true when it is `Offline` or `Shared`.
+  `DescribeSharing()` gives the player a localized line on why mod items can't be
+  shared otherwise. Mods check it before dropping, attaching, crafting or showing
+  networked items; the SDK applies it to held items, held weapon mods and loot.
+- A joining client whose content matched holds the server's world back until
+  its networked items exist, for at most 10 seconds (see
+  [Join admission](BOLT_NETWORKING.md#join-admission)).
 
 ### Weapon attachments
 
@@ -4037,9 +4049,16 @@ a native weapon mod for one weapon item, on a slot (`OnTopRail` by default):
   `OnDetached` also runs when the carrying weapon object is destroyed.
 - `TryAttach(itemId)` moves one item from the inventory onto the held, or else
   first carried, weapon and returns any attachment it replaces. `TryDetach`
-  returns it. Both are host and singleplayer only and refuse under strict
-  inventory. A held weapon shows the change at once; other players see it
-  when it is next equipped.
+  returns it. Both refuse under strict inventory. A change to the weapon in hand
+  goes into the owner's player state at once, and other players' games redraw
+  that rifle from it; a carried weapon shows its mods when next equipped.
+- Other players see mod attachments only while
+  `ContentAgreement.PeersShareContent`; otherwise the hashes are left out of
+  the replicated list and the owner alone sees them.
+- `ServerWorld.TryReadHeldWeaponMods(binding, weaponItemId, out held, out
+  hashes, out status)` reads that list on the host, for example to check that a
+  player holds a rifle carrying a given mod. The owner's game writes it, so it
+  is what others are shown, not proof.
 - The definition must be a `CustomItem` without hotkeys or asset references. The
   item type defaults to `CraftingMaterial, Droppable`; weapon, clothing and
   ammunition types are refused, and Equippable needs a held model.
@@ -4079,7 +4098,9 @@ applies the additions once a world is loading, in a fixed order.
   colored weapon cases in helicopter crash sites and caves) or
   `BasicStorageCrateItems` (storage crates, the game's tech loot). The game's own
   entries weigh 1 to 300; `maxCount` caps how many one container may roll.
-  Containers already opened in a save keep what they rolled.
+  Containers already opened in a save keep what they rolled. In multiplayer the
+  entries stay in the tables only while `ContentAgreement.CanUseNetworkedContent`,
+  since every peer rolls the same seed.
 - `PrinterBlueprints.TryRegister(modId, key, itemId, name, resin, seconds, out
   problem)` adds a 3D printer blueprint that prints one item from 1 to 2000
   resin. Its id comes from the mod id and key, so a save printing one finds it

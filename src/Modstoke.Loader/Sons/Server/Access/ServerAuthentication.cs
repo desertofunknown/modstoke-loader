@@ -21,7 +21,6 @@ namespace Modstoke.Sons
         private static readonly Dictionary<ulong, AuthenticationObservation> Latest = new();
         private static long _observationCount;
         private static int _installationAttempted;
-        private static int _reportedFailure;
         private static bool _hooksInstalled;
 
         /// <summary>Hook registration succeeded, not proof that a ticket or player has been authenticated.</summary>
@@ -211,16 +210,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server authentication observation failed ("
-                    + error.GetType().FullName + "). Further observation failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server authentication observation", error, withMessage: false);
 
         internal sealed class ValidationTarget
         {

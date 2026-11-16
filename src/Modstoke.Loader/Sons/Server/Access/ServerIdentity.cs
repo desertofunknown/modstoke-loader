@@ -4,7 +4,6 @@
 using System;
 using System.Globalization;
 using System.Text;
-using System.Threading;
 using Modstoke.Loader;
 using global::Sons.Multiplayer;
 
@@ -12,8 +11,6 @@ namespace Modstoke.Sons
 {
     public static partial class ServerSessions
     {
-        private static int _reportedIdentityReadFailure;
-
         /// <summary>
         /// Reads the game's identity and stored role for an exact live remote session on the game thread.
         /// Success is an observation, not an authentication or permission verdict.
@@ -166,16 +163,7 @@ namespace Modstoke.Sons
             !char.IsWhiteSpace(c) && !char.IsControl(c) && char.GetUnicodeCategory(c) != UnicodeCategory.Format;
 
         private static void ReportIdentityReadFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedIdentityReadFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server identity read failed ("
-                    + error.GetType().FullName + "). Further identity read failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server identity read", error, withMessage: false);
     }
 
     public enum IdentityReadStatus

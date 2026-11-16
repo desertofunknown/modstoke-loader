@@ -16,7 +16,6 @@ namespace Modstoke.Sons
             "Companion request hooks have not been installed.");
         private static int _installationAttempted;
         private static int _ownerThread;
-        private static int _reportedFailure;
         [ThreadStatic] private static bool _publishing;
         [ThreadStatic] private static HashSet<IntPtr> _dispatching;
 
@@ -108,11 +107,6 @@ namespace Modstoke.Sons
             Volatile.Write(ref _state, new ServerCompanionState(status, detail));
 
         private static void ReportFailure(Exception error, string outcome)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0) return;
-            try { RuntimeEntryPoint.LogSource?.LogWarning("Companion request policy failed (" + error.GetType().FullName
-                + "). " + outcome + " Further failures will not be logged."); }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Companion request policy (" + outcome + ")", error);
     }
 }

@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Alex Cooper
 
 using System;
-using System.Threading;
 using Bolt;
 using RedLoader;
 using global::Sons.Multiplayer;
@@ -16,7 +15,6 @@ namespace Modstoke.Loader
     internal sealed class ServerCommands : ISdkServerCommandDriver
     {
         internal static readonly global::Modstoke.Loader.ServerCommands Instance = new();
-        private int _reportedFailure;
 
         private ServerCommands() { }
 
@@ -166,16 +164,8 @@ namespace Modstoke.Loader
             }
         }
 
-        private void ReportFailure(string operation, Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server command " + operation + " failed ("
-                    + error.GetType().FullName + "). Further command failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+        // Command text and its arguments come from players, so only the exception type and stack are logged.
+        private static void ReportFailure(string operation, Exception error)
+            => global::Modstoke.Sons.NetworkFailures.Report("Server command " + operation, error, withMessage: false);
     }
 }

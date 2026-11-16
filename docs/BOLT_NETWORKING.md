@@ -56,8 +56,9 @@ labels to the join; a join by IP or from the game's own list carries none. The
 hint lasts for one Bolt start.
 
 1. The client sends `Hello` and holds every Bolt send (`BoltConnection.Send`)
-   while still receiving the host's state. SDK packets are not held; they are
-   unreliable by contract and the host drops them while it holds the peer.
+   while still receiving the host's state. Its SDK packets wait too, up to 32
+   (the oldest go first), and are sent once `Admitted` arrives; a host that
+   still holds a peer drops the ones that reach it anyway.
 2. The host answers with a `Challenge`, or with `Rejected(NotParticipating)` when
    this session runs no check, which releases the client at once. A host that
    said it answers but stays silent for 15 seconds makes the client leave with
@@ -67,6 +68,14 @@ hint lasts for one Bolt start.
 4. Once enrollment, the content check and mod admission have all passed, the
    host sends `Admitted` and lets the connection's game packets through. The
    client sends nothing before `Admitted` arrives.
+5. Every client packet carries its scene state, and Bolt replicates entities to
+   a client only once that state says it loaded the server's scene. A client
+   whose content matched keeps holding its sends from that moment until its
+   networked mod items exist (every mod that reserves networked item ids has
+   published some or had them refused, none retried a registration the game
+   wasn't ready for in the last two seconds, and nothing was added for half a
+   second), for at most 10 seconds, so the first replicated state cannot name an
+   item, pickup or weapon mod it can't resolve yet.
 
 The stream channel is reliable but resends a lost frame on its own, so frames
 can arrive out of order. A client keeps any declaration, admission frame or
@@ -89,7 +98,20 @@ it was held", the client's "The server admitted this connection after X ms ...;
 N game sends were held until then", or a "Refused connection N" line with the
 reason and the held counts. Ten seconds after admission the host warns if that
 client's notices hello has not arrived, which points at a stalled reliable
-event stream.
+event stream. The client also logs "Sent N SDK packets held until the server
+admitted this client" and, when it held the world back, "Holding the server's
+world until this game's mod items are ready (waiting for ...)" followed by "Mod
+items were ready X ms after the world loaded" or, after 10 seconds, a warning
+that it is joining anyway; "This game's mod items were ready when the world
+loaded" means there was nothing to hold.
+
+Refusal notices travel in the disconnect token in the host's language, cut to
+its 256 UTF-8 bytes; the host's refusal line says whether the notice went out.
+A client
+whose own check already found the same differences shows its version, in the
+player's language, under the title "Mods don't match"; other refusals it
+expected (another negotiation version, a check that broke off or timed out) are
+titled "Couldn't join".
 
 ### Content declaration
 

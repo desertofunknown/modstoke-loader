@@ -13,7 +13,6 @@ namespace Modstoke.Sons
     public static class ServerRoles
     {
         private static int _ownerThreadId;
-        private static int _reportedFailure;
 
         internal static void Initialize()
         {
@@ -221,16 +220,7 @@ namespace Modstoke.Sons
         };
 
         private static void ReportFailure(string operation, Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Stored server role " + operation + " failed ("
-                    + error.GetType().FullName + "). Further stored-role failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Stored server role " + operation, error);
     }
 
     /// <summary>A raw role observation, not a connection, authenticated identity or permission verdict.</summary>

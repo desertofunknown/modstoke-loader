@@ -12,7 +12,6 @@ namespace Modstoke.Sons
     public static class ServerAdmission
     {
         private static int _ownerThreadId;
-        private static int _reportedFailure;
 
         internal static void Initialize()
         {
@@ -98,16 +97,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server admission configuration failed ("
-                    + error.GetType().FullName + "). Further admission configuration failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server admission configuration", error);
     }
 
     public sealed class ServerAdmissionSnapshot

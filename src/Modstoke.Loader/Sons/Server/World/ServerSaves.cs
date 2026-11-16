@@ -14,7 +14,6 @@ namespace Modstoke.Sons
     public static class ServerSaves
     {
         private static int _ownerThreadId;
-        private static int _reportedFailure;
 
         internal static void Initialize()
         {
@@ -129,16 +128,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Dedicated-server save request failed ("
-                    + error.GetType().FullName + "). Further request failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Dedicated-server save request", error);
     }
 
     public enum ServerSaveRequestStatus

@@ -2,19 +2,16 @@
 // Copyright (C) 2026 Alex Cooper
 
 using System;
-using System.Threading;
 using Modstoke.Loader;
 
 namespace Modstoke.Sons
 {
     public static partial class ServerVailHits
     {
-        private static int _reportedOutcomeFailure;
-
         /// <summary>
         /// Raised on the game thread after the server's VailHitEvent callback returns or throws, for callbacks
         /// that began while this event had subscribers. Observation only: handlers cannot change the outcome,
-        /// and their exceptions are isolated and logged once. Live only while State reports Installed.
+        /// and their exceptions are isolated and logged. Live only while State reports Installed.
         /// The listen host's own hits, damage over time and dismember kills never raise this event.
         /// </summary>
         public static event Action<VailHitOutcome> Processed;
@@ -84,16 +81,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportOutcomeFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedOutcomeFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server Vail-hit outcome observation failed ("
-                    + error.GetType().FullName + "). Further outcome failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server Vail-hit outcome observation", error);
 
         private sealed class VailHitOutcomeScope
         {

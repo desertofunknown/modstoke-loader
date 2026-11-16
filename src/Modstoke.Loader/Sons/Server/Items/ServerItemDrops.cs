@@ -20,7 +20,6 @@ namespace Modstoke.Sons
             ServerItemDropHookStatus.NotAttempted, "The item-drop hook has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
 
         /// <summary>
         /// Runs synchronously before CoopServerCallbacks.OnEvent(DropItem).
@@ -150,17 +149,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportDispatchFailure(string detail)
-        {
-            // Log a broken policy once rather than once per player request.
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning(
-                    "Server item-drop policy rejected a request: " + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server item-drop policy rejected a request", detail);
     }
 
     public enum ServerItemDropHookStatus

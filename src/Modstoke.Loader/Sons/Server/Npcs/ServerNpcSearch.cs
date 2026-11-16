@@ -19,7 +19,6 @@ public static partial class ServerNpcSearch
         "NPC search hooks have not been installed.");
     private static int _installationAttempted;
     private static int _ownerThread;
-    private static int _reportedFailure;
     [ThreadStatic] private static int _depth;
     [ThreadStatic] private static SearchScope _scope;
     [ThreadStatic] private static bool _publishing;
@@ -198,10 +197,5 @@ public static partial class ServerNpcSearch
     private static void SetState(NpcSearchHookStatus status, string detail) =>
         Volatile.Write(ref _state, new NpcSearchState(status, detail));
     private static void ReportFailure(Exception error)
-    {
-        if (Interlocked.Exchange(ref _reportedFailure, 1) != 0) return;
-        try { RuntimeEntryPoint.LogSource?.LogWarning("NPC search coordination unavailable ("
-            + error.GetType().FullName + "). Native selection is unchanged; further failures will not be logged."); }
-        catch (Exception) { }
-    }
+        => NetworkFailures.Report("NPC search coordination (native selection unchanged)", error);
 }

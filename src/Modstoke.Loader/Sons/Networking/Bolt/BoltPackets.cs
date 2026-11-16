@@ -130,8 +130,8 @@ namespace Modstoke.Sons
                 // Without session tracking there is no notice to give, but the connection must still end.
                 if (session == null)
                     connection.Disconnect();
-                else if (ServerSessions.DisconnectWithNotice(session, "This server refused data from your game. Rejoin to play.")
-                    != DisconnectResult.Requested)
+                else if (ServerSessions.DisconnectWithNotice(session,
+                    ServerSessions.FitNotice(LocalizationStartup.Text.Get("kick.refusedData"))) != DisconnectResult.Requested)
                     ServerSessions.Disconnect(session);
             }
             catch (Exception error) { ReportFailure(error); }

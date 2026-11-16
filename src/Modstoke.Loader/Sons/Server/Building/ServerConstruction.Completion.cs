@@ -17,7 +17,6 @@ namespace Modstoke.Sons
         [ThreadStatic] private static CompletionScope _completion;
         [ThreadStatic] private static CompletionRequestScope _completionRequest;
         [ThreadStatic] private static bool _publishingCompletion;
-        private static int _reportedObservationFailure;
 
         /// <summary>Runs before server routing of the explicit completion command, not every local completion call.</summary>
         public static event Action<BlueprintCompletionRequest> CompletionRequested;
@@ -257,16 +256,7 @@ namespace Modstoke.Sons
             value is not null && !value.WasCollected && value;
 
         private static void ReportObservationFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedObservationFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Blueprint completion observation failed ("
-                    + error.GetType().FullName + "). Native handling is unchanged; further observation failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Blueprint completion observation (native handling unchanged)", error);
 
         private sealed class CompletionRequestScope
         {

@@ -1037,6 +1037,44 @@
 
   "kick": {
     "yourGameHas": "Ditt spel har: {content}.",
-    "noModContent": "inget moddinnehåll"
+    "noModContent": "inget moddinnehåll",
+    "title": {
+      "modsDontMatch": "Moddarna matchar inte",
+      "couldNotJoin": "Kunde inte gå med"
+    },
+    "modsDiffer": "Dina moddar matchar inte serverns.",
+    "install": "Installera {mods}.",
+    "switchTo": "Byt till {mods}.",
+    "turnOff": "Stäng av {mods}.",
+    "youHave": "{mod} (du har {version})",
+    "differentBuild": "ett annat bygge",
+    "needsMods": "Den här servern behöver moddar som du inte har.",
+    "updateTo": "Uppdatera till {mods}.",
+    "turnOn": "Slå på {mods}.",
+    "checkUnfinished": "Ditt spel blev inte klart med den här serverns moddkontroll. Uppdatera Modstoke till serverns version och gå med igen.",
+    "checksMods": "Den här servern kontrollerar moddar innan den släpper in spelare. Installera aktuell Modstoke och samma moddar och gå sedan med från Modstokes serverlista: {mods}.",
+    "installModstoke": "Den här servern kontrollerar moddar innan den släpper in spelare. Installera Modstoke och gå med från Modstokes serverlista.",
+    "installModAdmission": "Den här servern kontrollerar installerade moddar innan den släpper in spelare. Installera Modstoke, slå på moddgodkännande i det och gå sedan med i den här servern från Modstokes serverlista.",
+    "turnOnModAdmission": "Den här servern kontrollerar dina installerade moddar innan du släpps in, och din Modstoke deltar inte i den kontrollen. Slå på moddgodkännande i Modstoke och gå med igen.",
+    "otherVersion": "Den här servern kör en annan version av Modstoke. Installera serverns version för att gå med.",
+    "otherCheck": "Den här servern kör en annan version av Modstoke, och dess moddkontroll kan inte kommunicera med din.",
+    "otherCheckHelp": "Installera den Modstoke-version servern använder, eller be värden att uppdatera.",
+    "outOfStep": "Ditt spel började spela innan servern släppte in det, så anslutningen är ur takt. Gå med igen för att spela.",
+    "refusedData": "Den här servern avvisade data från ditt spel. Gå med igen för att spela.",
+    "joinUnfinished": "Anslutningen till den här servern blev inte klar ({reason}). Gå med igen för att försöka på nytt.",
+    "answeredLate": "Servern svarade Modstoke för sent, när ditt spel redan hade börjat.",
+    "rejoinToPlay": "Gå med igen för att spela.",
+    "rejoinHelp": "Gå med igen för att försöka på nytt. Om det fortsätter att hända, installera den Modstoke-version servern använder.",
+    "checkTimedOut": "Servern hann inte släppa in ditt spel genom Modstokes anslutningskontroll i tid.",
+    "checkNeedsMore": "Den här serverns anslutningskontroll i Modstoke behöver något som din Modstoke inte erbjuder.",
+    "checkMismatch": "Den här serverns anslutningskontroll i Modstoke matchar inte din.",
+    "checkBrokeOff": "Modstokes anslutningskontroll med den här servern avbröts."
+  },
+
+  "content": {
+    "checking": "Moddarna kontrolleras fortfarande med servern.",
+    "vanillaAllowed": "Den här servern släpper även in spelare utan moddar, så föremål från moddar kan inte delas här.",
+    "serverLacks": "Den här servern kör inte dina moddar, så deras föremål kan inte delas här.",
+    "unchecked": "Den här sessionen kontrollerar inte moddar, så föremål från moddar kan inte delas här."
   }
 }

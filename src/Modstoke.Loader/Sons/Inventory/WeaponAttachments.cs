@@ -11,6 +11,7 @@ using Modstoke.Loader;
 using global::Sons.Crafting;
 using global::Sons.Inventory;
 using global::Sons.Items.Core;
+using global::Sons.Multiplayer.Client;
 using global::Sons.Weapon;
 using TheForest.Utils;
 using UnityEngine;
@@ -104,9 +105,10 @@ namespace Modstoke.Sons
     /// alone dismantles there and hands its mods back. As with the game's own, the weapon stays on the mat after
     /// either, and a mod taken off lies beside it. TryAttach and TryDetach change the local weapon directly,
     /// on hosts and clients alike; they refuse while strict inventory is armed, since those changes are not yet
-    /// an authorised custody operation.
+    /// an authorised custody operation. A change to the weapon in hand reaches other players at once, and mod
+    /// attachments are shown to others only while every player is known to have them.
     /// </summary>
-    public static class WeaponAttachments
+    public static partial class WeaponAttachments
     {
         private const string HashPrefix = "modstoke.weaponmod/1\n";
         private static readonly Dictionary<int, Registration> ByHash = new();
@@ -146,6 +148,8 @@ namespace Modstoke.Sons
                     return false;
                 }
                 var hash = HashOf(spec.ModId, spec.Key);
+                // Joining clients wait for networked content, so an attachment still waiting on its items counts.
+                var key = "weapon mod " + hash;
                 if (ByHash.TryGetValue(hash, out var existing))
                 {
                     var same = existing.Spec.AttachmentItemId == spec.AttachmentItemId && existing.Spec.WeaponItemId == spec.WeaponItemId
@@ -158,17 +162,20 @@ namespace Modstoke.Sons
                     || !ItemDatabaseManager.TryFindItemById(spec.WeaponItemId, out var weapon) || !Alive(weapon))
                 {
                     status = "Both the attachment and the weapon item must be registered first.";
+                    if (hash != 0) ItemRegistration.MarkNetworkedPending(key, spec.ModId);
                     return false;
                 }
                 if (!TryCatalog(out var catalog))
                 {
                     status = "The game's weapon mod catalog is not ready.";
+                    ItemRegistration.MarkNetworkedPending(key, spec.ModId);
                     return false;
                 }
                 for (var i = 0; i < catalog.Count; i++)
                     if (Alive(catalog[i]) && catalog[i].Id == hash)
                     {
                         status = "Hash " + hash + " collides with native weapon mod " + catalog[i].name + ".";
+                        ItemRegistration.MarkNetworkedDone(key, false);
                         return false;
                     }
                 EnsureHooks();
@@ -195,6 +202,8 @@ namespace Modstoke.Sons
                 catalog.Add(mod);
                 _catalogSeen = catalog.Pointer;
                 ByHash.Add(hash, new Registration { Spec = spec, Mod = mod });
+                ItemRegistration.MarkNetworkedDone(key, true);
+                FindRemotesSoon();
                 _weaponsOnMat = false;
                 RuntimeEntryPoint.LogSource?.LogInfo("Item " + spec.AttachmentItemId + " attaches to item " + spec.WeaponItemId
                     + " as weapon mod " + hash + " on " + spec.Slot + ".");
@@ -252,6 +261,7 @@ namespace Modstoke.Sons
             }
             mods.Add(registration.Mod);
             Refresh(module);
+            PublishHeld(module);
             status = "";
             return true;
         }
@@ -274,6 +284,7 @@ namespace Modstoke.Sons
             }
             module._weaponMods.Remove(registration.Mod);
             Refresh(module);
+            PublishHeld(module);
             status = "";
             return true;
         }
@@ -297,7 +308,9 @@ namespace Modstoke.Sons
                         if (Alive(registration.Mod) && !catalog.Contains(registration.Mod)) catalog.Add(registration.Mod);
                     _catalogSeen = catalog.Pointer;
                     _weaponsOnMat = false;
+                    _remotesAt = 0;
                 }
+                TickRemotes();
                 for (var i = Live.Count - 1; i >= 0; i--)
                 {
                     var context = Live[i];
@@ -636,6 +649,22 @@ namespace Modstoke.Sons
             catch (Exception error)
             {
                 RuntimeEntryPoint.LogSource?.LogWarning("Attachment recipes will not be listed under the crafting cog: " + error.Message);
+            }
+            // A dedicated server draws no rifles, and its GameAssembly isn't the build the writer's address comes from.
+            if (GameBuild.IsDedicatedServer) return;
+            try
+            {
+                var harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-weapon-attachment-network");
+                harmony.Patch(PlayerLifecycle.QualifyNative(typeof(BoltPlayerSetup), nameof(BoltPlayerSetup.AddHeldItem), 0x32C1440,
+                        false, typeof(void), typeof(ItemInstance)),
+                    postfix: new HarmonyMethod(typeof(WeaponAttachments), nameof(AfterAddHeldItem)));
+                harmony.Patch(AccessTools.Method(typeof(CoopPlayerRemoteSetup), nameof(CoopPlayerRemoteSetup.UpdateHeldItems)),
+                    postfix: new HarmonyMethod(typeof(WeaponAttachments), nameof(AfterRemoteHeldItems)));
+            }
+            catch (Exception error)
+            {
+                RuntimeEntryPoint.LogSource?.LogWarning("Attachment changes reach other players only when the weapon is "
+                    + "next equipped, and mod attachments are not withheld from players who may lack them: " + error.Message);
             }
         }
 

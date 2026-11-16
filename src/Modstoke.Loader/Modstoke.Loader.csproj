@@ -909,6 +909,7 @@
     <Compile Include="Sons/Inventory/HeldItems.SelfTest.cs" />
     <Compile Include="Sons/Inventory/ItemRegistration.Models.cs" />
     <Compile Include="Sons/Inventory/WeaponAttachments.cs" />
+    <Compile Include="Sons/Inventory/WeaponAttachments.Network.cs" />
     <Compile Include="Sons/Inventory/LootTables.cs" />
     <Compile Include="Sons/Inventory/Modules/ItemModuleSnapshot.cs" />
     <Compile Include="Sons/Inventory/Modules/ModuleStackStore.cs" />

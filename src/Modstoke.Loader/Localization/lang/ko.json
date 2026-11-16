@@ -1037,6 +1037,44 @@
 
   "kick": {
     "yourGameHas": "내 게임의 콘텐츠: {content}.",
-    "noModContent": "모드 콘텐츠 없음"
+    "noModContent": "모드 콘텐츠 없음",
+    "title": {
+      "modsDontMatch": "모드가 일치하지 않음",
+      "couldNotJoin": "참가할 수 없음"
+    },
+    "modsDiffer": "내 모드가 이 서버의 모드와 일치하지 않습니다.",
+    "install": "{mods} 모드를 설치하세요.",
+    "switchTo": "{mods}(으)로 바꾸세요.",
+    "turnOff": "{mods} 모드를 끄세요.",
+    "youHave": "{mod} (내 버전: {version})",
+    "differentBuild": "다른 빌드",
+    "needsMods": "이 서버에는 내게 없는 모드가 필요합니다.",
+    "updateTo": "{mods}(으)로 업데이트하세요.",
+    "turnOn": "{mods} 모드를 켜세요.",
+    "checkUnfinished": "게임이 이 서버의 모드 확인을 마치지 못했습니다. Modstoke를 서버 버전으로 업데이트한 뒤 다시 참가하세요.",
+    "checksMods": "이 서버는 플레이어를 들여보내기 전에 모드를 확인합니다. 최신 Modstoke와 같은 모드를 설치한 뒤 Modstoke 서버 목록에서 참가하세요: {mods}.",
+    "installModstoke": "이 서버는 플레이어를 들여보내기 전에 모드를 확인합니다. Modstoke를 설치하고 Modstoke 서버 목록에서 참가하세요.",
+    "installModAdmission": "이 서버는 플레이어를 들여보내기 전에 설치된 모드를 확인합니다. Modstoke를 설치하고 모드 승인을 켠 뒤 Modstoke 서버 목록에서 이 서버에 참가하세요.",
+    "turnOnModAdmission": "이 서버는 들여보내기 전에 설치된 모드를 확인하는데, 내 Modstoke는 이 확인에 참여하지 않습니다. Modstoke에서 모드 승인을 켠 뒤 다시 참가하세요.",
+    "otherVersion": "이 서버는 다른 버전의 Modstoke를 사용합니다. 참가하려면 서버와 같은 버전을 설치하세요.",
+    "otherCheck": "이 서버는 다른 버전의 Modstoke를 사용하며, 서버의 모드 확인이 내 것과 통신할 수 없습니다.",
+    "otherCheckHelp": "서버가 쓰는 버전의 Modstoke를 설치하거나 호스트에게 업데이트를 요청하세요.",
+    "outOfStep": "서버가 들여보내기 전에 게임이 플레이를 시작해서 연결이 어긋났습니다. 다시 참가해서 플레이하세요.",
+    "refusedData": "이 서버가 내 게임의 데이터를 거부했습니다. 다시 참가해서 플레이하세요.",
+    "joinUnfinished": "이 서버 참가가 끝나지 않았습니다({reason}). 다시 참가해서 다시 시도하세요.",
+    "answeredLate": "서버가 Modstoke에 너무 늦게 응답해서 게임이 이미 시작된 뒤였습니다.",
+    "rejoinToPlay": "다시 참가해서 플레이하세요.",
+    "rejoinHelp": "다시 참가해서 다시 시도하세요. 계속 일어나면 서버가 쓰는 버전의 Modstoke를 설치하세요.",
+    "checkTimedOut": "서버가 Modstoke 참가 확인으로 내 게임을 제때 들여보내지 못했습니다.",
+    "checkNeedsMore": "이 서버의 Modstoke 참가 확인에는 내 Modstoke가 제공하지 않는 기능이 필요합니다.",
+    "checkMismatch": "이 서버의 Modstoke 참가 확인이 내 것과 맞지 않습니다.",
+    "checkBrokeOff": "이 서버와의 Modstoke 참가 확인이 중단되었습니다."
+  },
+
+  "content": {
+    "checking": "아직 서버와 모드를 확인하는 중입니다.",
+    "vanillaAllowed": "이 서버는 모드가 없는 플레이어도 들여보내므로 모드 아이템을 여기서 공유할 수 없습니다.",
+    "serverLacks": "이 서버는 내 모드를 사용하지 않으므로 그 아이템을 여기서 공유할 수 없습니다.",
+    "unchecked": "이 세션은 모드를 확인하지 않으므로 모드 아이템을 여기서 공유할 수 없습니다."
   }
 }

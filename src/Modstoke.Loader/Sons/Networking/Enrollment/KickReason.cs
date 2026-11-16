@@ -13,6 +13,8 @@ using TMPro;
 
 namespace Modstoke.Sons
 {
+    internal enum KickTitle { ModsDontMatch, CouldNotJoin }
+
     /// <summary>
     /// Shows the reason a server wrote into a kick. The game receives it in the kick token, but its kick popup on
     /// the title screen and the server browser's status bar only show a generic localized line.
@@ -20,26 +22,45 @@ namespace Modstoke.Sons
     internal static class KickReason
     {
         private const double ShowSeconds = 120;
-        private static string _detail, _reason;
-        private static double _detailUntil, _reasonUntil;
+        private static string _expected, _detail, _title, _reason;
+        private static bool _expectedWins;
+        private static double _expectedUntil, _reasonUntil;
         private static bool _hooked, _logged;
         private static DynamicModalDialogController _dialog;
-        private static UnityEngine.Localization.Components.LocalizeStringEvent _paused;
+        private static UnityEngine.Localization.Components.LocalizeStringEvent _paused, _pausedTitle;
 
         private static double Now => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
 
         /// <summary>
-        /// From a client that already knows why it will be refused: the reason it expects, shown if the kick's own
-        /// text never arrives, and a detail line added to whichever reason is shown.
+        /// From a client that already knows why it will be refused: the popup's title, the reason it expects, shown
+        /// if the kick's own text never arrives, and a detail line added to whichever reason is shown.
         /// </summary>
-        internal static void Expect(string reason, string detail)
+        /// <remarks>replacesServerText is for a reason this client built from the same facts the server used: it is
+        /// shown in the player's language in place of the server's.</remarks>
+        internal static void Expect(KickTitle title, string reason, string detail, bool replacesServerText = false)
         {
+            _title = LocalizationStartup.Text.Get(title == KickTitle.ModsDontMatch
+                ? "kick.title.modsDontMatch" : "kick.title.couldNotJoin");
+            _expected = reason;
             _detail = detail;
-            _detailUntil = Now + ShowSeconds;
-            _reason = reason + "\n\n" + detail;
-            _reasonUntil = Now + ShowSeconds;
+            _expectedWins = replacesServerText;
+            _expectedUntil = Now + ShowSeconds;
+            _reason = Join(reason, detail);
+            _reasonUntil = _expectedUntil;
             _logged = false;
         }
+
+        // A reason belongs to the connection that expected or received it; the next start never shows it for another
+        // server. Not on shutdown, which comes before the title screen shows the popup.
+        internal static void ResetForStart()
+        {
+            Release();
+            _expected = _detail = _title = _reason = null;
+            _expectedWins = false;
+            _kickedAt = double.MinValue;
+        }
+
+        private static string Join(string reason, string detail) => detail == null ? reason : reason + "\n\n" + detail;
 
         private static double _kickedAt = double.MinValue;
 
@@ -74,8 +95,12 @@ namespace Modstoke.Sons
                     Release();
                     _reason = null;
                 }
-                // Localization can finish after the popup opens and write its generic line again.
-                else if (_dialog._gui.ContentText is { } text && text && text.text != _reason) text.text = _reason;
+                else
+                {
+                    // Localization can finish after the popup opens and write its generic lines again.
+                    if (_dialog._gui.ContentText is { } text && text && text.text != _reason) text.text = _reason;
+                    if (_title != null && TitleText(_dialog._gui) is { } title && title.text != _title) title.text = _title;
+                }
             }
             catch (Exception)
             {
@@ -128,22 +153,33 @@ namespace Modstoke.Sons
             try
             {
                 var message = __0?.KickMessage?.Trim();
-                // A native kick sends a localization key; a reason written for players has spaces.
-                var written = !string.IsNullOrEmpty(message) && message.Contains(' ') ? message : null;
-                var detail = _detail != null && Now < _detailUntil ? _detail : null;
+                var written = !string.IsNullOrEmpty(message) && !IsNativeKey(message) ? message : null;
+                var expected = _expected != null && Now < _expectedUntil;
                 // Several kick paths can run for one kick; the first one keeps the reason.
-                if (written == null && detail == null || _reason != null && Now < _kickedAt + 5) return;
-                _detail = null;
-                _reason = written == null ? detail : detail == null ? written : written + "\n\n" + detail;
+                if (written == null && !expected || _reason != null && Now < _kickedAt + 5) return;
+                _reason = !expected ? written
+                    : written == null || _expectedWins ? Join(_expected, _detail) : Join(written, _detail);
+                if (!expected) _title = null;
+                _expected = _detail = null;
                 _kickedAt = Now;
                 _reasonUntil = Now + ShowSeconds;
                 _logged = false;
-                RuntimeEntryPoint.LogSource?.LogInfo("Kicked by the server: " + _reason.Replace("\n\n", " "));
+                RuntimeEntryPoint.LogSource?.LogInfo("Kicked by the server" + (written == null ? "" : ": " + written)
+                    + (_reason == written ? "" : ". Showing: " + _reason.Replace("\n\n", " ")));
             }
             catch (Exception error)
             {
                 RuntimeEntryPoint.LogSource?.LogWarning("The kick reason could not be read: " + error.Message);
             }
+        }
+
+        // A native kick sends a Multiplayer localization key such as HOST_BANNED_YOU. Anything else was written for
+        // players, in the server's language, which need not separate words with spaces.
+        private static bool IsNativeKey(string message)
+        {
+            foreach (var character in message)
+                if (character is not (>= 'A' and <= 'Z' or >= '0' and <= '9' or '_')) return false;
+            return true;
         }
 
         private static void AfterDialog(DynamicModalDialogController __result)
@@ -163,9 +199,17 @@ namespace Modstoke.Sons
                     localized.enabled = false;
                     _paused = localized;
                 }
+                // The game titles this popup "Admin"; a refusal this game expected names what happened instead.
+                if (_title != null && TitleText(gui) is { } title)
+                {
+                    gui.TitleTextString.enabled = false;
+                    _pausedTitle = gui.TitleTextString;
+                    title.text = _title;
+                }
                 _dialog = __result;
                 gui.ContentText.text = _reason;
-                if (!_logged) RuntimeEntryPoint.LogSource?.LogInfo("Showing the server's kick reason: " + _reason);
+                if (!_logged) RuntimeEntryPoint.LogSource?.LogInfo("Showing the server's kick reason"
+                    + (_title == null ? "" : " under \"" + _title + "\"") + ": " + _reason);
                 _logged = true;
             }
             catch (Exception error)
@@ -195,14 +239,19 @@ namespace Modstoke.Sons
             try
             {
                 if (_paused != null && _paused) _paused.enabled = true;
+                if (_pausedTitle != null && _pausedTitle) _pausedTitle.enabled = true;
             }
             catch (Exception)
             {
                 // The popup may already be gone with its scene.
             }
-            _paused = null;
+            _paused = _pausedTitle = null;
             _dialog = null;
         }
+
+        private static TMP_Text TitleText(DynamicModalDialogGui gui)
+            => gui.TitleTextString is { } localized && localized && localized.GetComponent<TMP_Text>() is { } text && text
+                ? text : null;
 
         private static bool Same(DynamicModalDialogController a, DynamicModalDialogController b)
             => b != null && a.Pointer == b.Pointer;

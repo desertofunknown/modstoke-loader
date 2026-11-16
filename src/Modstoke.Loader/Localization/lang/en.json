@@ -1037,6 +1037,44 @@
 
   "kick": {
     "yourGameHas": "Your game has: {content}.",
-    "noModContent": "no mod content"
+    "noModContent": "no mod content",
+    "title": {
+      "modsDontMatch": "Mods don't match",
+      "couldNotJoin": "Couldn't join"
+    },
+    "modsDiffer": "Your mods don't match this server's.",
+    "install": "Install {mods}.",
+    "switchTo": "Switch to {mods}.",
+    "turnOff": "Turn off {mods}.",
+    "youHave": "{mod} (you have {version})",
+    "differentBuild": "a different build",
+    "needsMods": "This server needs mods you don't have.",
+    "updateTo": "Update to {mods}.",
+    "turnOn": "Turn on {mods}.",
+    "checkUnfinished": "Your game didn't finish this server's mod check. Update Modstoke to the server's version and rejoin.",
+    "checksMods": "This server checks mods before letting players in. Install the current Modstoke and the same mods, then join it from the Modstoke server list: {mods}.",
+    "installModstoke": "This server checks mods before letting players in. Install Modstoke and join it from the Modstoke server list.",
+    "installModAdmission": "This server checks your installed mods before letting players in. Install Modstoke, turn on mod admission in it, then join this server from the Modstoke server list.",
+    "turnOnModAdmission": "This server checks your installed mods before letting you in, and your Modstoke doesn't take part in that check. Turn on mod admission in Modstoke, then rejoin.",
+    "otherVersion": "This server runs a different Modstoke version. Install the version the server uses to join.",
+    "otherCheck": "This server runs a different Modstoke version, and its mod check can't talk to yours.",
+    "otherCheckHelp": "Install the Modstoke version the server uses, or ask the host to update.",
+    "outOfStep": "Your game started playing before this server let it in, so the connection is out of step. Rejoin to play.",
+    "refusedData": "This server refused data from your game. Rejoin to play.",
+    "joinUnfinished": "Joining this server didn't finish ({reason}). Rejoin to try again.",
+    "answeredLate": "The server answered Modstoke too late, after your game had started playing.",
+    "rejoinToPlay": "Rejoin to play.",
+    "rejoinHelp": "Rejoin to try again. If it keeps happening, install the Modstoke version the server uses.",
+    "checkTimedOut": "The server didn't finish letting your game in through Modstoke's join check in time.",
+    "checkNeedsMore": "This server's Modstoke join check needs something your Modstoke doesn't offer.",
+    "checkMismatch": "This server's Modstoke join check doesn't match yours.",
+    "checkBrokeOff": "Modstoke's join check with this server broke off."
+  },
+
+  "content": {
+    "checking": "Still checking mods with the server.",
+    "vanillaAllowed": "This server lets in players without mods, so items from mods can't be shared here.",
+    "serverLacks": "This server doesn't run your mods, so their items can't be shared here.",
+    "unchecked": "This session doesn't check mods, so items from mods can't be shared here."
   }
 }

@@ -17,7 +17,6 @@ namespace Modstoke.Sons
             WorldLocatorHookStatus.NotAttempted, "The world-locator routing hook has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
 
         /// <summary>
         /// Runs synchronously before the server routes received or locally created WorldObjectLocatorState events.
@@ -120,16 +119,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportDispatchFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server world-locator policy rejected a message: "
-                    + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server world-locator policy rejected a message", detail);
     }
 
     public enum WorldLocatorHookStatus

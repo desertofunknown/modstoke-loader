@@ -24,7 +24,6 @@ namespace Modstoke.Sons
             "The common event policy has not been registered.");
         private static int _installationAttempted;
         private static int _ownerThread;
-        private static int _reportedFailure;
 
         /// <summary>
         /// Synchronous pre-routing decisions on the server. No subscribers means no additional reads
@@ -170,13 +169,7 @@ namespace Modstoke.Sons
             Modding.SetService(ServiceKey, state);
         }
 
-        internal static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0) return;
-            try { RuntimeEntryPoint.LogSource?.LogWarning("Common event policy could not complete ("
-                + error.GetType().FullName + "). Further failures will not be logged."); }
-            catch (Exception) { }
-        }
+        internal static void ReportFailure(Exception error) => NetworkFailures.Report("Common event policy", error);
 
         private sealed record EventClass(string Name, BoltEventSchema Schema);
     }

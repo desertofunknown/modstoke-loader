@@ -23,8 +23,6 @@ namespace Modstoke.Sons
             PlayerSpawnHookStatus.NotAttempted, "The player-spawn authority guard has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedSendFailure;
-        private static int _reportedGuardFailure;
 
         public static PlayerSpawnState State => Volatile.Read(ref _state);
 
@@ -240,28 +238,10 @@ namespace Modstoke.Sons
         }
 
         private static void ReportSendFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedSendFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server spawn assignment failed ("
-                    + error.GetType().FullName + "). Further send failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server spawn assignment", error);
 
         private static void ReportGuardFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedGuardFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Player-spawn event rejected: "
-                    + detail + " Further guard failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Player-spawn event rejected", detail);
     }
 
     public enum PlayerSpawnStatus
@@ -334,7 +314,6 @@ namespace Modstoke.Sons
         private static readonly List<MovementGrant> Grants = new();
         private static IReadOnlyList<MovementGrant> _current = Array.Empty<MovementGrant>();
         private static long _nextValidation;
-        private static int _reportedFailure;
 
         /// <summary>Open and settling grants for every player, oldest first.</summary>
         public static IReadOnlyList<MovementGrant> Current => Volatile.Read(ref _current);
@@ -565,17 +544,7 @@ namespace Modstoke.Sons
 
         private static string Metres(float? distance) => distance?.ToString("0.0", CultureInfo.InvariantCulture) ?? "?";
 
-        private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Movement grant upkeep failed (" + error.GetType().FullName
-                    + "). Further failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+        private static void ReportFailure(Exception error) => NetworkFailures.Report("Movement grant upkeep", error);
     }
 
     /// <summary>One mod's claim that it is moving a player. Game thread only, apart from the copied properties.</summary>

@@ -22,10 +22,6 @@ namespace Modstoke.Sons
             FreeFormHookStatus.NotAttempted, "The construction authority guard has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
-        private static int _reportedFeedbackFailure;
-        private static int _reportedAuthorityGuardFailure;
-        private static int _reportedSnapshotRequestFailure;
         private static readonly HashSet<IntPtr> ServerMessageClasses = new();
 
         /// <summary>
@@ -320,14 +316,7 @@ namespace Modstoke.Sons
                 request.SetNativeFeedbackStatus(sendAttempted
                     ? FreeFormFeedbackStatus.SendUncertain
                     : FreeFormFeedbackStatus.Failed);
-                if (Interlocked.Exchange(ref _reportedFeedbackFailure, 1) != 0)
-                    return;
-                try
-                {
-                    RuntimeEntryPoint.LogSource?.LogWarning("Free-form rejection feedback failed ("
-                        + error.GetType().FullName + "). Further feedback failures will not be logged.");
-                }
-                catch (Exception) { }
+                NetworkFailures.Report("Free-form rejection feedback", error);
             }
         }
 
@@ -360,40 +349,13 @@ namespace Modstoke.Sons
         }
 
         private static void ReportSnapshotRequestFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedSnapshotRequestFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Construction snapshot request rejected: "
-                    + detail + " Further snapshot-request failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Construction snapshot request rejected", detail);
 
         private static void ReportAuthorityGuardFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedAuthorityGuardFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Free-form construction authority guard: "
-                    + detail + " Further guard failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Free-form construction authority guard", detail);
 
         private static void ReportDispatchFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server free-form policy rejected a request: "
-                    + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server free-form policy rejected a request", detail);
     }
 
     public enum FreeFormHookStatus

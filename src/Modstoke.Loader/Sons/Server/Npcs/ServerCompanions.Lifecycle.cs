@@ -16,7 +16,6 @@ namespace Modstoke.Sons
             "Companion observations have not been installed.");
         private static int _observationInstallationAttempted;
         private static int _observationThread;
-        private static int _reportedObservationFailure;
         [ThreadStatic] private static bool _observing;
 
         /// <summary>
@@ -204,11 +203,6 @@ namespace Modstoke.Sons
             Volatile.Write(ref _observationState, new ServerCompanionState(status, detail));
 
         private static void ReportObservationFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedObservationFailure, 1) != 0) return;
-            try { RuntimeEntryPoint.LogSource?.LogWarning("Companion observation failed (" + error.GetType().FullName
-                + "). Native handling was not changed; further observation failures will not be logged."); }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Companion observation (native handling unchanged)", error);
     }
 }

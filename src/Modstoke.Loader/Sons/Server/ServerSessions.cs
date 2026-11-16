@@ -40,9 +40,6 @@ namespace Modstoke.Sons
         private static Queue<PendingEvent> _pending = new();
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedFailure;
-        private static int _reportedExhaustion;
-        private static int _reportedDisconnectFailure;
         private static int _failures;
         private static int _recovery;
         private static bool _patched;
@@ -148,15 +145,7 @@ namespace Modstoke.Sons
             }
             catch (Exception error)
             {
-                if (Interlocked.Exchange(ref _reportedDisconnectFailure, 1) == 0)
-                {
-                    try
-                    {
-                        RuntimeEntryPoint.LogSource?.LogWarning("Server disconnect request failed ("
-                            + error.GetType().FullName + "). Further disconnect failures will not be logged.");
-                    }
-                    catch (Exception) { }
-                }
+                NetworkFailures.Report("Server disconnect request", error);
                 return DisconnectResult.Failed;
             }
         }
@@ -171,6 +160,19 @@ namespace Modstoke.Sons
 
             try { return DisconnectMessageKeyEncoding.GetByteCount(messageKey) <= MaxDisconnectMessageKeyBytes; }
             catch (EncoderFallbackException) { return false; }
+        }
+
+        /// <summary>A written notice cut to fit the disconnect token, ending in "..." when it was cut.</summary>
+        /// <remarks>Translations and player overrides can run past the limit, and the token refuses an overlong notice
+        /// outright, which would leave the player with no reason at all.</remarks>
+        internal static string FitNotice(string notice)
+        {
+            const string cut = "...";
+            var length = notice.Length;
+            while (Encoding.UTF8.GetByteCount(notice.AsSpan(0, length)) + (length < notice.Length ? cut.Length : 0)
+                > MaxDisconnectMessageKeyBytes)
+                length -= length > 1 && char.IsHighSurrogate(notice[length - 2]) ? 2 : 1;
+            return length == notice.Length ? notice : notice[..length].TrimEnd() + cut;
         }
 
         internal static void InstallHarmonyPatches(HarmonySupportSnapshot support, Action<string> warning)
@@ -859,16 +861,13 @@ namespace Modstoke.Sons
                 {
                     PublishState(ServerSessionHookStatus.Suspended,
                         "Server session tracking failed repeatedly (" + name + ") and resumes at the next server start.");
-                    if (Interlocked.Exchange(ref _reportedExhaustion, 1) == 0)
-                        RuntimeEntryPoint.LogSource?.LogWarning("Optional server session tracking failed repeatedly ("
-                            + name + ") and stays suspended until the next server start.");
+                    NetworkFailures.Report("Optional server session tracking failed repeatedly and stays suspended until "
+                        + "the next server start", name);
                     return;
                 }
                 PublishState(ServerSessionHookStatus.Recovering,
                     "Server session tracking failed (" + name + ") and resumes after a clean frame.");
-                if (Interlocked.Exchange(ref _reportedFailure, 1) == 0)
-                    RuntimeEntryPoint.LogSource?.LogWarning("Optional server session tracking is suspended (" + name
-                        + ") and resumes after a clean frame. Later recoverable failures will not be logged.");
+                NetworkFailures.Report("Optional server session tracking is suspended and resumes after a clean frame", name);
             }
             catch (Exception) { }
         }

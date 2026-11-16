@@ -42,8 +42,8 @@ namespace Modstoke.Sons
                 if (_clientSentWhileReleased)
                 {
                     Retire(entry, EnrollmentEndReason.HostAnsweredLate);
-                    KickReason.Expect("The server answered Modstoke too late, after your game had started playing.",
-                        "Rejoin to play.");
+                    KickReason.Expect(KickTitle.CouldNotJoin, LocalizationStartup.Text.Get("kick.answeredLate"),
+                        LocalizationStartup.Text.Get("kick.rejoinToPlay"));
                     return;
                 }
                 entry.State = EnrollmentState.Pending;
@@ -166,6 +166,7 @@ namespace Modstoke.Sons
             entry.OfferedCapabilities = frame.OfferedCapabilities;
             entry.State = EnrollmentState.Enrolled;
             entry.EnrolledAt = now;
+            ClientSignals.RecordEnrolled(entry.Peer.ServerSession);
             // Accepted goes first: everything the checks below send must reach an enrolled client.
             if (!Send(entry, EnrollmentMessageKind.Accepted))
                 return;

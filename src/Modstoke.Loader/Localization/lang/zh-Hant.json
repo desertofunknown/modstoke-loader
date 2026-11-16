@@ -1037,6 +1037,44 @@
 
   "kick": {
     "yourGameHas": "你的遊戲包含：{content}。",
-    "noModContent": "無模組內容"
+    "noModContent": "無模組內容",
+    "title": {
+      "modsDontMatch": "模組不一致",
+      "couldNotJoin": "無法加入"
+    },
+    "modsDiffer": "你的模組與此伺服器的不一致。",
+    "install": "請安裝 {mods}。",
+    "switchTo": "請切換到 {mods}。",
+    "turnOff": "請關閉 {mods}。",
+    "youHave": "{mod}（你的是 {version}）",
+    "differentBuild": "不同的建置",
+    "needsMods": "此伺服器需要你沒有的模組。",
+    "updateTo": "請更新到 {mods}。",
+    "turnOn": "請開啟 {mods}。",
+    "checkUnfinished": "你的遊戲沒有完成此伺服器的模組檢查。請將 Modstoke 更新到伺服器的版本後重新加入。",
+    "checksMods": "此伺服器會在玩家進入前檢查模組。請安裝最新的 Modstoke 和相同的模組，然後從 Modstoke 伺服器清單加入：{mods}。",
+    "installModstoke": "此伺服器會在玩家進入前檢查模組。請安裝 Modstoke，並從 Modstoke 伺服器清單加入。",
+    "installModAdmission": "此伺服器會在玩家進入前檢查已安裝的模組。請安裝 Modstoke，在其中開啟模組准入，然後從 Modstoke 伺服器清單加入此伺服器。",
+    "turnOnModAdmission": "此伺服器會在你進入前檢查已安裝的模組，而你的 Modstoke 沒有參與這項檢查。請在 Modstoke 中開啟模組准入，然後重新加入。",
+    "otherVersion": "此伺服器執行的是另一個版本的 Modstoke。請安裝伺服器使用的版本後加入。",
+    "otherCheck": "此伺服器執行的是另一個版本的 Modstoke，它的模組檢查無法與你的溝通。",
+    "otherCheckHelp": "請安裝伺服器使用的 Modstoke 版本，或請房主更新。",
+    "outOfStep": "你的遊戲在伺服器放行前就開始了，連線已經不同步。請重新加入以開始遊戲。",
+    "refusedData": "此伺服器拒絕了來自你遊戲的資料。請重新加入以開始遊戲。",
+    "joinUnfinished": "加入此伺服器沒有完成（{reason}）。請重新加入再試一次。",
+    "answeredLate": "伺服器回應 Modstoke 太晚了，你的遊戲已經開始。",
+    "rejoinToPlay": "請重新加入以開始遊戲。",
+    "rejoinHelp": "請重新加入再試一次。如果反覆發生，請安裝伺服器使用的 Modstoke 版本。",
+    "checkTimedOut": "伺服器沒能及時透過 Modstoke 的加入檢查放行你的遊戲。",
+    "checkNeedsMore": "此伺服器的 Modstoke 加入檢查需要你的 Modstoke 不提供的功能。",
+    "checkMismatch": "此伺服器的 Modstoke 加入檢查與你的不一致。",
+    "checkBrokeOff": "與此伺服器的 Modstoke 加入檢查中斷了。"
+  },
+
+  "content": {
+    "checking": "仍在與伺服器核對模組。",
+    "vanillaAllowed": "此伺服器也允許沒有模組的玩家進入，因此模組物品無法在這裡共享。",
+    "serverLacks": "此伺服器沒有執行你的模組，因此它們的物品無法在這裡共享。",
+    "unchecked": "此工作階段不檢查模組，因此模組物品無法在這裡共享。"
   }
 }

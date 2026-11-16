@@ -420,15 +420,13 @@ namespace Modstoke.Sons
                     default: install.Add(label); break;
                 }
             }
-            var steps = new List<string>();
-            if (install.Count > 0) steps.Add("Install " + string.Join(", ", install) + ".");
-            if (update.Count > 0) steps.Add("Update to " + string.Join(", ", update) + ".");
-            if (turnOn.Count > 0) steps.Add("Turn on " + string.Join(", ", turnOn) + ".");
-            if (steps.Count == 0) return null;
-            var text = "This server needs mods you don't have. " + string.Join(" ", steps);
-            while (Encoding.UTF8.GetByteCount(text) > ServerSessions.MaxDisconnectMessageKeyBytes)
-                text = text.Substring(0, text.Length - 4) + "...";
-            return text;
+            if (install.Count + update.Count + turnOn.Count == 0) return null;
+            var strings = LocalizationStartup.Text;
+            var steps = new List<string> { strings.Get("kick.needsMods") };
+            if (install.Count > 0) steps.Add(strings.Get("kick.install", ("mods", string.Join(", ", install))));
+            if (update.Count > 0) steps.Add(strings.Get("kick.updateTo", ("mods", string.Join(", ", update))));
+            if (turnOn.Count > 0) steps.Add(strings.Get("kick.turnOn", ("mods", string.Join(", ", turnOn))));
+            return ServerSessions.FitNotice(string.Join(" ", steps));
         }
 
         private static IReadOnlyList<ModRequirementResult> Compare(

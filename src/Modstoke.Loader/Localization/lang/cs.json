@@ -1037,6 +1037,44 @@
 
   "kick": {
     "yourGameHas": "Vaše hra obsahuje: {content}.",
-    "noModContent": "žádný obsah z modů"
+    "noModContent": "žádný obsah z modů",
+    "title": {
+      "modsDontMatch": "Mody se neshodují",
+      "couldNotJoin": "Nelze se připojit"
+    },
+    "modsDiffer": "Vaše mody se neshodují s mody tohoto serveru.",
+    "install": "Nainstalujte {mods}.",
+    "switchTo": "Přejděte na {mods}.",
+    "turnOff": "Vypněte {mods}.",
+    "youHave": "{mod} (máte {version})",
+    "differentBuild": "jiné sestavení",
+    "needsMods": "Tento server vyžaduje mody, které nemáte.",
+    "updateTo": "Aktualizujte na {mods}.",
+    "turnOn": "Zapněte {mods}.",
+    "checkUnfinished": "Vaše hra nedokončila kontrolu modů tohoto serveru. Aktualizujte Modstoke na verzi serveru a připojte se znovu.",
+    "checksMods": "Tento server kontroluje mody, než pustí hráče dovnitř. Nainstalujte aktuální Modstoke a stejné mody a pak se připojte ze seznamu serverů Modstoke: {mods}.",
+    "installModstoke": "Tento server kontroluje mody, než pustí hráče dovnitř. Nainstalujte Modstoke a připojte se ze seznamu serverů Modstoke.",
+    "installModAdmission": "Tento server kontroluje nainstalované mody, než pustí hráče dovnitř. Nainstalujte Modstoke, zapněte v něm schvalování modů a pak se k tomuto serveru připojte ze seznamu serverů Modstoke.",
+    "turnOnModAdmission": "Tento server kontroluje vaše nainstalované mody, než vás pustí dovnitř, a váš Modstoke se této kontroly neúčastní. Zapněte schvalování modů v Modstoke a připojte se znovu.",
+    "otherVersion": "Tento server používá jinou verzi Modstoke. Pro připojení nainstalujte verzi serveru.",
+    "otherCheck": "Tento server používá jinou verzi Modstoke a jeho kontrola modů se nedokáže domluvit s vaší.",
+    "otherCheckHelp": "Nainstalujte verzi Modstoke, kterou používá server, nebo požádejte hostitele o aktualizaci.",
+    "outOfStep": "Vaše hra začala hrát dřív, než ji server pustil dovnitř, takže se spojení rozešlo. Pro hraní se připojte znovu.",
+    "refusedData": "Tento server odmítl data z vaší hry. Pro hraní se připojte znovu.",
+    "joinUnfinished": "Připojení k tomuto serveru se nedokončilo ({reason}). Připojte se znovu a zkuste to ještě jednou.",
+    "answeredLate": "Server odpověděl Modstoke příliš pozdě, když už vaše hra začala.",
+    "rejoinToPlay": "Pro hraní se připojte znovu.",
+    "rejoinHelp": "Připojte se znovu a zkuste to ještě jednou. Pokud se to opakuje, nainstalujte verzi Modstoke, kterou používá server.",
+    "checkTimedOut": "Server nestihl včas pustit vaši hru dovnitř přes kontrolu připojení Modstoke.",
+    "checkNeedsMore": "Kontrola připojení Modstoke na tomto serveru vyžaduje něco, co váš Modstoke nenabízí.",
+    "checkMismatch": "Kontrola připojení Modstoke na tomto serveru se neshoduje s vaší.",
+    "checkBrokeOff": "Kontrola připojení Modstoke s tímto serverem se přerušila."
+  },
+
+  "content": {
+    "checking": "Mody se ještě kontrolují se serverem.",
+    "vanillaAllowed": "Tento server pouští dovnitř i hráče bez modů, takže předměty z modů zde nelze sdílet.",
+    "serverLacks": "Na tomto serveru neběží vaše mody, takže jejich předměty zde nelze sdílet.",
+    "unchecked": "Tato relace mody nekontroluje, takže předměty z modů zde nelze sdílet."
   }
 }

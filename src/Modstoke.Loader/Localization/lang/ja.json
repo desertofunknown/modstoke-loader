@@ -1037,6 +1037,44 @@
 
   "kick": {
     "yourGameHas": "あなたのゲームの内容：{content}。",
-    "noModContent": "MODコンテンツなし"
+    "noModContent": "MODコンテンツなし",
+    "title": {
+      "modsDontMatch": "MODが一致しません",
+      "couldNotJoin": "参加できませんでした"
+    },
+    "modsDiffer": "あなたのMODはこのサーバーのものと一致しません。",
+    "install": "{mods}をインストールしてください。",
+    "switchTo": "{mods}に切り替えてください。",
+    "turnOff": "{mods}を無効にしてください。",
+    "youHave": "{mod}（あなたは{version}）",
+    "differentBuild": "別のビルド",
+    "needsMods": "このサーバーには、あなたが持っていないMODが必要です。",
+    "updateTo": "{mods}に更新してください。",
+    "turnOn": "{mods}を有効にしてください。",
+    "checkUnfinished": "ゲームがこのサーバーのMOD確認を完了できませんでした。Modstokeをサーバーのバージョンに更新して、もう一度参加してください。",
+    "checksMods": "このサーバーは参加前にMODを確認します。最新のModstokeと同じMODをインストールし、Modstokeのサーバー一覧から参加してください：{mods}。",
+    "installModstoke": "このサーバーはプレイヤーを入れる前にMODを確認します。Modstokeをインストールして、Modstokeのサーバー一覧から参加してください。",
+    "installModAdmission": "このサーバーは参加前にインストール済みのMODを確認します。ModstokeをインストールしてMOD承認を有効にし、Modstokeのサーバー一覧から参加してください。",
+    "turnOnModAdmission": "このサーバーは参加前にインストール済みのMODを確認しますが、あなたのModstokeはその確認に対応していません。ModstokeでMOD承認を有効にして、もう一度参加してください。",
+    "otherVersion": "このサーバーは別のバージョンのModstokeを使っています。参加するにはサーバーと同じバージョンをインストールしてください。",
+    "otherCheck": "このサーバーは別のバージョンのModstokeを使っており、そのMOD確認はあなたのものと通信できません。",
+    "otherCheckHelp": "サーバーが使っているバージョンのModstokeをインストールするか、ホストに更新を頼んでください。",
+    "outOfStep": "サーバーに入れてもらう前にゲームがプレイを始めたため、接続がずれています。もう一度参加してプレイしてください。",
+    "refusedData": "このサーバーはあなたのゲームからのデータを拒否しました。もう一度参加してプレイしてください。",
+    "joinUnfinished": "このサーバーへの参加が完了しませんでした（{reason}）。もう一度参加してやり直してください。",
+    "answeredLate": "サーバーのModstokeへの応答が遅すぎ、ゲームはすでに始まっていました。",
+    "rejoinToPlay": "もう一度参加してプレイしてください。",
+    "rejoinHelp": "もう一度参加してやり直してください。繰り返し起こる場合は、サーバーが使っているバージョンのModstokeをインストールしてください。",
+    "checkTimedOut": "サーバーがModstokeの参加確認であなたのゲームを時間内に入れられませんでした。",
+    "checkNeedsMore": "このサーバーのModstoke参加確認には、あなたのModstokeにない機能が必要です。",
+    "checkMismatch": "このサーバーのModstoke参加確認はあなたのものと一致しません。",
+    "checkBrokeOff": "このサーバーとのModstoke参加確認が途中で切れました。"
+  },
+
+  "content": {
+    "checking": "サーバーとのMOD確認がまだ続いています。",
+    "vanillaAllowed": "このサーバーはMODなしのプレイヤーも参加できるため、MODのアイテムはここでは共有できません。",
+    "serverLacks": "このサーバーはあなたのMODを使っていないため、そのアイテムはここでは共有できません。",
+    "unchecked": "このセッションはMODを確認しないため、MODのアイテムはここでは共有できません。"
   }
 }

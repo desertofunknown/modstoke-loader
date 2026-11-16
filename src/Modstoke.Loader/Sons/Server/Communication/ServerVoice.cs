@@ -21,7 +21,6 @@ namespace Modstoke.Sons
             "Server voice routing has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThread;
-        private static int _reportedFailure;
         [ThreadStatic] private static IncomingVoice _incoming;
         [ThreadStatic] private static OutgoingVoice _outgoing;
         [ThreadStatic] private static bool _publishing;
@@ -171,12 +170,7 @@ namespace Modstoke.Sons
         private static void PublishState(VoiceHookStatus status, string detail) =>
             Volatile.Write(ref _state, new ServerVoiceState(status, detail));
 
-        private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0) return;
-            try { RuntimeEntryPoint.LogSource?.LogWarning("Voice routing denied an operation (" + error.GetType().FullName + "). Further failures will not be logged."); }
-            catch (Exception) { }
-        }
+        private static void ReportFailure(Exception error) => NetworkFailures.Report("Voice routing policy", error);
 
         private sealed class IncomingVoice
         {

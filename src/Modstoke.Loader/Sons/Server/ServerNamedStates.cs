@@ -27,7 +27,6 @@ namespace Modstoke.Sons
             "Named-state request hooks have not been installed.");
         private static int _installationAttempted;
         private static int _ownerThread;
-        private static int _reportedFailure;
         [ThreadStatic] private static bool _publishing;
         [ThreadStatic] private static HashSet<IntPtr> _dispatching;
 
@@ -273,11 +272,6 @@ namespace Modstoke.Sons
         private static void PublishState(NamedStateHookStatus status, string detail) =>
             Volatile.Write(ref _state, new ServerNamedStateState(status, detail));
 
-        private static void ReportFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedFailure, 1) != 0) return;
-            try { RuntimeEntryPoint.LogSource?.LogWarning("Named-state policy denied an operation (" + error.GetType().FullName + "). Further failures will not be logged."); }
-            catch (Exception) { }
-        }
+        private static void ReportFailure(Exception error) => NetworkFailures.Report("Named-state policy", error);
     }
 }

@@ -1037,6 +1037,44 @@
 
   "kick": {
     "yourGameHas": "Il tuo gioco ha: {content}.",
-    "noModContent": "nessun contenuto di mod"
+    "noModContent": "nessun contenuto di mod",
+    "title": {
+      "modsDontMatch": "Le mod non corrispondono",
+      "couldNotJoin": "Impossibile unirsi"
+    },
+    "modsDiffer": "Le tue mod non corrispondono a quelle di questo server.",
+    "install": "Installa {mods}.",
+    "switchTo": "Passa a {mods}.",
+    "turnOff": "Disattiva {mods}.",
+    "youHave": "{mod} (hai {version})",
+    "differentBuild": "una build diversa",
+    "needsMods": "Questo server richiede mod che non hai.",
+    "updateTo": "Aggiorna a {mods}.",
+    "turnOn": "Attiva {mods}.",
+    "checkUnfinished": "Il tuo gioco non ha completato il controllo delle mod di questo server. Aggiorna Modstoke alla versione del server e unisciti di nuovo.",
+    "checksMods": "Questo server controlla le mod prima di far entrare i giocatori. Installa la versione attuale di Modstoke e le stesse mod, poi unisciti dall’elenco dei server di Modstoke: {mods}.",
+    "installModstoke": "Questo server controlla le mod prima di far entrare i giocatori. Installa Modstoke e unisciti dall’elenco dei server di Modstoke.",
+    "installModAdmission": "Questo server controlla le mod installate prima di far entrare i giocatori. Installa Modstoke, attiva al suo interno l’ammissione delle mod, poi unisciti a questo server dall’elenco dei server di Modstoke.",
+    "turnOnModAdmission": "Questo server controlla le mod installate prima di farti entrare, e il tuo Modstoke non partecipa a questo controllo. Attiva l’ammissione delle mod in Modstoke, poi unisciti di nuovo.",
+    "otherVersion": "Questo server usa un’altra versione di Modstoke. Installa la versione del server per unirti.",
+    "otherCheck": "Questo server usa un’altra versione di Modstoke, e il suo controllo delle mod non riesce a comunicare con il tuo.",
+    "otherCheckHelp": "Installa la versione di Modstoke usata dal server, oppure chiedi all’host di aggiornare.",
+    "outOfStep": "Il tuo gioco ha iniziato a giocare prima che questo server lo facesse entrare, quindi la connessione è fuori sincrono. Unisciti di nuovo per giocare.",
+    "refusedData": "Questo server ha rifiutato dati dal tuo gioco. Unisciti di nuovo per giocare.",
+    "joinUnfinished": "L’accesso a questo server non è stato completato ({reason}). Unisciti di nuovo per riprovare.",
+    "answeredLate": "Il server ha risposto a Modstoke troppo tardi, quando il tuo gioco aveva già iniziato.",
+    "rejoinToPlay": "Unisciti di nuovo per giocare.",
+    "rejoinHelp": "Unisciti di nuovo per riprovare. Se succede ancora, installa la versione di Modstoke usata dal server.",
+    "checkTimedOut": "Il server non ha fatto entrare in tempo il tuo gioco tramite il controllo di accesso di Modstoke.",
+    "checkNeedsMore": "Il controllo di accesso di Modstoke di questo server richiede qualcosa che il tuo Modstoke non offre.",
+    "checkMismatch": "Il controllo di accesso di Modstoke di questo server non corrisponde al tuo.",
+    "checkBrokeOff": "Il controllo di accesso di Modstoke con questo server si è interrotto."
+  },
+
+  "content": {
+    "checking": "Controllo delle mod con il server ancora in corso.",
+    "vanillaAllowed": "Questo server fa entrare anche giocatori senza mod, quindi gli oggetti delle mod non si possono condividere qui.",
+    "serverLacks": "Questo server non usa le tue mod, quindi i loro oggetti non si possono condividere qui.",
+    "unchecked": "Questa sessione non controlla le mod, quindi gli oggetti delle mod non si possono condividere qui."
   }
 }

@@ -143,8 +143,9 @@ namespace Modstoke.Sons
     }
 
     /// <summary>
-    /// Failure reports for the networking layer. A site's first failure is logged in full; repeats are counted and
-    /// summed up at most once a minute, so a failure that recurs every frame neither floods the log nor goes quiet.
+    /// Failure reports for the networking layer and the server SDK. A site's first failure is logged in full;
+    /// repeats are counted and summed up at most once a minute, so a failure that recurs every frame neither floods
+    /// the log nor goes quiet.
     /// </summary>
     internal static class NetworkFailures
     {
@@ -153,6 +154,13 @@ namespace Modstoke.Sons
 
         /// <remarks>withMessage false keeps the message out where it could carry a client's token or text.</remarks>
         internal static void Report(string site, Exception error, bool withMessage = true)
+            => Report(site, error.GetType().FullName, " failed ", () => site + " failed: " + (withMessage ? error.ToString()
+                : error.GetType().FullName + Environment.NewLine + error.StackTrace));
+
+        /// <summary>A failure described in words, such as a policy callback the server refused to run.</summary>
+        internal static void Report(string site, string detail) => Report(site, detail, " ", () => site + ": " + detail);
+
+        private static void Report(string site, string last, string repeated, Func<string> first)
         {
             try
             {
@@ -163,15 +171,14 @@ namespace Modstoke.Sons
                     if (!Sites.TryGetValue(site, out var entry))
                     {
                         Sites[site] = new Site { Next = now + SummaryMilliseconds };
-                        line = site + " failed: " + (withMessage ? error.ToString()
-                            : error.GetType().FullName + Environment.NewLine + error.StackTrace);
+                        line = first();
                     }
                     else
                     {
                         entry.Repeats++;
-                        entry.Last = error.GetType().FullName;
+                        entry.Last = last;
                         if (now < entry.Next) return;
-                        line = site + " failed " + entry.Repeats + " more times since its last report (last: "
+                        line = site + repeated + entry.Repeats + " more times since its last report (last: "
                             + entry.Last + ").";
                         entry.Repeats = 0;
                         entry.Next = now + SummaryMilliseconds;

@@ -14,7 +14,6 @@ namespace Modstoke.Sons
     {
         [ThreadStatic] private static DropScope _drop;
         [ThreadStatic] private static bool _publishingDrop;
-        private static int _reportedObservationFailure;
 
         /// <summary>
         /// Observes a server drop callback and matching prefab-factory returns within its dynamic scope.
@@ -199,16 +198,7 @@ namespace Modstoke.Sons
         private static bool IsLiveDropEntity(BoltEntity entity) => entity is not null && !entity.WasCollected && entity;
 
         private static void ReportObservationFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedObservationFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server item-drop observation failed ("
-                    + error.GetType().FullName + "). Further observation failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server item-drop observation", error);
 
         private sealed class DropScope
         {

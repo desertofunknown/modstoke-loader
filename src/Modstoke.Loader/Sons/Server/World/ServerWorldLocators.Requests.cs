@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Alex Cooper
 
 using System;
-using System.Threading;
 using Bolt;
 using Modstoke.Loader;
 using global::Sons.Save;
@@ -12,8 +11,6 @@ namespace Modstoke.Sons
 {
     public static partial class ServerWorldLocators
     {
-        private static int _reportedRequestFailure;
-
         /// <summary>
         /// Queues a native locator-state event for this server and its peers. The caller owns authorization.
         /// Queued means the native call returned, not policy acceptance, application, delivery or persistence.
@@ -55,16 +52,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportRequestFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedRequestFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("World-locator state request failed ("
-                    + error.GetType().FullName + "). Further request failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("World-locator state request", error);
     }
 
     public enum WorldLocatorChangeStatus

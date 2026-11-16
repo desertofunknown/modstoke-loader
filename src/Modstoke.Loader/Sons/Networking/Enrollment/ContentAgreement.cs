@@ -10,6 +10,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Modstoke.Loader;
+using Modstoke.Localization;
 using Sons.Multiplayer;
 using Steamworks;
 using SdkPackets = SonsSdk.Networking.Packets;
@@ -45,6 +46,9 @@ namespace Modstoke.Sons
         private const double AnswerSeconds = 15;
         private const double JoiningSeconds = 60;
         private const double LobbySeconds = 1;
+        private const double ContentHoldSeconds = 10;
+        // SceneLoadState.DefaultLocal and DefaultRemote both use scene 255.
+        private const int NoScene = 255;
         private static readonly Dictionary<Guid, Peer> Peers = new();
         private static readonly Dictionary<string, (int Protocol, bool Required)> Protocols = new(StringComparer.OrdinalIgnoreCase);
         private static Declaration _local;
@@ -53,10 +57,13 @@ namespace Modstoke.Sons
         private static readonly string NegotiationVersion = EnrollmentWire.ProtocolVersion.ToString();
         private static readonly string NegotiationPrefix = NegotiationVersion + ":";
         private static bool _server, _requireClients, _active, _serverShares, _otherHost, _otherHostRefused, _hostNegotiates;
+        private static bool _hostDeclaresNone, _hostAgreed, _holdDone;
         private static string _joining, _joiningNegotiation, _labelledContent, _labelledNegotiation;
-        private static double _joiningAt, _nextLobbyCheck;
+        private static double _joiningAt, _nextLobbyCheck, _holdStartedAt;
         private static ulong _labelledLobby;
-        private static int _hostChannel;
+        private static int _hostChannel, _heldSends;
+
+        private static Strings Text => LocalizationStartup.Text;
 
         public enum Status { NotChecked, Pending, Agreed, Differs }
 
@@ -107,9 +114,41 @@ namespace Modstoke.Sons
 
         /// <summary>
         /// Whether every player in this session is known to have this process's content: the check runs, and the
-        /// server refuses clients that don't take part, vanilla ones included. Fixed once known for the session.
+        /// server refuses clients that don't take part, vanilla ones included. False outside a session. Fixed once
+        /// known for the session.
         /// </summary>
-        internal static bool PeersShareContent => _active && (_server ? _requireClients : _serverShares);
+        public static bool PeersShareContent => BoltNetwork.isRunning && _active && (_server ? _requireClients : _serverShares);
+
+        /// <summary>How far this process's networked mod content reaches in the current session, on the game thread.</summary>
+        public static ContentSharing Sharing
+        {
+            get
+            {
+                if (!BoltNetwork.isRunning) return ContentSharing.Offline;
+                if (PeersShareContent) return ContentSharing.Shared;
+                if (_server) return _active ? ContentSharing.VanillaAllowed : ContentSharing.Unchecked;
+                if (!_active) return _hostDeclaresNone ? ContentSharing.ServerLacksContent : ContentSharing.Unchecked;
+                var host = Peers.Values.FirstOrDefault();
+                return host == null ? ContentSharing.Checking
+                    : host.State == Status.Agreed ? ContentSharing.VanillaAllowed : ContentSharing.Unchecked;
+            }
+        }
+
+        /// <summary>
+        /// Whether networked mod items may be dropped, attached, crafted or shown in the hand now: offline, or every
+        /// player in the session is known to have this content. Read it on the game thread.
+        /// </summary>
+        public static bool CanUseNetworkedContent => Sharing is ContentSharing.Offline or ContentSharing.Shared;
+
+        /// <summary>A short line for players on why networked mod items can't be shared in this session; "" when they can.</summary>
+        public static string DescribeSharing() => Sharing switch
+        {
+            ContentSharing.Checking => Text.Get("content.checking"),
+            ContentSharing.VanillaAllowed => Text.Get("content.vanillaAllowed"),
+            ContentSharing.ServerLacksContent => Text.Get("content.serverLacks"),
+            ContentSharing.Unchecked => Text.Get("content.unchecked"),
+            _ => ""
+        };
 
         /// <summary>
         /// Declares the network protocol of a mod's traffic, so peers compare this number for the mod instead of its
@@ -142,7 +181,9 @@ namespace Modstoke.Sons
             Peers.Clear();
             _hostDeclaration = null;
             _active = _serverShares = _otherHost = _otherHostRefused = _requireClients = _hostNegotiates = false;
-            _hostChannel = 0;
+            _hostDeclaresNone = _hostAgreed = _holdDone = false;
+            _holdStartedAt = 0;
+            _hostChannel = _heldSends = 0;
             _server = server;
             _local = Capture(withPacketChannels: true);
             _localFrames = Write(_local);
@@ -162,6 +203,7 @@ namespace Modstoke.Sons
             var hint = TakeHint();
             if (string.IsNullOrEmpty(hint))
             {
+                _hostDeclaresNone = true;
                 if (_local.ModCount > 0)
                     RuntimeEntryPoint.LogSource?.LogInfo("This server declares no Modstoke mod content; joining it as the game does.");
                 return;
@@ -327,16 +369,14 @@ namespace Modstoke.Sons
         {
             if (!_active || !_server || peer == null || !Peers.TryGetValue(peer.PeerId, out var entry)
                 || !ReferenceEquals(entry.Control, peer) || entry.State != Status.Differs) return null;
-            return entry.Answered ? DifferenceNotice(entry.Differences)
-                : Fit("Your game didn't finish this server's mod check. Update Modstoke to the server's version and rejoin.");
+            return ServerSessions.FitNotice(entry.Answered ? DifferenceNotice(entry.Differences) : Text.Get("kick.checkUnfinished"));
         }
 
         /// <summary>The notice for a client that never took part, on a server that requires the check.</summary>
         /// <remarks>Vanilla, a Modstoke on another negotiation version, and a join route that did not read the
         /// server's label all look alike here.</remarks>
         internal static string NotTakingPartNotice() => _active && _server && _requireClients
-            ? Fit("This server checks mods before letting players in. Install the current Modstoke and the same mods, "
-                + "then join it from the Modstoke server list: " + _local.Summary + ".")
+            ? ServerSessions.FitNotice(Text.Get("kick.checksMods", ("mods", _local.Summary)))
             : null;
 
         /// <summary>Why this check refused a peer, for the server log; null when it did not.</summary>
@@ -364,9 +404,11 @@ namespace Modstoke.Sons
                 {
                     entry.Noticed = true;
                     var notice = RefusalNotice(entry.Control);
+                    var told = ServerSessions.DisconnectWithNotice(session, notice);
+                    if (told != DisconnectResult.Requested) ServerSessions.Disconnect(session);
                     RuntimeEntryPoint.LogSource?.LogInfo("Refused connection " + entry.Control.ConnectionId + ": "
-                        + Describe(entry.Control) + ". Told the player: " + notice);
-                    ServerSessions.DisconnectWithNotice(session, notice);
+                        + Describe(entry.Control) + (told == DisconnectResult.Requested ? ". Told the player: "
+                            : ". The notice could not be sent (" + told + "): ") + notice);
                 }
             }
             if (gone != null) foreach (var id in gone) Peers.Remove(id);
@@ -380,9 +422,75 @@ namespace Modstoke.Sons
             var server = BoltNetwork.server;
             if (server == null || server.WasCollected) return;
             _otherHostRefused = true;
-            KickReason.Expect("This server runs a different Modstoke version, and its mod check can't talk to yours.",
-                "Install the Modstoke version the server uses, or ask the host to update.");
+            KickReason.Expect(KickTitle.CouldNotJoin, Text.Get("kick.otherCheck"), Text.Get("kick.otherCheckHelp"));
             server.Disconnect();
+        }
+
+        /// <summary>
+        /// Whether a joining client still holds its sends so the server doesn't send it the world yet: every packet
+        /// carries the client's scene state, and the server starts replicating once it reads that the client loaded
+        /// the server's scene (BoltConnection.IsLoadingMap), so holding them from then until this game's networked
+        /// mod items exist keeps the first replicated state from naming items it can't resolve. Bounded, and only
+        /// with a server whose mod check agreed.
+        /// </summary>
+        internal static bool HoldsWorld(BoltConnection server)
+        {
+            if (_server || _holdDone || !_hostAgreed) return false;
+            bool ready;
+            string waiting;
+            try
+            {
+                if (!LoadedServerScene(server)) return false;
+                ready = ItemRegistration.NetworkedContentReady(out waiting);
+            }
+            catch (Exception error)
+            {
+                // Every held send waits on this answer, so a read that keeps failing must end the hold, not the join.
+                _holdDone = true;
+                NetworkFailures.Report("Mod item readiness for the join", error);
+                return false;
+            }
+            var now = Now;
+            if (_holdStartedAt == 0)
+            {
+                if (ready)
+                {
+                    _holdDone = true;
+                    RuntimeEntryPoint.LogSource?.LogInfo("This game's mod items were ready when the world loaded; "
+                        + "nothing to hold back.");
+                    return false;
+                }
+                _holdStartedAt = now;
+                RuntimeEntryPoint.LogSource?.LogInfo("Holding the server's world until this game's mod items are ready "
+                    + "(waiting for " + waiting + ").");
+            }
+            var held = (long)((now - _holdStartedAt) * 1000);
+            if (ready)
+                RuntimeEntryPoint.LogSource?.LogInfo("Mod items were ready " + held + " ms after the world loaded; the "
+                    + "server can send the world now (" + _heldSends + " sends held).");
+            else if (now - _holdStartedAt >= ContentHoldSeconds)
+                RuntimeEntryPoint.LogSource?.LogWarning("Mod items still weren't ready " + held + " ms after the world "
+                    + "loaded (waiting for " + waiting + "); joining anyway, so items from mods may show late ("
+                    + _heldSends + " sends held).");
+            else
+            {
+                _heldSends++;
+                return true;
+            }
+            _holdDone = true;
+            return false;
+        }
+
+        // The local state reaches STATE_LOADING_DONE when a map load finishes and stays there; only the server's copy
+        // of it becomes STATE_CALLBACK_INVOKED. Both sides start each run on Bolt's "no scene", which a loaded map
+        // never matches.
+        private static bool LoadedServerScene(BoltConnection server)
+        {
+            var local = BoltCore._localSceneLoading;
+            if (local.State != Bolt.SceneLoadState.STATE_LOADING_DONE) return false;
+            var scene = local.Scene;
+            var announced = server._remoteSceneLoading.Scene;
+            return scene.Index != NoScene && scene.Index == announced.Index && scene.Sequence == announced.Sequence;
         }
 
         internal static bool Receive(ControlPeer peer, ReadOnlySpan<byte> payload)
@@ -417,6 +525,7 @@ namespace Modstoke.Sons
                 // take part, so then every player it admits has this content.
                 _serverShares = ClientEnrollment.TryRead(peer, out var enrollment) == EnrollmentReadStatus.Success
                     && (enrollment.RequiredCapabilities & Capability) != 0;
+                _hostAgreed = true;
                 RuntimeEntryPoint.LogSource?.LogInfo("Your mod content matches the server's ("
                     + (host.ModCount == 0 ? "no required mods" : host.Summary) + ").");
                 return true;
@@ -424,8 +533,10 @@ namespace Modstoke.Sons
             var notice = DifferenceNotice(differences);
             RuntimeEntryPoint.LogSource?.LogWarning("This server's mod content differs from yours, so it will refuse "
                 + "you. " + notice + " The server has: " + (host.ModCount == 0 ? "no required mods" : host.Summary) + ".");
-            // The kick popup shows the server's notice; this adds what the player has, for comparison.
-            KickReason.Expect(notice, "Your game has: " + (_local.ModCount == 0 ? "no required mods" : _local.Summary) + ".");
+            // The server's notice says the same, but in its language; this side's names the same steps in the
+            // player's, and adds what the player has, for comparison.
+            KickReason.Expect(KickTitle.ModsDontMatch, notice, Text.Get("kick.yourGameHas",
+                ("content", _local.ModCount == 0 ? Text.Get("kick.noModContent") : _local.Summary)), replacesServerText: true);
             return true;
         }
 
@@ -459,6 +570,7 @@ namespace Modstoke.Sons
         }
 
         // Written from the server's side, for the client: what to install, which version to switch to, what to turn off.
+        // The server sends it in its language, and the client builds the same text from the same comparison in its own.
         private static string DifferenceNotice(IReadOnlyList<Difference> differences)
         {
             var install = new List<string>();
@@ -468,15 +580,15 @@ namespace Modstoke.Sons
             {
                 if (difference.Client == null) install.Add(Label(difference.Server));
                 else if (difference.Server == null) remove.Add(Label(difference.Client));
-                else change.Add(Label(difference.Server, difference.Client.Version) + " (you have "
-                    + (difference.Server.Version == difference.Client.Version ? "a different build"
-                        : VersionText(difference.Client.Version, difference.Server.Version)) + ")");
+                else change.Add(Text.Get("kick.youHave", ("mod", Label(difference.Server, difference.Client.Version)),
+                    ("version", difference.Server.Version == difference.Client.Version ? Text.Get("kick.differentBuild")
+                        : VersionText(difference.Client.Version, difference.Server.Version))));
             }
-            var steps = new List<string>();
-            if (install.Count > 0) steps.Add("Install " + string.Join(", ", install) + ".");
-            if (change.Count > 0) steps.Add("Switch to " + string.Join(", ", change) + ".");
-            if (remove.Count > 0) steps.Add("Turn off " + string.Join(", ", remove) + ".");
-            return Fit("Your mods don't match this server's. " + string.Join(" ", steps));
+            var steps = new List<string> { Text.Get("kick.modsDiffer") };
+            if (install.Count > 0) steps.Add(Text.Get("kick.install", ("mods", string.Join(", ", install))));
+            if (change.Count > 0) steps.Add(Text.Get("kick.switchTo", ("mods", string.Join(", ", change))));
+            if (remove.Count > 0) steps.Add(Text.Get("kick.turnOff", ("mods", string.Join(", ", remove))));
+            return string.Join(" ", steps);
         }
 
         private static string Label(Entry entry, string otherVersion = null)
@@ -572,13 +684,6 @@ namespace Modstoke.Sons
                 text.Append(entry.ModId.ToLowerInvariant()).Append('\t').Append(entry.Key.ToString("x8"))
                     .Append(entry.Optional ? "\toptional\n" : "\n");
             return SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString()));
-        }
-
-        private static string Fit(string text)
-        {
-            while (Encoding.UTF8.GetByteCount(text) > ServerSessions.MaxDisconnectMessageKeyBytes)
-                text = text.Substring(0, text.Length - 4) + "...";
-            return text;
         }
 
         private static double Now => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
@@ -702,5 +807,22 @@ namespace Modstoke.Sons
                 return true;
             }
         }
+    }
+
+    /// <summary>How far a process's networked mod content reaches in its multiplayer session.</summary>
+    public enum ContentSharing
+    {
+        /// <summary>No multiplayer session.</summary>
+        Offline,
+        /// <summary>Every player in the session is known to have this content.</summary>
+        Shared,
+        /// <summary>Joining, and the mod check with the server has not finished.</summary>
+        Checking,
+        /// <summary>The server checks Modstoke players but also lets in players without mods.</summary>
+        VanillaAllowed,
+        /// <summary>The joined server declared no mod content, a vanilla server among them.</summary>
+        ServerLacksContent,
+        /// <summary>No mod check runs in this session, or it failed.</summary>
+        Unchecked
     }
 }

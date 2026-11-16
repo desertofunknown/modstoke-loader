@@ -18,7 +18,6 @@ namespace Modstoke.Sons
             TransportHookStatus.NotAttempted, "The glider hook has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
 
         /// <summary>Runs synchronously before CoopServerCallbacks.OnEvent(AttachItemToZiplineEvent) on the server.</summary>
         public static event Action<ZiplineItemRequest> AttachingZiplineItem;
@@ -136,16 +135,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportDispatchFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server transport policy rejected a callback: "
-                    + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server transport policy rejected a callback", detail);
     }
 
     public enum TransportHookStatus { NotAttempted, Disabled, Installing, Installed, Failed }

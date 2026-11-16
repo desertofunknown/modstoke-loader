@@ -3,15 +3,12 @@
 
 using System;
 using System.Diagnostics;
-using System.Threading;
 using Modstoke.Loader;
 
 namespace Modstoke.Sons
 {
     public static partial class ServerSessions
     {
-        private static int _reportedConnectionReadFailure;
-
         /// <summary>
         /// Copies transport observations for an exact live remote session on the game thread.
         /// No client extension, registered identity or player entity is required.
@@ -94,16 +91,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportConnectionReadFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedConnectionReadFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server connection read failed ("
-                    + error.GetType().FullName + "). Further connection read failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server connection read", error, withMessage: false);
     }
 
     public enum ConnectionReadStatus

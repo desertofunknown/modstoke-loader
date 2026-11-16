@@ -17,8 +17,6 @@ namespace Modstoke.Sons
             PlayerReviveHookStatus.NotAttempted, "The player-revive hook has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
-        private static int _reportedSendFailure;
 
         /// <summary>
         /// Runs synchronously before the server routes received or locally created PlayerHealed events.
@@ -188,28 +186,10 @@ namespace Modstoke.Sons
         }
 
         private static void ReportSendFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedSendFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server player-revive request failed ("
-                    + error.GetType().FullName + "). Further send failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server player-revive request", error);
 
         private static void ReportDispatchFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server player-revive policy rejected an event: "
-                    + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server player-revive policy rejected an event", detail);
     }
 
     public enum PlayerReviveStatus

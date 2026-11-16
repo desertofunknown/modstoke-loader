@@ -19,7 +19,6 @@ namespace Modstoke.Sons
             LootSpawnHookStatus.NotAttempted, "The loot spawn routing hook has not been installed.");
         private static int _installationAttempted;
         private static int _ownerThreadId;
-        private static int _reportedDispatchFailure;
 
         /// <summary>
         /// Runs synchronously before server dispatch, including local sends, which are allowed by default.
@@ -136,16 +135,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportDispatchFailure(string detail)
-        {
-            if (Interlocked.Exchange(ref _reportedDispatchFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server loot spawn policy dispatch failed: "
-                    + detail + " Further dispatch failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server loot spawn policy dispatch failed", detail);
     }
 
     public enum LootSpawnHookStatus { NotAttempted, Disabled, Installing, Installed, Failed }

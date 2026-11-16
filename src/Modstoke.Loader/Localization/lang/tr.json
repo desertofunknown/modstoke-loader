@@ -1037,6 +1037,44 @@
 
   "kick": {
     "yourGameHas": "Oyununuzdaki içerik: {content}.",
-    "noModContent": "mod içeriği yok"
+    "noModContent": "mod içeriği yok",
+    "title": {
+      "modsDontMatch": "Modlar uyuşmuyor",
+      "couldNotJoin": "Katılınamadı"
+    },
+    "modsDiffer": "Modlarınız bu sunucununkilerle uyuşmuyor.",
+    "install": "Şunları yükleyin: {mods}.",
+    "switchTo": "Şunlara geçin: {mods}.",
+    "turnOff": "Şunları kapatın: {mods}.",
+    "youHave": "{mod} (sizde {version} var)",
+    "differentBuild": "farklı bir derleme",
+    "needsMods": "Bu sunucu sizde olmayan modlara ihtiyaç duyuyor.",
+    "updateTo": "Şunlara güncelleyin: {mods}.",
+    "turnOn": "Şunları açın: {mods}.",
+    "checkUnfinished": "Oyununuz bu sunucunun mod denetimini tamamlamadı. Modstoke’u sunucunun sürümüne güncelleyip yeniden katılın.",
+    "checksMods": "Bu sunucu oyuncuları içeri almadan önce modları denetler. Güncel Modstoke’u ve aynı modları yükleyin, ardından Modstoke sunucu listesinden katılın: {mods}.",
+    "installModstoke": "Bu sunucu oyuncuları içeri almadan önce modları denetler. Modstoke’u yükleyin ve Modstoke sunucu listesinden katılın.",
+    "installModAdmission": "Bu sunucu oyuncuları içeri almadan önce yüklü modları denetler. Modstoke’u yükleyin, içinden mod onayını açın, ardından bu sunucuya Modstoke sunucu listesinden katılın.",
+    "turnOnModAdmission": "Bu sunucu sizi içeri almadan önce yüklü modlarınızı denetler ve Modstoke’unuz bu denetime katılmıyor. Modstoke’ta mod onayını açıp yeniden katılın.",
+    "otherVersion": "Bu sunucu farklı bir Modstoke sürümü kullanıyor. Katılmak için sunucunun kullandığı sürümü yükleyin.",
+    "otherCheck": "Bu sunucu farklı bir Modstoke sürümü kullanıyor ve mod denetimi sizinkiyle iletişim kuramıyor.",
+    "otherCheckHelp": "Sunucunun kullandığı Modstoke sürümünü yükleyin veya ev sahibinden güncellemesini isteyin.",
+    "outOfStep": "Oyununuz, bu sunucu onu içeri almadan oynamaya başladı; bu yüzden bağlantı senkronunu kaybetti. Oynamak için yeniden katılın.",
+    "refusedData": "Bu sunucu oyununuzdan gelen verileri reddetti. Oynamak için yeniden katılın.",
+    "joinUnfinished": "Bu sunucuya katılım tamamlanmadı ({reason}). Tekrar denemek için yeniden katılın.",
+    "answeredLate": "Sunucu Modstoke’a çok geç yanıt verdi; oyununuz çoktan başlamıştı.",
+    "rejoinToPlay": "Oynamak için yeniden katılın.",
+    "rejoinHelp": "Tekrar denemek için yeniden katılın. Sorun sürerse sunucunun kullandığı Modstoke sürümünü yükleyin.",
+    "checkTimedOut": "Sunucu, Modstoke katılım denetimiyle oyununuzu zamanında içeri alamadı.",
+    "checkNeedsMore": "Bu sunucunun Modstoke katılım denetimi, Modstoke’unuzun sunmadığı bir şeye ihtiyaç duyuyor.",
+    "checkMismatch": "Bu sunucunun Modstoke katılım denetimi sizinkiyle uyuşmuyor.",
+    "checkBrokeOff": "Bu sunucuyla Modstoke katılım denetimi yarıda kesildi."
+  },
+
+  "content": {
+    "checking": "Modlar hâlâ sunucuyla denetleniyor.",
+    "vanillaAllowed": "Bu sunucu modsuz oyuncuları da içeri alıyor; bu yüzden modlardan gelen eşyalar burada paylaşılamaz.",
+    "serverLacks": "Bu sunucu modlarınızı çalıştırmıyor; bu yüzden onların eşyaları burada paylaşılamaz.",
+    "unchecked": "Bu oturum modları denetlemiyor; bu yüzden modlardan gelen eşyalar burada paylaşılamaz."
   }
 }

@@ -14,7 +14,8 @@ namespace Modstoke.Sons
     /// Adds mod items to the game's container loot tables: the weighted lists the weapon cases, storage crates,
     /// suitcases and graves roll from when they are opened. A container rolls from a seed every peer shares, so every
     /// peer needs the same tables: register at mod start in every process, clients and servers alike, as the item ids
-    /// themselves already are. Containers a save has already opened keep what they rolled.
+    /// themselves already are. Containers a save has already opened keep what they rolled. In multiplayer the entries
+    /// stay in only while <see cref="ContentAgreement.CanUseNetworkedContent"/>.
     /// </summary>
     /// <remarks>The content catalog (<c>content-catalog-next-launch.flag</c>) lists every table with its items and
     /// the containers that use it. Entries go in once the item has a world pickup, which modeled items registered
@@ -97,12 +98,17 @@ namespace Modstoke.Sons
                         if (table != null && table._items != null && !Known.Exists(known => known.Pointer == table.Pointer)
                             && Array.Exists(entries, entry => entry.Table == table.name)) Known.Add(table);
                 }
-                int added = 0;
+                // A container rolls the same seed on every peer, so mod loot is in the tables only while every player
+                // is known to have the mods; a session that can't promise that takes it out again.
+                var share = ContentAgreement.CanUseNetworkedContent;
+                int changed = 0;
                 foreach (var table in Known)
                     foreach (var entry in entries)
-                        if (entry.Table == table.name && Append(table, entry)) added++;
-                if (added > 0)
-                    RuntimeEntryPoint.LogSource?.LogInfo(added + " mod loot entr" + (added == 1 ? "y" : "ies") + " added to the game's container tables.");
+                        if (entry.Table == table.name && (share ? Append(table, entry) : Remove(table, entry))) changed++;
+                if (changed > 0)
+                    RuntimeEntryPoint.LogSource?.LogInfo(changed + " mod loot entr" + (changed == 1 ? "y" : "ies")
+                        + (share ? " added to the game's container tables."
+                            : " taken out of the game's container tables (mod content: " + ContentAgreement.Sharing + ")."));
             }
             catch (Exception error)
             {
@@ -128,6 +134,18 @@ namespace Modstoke.Sons
                 _maxWeight = template != null ? template._maxWeight : table._maxWeight
             });
             return true;
+        }
+
+        private static bool Remove(ContainerItemSpawnerData table, Entry entry)
+        {
+            var items = table._items;
+            for (int i = items.Count - 1; i >= 0; i--)
+                if (items[i] != null && items[i]._id == entry.ItemId)
+                {
+                    items.RemoveAt(i);
+                    return true;
+                }
+            return false;
         }
     }
 }

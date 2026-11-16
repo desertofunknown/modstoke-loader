@@ -69,6 +69,7 @@ namespace Modstoke.Sons
             if (!_hooksInstalled || !OnOwnerThread)
                 return;
             BeforeShutdown();
+            Isolate(KickReason.ResetForStart);
             // The last word on this start's selection, after any plugin chose its own. Bolt sets its mode from
             // this command only after BeginStart runs, so the role comes from the command itself.
             var server = __0 != null && __0.Mode == BoltNetworkModes.Server;
@@ -238,6 +239,7 @@ namespace Modstoke.Sons
             try
             {
                 ClientEnrollment.DisconnectingForGate(__0);
+                global::Modstoke.Loader.Packets.ConnectionClosed(__0);
                 // By connection, not by peer record: the pump may already have pruned a peer whose transport closed.
                 Datagrams.ReleaseConnection(__0.Pointer, __0.ConnectionId);
                 lock (Gate)
@@ -278,6 +280,8 @@ namespace Modstoke.Sons
             Isolate(PlayerRoles.ResetForStart);
             Isolate(Datagrams.ResetForStart);
             Isolate(ServerNotices.ResetForStart);
+            Isolate(global::Modstoke.Loader.Packets.ResetForStart);
+            Isolate(WeaponAttachments.ResetForStart);
         }
 
         private static void Isolate(Action action)
@@ -400,6 +404,7 @@ namespace Modstoke.Sons
                 Isolate(ModAdmission.Tick);
                 Isolate(ClientEnrollment.TickGate);
                 Isolate(ContentAgreement.Tick);
+                Isolate(global::Modstoke.Loader.Packets.FlushHeld);
                 Isolate(Datagrams.Tick);
                 Isolate(ModuleStorage.Tick);
             }

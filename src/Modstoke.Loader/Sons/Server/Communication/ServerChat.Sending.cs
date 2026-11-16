@@ -13,7 +13,6 @@ namespace Modstoke.Sons
         /// <summary>Maximum native reply length in UTF-16 code units.</summary>
         public const int MaxMessageLength = 512;
 
-        private static int _reportedSendFailure;
 
         /// <summary>
         /// Queues plain, single-line game chat to one exact current remote session on the game thread.
@@ -93,16 +92,7 @@ namespace Modstoke.Sons
         }
 
         private static void ReportSendFailure(Exception error)
-        {
-            if (Interlocked.Exchange(ref _reportedSendFailure, 1) != 0)
-                return;
-            try
-            {
-                RuntimeEntryPoint.LogSource?.LogWarning("Server chat sending failed ("
-                    + error.GetType().FullName + "). Further send failures will not be logged.");
-            }
-            catch (Exception) { }
-        }
+            => NetworkFailures.Report("Server chat sending", error, withMessage: false);
     }
 
     public enum ChatSendResult
