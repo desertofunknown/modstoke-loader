@@ -76,84 +76,13 @@ namespace Modstoke.Sons
                 _runtimeBusy = true;
                 try
                 {
-                    var result = ExecuteRegistrationCore(normalized, nativeItem, cloneBase, nativeModuleMask, model);
-                    if (ItemIds.IsNetworked(normalized.ItemId))
-                    {
-                        var key = DefinitionKey(normalized.ModId, normalized.ItemKey);
-                        if (result.ReasonCode.EndsWith("-not-ready", StringComparison.Ordinal))
-                            MarkNetworkedPending(key, normalized.ModId);
-                        else
-                        {
-                            MarkNetworkedDone(key, result.Registered);
-                            if (!result.Registered) RefusedNetworked.Add(normalized.ItemId);
-                        }
-                    }
-                    return result;
+                    return ExecuteRegistrationCore(normalized, nativeItem, cloneBase, nativeModuleMask, model);
                 }
                 finally
                 {
                     _runtimeBusy = false;
                 }
             }
-        }
-
-        // Joining clients hold the server's world until this game's networked content exists (see
-        // ContentAgreement.HoldsWorld). Mods register their items once the item database and its Items table are up,
-        // a few seconds into the world, and add weapon mods right after, retrying while the game isn't ready yet.
-        private const long NetworkedSettleMilliseconds = 500;
-        // Mods retry a not-ready registration several times a second; one not retried for this long was given up.
-        private const long NetworkedRetryMilliseconds = 2000;
-        private static readonly Dictionary<string, (string ModId, long At)> PendingNetworked = new(StringComparer.OrdinalIgnoreCase);
-        // Networked item ids refused for good: a reserved range whose items were all refused has nothing coming.
-        private static readonly HashSet<int> RefusedNetworked = new();
-        private static long _networkedChangedAt;
-
-        /// <summary>A networked registration was refused only because the game isn't ready for it yet.</summary>
-        internal static void MarkNetworkedPending(string key, string modId)
-        {
-            lock (SyncRoot) PendingNetworked[key] = (modId, Environment.TickCount64);
-        }
-
-        /// <summary>A networked registration finished: published, or refused for a reason waiting won't change.</summary>
-        internal static void MarkNetworkedDone(string key, bool published)
-        {
-            lock (SyncRoot)
-            {
-                PendingNetworked.Remove(key);
-                if (published) _networkedChangedAt = Environment.TickCount64;
-            }
-        }
-
-        /// <summary>
-        /// Whether every mod that reserves networked item ids has published items or had them refused, none is still
-        /// retrying a registration the game wasn't ready for, and nothing was added for a moment. Otherwise names what
-        /// is still coming.
-        /// </summary>
-        internal static bool NetworkedContentReady(out string waiting)
-        {
-            waiting = null;
-            var reservations = ItemIds.Reservations.Where(range => range.Band == ItemIdBand.Networked && !range.Implicit).ToList();
-            if (reservations.Count == 0) return true;
-            if (!TryGetRuntimeDatabase(out _, out _, out _, out _))
-            {
-                waiting = "the item database";
-                return false;
-            }
-            var missing = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-            var now = Environment.TickCount64;
-            lock (SyncRoot)
-            {
-                foreach (var range in reservations)
-                    if (!RefusedNetworked.Any(range.Contains) && !RuntimeRegistrations.Values.Any(registration
-                        => registration.Published && range.Contains(registration.NativeModuleItemId)))
-                        missing.Add(range.ModId);
-                foreach (var pending in PendingNetworked.Values)
-                    if (now - pending.At < NetworkedRetryMilliseconds) missing.Add(pending.ModId);
-                if (missing.Count == 0 && now - _networkedChangedAt >= NetworkedSettleMilliseconds)
-                    return true;
-            }
-            waiting = missing.Count == 0 ? "the last items to settle" : string.Join(", ", missing.Select(ModNames.ForId)) + " items";
-            return false;
         }
 
         private static ItemRegistrationResult ExecuteRegistrationCore(

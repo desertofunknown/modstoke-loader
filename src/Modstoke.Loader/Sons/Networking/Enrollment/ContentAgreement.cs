@@ -46,9 +46,6 @@ namespace Modstoke.Sons
         private const double AnswerSeconds = 15;
         private const double JoiningSeconds = 60;
         private const double LobbySeconds = 1;
-        private const double ContentHoldSeconds = 10;
-        // SceneLoadState.DefaultLocal and DefaultRemote both use scene 255.
-        private const int NoScene = 255;
         private static readonly Dictionary<Guid, Peer> Peers = new();
         private static readonly Dictionary<string, (int Protocol, bool Required)> Protocols = new(StringComparer.OrdinalIgnoreCase);
         private static Declaration _local;
@@ -57,11 +54,11 @@ namespace Modstoke.Sons
         private static readonly string NegotiationVersion = EnrollmentWire.ProtocolVersion.ToString();
         private static readonly string NegotiationPrefix = NegotiationVersion + ":";
         private static bool _server, _requireClients, _active, _serverShares, _otherHost, _otherHostRefused, _hostNegotiates;
-        private static bool _hostDeclaresNone, _hostAgreed, _holdDone;
+        private static bool _hostDeclaresNone;
         private static string _joining, _joiningNegotiation, _labelledContent, _labelledNegotiation;
-        private static double _joiningAt, _nextLobbyCheck, _holdStartedAt;
+        private static double _joiningAt, _nextLobbyCheck;
         private static ulong _labelledLobby;
-        private static int _hostChannel, _heldSends;
+        private static int _hostChannel;
 
         private static Strings Text => LocalizationStartup.Text;
 
@@ -181,9 +178,8 @@ namespace Modstoke.Sons
             Peers.Clear();
             _hostDeclaration = null;
             _active = _serverShares = _otherHost = _otherHostRefused = _requireClients = _hostNegotiates = false;
-            _hostDeclaresNone = _hostAgreed = _holdDone = false;
-            _holdStartedAt = 0;
-            _hostChannel = _heldSends = 0;
+            _hostDeclaresNone = false;
+            _hostChannel = 0;
             _server = server;
             _local = Capture(withPacketChannels: true);
             _localFrames = Write(_local);
@@ -426,73 +422,6 @@ namespace Modstoke.Sons
             server.Disconnect();
         }
 
-        /// <summary>
-        /// Whether a joining client still holds its sends so the server doesn't send it the world yet: every packet
-        /// carries the client's scene state, and the server starts replicating once it reads that the client loaded
-        /// the server's scene (BoltConnection.IsLoadingMap), so holding them from then until this game's networked
-        /// mod items exist keeps the first replicated state from naming items it can't resolve. Bounded, and only
-        /// with a server whose mod check agreed.
-        /// </summary>
-        internal static bool HoldsWorld(BoltConnection server)
-        {
-            if (_server || _holdDone || !_hostAgreed) return false;
-            bool ready;
-            string waiting;
-            try
-            {
-                if (!LoadedServerScene(server)) return false;
-                ready = ItemRegistration.NetworkedContentReady(out waiting);
-            }
-            catch (Exception error)
-            {
-                // Every held send waits on this answer, so a read that keeps failing must end the hold, not the join.
-                _holdDone = true;
-                NetworkFailures.Report("Mod item readiness for the join", error);
-                return false;
-            }
-            var now = Now;
-            if (_holdStartedAt == 0)
-            {
-                if (ready)
-                {
-                    _holdDone = true;
-                    RuntimeEntryPoint.LogSource?.LogInfo("This game's mod items were ready when the world loaded; "
-                        + "nothing to hold back.");
-                    return false;
-                }
-                _holdStartedAt = now;
-                RuntimeEntryPoint.LogSource?.LogInfo("Holding the server's world until this game's mod items are ready "
-                    + "(waiting for " + waiting + ").");
-            }
-            var held = (long)((now - _holdStartedAt) * 1000);
-            if (ready)
-                RuntimeEntryPoint.LogSource?.LogInfo("Mod items were ready " + held + " ms after the world loaded; the "
-                    + "server can send the world now (" + _heldSends + " sends held).");
-            else if (now - _holdStartedAt >= ContentHoldSeconds)
-                RuntimeEntryPoint.LogSource?.LogWarning("Mod items still weren't ready " + held + " ms after the world "
-                    + "loaded (waiting for " + waiting + "); joining anyway, so items from mods may show late ("
-                    + _heldSends + " sends held).");
-            else
-            {
-                _heldSends++;
-                return true;
-            }
-            _holdDone = true;
-            return false;
-        }
-
-        // The local state reaches STATE_LOADING_DONE when a map load finishes and stays there; only the server's copy
-        // of it becomes STATE_CALLBACK_INVOKED. Both sides start each run on Bolt's "no scene", which a loaded map
-        // never matches.
-        private static bool LoadedServerScene(BoltConnection server)
-        {
-            var local = BoltCore._localSceneLoading;
-            if (local.State != Bolt.SceneLoadState.STATE_LOADING_DONE) return false;
-            var scene = local.Scene;
-            var announced = server._remoteSceneLoading.Scene;
-            return scene.Index != NoScene && scene.Index == announced.Index && scene.Sequence == announced.Sequence;
-        }
-
         internal static bool Receive(ControlPeer peer, ReadOnlySpan<byte> payload)
         {
             if (_server)
@@ -525,7 +454,6 @@ namespace Modstoke.Sons
                 // take part, so then every player it admits has this content.
                 _serverShares = ClientEnrollment.TryRead(peer, out var enrollment) == EnrollmentReadStatus.Success
                     && (enrollment.RequiredCapabilities & Capability) != 0;
-                _hostAgreed = true;
                 RuntimeEntryPoint.LogSource?.LogInfo("Your mod content matches the server's ("
                     + (host.ModCount == 0 ? "no required mods" : host.Summary) + ").");
                 return true;

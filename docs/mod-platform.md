@@ -4028,9 +4028,6 @@ The check rides on client enrollment (capability `1 << 61`); see
   `DescribeSharing()` gives the player a localized line on why mod items can't be
   shared otherwise. Mods check it before dropping, attaching, crafting or showing
   networked items; the SDK applies it to held items, held weapon mods and loot.
-- A joining client whose content matched holds the server's world back until
-  its networked items exist, for at most 10 seconds (see
-  [Join admission](BOLT_NETWORKING.md#join-admission)).
 
 ### Weapon attachments
 

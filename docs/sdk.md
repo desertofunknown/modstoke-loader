@@ -447,18 +447,11 @@ drop, a craft or an attachment others would see, and say why with
 The SDK already applies the policy to held mod items, the weapon mod hashes in
 a held weapon's state and mod loot in the container tables.
 
-A joining client whose check agreed holds its Bolt sends from the moment it
-has loaded the server's scene until its networked items exist, so the server
-sends the world only then. Ready means every mod with a reserved networked
-range has published items or had them refused, no registration refused with a
-`*-not-ready` reason was retried in the last two seconds, and nothing was added
-for half a second; the hold lasts 10 seconds at most. Mods that register items
-as soon as `RuntimeRegistrationReady` is true and retry on `*-not-ready` a few
-times a second need do nothing more. The client logs `Holding the server's
-world until this game's mod items are ready (waiting for ...)` and then `Mod
-items were ready X ms after the world loaded` or a warning that it joined
-anyway, or `This game's mod items were ready when the world loaded` when there
-was nothing to hold.
+A joining client can receive the host's world before its own networked items
+exist: the game loads its world outside Bolt's scene loading, so nothing holds
+replication back. Register networked items as soon as
+`RuntimeRegistrationReady` is true and retry on `*-not-ready` a few times a
+second, so they are there as early as the game allows.
 
 ## Held weapon mods
 

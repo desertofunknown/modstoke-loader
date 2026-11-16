@@ -50,7 +50,10 @@ namespace Modstoke.Sons
         public int AttachmentItemId { get; }
         public int WeaponItemId { get; }
 
-        /// <summary>A template the mod keeps alive; the game instantiates copies on every weapon that carries it.</summary>
+        /// <summary>
+        /// A template the mod keeps alive; the game instantiates copies on every weapon that carries it. A copy sits
+        /// under the slot's locator and scales with the weapon's model, as the game's own mods do.
+        /// </summary>
         public Func<GameObject> Model { get; }
 
         public WeaponAttachmentSlot Slot { get; init; } = WeaponAttachmentSlot.OnTopRail;
@@ -66,7 +69,11 @@ namespace Modstoke.Sons
         /// </summary>
         public IReadOnlyList<string> Hides { get; init; } = Array.Empty<string>();
 
-        /// <summary>Runs on the Unity thread whenever a weapon object shows this attachment, local or remote.</summary>
+        /// <summary>
+        /// Runs on the Unity thread whenever a weapon object shows this attachment, local or remote. A weapon drawn
+        /// that moment is not posed yet: the hunting rifle's animator scales its model by 2.5 on its first update, so
+        /// world-space scale read here is not final, while scale relative to <see cref="WeaponAttachmentContext.Weapon"/> is.
+        /// </summary>
         public Action<WeaponAttachmentContext> OnAttached { get; init; }
 
         /// <summary>Runs when it comes off, and when the weapon object carrying it is destroyed (unequip, drop, unload).</summary>
@@ -85,7 +92,10 @@ namespace Modstoke.Sons
 
         public WeaponAttachmentSpec Spec { get; }
 
-        /// <summary>The weapon object carrying the attachment. May already be destroyed in OnDetached.</summary>
+        /// <summary>
+        /// The weapon model carrying the attachment, the object with the game's WeaponMods. May already be destroyed
+        /// in OnDetached.
+        /// </summary>
         public GameObject Weapon { get; }
 
         /// <summary>The game's copy of the attachment model on this weapon. May already be destroyed in OnDetached.</summary>
@@ -148,8 +158,6 @@ namespace Modstoke.Sons
                     return false;
                 }
                 var hash = HashOf(spec.ModId, spec.Key);
-                // Joining clients wait for networked content, so an attachment still waiting on its items counts.
-                var key = "weapon mod " + hash;
                 if (ByHash.TryGetValue(hash, out var existing))
                 {
                     var same = existing.Spec.AttachmentItemId == spec.AttachmentItemId && existing.Spec.WeaponItemId == spec.WeaponItemId
@@ -162,20 +170,17 @@ namespace Modstoke.Sons
                     || !ItemDatabaseManager.TryFindItemById(spec.WeaponItemId, out var weapon) || !Alive(weapon))
                 {
                     status = "Both the attachment and the weapon item must be registered first.";
-                    if (hash != 0) ItemRegistration.MarkNetworkedPending(key, spec.ModId);
                     return false;
                 }
                 if (!TryCatalog(out var catalog))
                 {
                     status = "The game's weapon mod catalog is not ready.";
-                    ItemRegistration.MarkNetworkedPending(key, spec.ModId);
                     return false;
                 }
                 for (var i = 0; i < catalog.Count; i++)
                     if (Alive(catalog[i]) && catalog[i].Id == hash)
                     {
                         status = "Hash " + hash + " collides with native weapon mod " + catalog[i].name + ".";
-                        ItemRegistration.MarkNetworkedDone(key, false);
                         return false;
                     }
                 EnsureHooks();
@@ -202,7 +207,6 @@ namespace Modstoke.Sons
                 catalog.Add(mod);
                 _catalogSeen = catalog.Pointer;
                 ByHash.Add(hash, new Registration { Spec = spec, Mod = mod });
-                ItemRegistration.MarkNetworkedDone(key, true);
                 FindRemotesSoon();
                 _weaponsOnMat = false;
                 RuntimeEntryPoint.LogSource?.LogInfo("Item " + spec.AttachmentItemId + " attaches to item " + spec.WeaponItemId

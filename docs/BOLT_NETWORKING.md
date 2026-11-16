@@ -68,14 +68,10 @@ hint lasts for one Bolt start.
 4. Once enrollment, the content check and mod admission have all passed, the
    host sends `Admitted` and lets the connection's game packets through. The
    client sends nothing before `Admitted` arrives.
-5. Every client packet carries its scene state, and Bolt replicates entities to
-   a client only once that state says it loaded the server's scene. A client
-   whose content matched keeps holding its sends from that moment until its
-   networked mod items exist (every mod that reserves networked item ids has
-   published some or had them refused, none retried a registration the game
-   wasn't ready for in the last two seconds, and nothing was added for half a
-   second), for at most 10 seconds, so the first replicated state cannot name an
-   item, pickup or weapon mod it can't resolve yet.
+5. Sons of the Forest loads its world itself, not through Bolt's scene loading,
+   so both sides keep Bolt's placeholder scene (255) and Bolt counts a client as
+   loaded as soon as it connects. The host replicates while the client is still
+   loading its world; holding the client's sends would not hold that back.
 
 The stream channel is reliable but resends a lost frame on its own, so frames
 can arrive out of order. A client keeps any declaration, admission frame or
@@ -99,11 +95,7 @@ N game sends were held until then", or a "Refused connection N" line with the
 reason and the held counts. Ten seconds after admission the host warns if that
 client's notices hello has not arrived, which points at a stalled reliable
 event stream. The client also logs "Sent N SDK packets held until the server
-admitted this client" and, when it held the world back, "Holding the server's
-world until this game's mod items are ready (waiting for ...)" followed by "Mod
-items were ready X ms after the world loaded" or, after 10 seconds, a warning
-that it is joining anyway; "This game's mod items were ready when the world
-loaded" means there was nothing to hold.
+admitted this client".
 
 Refusal notices travel in the disconnect token in the host's language, cut to
 its 256 UTF-8 bytes; the host's refusal line says whether the notice went out.

@@ -190,7 +190,7 @@ namespace Modstoke.Sons
                 // Ahead of the peer lookup: a negotiation peer lost after the latch must not freeze a player in.
                 var key = (__instance.Pointer, __instance.ConnectionId);
                 if (_clientAdmitted == key)
-                    return !ContentAgreement.HoldsWorld(__instance);
+                    return true;
                 if (_clientReleased == key)
                 {
                     _clientSentWhileReleased = true;
@@ -212,7 +212,7 @@ namespace Modstoke.Sons
                     _clientSentWhileReleased = true;
                 if (decision != GateDecision.Allow)
                     _clientHeldSends++;
-                return decision == GateDecision.Allow && (_clientAdmitted != key || !ContentAgreement.HoldsWorld(__instance));
+                return decision == GateDecision.Allow;
             }
             catch (Exception error)
             {
