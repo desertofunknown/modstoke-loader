@@ -51,6 +51,11 @@ namespace Modstoke.Loader
         /// <summary>When the setting can be changed, for one that depends on another; null for always.</summary>
         internal Func<bool> When { get; set; }
 
+        /// <summary>The row's own name and description, for one whose text is not the Loader's, as a mod's is; null for the Loader's.</summary>
+        internal Func<string> Name { get; set; }
+
+        internal Func<string> About { get; set; }
+
         /// <summary>A color for the value, for a row whose value is a status; null for the usual ink.</summary>
         internal virtual Color? Tint => null;
 
@@ -481,15 +486,28 @@ namespace Modstoke.Loader
 
     internal sealed record OptionTab(string Id, IReadOnlyList<OptionSection> Sections);
 
-    /// <summary>What the Options screen shows: the game's settings in Modstoke's grouping, then Modstoke's own.</summary>
+    /// <summary>
+    /// What the Options screen shows: the game's settings in Modstoke's grouping, then Modstoke's own, with the
+    /// sections mods add after each tab's own.
+    /// </summary>
     internal static class OptionsCatalog
     {
         private static readonly HashSet<string> Reported = new();
+        /// <summary>Every tab in order on screen, indexed by <see cref="OptionsPage"/>.</summary>
+        internal static readonly string[] AllTabs = { "display", "graphics", "gameplay", "controls", "audio", "accessibility", "modstoke" };
 
-        internal static IReadOnlyList<string> TabIds { get; } = new[] { "display", "graphics", "gameplay", "controls", "audio", "modstoke" };
+        /// <summary>The tabs as they stand now; Accessibility has nothing of the Loader's own and shows only once a mod adds to it.</summary>
+        internal static IReadOnlyList<string> TabIds => AllTabs.Where(id => id != "accessibility" || ModOptions.Any(id)).ToArray();
 
         /// <summary>Builds one tab's rows. A setting this install cannot read is left out and logged once.</summary>
-        internal static OptionTab Tab(string id) => id switch
+        internal static OptionTab Tab(string id)
+        {
+            var tab = BuiltIn(id);
+            var added = ModOptions.Sections(tab.Id).ToArray();
+            return added.Length == 0 ? tab : new OptionTab(tab.Id, tab.Sections.Concat(added).ToArray());
+        }
+
+        private static OptionTab BuiltIn(string id) => id switch
         {
             "display" => new OptionTab(id, new[]
             {
@@ -600,6 +618,7 @@ namespace Modstoke.Loader
                     Choice("voiceCount", () => new VoiceCountOptionGui()),
                     Choice("proximityChat", () => new ProximityVoiceChatOptionGui()))
             }),
+            "accessibility" => new OptionTab(id, Array.Empty<OptionSection>()),
             _ => new OptionTab("modstoke", new[]
             {
                 Section("menus",

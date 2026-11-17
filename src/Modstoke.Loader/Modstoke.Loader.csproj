@@ -958,6 +958,7 @@
     <Compile Include="Sons/UI/FrontEnd/TitleScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/SavedGamesScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/OptionsCatalog.cs" />
+    <Compile Include="Sons/UI/FrontEnd/ModOptions.cs" />
     <Compile Include="Sons/UI/FrontEnd/SettingsScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/OptionsScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/GameBindings.cs" />

@@ -2082,3 +2082,47 @@ direction never see it, and puts everything back the moment it closes.
   `PowerGrid.UpdateTime` and `TimeOfDayTrigger.UpdateTime` are skipped until photo
   mode closes and has put everything back, so solar power and objects switched by
   the hour keep their real-time state. The tab is empty online.
+
+## Options sections
+
+A mod can add its own sections to the front end's Options screen, at the title and
+in the pause menu. They sit after the tab's own settings, each under its own
+heading, and are drawn, navigated and reset like every other row there, with the
+keyboard, mouse or a controller. The game's rows are not touched.
+
+```csharp
+var text = Strings.For(typeof(Plugin).Assembly);
+ModOptions.TryAddSection("author.mymod.display", OptionsPage.Accessibility, () => text["section.display"],
+    new OptionsSetting[]
+    {
+        new OptionsSlider("opacity", () => text["opacity.name"], () => text["opacity.about"], 0.2f, 1f, 0.1f,
+            () => settings.Opacity, value => settings.Opacity = value, 1f),
+        new OptionsChoice("dot", () => text["dot.name"], () => text["dot.about"],
+            new (string, Func<string>)[] { ("off", () => text["dot.off"]), ("on", () => text["dot.on"]) },
+            () => settings.Dot, value => settings.Dot = value, "off") { When = () => settings.Opacity > 0.5f }
+    }, save: settings.Save);
+```
+
+- `OptionsPage` names the tab: Display, Graphics, Gameplay, Controls, Audio,
+  Accessibility or Modstoke. The Accessibility tab has nothing of the Loader's own
+  and appears only while a mod has a section on it.
+- `OptionsChoice` steps through named values, `OptionsSwitch` is on or off and
+  `OptionsSlider` is a number on whole steps from its low end. A slider without a
+  format reads its value as a percentage of 0 to 1 (`OptionsSlider.Percent`), the
+  way the Options screen shows its own.
+- Names, descriptions, choice names and section titles are read each time they are
+  drawn, so they follow the player's language. Default is the value the Default
+  prompt puts back and the details column names.
+- `When` dims a setting that depends on another; focus passes over it.
+- Values are read and written on the game thread through the accessors given. The
+  mod keeps and saves them: `save` runs shortly after a change and when Options
+  closes, alongside the game's own settings save.
+- A section id is unique across mods, so start it with the mod's id; setting ids
+  only need to be unique within their section. A repeated section id returns false.
+  `TryRemoveSection` takes it away, as a mod should on shutdown.
+- An accessor that throws is logged once with its row and the row carries on with
+  its default, so one faulty setting never takes the screen down.
+- A section added while Options is open shows when it is next opened; the tabs are
+  read once per opening.
+
+Modstoke Accessibility builds its Accessibility tab this way.

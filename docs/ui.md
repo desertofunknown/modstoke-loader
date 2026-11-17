@@ -254,6 +254,26 @@ of the definition, then its save), refreshes HUD prompts already on screen, and
 warns only about clashes between maps the game turns on together. Where an install's bindings can't be read, the Options row opens the
 game's own controls screen instead and the log says why.
 
+Mods add Options sections through `ModOptions` (see the SDK's Options sections).
+`OptionsCatalog.Tab` appends them after a tab's own, as ordinary `ChoiceRow`,
+`SwitchRow` and `NumberRow`s carrying their own text in `OptionRow.Name` and
+`About`, and the Accessibility tab is listed only while a mod has a section on it.
+`OptionsScreen` reads the tabs once per opening and remembers the last one by id.
+
+The Mods key opens `ModsScreen` at the title, in the pause menu and in the world.
+In the world it brings up the game's pause menu through `PauseHost.TryOpen` (the
+game's own `CanBeOpened` check for its pause key) and stands straight over it,
+as the photo key does (`FrontEnd.OverPause`): single player pauses, the game puts
+its HUD away and frees the cursor, and online play carries on. Back on that
+screen, and the Mods key from any page opened from it, return to play. A mod
+page (`ModPageScreen`) opens its config file on `ConfigScreen` (the file's simple
+settings, Save, Revert and a question before unsaved edits are dropped; the
+whole file goes to the classic editor's TEXT mode) and its live settings or
+actions straight in the mod's panel, with the front end hidden until it closes.
+`ModMenuRenderer` and the IMGUI fallback remain for classic menus, a failed front
+end, and moments the pause menu can't open (a seat, device or the inventory
+holding the game's controls, a cutscene).
+
 World loads show `Sons/UI/Loading`'s screen in place of the game's: a
 DontDestroyOnLoad canvas at sort order 4550, built hidden at the title and
 raised by the menu that starts the load (`LoadingScreen.Intend`), or by the

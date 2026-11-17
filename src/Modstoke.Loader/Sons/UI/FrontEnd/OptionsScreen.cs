@@ -3,33 +3,40 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Sons.Settings;
 using UnityEngine;
 
 namespace Modstoke.Loader
 {
     /// <summary>
-    /// Options: the game's settings and Modstoke's own on tabs. Every change applies at once and is saved
-    /// shortly after, as well as when the screen closes.
+    /// Options: the game's settings, Modstoke's own and the sections mods add, on tabs. Every change applies at
+    /// once and is saved shortly after, as well as when the screen closes.
     /// </summary>
     internal sealed class OptionsScreen : SettingsScreen
     {
         private const float SaveDelay = 1.5f;
         // A change of resolution or window mode can leave the screen unreadable; it is kept only when confirmed.
         private static readonly HashSet<string> DisplayRows = new() { "resolution", "windowMode" };
-        private static int _lastTab;
+        // By id, as the tabs a mod adds or takes away move the others along.
+        private static string _lastTab;
+        private readonly string[] _tabIds;
         private float _saveAt;
 
-        internal OptionsScreen() : base(_lastTab) { }
+        internal OptionsScreen() : this(OptionsCatalog.TabIds.ToArray()) { }
 
-        protected override IReadOnlyList<string> TabIds => OptionsCatalog.TabIds;
+        // The tabs are read once, so a mod starting or stopping while the screen is open leaves its tab bar as it was.
+        private OptionsScreen(string[] tabIds) : base(Math.Max(0, Array.IndexOf(tabIds, _lastTab))) => _tabIds = tabIds;
+
+        protected override IReadOnlyList<string> TabIds => _tabIds;
         protected override OptionTab BuildTab(string id) => OptionsCatalog.Tab(id);
         protected override string Heading => Text["options.title"];
         protected override string TabName(string id) => Text["options.tab." + id];
-        protected override string SectionName(string id) => Text["options.section." + id];
-        protected override string ItemName(OptionRow row) => Text["options.item." + row.Id + ".name"];
+        protected override string SectionName(string id) => ModOptions.TryTitle(id, out var title) ? title : Text["options.section." + id];
+        protected override string ItemName(OptionRow row) => row.Name != null ? row.Name() : Text["options.item." + row.Id + ".name"];
         protected override string ItemAbout(OptionRow row)
         {
+            if (row.About != null) return row.About();
             var about = Text["options.item." + row.Id + ".about"];
             if (row.Id != "graphicsApi") return about;
             // What this start is drawing with, and anything that keeps the choice from applying.
@@ -44,7 +51,7 @@ namespace Modstoke.Loader
         private static bool LaunchOptionsChooseApi
             => Array.Exists(Environment.GetCommandLineArgs(), argument => argument.StartsWith("-force-", StringComparison.OrdinalIgnoreCase));
 
-        protected override void TabChanged(int index) => _lastTab = index;
+        protected override void TabChanged(int index) => _lastTab = _tabIds[index];
 
         protected override void RowChanged(OptionRow row)
         {
@@ -84,6 +91,7 @@ namespace Modstoke.Loader
             {
                 RuntimeEntryPoint.LogSource?.LogWarning("The game's settings could not be saved: " + error.Message);
             }
+            ModOptions.Save();
         }
     }
 }
