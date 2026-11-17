@@ -141,7 +141,7 @@ namespace Modstoke.Loader
                     return;
 
                 var relay = new SdkPackets.EventPacket(ClonePacket(packet), target, targetConnection);
-                SendPacket(relay, target == GlobalTargets.Others ? fromConnection.ConnectionId : null);
+                Send(relay, target == GlobalTargets.Others ? fromConnection.ConnectionId : null, fromConnection);
                 return;
             }
 
@@ -213,7 +213,13 @@ namespace Modstoke.Loader
             return new UdpPacket(new Il2CppStructArray<byte>(size: payloadBytes + headerBytes));
         }
 
-        public void SendPacket(SdkPackets.EventPacket packet, uint? skipConnection)
+        public void SendPacket(SdkPackets.EventPacket packet, uint? skipConnection) => Send(packet, skipConnection, null);
+
+        // A relayed packet costs the client that sent it one packet of its budget per recipient, on top of the one
+        // its receipt cost, so one client can't turn its allowance into that many times the host's upload. The relay
+        // goes to everyone or no one: one that reached only the clients early in the list would leave the rest out
+        // of step, and a refused large relay leaves the sender's own small packets their allowance.
+        private static void Send(SdkPackets.EventPacket packet, uint? skipConnection, BoltConnection relayedFor)
         {
             if (!BoltNetwork.isRunning)
                 return;
@@ -221,6 +227,7 @@ namespace Modstoke.Loader
             ArgumentNullException.ThrowIfNull(packet);
             if (packet.Packet == null || packet.Packet.WasCollected)
                 throw new ArgumentException("A live packet is required.", nameof(packet));
+            RequireFits(packet.Packet);
 
             if (BoltNetwork.isClient)
             {
@@ -237,6 +244,12 @@ namespace Modstoke.Loader
 
             var broadcast = packet.Targets is GlobalTargets.Everyone or GlobalTargets.Others or GlobalTargets.AllClients;
             if (!broadcast && packet.Targets != GlobalTargets.OnlySelf) return;
+            if (relayedFor != null)
+            {
+                var recipients = CountRecipients(packet, skipConnection, broadcast);
+                if (recipients > 0 && !WithinBudget(relayedFor, recipients))
+                    return;
+            }
             var clients = BoltNetwork.clients.GetEnumerator();
             try
             {
@@ -244,8 +257,7 @@ namespace Modstoke.Loader
                 while (iterator.MoveNext())
                 {
                     var connection = clients.Current;
-                    if (broadcast ? skipConnection != null && connection.ConnectionId == skipConnection.Value
-                        : connection.ConnectionId != packet.TargetConnectionId) continue;
+                    if (!Addressed(packet, connection, skipConnection, broadcast)) continue;
                     if (!ShowsLoader(connection))
                     {
                         AwaitLoader(connection, packet.Packet);
@@ -256,6 +268,31 @@ namespace Modstoke.Loader
                 }
             }
             finally { clients.Cast<Il2CppSystem.IDisposable>().Dispose(); }
+        }
+
+        private static bool Addressed(SdkPackets.EventPacket packet, BoltConnection connection, uint? skipConnection, bool broadcast)
+            => broadcast ? skipConnection == null || connection.ConnectionId != skipConnection.Value
+                : connection.ConnectionId == packet.TargetConnectionId;
+
+        // The clients a send reaches or holds for, leaving out ones the host gave up holding for.
+        private static int CountRecipients(SdkPackets.EventPacket packet, uint? skipConnection, bool broadcast)
+        {
+            int count = 0;
+            var clients = BoltNetwork.clients.GetEnumerator();
+            try
+            {
+                var iterator = clients.Cast<Il2CppSystem.Collections.IEnumerator>();
+                while (iterator.MoveNext())
+                {
+                    var connection = clients.Current;
+                    if (!Addressed(packet, connection, skipConnection, broadcast)) continue;
+                    if (!ShowsLoader(connection) && Awaiting.TryGetValue((connection.Pointer, connection.ConnectionId), out var waiting)
+                        && waiting.GaveUp) continue;
+                    count++;
+                }
+            }
+            finally { clients.Cast<Il2CppSystem.IDisposable>().Dispose(); }
+            return count;
         }
 
         // A client without a loader hands an SDK packet to Bolt as a game packet, so the host sends them only to
@@ -406,7 +443,8 @@ namespace Modstoke.Loader
             Awaiting.Clear();
         }
 
-        private static bool WithinBudget(BoltConnection connection)
+        // Takes all of cost or nothing; a refusal counts as one dropped packet.
+        private static bool WithinBudget(BoltConnection connection, int cost = 1)
         {
             var now = Environment.TickCount64;
             var key = (connection.Pointer, connection.ConnectionId);
@@ -419,9 +457,9 @@ namespace Modstoke.Loader
             }
             budget.Tokens = System.Math.Min(BudgetBurst, budget.Tokens + (now - budget.Refilled) * BudgetPerSecond / 1000);
             budget.Refilled = now;
-            if (budget.Tokens >= 1)
+            if (budget.Tokens >= cost)
             {
-                budget.Tokens--;
+                budget.Tokens -= cost;
                 return true;
             }
             budget.Dropped++;
@@ -435,6 +473,24 @@ namespace Modstoke.Loader
                 budget.Dropped = 0;
             }
             return false;
+        }
+
+        // UdpKit writes a packet whole behind its pipe header into the socket's send buffer and never splits it, so
+        // one over the datagram size can't go out; it is refused here with the sizes rather than failing in native code.
+        private static void RequireFits(UdpPacket packet)
+        {
+            var socket = BoltCore._udpSocket;
+            if (socket == null || socket.WasCollected)
+                return;
+            var config = socket.PacketPipeConfig;
+            var buffer = socket.sendBuffer;
+            if (buffer == null || buffer.WasCollected || config.DatagramSize <= 0 || config.SequenceBytes < 0 || config.AckBytes < 0)
+                return;
+            long limit = System.Math.Min(config.DatagramSize, buffer.Length) - (2L * config.SequenceBytes + config.AckBytes + 3);
+            long bytes = (packet.Ptr + 7L) / 8;
+            if (bytes > limit)
+                throw new ArgumentException("This SDK packet is " + bytes + " bytes, but one datagram carries at most "
+                    + limit + " on this connection, so it was not sent. Send less per packet.", nameof(packet));
         }
 
         private static void SendToConnection(BoltConnection connection, UdpPacket packet)

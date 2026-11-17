@@ -49,6 +49,13 @@ namespace Modstoke.Sons
         internal static bool ClientWasAdmitted => _clientAdmitted.Item1 != IntPtr.Zero;
 
         /// <summary>
+        /// Whether this client's SDK packets are being held until its server admits it. Held packets go out in order
+        /// on admission and are dropped if the connection ends first, so a mod counting unanswered requests should not
+        /// count these. False offline and on a server. Read it on the game thread.
+        /// </summary>
+        public static bool SendsHeld => BoltNetwork.isClient && !ClientReleased(BoltNetwork.server);
+
+        /// <summary>
         /// Selects enrollment with a temporary gameplay-packet gate before Bolt starts.
         /// Servers hold client game packets until admission; clients pause ordinary Bolt
         /// serialization while still receiving server state. Rejection requests disconnect. A host
@@ -233,6 +240,9 @@ namespace Modstoke.Sons
                 {
                     foreach (var session in ServerSessions.Sessions)
                     {
+                        // Admission holds for the connection's life, so an admitted one has nothing to decide here.
+                        if (AdmittedConnections.Contains((session.ConnectionPointer, session.ConnectionId)))
+                            continue;
                         var connection = ServerSessions.ResolveCurrent(session);
                         if (connection != null && ReadGate(connection) == GateDecision.Reject)
                             Refuse(session, connection);

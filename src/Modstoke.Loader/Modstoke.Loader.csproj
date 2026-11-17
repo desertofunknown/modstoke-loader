@@ -602,6 +602,7 @@
     <Compile Include="Sons/Building/BlueprintRegistration.Helpers.cs" />
     <Compile Include="Sons/Networking/Prefabs/NetworkPrefabs.cs" />
     <Compile Include="Sons/Networking/Transport/Packets.cs" />
+    <Compile Include="Sons/Networking/Transport/PacketPayloads.cs" />
     <Compile Include="Sons/Server/Communication/ServerCommands.cs" />
     <Compile Include="Sons/Networking/Commands/Commands.cs" />
     <Compile Include="Sons/Networking/Commands/Commands.Host.cs" />
