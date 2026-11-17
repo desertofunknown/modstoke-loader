@@ -2394,16 +2394,22 @@ product names and technical identifiers are retained verbatim.
   independent stream does not invoke them. Notifications are local observations,
   not remote inventory authority or cancellable requests. Gameplay acceptance
   remains open.
-- Sons lifecycle, scene, world and pause publications request a coalesced manager
-  snapshot refresh after updating the service and notifying subscribers. The
-  existing Unity-driver pump collects state after callbacks, retains requests
-  through its two-second cooldown and flushes the quit publication at shutdown.
-  This closes the gap where the live service changed but the disk snapshot stayed
-  at an earlier scene transition. Generic SetService and RefreshEnvironment do
-  not enqueue writes, avoiding a writer-driven refresh cycle. Pause observation
-  compares both menu existence and visibility, so a closed menu appearing or
-  disappearing is published. The LocalPlayer-based world predicate is unchanged;
-  publication after these changes still needs ordinary game acceptance.
+- Sons lifecycle, scene, world, pause and save publications mark the loader
+  state file stale after updating the service and notifying subscribers; they no
+  longer write it. A full export costs 40 to 70 ms and about 30 MB of garbage on
+  the game thread (2.35 MB of JSON, serialized on a worker), and a multiplayer
+  world keeps running behind the pause menu, so `openacai-loader-state.json` is
+  pulled: the `refreshState` and `refreshInventory` runtime commands (Mods menu,
+  console or the Manager's pipe) write it at once, anywhere. Every other request
+  waits, coalesced, for the title screen with no load running, for a dedicated
+  server with no client connected (or session tracking unavailable, in which
+  case only commands and quit write it), and for quit, which flushes. The
+  two-second cooldown still applies. While the Mods menu is open in a world, a
+  change to the mod inventory (a config value applied, say) is still published
+  to the menu, without writing the file. Generic SetService and
+  RefreshEnvironment do not enqueue writes. Pause observation compares both menu
+  existence and visibility, so a closed menu appearing or disappearing is
+  published. The LocalPlayer-based world predicate is unchanged.
 - `Sons/Saves/SaveData.cs` owns the first save-data isolation slice. It
   exposes `openacai.sons.saveData`, writes `openAcaiSonsSaveData` into loader
   state, creates the OpenACAI save-data roots, and gives mods safe per-mod

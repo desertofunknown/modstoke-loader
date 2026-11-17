@@ -257,32 +257,49 @@ namespace Modstoke.Loader
             try
             {
                 ReportWriteCompletion();
-                string reason;
-                bool refreshFileIntegrity;
-                var gameplay = !force && InLoadOrPlay();
+                string reason = null;
+                bool refreshFileIntegrity = false, publishOnly = false;
                 lock (RefreshSync)
                 {
                     if (_pendingRefreshReason == null || _stateRefreshInProgress
                         || (!force && Environment.TickCount64 < _nextStateRefreshTick))
                         return;
-                    // A full export costs tens of milliseconds on the game thread. Ones raised by scene, world and
-                    // lifecycle changes wait for the menus or the pause menu instead of landing in a load or in play.
-                    if (gameplay && !_pendingFileIntegrityRefresh && FollowsGameState(_pendingRefreshReason))
-                        return;
-
-                    reason = _pendingRefreshReason;
-                    refreshFileIntegrity = _pendingFileIntegrityRefresh;
-                    _pendingRefreshReason = null;
-                    _pendingFileIntegrityRefresh = false;
+                    // A full export costs 40 to 70 ms and about 30 MB of garbage on the game thread, and a multiplayer
+                    // world keeps running behind the pause menu. So the file is pulled: a refresh command (the Mods
+                    // menu, the console or the Manager's pipe) writes it at once, and every other change only marks
+                    // it stale until the title screen, an empty dedicated server or quit.
+                    if (!force && !_pendingFileIntegrityRefresh && !Idle())
+                    {
+                        // The open Mods menu lists the mod inventory, so a change to it still reaches the menu.
+                        if (_capturedInventoryRevision == _inventoryRevision || !MenuController.IsVisible)
+                            return;
+                        publishOnly = true;
+                    }
+                    else
+                    {
+                        reason = _pendingRefreshReason;
+                        refreshFileIntegrity = _pendingFileIntegrityRefresh;
+                        _pendingRefreshReason = null;
+                        _pendingFileIntegrityRefresh = false;
+                    }
                     _stateRefreshInProgress = true;
                 }
 
                 try
                 {
-                    Timings.Mark("loader.state", "refresh-requested", reason);
-                    Write(_lastNativeUnitySupportActive, _hostedRedLoaderMods ?? Array.Empty<ModBase>(), _lastStartupError,
-                        startupWarnings, refreshFileIntegrity, refreshItemCatalog: refreshFileIntegrity,
-                        refreshDiscovery: false, flush: false);
+                    if (publishOnly)
+                    {
+                        var inventory = CaptureModInventory(false);
+                        BepInExPluginCompatibility.Refresh(inventory);
+                        ModHost.Refresh(inventory);
+                    }
+                    else
+                    {
+                        Timings.Mark("loader.state", "refresh-requested", reason);
+                        Write(_lastNativeUnitySupportActive, _hostedRedLoaderMods ?? Array.Empty<ModBase>(), _lastStartupError,
+                            startupWarnings, refreshFileIntegrity, refreshItemCatalog: refreshFileIntegrity,
+                            refreshDiscovery: false, flush: false);
+                    }
                 }
                 finally
                 {
@@ -304,21 +321,15 @@ namespace Modstoke.Loader
             }
         }
 
-        private static bool FollowsGameState(string reason) =>
-            reason.StartsWith("sons-scene-", StringComparison.Ordinal) || reason.StartsWith("sons-world-", StringComparison.Ordinal)
-            || reason.StartsWith("sons-lifecycle-", StringComparison.Ordinal) || reason.StartsWith("sons-pause-", StringComparison.Ordinal);
-
-        // Loading, or in the game scene with the pause menu closed; the dedicated server has no player to disturb.
-        private static bool InLoadOrPlay()
+        // The title screen with no load under way, or a dedicated server nobody is connected to.
+        private static bool Idle()
         {
-            if (LoaderEnvironment.IsDedicatedServer) return false;
             try
             {
-                var state = global::Modstoke.Sons.GameRuntime.State;
-                if (state.PauseMenuOpen) return false;
-                return state.IsInWorld || global::Sons.Loading.LoadScene._isLoading
-                    || string.Equals(state.SceneKind, global::Modstoke.Sons.SceneKind.Loading, StringComparison.Ordinal)
-                    || string.Equals(state.SceneKind, global::Modstoke.Sons.SceneKind.Game, StringComparison.Ordinal);
+                if (LoaderEnvironment.IsDedicatedServer)
+                    return global::Modstoke.Sons.ServerSessions.HooksInstalled
+                        && global::Modstoke.Sons.ServerSessions.Sessions.Count == 0;
+                return global::Modstoke.Sons.GameRuntime.IsTitleScene && !global::Sons.Loading.LoadScene._isLoading;
             }
             catch (Exception)
             {
