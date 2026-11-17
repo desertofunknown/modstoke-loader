@@ -79,8 +79,8 @@ namespace Modstoke.Loader
             _alpha = 0f;
         }
 
-        // Photo mode, the menus over the world, and the game's own switches for its HUD.
-        private static bool Covered()
+        /// <summary>Photo mode, the menus over the world, and the game's own switches for its HUD: the HUD marks keep out.</summary>
+        internal static bool Covered()
             => PhotoMode.Active || GameRuntime.State.PauseMenuOpen || MenuController.IsVisible || ScreenHost.IsOpen
                 || UiManager._allOffUserOverride || UiManager._hudOffUserOverride;
 

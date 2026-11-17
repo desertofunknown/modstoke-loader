@@ -59,6 +59,37 @@
     "startFailed": "No se pudo iniciar. El registro del Loader indica el motivo."
   },
 
+  "saves": {
+    "earlier": "Partidas anteriores",
+    "restore": "Restaurar",
+    "restoreTitle": "¿Restaurar la partida guardada el {when}?",
+    "restoreBody": "El mundo vuelve a como estaba entonces. Su estado actual se conserva como partida anterior, así que puedes deshacerlo.",
+    "damagedBody": "Esta partida no ha pasado una comprobación y puede que no cargue. Sus archivos dañados se guardan aparte. Elige Continuar otra vez para probarla tal cual.",
+    "refusedBody": "El juego no pudo cargar esta partida. Su estado actual se conserva como partida anterior. Elige Continuar otra vez para probarla tal cual.",
+    "restoring": "Restaurando…",
+    "restored": "Se restauró la partida guardada el {when}.",
+    "restoreFailed": "No se pudo restaurar esa partida. El registro del Loader indica el motivo.",
+    "listFailed": "No se pudieron leer las partidas anteriores. El registro del Loader indica el motivo.",
+    "reading": "Leyendo partidas anteriores…",
+    "none": "Aún no hay partidas anteriores de este mundo. Se conserva una copia cada vez que guardas.",
+    "count": { "one": "{count} partida anterior", "other": "{count} partidas anteriores" },
+    "day": "Día {days}",
+    "size": "{size:N1} MB",
+    "damaged": "Dañada",
+    "didNotLoad": "No se cargó",
+    "reason": {
+      "restore": "Conservada antes de una restauración",
+      "load": "Como estaba al cargar el mundo",
+      "gameBackup": "Copia de seguridad del propio juego"
+    },
+    "damagedToast": "La última partida guardada de este mundo parece dañada. Las anteriores se conservan: restaura una desde la pantalla de título.",
+    "refusedToast": "No se pudo cargar la partida de este mundo. Sal a la pantalla de título para restaurar una anterior.",
+    "clientDamagedToast": "Tu partida en este servidor parece dañada. Se conservan sus copias anteriores.",
+    "clientRefusedToast": "No se pudo cargar tu partida en este servidor. Se conservan sus copias anteriores.",
+    "checking": "Comprobando esta partida…",
+    "noOther": "Ninguna copia anterior es distinta de esta partida. Elige Continuar otra vez para probarla tal cual."
+  },
+
   "options": {
     "title": "Opciones",
     "reset": "Predeterminado",
@@ -847,6 +878,18 @@
 
   "voice": {
     "radio": "Radio"
+  },
+
+  "net": {
+    "hud": {
+      "highPing": "Ping alto · {ms} ms",
+      "loss": "Pérdida de paquetes · {percent} %",
+      "interrupted": "Conexión interrumpida"
+    },
+    "rejoin": {
+      "title": "Volver a {server}",
+      "otherWorld": "{server} ha iniciado otro mundo desde que te fuiste. Únete desde la lista de servidores para jugar allí."
+    }
   },
 
   "console": {

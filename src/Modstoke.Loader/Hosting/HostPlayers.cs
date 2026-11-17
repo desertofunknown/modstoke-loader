@@ -94,6 +94,12 @@ namespace Modstoke.Loader
             if (ServerSessions.TryReadConnection(session, out var connection, out _)
                 && float.IsFinite(connection.NetworkRoundTripSeconds) && connection.NetworkRoundTripSeconds >= 0)
                 pingMs = (int)Math.Round(connection.NetworkRoundTripSeconds * 1000);
+            int? lossPct = null, quietMs = null;
+            if (ConnectionQuality.TryRead(session, out var link))
+            {
+                lossPct = (int)Math.Round(link.Loss * 100);
+                quietMs = link.QuietMs;
+            }
 
             object position = null;
             PlayerMovementSnapshot movement = null;
@@ -131,6 +137,10 @@ namespace Modstoke.Loader
                 ["role"] = role,
                 ["joinedAt"] = session.FirstObservedAt.ToUnixTimeMilliseconds(),
                 ["pingMs"] = pingMs,
+                // Share of the packets sent to this player reported lost over the last five seconds, and how long
+                // nothing has arrived from them.
+                ["lossPct"] = lossPct,
+                ["quietMs"] = quietMs,
                 ["pos"] = position,
                 // Earlier name for pos, kept for existing readers.
                 ["position"] = position,
@@ -196,6 +206,10 @@ namespace Modstoke.Loader
             if (fields["steamId"] is string steamId)
                 line.Append(" (").Append(steamId).Append(')');
             line.Append(" · ").Append(fields["pingMs"] is int ping ? ping.ToString(CultureInfo.InvariantCulture) : "?").Append(" ms");
+            if (fields["lossPct"] is int loss && loss > 0)
+                line.Append(" · ").Append(loss.ToString(CultureInfo.InvariantCulture)).Append("% loss");
+            if (fields["quietMs"] is int quiet && quiet >= 1000)
+                line.Append(" · nothing for ").Append((quiet / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)).Append(" s");
             if (fields["pos"] is Dictionary<string, object> position)
             {
                 line.Append(" · ").Append(Coordinate(position["x"])).Append(", ")

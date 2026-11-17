@@ -116,6 +116,24 @@ namespace Modstoke.Loader
             return 0;
         }
 
+        /// <summary>
+        /// A player's link to the server as far as this PC knows it: every client's on the host, this client's own, and
+        /// the others' as a Modstoke host shares them. The host is the server, so it has none.
+        /// </summary>
+        internal static bool TryLink(PlayerEntry player, out global::Modstoke.Sons.LinkQuality link)
+        {
+            link = default;
+            if (player.Id == 0 || player.Host) return false;
+            if (Server)
+            {
+                foreach (var session in global::Modstoke.Sons.ServerSessions.Sessions)
+                    if (session.RegisteredSteamId == player.Id) return global::Modstoke.Sons.ConnectionQuality.TryRead(session, out link);
+                return false;
+            }
+            return player.Self ? global::Modstoke.Sons.ConnectionQuality.TryReadServer(out link)
+                : global::Modstoke.Sons.ConnectionQuality.TryReadShared(player.Id, out link);
+        }
+
         internal static bool Muted(ulong id) => Safe(() => CoopSteamVoicePlayer.IsPlayerSteamIdMuted(id), false);
 
         internal static void SetMuted(ulong id, bool muted)
@@ -159,12 +177,18 @@ namespace Modstoke.Loader
                 var tracker = PlayerTracker._instance;
                 var entities = tracker != null && tracker ? tracker.AllPlayerEntities : null;
                 var local = LocalPlayer.Entity;
+                var here = local != null && local ? local.transform.position : (Vector3?)null;
                 var unnamed = 0;
                 for (var i = 0; entities != null && i < entities.Count; i++)
                 {
                     var entity = entities[i];
                     if (entity == null || !entity || !entity.isAttached || local != null && entity.Pointer == local.Pointer) continue;
                     var name = entity.GetState<IPlayerState>()?.name;
+                    // On a Modstoke dedicated server this player's own body is mirrored by a server-owned entity with no
+                    // name of its own (the game's "Unknown"), standing where this player stands: it is not someone else.
+                    if ((string.IsNullOrWhiteSpace(name) || name == "Unknown") && here is { } at
+                        && (entity.transform.position - at).sqrMagnitude < 4f)
+                        continue;
                     if (string.IsNullOrWhiteSpace(name)) name = FrontEnd.Text.Get("players.unnamed", ("number", ++unnamed));
                     players.Add(new PlayerEntry(0, name.Trim(), null, 0, false, false, entity.networkId.PackedValue));
                 }

@@ -271,6 +271,7 @@ namespace Modstoke.Loader
             PaintProgress();
             if (_joinPending != IntPtr.Zero) JoinPending(now);
             if (_wanted != null) JoinWanted(now);
+            Rejoin.Browse(_gui);
         }
 
         // The join that waited for its server's rules goes ahead once they are in, or when the wait is up.
@@ -301,6 +302,32 @@ namespace Modstoke.Loader
             _wanted = name;
             _wantedUntil = Time.unscaledTime + seconds;
             _wantedRefreshAt = 0;
+        }
+
+        /// <summary>
+        /// The dedicated server the list has read at this address and game port, or null while it isn't listed. Once found
+        /// its row is selected, so the player sees which server is being joined.
+        /// </summary>
+        internal static DedicatedServerInfo FindDedicated(string ip, ushort port)
+        {
+            if (_rootObject == null) return null;
+            var prefix = ip + ":";
+            foreach (var entry in Known.Values)
+            {
+                if (!entry.Valid || entry.Dedicated == null || entry.Key == null || !entry.Key.StartsWith(prefix, StringComparison.Ordinal)
+                    || entry.Dedicated.NetAddr.GetConnectionPort() != port)
+                    continue;
+                var index = Entries.IndexOf(entry);
+                if (index >= 0 && index != _selected) Select(index);
+                return entry.Dedicated;
+            }
+            return null;
+        }
+
+        /// <summary>Shows the LAN tab, the only one the game lists a server on a private address on.</summary>
+        internal static void ShowLan()
+        {
+            if (_rootObject != null && _tab != Tab.Lan) SetTab(Tab.Lan);
         }
 
         private static void JoinWanted(float now)
@@ -802,6 +829,8 @@ namespace Modstoke.Loader
         {
             if (_selected < 0 || _selected >= Entries.Count) return;
             var entry = Entries[_selected];
+            // The player's own choice comes before a rejoin still waiting on this list.
+            Rejoin.Cancel();
             // A dedicated server's mod content is read from its rules, which arrive a moment after the server is
             // listed. Joined before they are in, the game would start without the content check, and a server that
             // requires it drops the player seconds into the world with no reason given. So the join waits for the
@@ -831,6 +860,11 @@ namespace Modstoke.Loader
                 // A hosted game's lobby says for itself whether its host runs the content check.
                 var (content, negotiation) = entry.Dedicated != null ? Declared(entry) : (null, null);
                 ContentAgreement.Joining(content, negotiation);
+                if (entry.Dedicated != null)
+                {
+                    var address = entry.Dedicated.NetAddr;
+                    Rejoin.Joining(entry.Key, address.GetIP(), address.GetQueryPort(), address.GetConnectionPort(), entry.Name);
+                }
                 LoadingScreen.Intend(LoadingIntent.FromServerRow(entry.Name, entry.Mode, entry.Players, entry.Limit, entry.Dedicated != null));
                 row.DoJoin();
                 RuntimeEntryPoint.LogSource?.LogInfo("Joining " + entry.Name + ".");

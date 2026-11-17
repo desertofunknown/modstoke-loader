@@ -59,6 +59,37 @@
     "startFailed": "Das konnte nicht gestartet werden. Im Loader-Protokoll steht, warum."
   },
 
+  "saves": {
+    "earlier": "Frühere Spielstände",
+    "restore": "Wiederherstellen",
+    "restoreTitle": "Spielstand vom {when} wiederherstellen?",
+    "restoreBody": "Die Welt kehrt zu diesem Stand zurück. Der jetzige Stand bleibt als früherer Spielstand erhalten, du kannst es also rückgängig machen.",
+    "damagedBody": "Dieser Spielstand hat eine Prüfung nicht bestanden und lädt vielleicht nicht. Seine beschädigten Dateien werden getrennt aufbewahrt. Wähle erneut Fortsetzen, um ihn so zu versuchen.",
+    "refusedBody": "Das Spiel konnte diesen Spielstand nicht laden. Sein jetziger Stand bleibt als früherer Spielstand erhalten. Wähle erneut Fortsetzen, um ihn so zu versuchen.",
+    "restoring": "Wird wiederhergestellt …",
+    "restored": "Spielstand vom {when} wiederhergestellt.",
+    "restoreFailed": "Der Spielstand konnte nicht wiederhergestellt werden. Im Loader-Protokoll steht, warum.",
+    "listFailed": "Frühere Spielstände konnten nicht gelesen werden. Im Loader-Protokoll steht, warum.",
+    "reading": "Frühere Spielstände werden gelesen …",
+    "none": "Noch keine früheren Spielstände dieser Welt. Bei jedem Speichern wird eine Kopie aufbewahrt.",
+    "count": { "one": "{count} früherer Spielstand", "other": "{count} frühere Spielstände" },
+    "day": "Tag {days}",
+    "size": "{size:N1} MB",
+    "damaged": "Beschädigt",
+    "didNotLoad": "Nicht geladen",
+    "reason": {
+      "restore": "Vor einer Wiederherstellung aufbewahrt",
+      "load": "Stand beim Laden der Welt",
+      "gameBackup": "Eigene Sicherung des Spiels"
+    },
+    "damagedToast": "Der letzte Spielstand dieser Welt scheint beschädigt. Frühere Spielstände sind aufbewahrt: Stelle im Titelbildschirm einen wieder her.",
+    "refusedToast": "Der Spielstand dieser Welt konnte nicht geladen werden. Geh zurück zum Titel, um einen früheren wiederherzustellen.",
+    "clientDamagedToast": "Dein Spielstand auf diesem Server scheint beschädigt. Frühere Kopien davon sind aufbewahrt.",
+    "clientRefusedToast": "Dein Spielstand auf diesem Server konnte nicht geladen werden. Frühere Kopien davon sind aufbewahrt.",
+    "checking": "Dieser Spielstand wird geprüft …",
+    "noOther": "Keine frühere Kopie unterscheidet sich von diesem Spielstand. Wähle erneut Fortsetzen, um ihn so zu versuchen."
+  },
+
   "options": {
     "title": "Optionen",
     "reset": "Standard",
@@ -847,6 +878,18 @@
 
   "voice": {
     "radio": "Funk"
+  },
+
+  "net": {
+    "hud": {
+      "highPing": "Hoher Ping · {ms} ms",
+      "loss": "Paketverlust · {percent} %",
+      "interrupted": "Verbindung unterbrochen"
+    },
+    "rejoin": {
+      "title": "Zurück zu {server}",
+      "otherWorld": "{server} hat seit deinem Verlassen eine andere Welt gestartet. Tritt ihr über die Serverliste bei, um dort zu spielen."
+    }
   },
 
   "console": {

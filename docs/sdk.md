@@ -486,6 +486,31 @@ retrying on their own; the event replaces polling for the binding, not a
 client's hello. The host log gets `Player joined on connection N, X s after
 connecting` and `Player left from connection N after X s`.
 
+## Connection quality
+
+`ConnectionQuality` reads how each Bolt connection is doing, on the game thread.
+A `LinkQuality` carries `RoundTripMs` (the transport's smoothed round trip),
+`Loss` (the share of sent packets Bolt reported lost over the last five seconds,
+0 until at least 20 went out) and `QuietMs` (time since anything arrived).
+`Poor` is true at 250 ms or more, 5% loss or more, or a second of silence.
+
+- `TryReadServer` is a client's own link to its server; `TryRead(ServerSession)`
+  is a client's link as the host sees it.
+- `TryReadShared(steamId)` is another player's link as a Modstoke host last
+  shared it, a few seconds old at most, with `QuietMs` 0. Clients ask for it in
+  their notice hello (`PingVersion` 1); the host answers in its ack and then sends
+  a small `pings` frame only when the list changed, at most every 3 s. Older
+  hosts and clients never write or ask for it, and vanilla clients never get one.
+- `Health` is the client's verdict on its link: `Offline`, `Good`, `HighPing`,
+  `PacketLoss` or `Interrupted`. Each holds with hysteresis: high ping after 3 s
+  at 250 ms or more, cleared after 5 s at 200 ms or less; packet loss after 2 s
+  at 5% or more, cleared after 5 s at 2% or less; interrupted once nothing has
+  arrived for a second, cleared after 1.5 s of steady traffic.
+  `HealthChanged` runs when it changes. The HUD's connection warning follows it.
+
+The dedicated server's `players` command reports `lossPct` and `quietMs` beside
+`pingMs`.
+
 ## Movement grants
 
 `ServerMovementGrants` records which host mod is moving or carrying a player,
@@ -1074,6 +1099,7 @@ find an implementation. The main entry points include:
 | Save data | [SaveData.cs](../src/Modstoke.Loader/Sons/Saves/SaveData.cs) |
 | Save lifecycle | [SaveLifecycle.cs](../src/Modstoke.Loader/Sons/Saves/SaveLifecycle.cs) |
 | Save registration | [SaveRegistry.cs](../src/Modstoke.Loader/Sons/Saves/SaveRegistry.cs) |
+| Save history | [SaveHistory.cs](../src/Modstoke.Loader/Sons/Saves/SaveHistory.cs) |
 | Map layers | [MapLayers.cs](../src/Modstoke.Loader/Sons/World/MapLayers.cs) |
 
 `Modstoke.Loader.Modding` exposes loader state:
@@ -2176,3 +2202,39 @@ ModOptions.TryAddSection("author.mymod.display", OptionsPage.Accessibility, () =
   read once per opening.
 
 Modstoke Accessibility builds its Accessibility tab this way.
+
+## Save history
+
+After every save the game makes (world, player-only and dedicated-server saves),
+and when a world loads, the Loader keeps a copy of the slot under
+`Modstoke/UserData/Saves/History/<profile>/<kind>/<slot>/`, with the sidecar files
+`SaveRegistry` keeps for it. The copy is taken on a worker; a game save only waits if
+a copy is still reading the slot when it starts. Each copy is checked: SaveData.zip
+opens, holds SaveData.json and GameStateSaveData.json, and every entry has content,
+reads to its recorded length with a matching CRC and, for JSON, parses. A damaged
+copy is kept apart (the newest three) and never pushes a good one out; the player
+gets a toast, a dedicated server a warning and a `save-damaged` host event.
+
+Per slot it keeps the newest 10 copies, the newest of each of the last 7 days, the
+copy made before the last restore and the last good copy before a failed load, under
+512 MB (the oldest go first, the newest always stays). A copy identical to one
+already kept is skipped. The game's own `<slot>_backup_*.zip` files are filed once
+each, so worlds from before Modstoke have earlier saves too. The Loader settings
+file takes `saveHistory` (true), `saveHistoryRecent` (10, 1-100), `saveHistoryDays`
+(7, 0-60) and `saveHistoryMaxMB` (512, at least 16). A deleted slot's history goes a
+week after the Loader first finds the slot gone.
+
+A restore keeps the slot as it is as an earlier save first, so it can be undone the
+same way, then puts back the copy's files and sidecars. Players restore from Saved
+Games at the title (Earlier saves, Y or F2); `saves history` and `saves restore`
+do it from the console. On a dedicated server, or with a world running, the restore
+is staged and lands at the next start, before any world loads.
+
+- `SaveHistory.List(slotDirectory)` returns a slot's whole copies, newest first, as
+  `SaveHistoryEntry` (`Id`, `Saved`, `Day`, `SizeBytes`, `Reason`: `save`, `load`,
+  `restore` or `game-backup`). It reads the disk, so call it off the game thread.
+- `SaveHistory.Restored` fires on the game thread after a slot was put back, with the
+  slot folder and the entry. Data in the save itself, `WorldRecords` and `SaveRegistry`
+  sidecars already follows the restore; a mod that keeps per-world data anywhere else
+  should roll it back here. A restore staged for the next start fires it in the first
+  frames after the Loader starts.

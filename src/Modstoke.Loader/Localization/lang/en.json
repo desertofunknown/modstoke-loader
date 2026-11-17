@@ -59,6 +59,37 @@
     "startFailed": "That could not be started. The Loader log says why."
   },
 
+  "saves": {
+    "earlier": "Earlier saves",
+    "restore": "Restore",
+    "restoreTitle": "Restore the save from {when}?",
+    "restoreBody": "The world goes back to how it was then. How it is now is kept as an earlier save, so this can be undone.",
+    "damagedBody": "This save didn't pass a check and may not load. Its damaged files are kept apart. Continue again to try it as it is.",
+    "refusedBody": "The game couldn't load this save. What it holds now is kept as an earlier save. Continue again to try it as it is.",
+    "restoring": "Restoring…",
+    "restored": "Restored the save from {when}.",
+    "restoreFailed": "That save could not be restored. The Loader log says why.",
+    "listFailed": "Earlier saves could not be read. The Loader log says why.",
+    "reading": "Reading earlier saves…",
+    "none": "No earlier saves of this world yet. A copy is kept each time it saves.",
+    "count": { "one": "{count} earlier save", "other": "{count} earlier saves" },
+    "day": "Day {days}",
+    "size": "{size:N1} MB",
+    "damaged": "Damaged",
+    "didNotLoad": "Didn't load",
+    "reason": {
+      "restore": "Kept before a restore",
+      "load": "As the world was loaded",
+      "gameBackup": "The game's own backup"
+    },
+    "damagedToast": "This world's last save looks damaged. Earlier saves are kept: restore one from the title screen.",
+    "refusedToast": "This world's save couldn't be loaded. Quit to the title screen to restore an earlier save.",
+    "clientDamagedToast": "Your save on this server looks damaged. Earlier copies of it are kept.",
+    "clientRefusedToast": "Your save on this server couldn't be loaded. Earlier copies of it are kept.",
+    "checking": "Checking this save…",
+    "noOther": "No earlier copy of this save differs from it. Continue again to try it as it is."
+  },
+
   "options": {
     "title": "Options",
     "reset": "Default",
@@ -847,6 +878,18 @@
 
   "voice": {
     "radio": "Radio"
+  },
+
+  "net": {
+    "hud": {
+      "highPing": "High ping · {ms} ms",
+      "loss": "Packet loss · {percent}%",
+      "interrupted": "Connection interrupted"
+    },
+    "rejoin": {
+      "title": "Rejoin {server}",
+      "otherWorld": "{server} has started a different world since you left. Join it from the server list to play there."
+    }
   },
 
   "console": {

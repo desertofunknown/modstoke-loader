@@ -175,6 +175,7 @@ namespace Modstoke.Sons
                         ExpireTrackedNotices(now);
                         ExpireClientCommands(now);
                         RefreshSession();
+                        SharePings(now);
                     }
                     NoticeDisplay.Tick();
                 }
@@ -441,7 +442,8 @@ namespace Modstoke.Sons
             var peer = new Peer(new NoticePeer(source.Pointer, source.ConnectionId, registeredSteamId,
                 session, supportsReceipts, supportsCommands, supportsCommandReplies, supportsMessenger), token)
             {
-                Restarts = restarts
+                Restarts = restarts,
+                Pings = frame.PingVersion == 1
             };
             if (supportsMessenger && WorldRecords.TryGetCurrent(out var messengerWorld, out _))
                 peer.Messenger.UseWorld(messengerWorld);
@@ -465,7 +467,8 @@ namespace Modstoke.Sons
             SendFrame(connection, "ack", peer.Token, receiptVersion: negotiated.SupportsReceipts ? 1 : 0,
                 commandVersion: negotiated.SupportsCommands ? 1 : 0,
                 commandReplyVersion: negotiated.SupportsCommandReplies ? 1 : 0,
-                messengerVersion: negotiated.SupportsMessenger ? 1 : 0);
+                messengerVersion: negotiated.SupportsMessenger ? 1 : 0,
+                pingVersion: peer.Pings ? 1 : 0);
         }
 
         private static void ReceiveNotice(ChatEvent chat, NoticeProtocol.Frame frame, byte[] token)
@@ -491,6 +494,7 @@ namespace Modstoke.Sons
                 if (ClientReady)
                 {
                     // A repeated handshake may add command support; it never removes any.
+                    if (frame.PingVersion == 1) Volatile.Write(ref _clientSupportsPings, true);
                     if (frame.CommandVersion == 1 && !Volatile.Read(ref _clientSupportsCommands))
                     {
                         Volatile.Write(ref _clientSupportsCommands, true);
@@ -503,6 +507,7 @@ namespace Modstoke.Sons
                 Volatile.Write(ref _clientSupportsCommands, frame.CommandVersion == 1);
                 Volatile.Write(ref _clientSupportsCommandReplies, frame.CommandVersion == 1 && frame.CommandReplyVersion == 1);
                 Volatile.Write(ref _clientSupportsMessenger, frame.MessengerVersion == 1 && _clientMessengerId != Guid.Empty);
+                Volatile.Write(ref _clientSupportsPings, frame.PingVersion == 1);
                 Volatile.Write(ref _clientReady, true);
                 ReportClientAnswer();
                 return;
@@ -520,6 +525,11 @@ namespace Modstoke.Sons
             if (frame.Kind == "command-result")
             {
                 ReceiveCommandResult(frame);
+                return;
+            }
+            if (frame.Kind == "pings")
+            {
+                ReceivePings(frame);
                 return;
             }
             if (frame.Kind != "notice")
@@ -551,10 +561,10 @@ namespace Modstoke.Sons
         private static void SendFrame(BoltConnection connection, string kind, byte[] token, string message = null,
             int receiptVersion = 0, Guid? noticeId = null, int commandVersion = 0,
             long commandSequence = 0, string outcome = null, int commandReplyVersion = 0,
-            int messengerVersion = 0)
+            int messengerVersion = 0, int pingVersion = 0)
         {
             var text = NoticeProtocol.Encode(kind, token, message, receiptVersion, noticeId, outcome,
-                commandVersion, commandSequence, commandReplyVersion, messengerVersion);
+                commandVersion, commandSequence, commandReplyVersion, messengerVersion, pingVersion: pingVersion);
             var chat = ChatEvent.Create(connection, ReliabilityModes.ReliableOrdered);
             SendPayload(chat, text);
         }
@@ -726,6 +736,8 @@ namespace Modstoke.Sons
             _clientReportedIgnored = false;
             Volatile.Write(ref _clientReady, false);
             Volatile.Write(ref _clientSupportsReceipts, false);
+            Volatile.Write(ref _clientSupportsPings, false);
+            ConnectionQuality.Share(null);
             NoticeDisplay.Clear();
         }
 
@@ -761,6 +773,9 @@ namespace Modstoke.Sons
             internal bool Acknowledged { get; set; }
             internal int RepeatAnswers { get; set; }
             internal int Restarts { get; set; }
+            /// <summary>The client asked for the others' pings in its hello; <see cref="SentPings"/> is the last list it got.</summary>
+            internal bool Pings { get; init; }
+            internal string SentPings { get; set; }
             internal long LastCommandSequence { get; set; }
             internal Dictionary<Guid, NoticeDelivery> Pending { get; } = new();
             internal MessengerPeerState Messenger { get; } = new();

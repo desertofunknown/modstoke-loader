@@ -31,11 +31,14 @@ namespace Modstoke.Loader
         private Glide _underline;
         private Vector2 _origin;
         private float _nextMeasure;
+        private Entry _rejoin;
 
         protected override void Build()
         {
             _entries.Clear();
             _marks.Clear();
+            // Right after a dropped connection the way back comes first, where focus lands.
+            _rejoin = Rejoin.Offered ? AddEntry("rejoin", () => Leave(Rejoin.Start), () => Rejoin.Label) : null;
             AddEntry("title.singlePlayer", () => FrontEnd.Push(new SavedGamesScreen(SaveGameType.SinglePlayer)));
             AddEntry("title.multiplayer", () => Leave(GameMenus.Join));
             AddEntry("title.options", () => FrontEnd.Push(new OptionsScreen()));
@@ -67,6 +70,7 @@ namespace Modstoke.Loader
         // The game lays its own menu out over the first frames, so its position is read again for a while.
         internal override void Tick()
         {
+            if (_rejoin != null && !Rejoin.Offered) Withdraw();
             if (Time.unscaledTime < _nextMeasure) return;
             _nextMeasure = Time.unscaledTime + 0.5f;
             var origin = Origin();
@@ -88,6 +92,18 @@ namespace Modstoke.Loader
         {
             open();
             FrontEnd.StepAside();
+        }
+
+        // The offer ran out, or the server turned the player away: the row closes up without it.
+        private void Withdraw()
+        {
+            var entry = _rejoin;
+            _rejoin = null;
+            entry.Rect.gameObject.SetActive(false);
+            _entries.Remove(entry);
+            Layout(Origin());
+            if (Focused == null || !Focused.Usable) Focus(First());
+            _underline.Follow();
         }
 
         // Where the row starts: where the game's own row of choices was, kept clear of its logo.
@@ -126,7 +142,7 @@ namespace Modstoke.Loader
             }
         }
 
-        private void AddEntry(string key, Action run, Func<string> name = null)
+        private Entry AddEntry(string key, Action run, Func<string> name = null)
         {
             var entry = new Entry { Key = key, Name = name ?? (() => Text[key]), Run = run, Rect = MenuKit.Box(Root, key) };
             MenuKit.GlowBehind(entry.Rect, U(14), 0.5f);
@@ -139,6 +155,7 @@ namespace Modstoke.Loader
             var item = Add(entry.Rect, () => Run(entry), focused => entry.Label.color = focused ? MenuKit.Ink : MenuKit.Soft);
             item.Flash = Flashing(entry.Label);
             _marks[item] = under;
+            return entry;
         }
 
         private readonly Dictionary<Focusable, RectTransform> _marks = new();

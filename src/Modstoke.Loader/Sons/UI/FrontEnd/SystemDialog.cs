@@ -76,7 +76,7 @@ namespace Modstoke.Loader
     /// </summary>
     internal sealed class GameDialog : SystemDialog
     {
-        private const int FieldShown = 1 << 4;
+        private const int FieldShown = 1 << 4, RejoinShown = 1 << 5;
         private readonly DynamicModalDialogController _controller;
         private readonly DynamicModalDialogGui _gui;
         private readonly Button[] _buttons;
@@ -84,6 +84,8 @@ namespace Modstoke.Loader
         private readonly LinkTextGui _title;
         private readonly TMP_Text _fieldLabel;
         private readonly TMP_InputField _field;
+        // The dropped connection's dialog, or a failed rejoin's, offers Rejoin first.
+        private bool _rejoin;
 
         internal GameDialog(ModalDialogManager manager, DynamicModalDialogController controller, int shows)
         {
@@ -116,6 +118,8 @@ namespace Modstoke.Loader
             for (var i = 0; i < _buttons.Length; i++)
                 if (Live(_buttons[i]) && _buttons[i].gameObject.activeSelf) shape |= 1 << i;
             if (Live(_field) && Live(_gui.InputGoup) && _gui.InputGoup.activeSelf) shape |= FieldShown;
+            var rejoin = _rejoin && Rejoin.Offered;
+            if (rejoin) shape |= RejoinShown;
             var content = _gui.ContentText;
             var title = Read(_title);
             var body = Live(content) && content.gameObject.activeSelf ? content.text ?? "" : "";
@@ -128,14 +132,33 @@ namespace Modstoke.Loader
             {
                 Shape = shape;
                 Answers.Clear();
+                // Beside Rejoin, the game's only answer is the way out when it has no Back of its own.
+                var outFirst = rejoin && (shape & 1 << 3) == 0;
+                DialogChoice leave = null;
                 for (var i = 0; i < _buttons.Length; i++)
                 {
                     if ((shape & 1 << i) == 0) continue;
                     var button = _buttons[i];
-                    Answers.Add(new DialogChoice(() => button.onClick.Invoke(), i == 3, () => Live(button) && button.interactable));
+                    var choice = new DialogChoice(() => button.onClick.Invoke(), i == 3 || outFirst && leave == null,
+                        () => Live(button) && button.interactable);
+                    if (choice.Back) leave = choice;
+                    Answers.Add(choice);
                 }
+                // The game's dialog is answered first, so it closes as the game expects, then the rejoin begins.
+                if (rejoin)
+                    Answers.Insert(0, new DialogChoice(() =>
+                    {
+                        leave?.Run();
+                        Rejoin.Start();
+                    }, false));
             }
             var answer = 0;
+            if (rejoin)
+            {
+                var label = Rejoin.Label;
+                if (Answers[0].Label != label) changed = true;
+                Answers[answer++].Label = label;
+            }
             for (var i = 0; i < _buttons.Length; i++)
             {
                 if ((shape & 1 << i) == 0) continue;
@@ -182,6 +205,13 @@ namespace Modstoke.Loader
                 Tone = DialogTone.Problem;
             else if (Any(manager.BackupRecoverSuccessDialog)) Tone = DialogTone.Done;
             else if (Any(manager.GameStartingDialog, manager.FetchingServerDetailsDialog)) Busy = true;
+            // A refusal means the server won't take the player back. The dropped connection's own dialog, or the failure of
+            // a rejoin, carries the offer; a failed join to any other server doesn't.
+            if (Any(manager.KickedFromGameDialog, manager.BannedFromGameDialog, manager.WrongPasswordDialog,
+                    manager.VersionMismatchDialog, manager.LobbyFullDialog, manager.DedicatedGameFullDialog))
+                Rejoin.Refused();
+            else if (Any(manager.ServerShutdownDialog, manager.DedicatedGameNotFoundDialog))
+                _rejoin = Rejoin.Claim(Any(manager.ServerShutdownDialog));
         }
 
         private bool Any(params DynamicModalDialogController[] dialogs)

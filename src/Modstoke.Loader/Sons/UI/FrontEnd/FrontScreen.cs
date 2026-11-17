@@ -111,6 +111,24 @@ namespace Modstoke.Loader
             if (t >= 1f) _appearStart = -1;
         }
 
+        /// <summary>
+        /// Fades the screen out while a system dialog stands over it and back once it closes, so the dialog's prompts
+        /// never print over this screen's menu.
+        /// </summary>
+        internal void Recede(bool behind)
+        {
+            if (_leaving != null || _group == null || !_group) return;
+            // A screen that arrives under a dialog stays out of sight rather than fading in beneath it.
+            if (behind && _appearStart >= 0)
+            {
+                _appearStart = -1;
+                Root.offsetMin = Root.offsetMax = Vector2.zero;
+            }
+            if (_appearStart >= 0) return;
+            var alpha = Mathf.MoveTowards(_group.alpha, behind || Hidden ? 0f : 1f, Time.unscaledDeltaTime / AppearSeconds);
+            if (alpha != _group.alpha) _group.alpha = alpha;
+        }
+
         /// <summary>Creates the layout under <see cref="Root"/>. Text is set in <see cref="Retext"/>.</summary>
         protected abstract void Build();
 

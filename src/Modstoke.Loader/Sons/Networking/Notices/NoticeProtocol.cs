@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Alex Cooper
 
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -100,7 +102,7 @@ namespace Modstoke.Sons
         internal static string Encode(string kind, byte[] token, string message = null,
             int receiptVersion = 0, Guid? noticeId = null, string outcome = null,
             int commandVersion = 0, long commandSequence = 0, int commandReplyVersion = 0,
-            int messengerVersion = 0, long messengerSequence = 0)
+            int messengerVersion = 0, long messengerSequence = 0, int pingVersion = 0)
         {
             var replyBytes = 0;
             var replyTruncated = false;
@@ -121,9 +123,51 @@ namespace Modstoke.Sons
                 CommandReplyVersion = commandReplyVersion,
                 MessengerVersion = messengerVersion,
                 MessengerSequence = messengerSequence,
+                PingVersion = pingVersion,
                 ReplyTruncated = replyTruncated
             };
             return Serialize(frame, replyBytes);
+        }
+
+        internal const int MaxPings = 16;
+
+        /// <summary>
+        /// A pings frame's text: "steamid:ms:loss" per player with loss in whole percent, comma separated, at most
+        /// <see cref="MaxPings"/>. Hosts send it only to clients whose hello offered PingVersion 1, so no older client
+        /// ever sees one.
+        /// </summary>
+        internal static string WritePings(IReadOnlyList<(ulong SteamId, int RoundTripMs, int LossPercent)> pings)
+        {
+            var text = new StringBuilder();
+            for (var i = 0; i < pings.Count && i < MaxPings; i++)
+            {
+                var (id, ms, loss) = pings[i];
+                if (text.Length > 0) text.Append(',');
+                text.Append(id.ToString(CultureInfo.InvariantCulture)).Append(':')
+                    .Append(Math.Clamp(ms, 0, MaxPingMs).ToString(CultureInfo.InvariantCulture)).Append(':')
+                    .Append(Math.Clamp(loss, 0, 100).ToString(CultureInfo.InvariantCulture));
+            }
+            return text.ToString();
+        }
+
+        private const int MaxPingMs = 60_000;
+
+        private static bool TryReadPings(string text, out List<(ulong SteamId, int RoundTripMs, int LossPercent)> pings)
+        {
+            pings = new List<(ulong, int, int)>();
+            if (text == null) return false;
+            if (text.Length == 0) return true;
+            foreach (var entry in text.Split(','))
+            {
+                var parts = entry.Split(':');
+                if (pings.Count >= MaxPings || parts.Length != 3
+                    || !ulong.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var id) || id == 0
+                    || !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var ms) || ms > MaxPingMs
+                    || !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out var loss) || loss > 100)
+                    return false;
+                pings.Add((id, ms, loss));
+            }
+            return true;
         }
 
         // Recent hosts before this version consumed their own answers but still reserved the capability, so they
@@ -145,6 +189,7 @@ namespace Modstoke.Sons
                 CommandVersion = 1,
                 CommandReplyVersion = 1,
                 MessengerVersion = 1,
+                PingVersion = 1,
                 Loader = loader,
                 LoaderVersion = loaderVersion,
                 NativeMods = nativeMods,
@@ -194,7 +239,8 @@ namespace Modstoke.Sons
                 if (!Convert.TryFromBase64String(frame.Token, decodedToken, out var tokenLength)
                     || tokenLength != decodedToken.Length)
                     return false;
-                if ((frame.Kind is not ("hello" or "ack") && (frame.CommandReplyVersion != 0 || frame.MessengerVersion != 0))
+                if ((frame.Kind is not ("hello" or "ack")
+                        && (frame.CommandReplyVersion != 0 || frame.MessengerVersion != 0 || frame.PingVersion != 0))
                     || (frame.Kind is not ("messenger-request" or "messenger-message" or "messenger-result") && frame.MessengerSequence != 0)
                     || (frame.Kind != "command-result" && frame.ReplyTruncated)
                     || (frame.ReplyTruncated && frame.Message == null))
@@ -208,11 +254,15 @@ namespace Modstoke.Sons
                     return false;
 
                 MessengerWire.Payload payload = null;
+                List<(ulong, int, int)> pings = null;
                 var valid = frame.Kind switch
                 {
                     "hello" or "ack" => frame.Message == null && frame.NoticeId == null && frame.Outcome == null
                         && frame.ReceiptVersion is 0 or 1 && frame.CommandVersion is 0 or 1
-                        && frame.CommandReplyVersion is 0 or 1 && frame.MessengerVersion is 0 or 1 && frame.CommandSequence == 0,
+                        && frame.CommandReplyVersion is 0 or 1 && frame.MessengerVersion is 0 or 1 && frame.PingVersion is 0 or 1
+                        && frame.CommandSequence == 0,
+                    "pings" => frame.ReceiptVersion == 0 && frame.CommandVersion == 0 && frame.CommandSequence == 0
+                        && frame.NoticeId == null && frame.Outcome == null && TryReadPings(frame.Message, out pings),
                     "messenger-request" or "messenger-message" or "messenger-result" => frame.MessengerSequence > 0
                         && frame.ReceiptVersion == 0 && frame.CommandVersion == 0 && frame.CommandSequence == 0
                         && frame.NoticeId == null && frame.Outcome == null
@@ -235,6 +285,7 @@ namespace Modstoke.Sons
                 if (!valid)
                     return false;
                 frame.MessengerPayload = payload;
+                frame.Pings = pings;
                 token = decodedToken.ToArray();
                 return true;
             }
@@ -286,6 +337,9 @@ namespace Modstoke.Sons
             [JsonIgnore]
             internal MessengerWire.Payload MessengerPayload { get; set; }
 
+            [JsonIgnore]
+            internal List<(ulong SteamId, int RoundTripMs, int LossPercent)> Pings { get; set; }
+
             public int Version { get; set; }
             public string Kind { get; set; }
             public string Token { get; set; }
@@ -301,6 +355,9 @@ namespace Modstoke.Sons
             public int MessengerVersion { get; set; }
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
             public long MessengerSequence { get; set; }
+            // Offered in a hello and granted in an ack; older peers never write it and skip it when reading.
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+            public int PingVersion { get; set; }
             // Client claims, sent only in a hello.
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
             public string Loader { get; set; }

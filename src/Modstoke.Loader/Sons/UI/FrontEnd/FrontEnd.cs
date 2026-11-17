@@ -557,6 +557,8 @@ namespace Modstoke.Loader
             var prompts = _shown && top.ShowsPrompts && !SystemDialogs.Open;
             if (_prompts != null && _prompts && _prompts.gameObject.activeSelf != prompts) _prompts.gameObject.SetActive(prompts);
             top.Animate();
+            // Every screen still drawn, as one under an overlay is, steps back while a dialog stands over them.
+            foreach (var screen in Stack) screen.Recede(SystemDialogs.Open);
             // The lobby has its own blurred backdrop and the pause menu its own volume; the title's world is blurred here.
             WorldBlur.Want((top.Blurs || SystemDialogs.Open) && _place == Place.Title);
             GameMenus.FadeLogo(top.ShowsLogo, Time.unscaledDeltaTime);

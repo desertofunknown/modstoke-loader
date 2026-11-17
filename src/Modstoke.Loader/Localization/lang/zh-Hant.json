@@ -59,6 +59,37 @@
     "startFailed": "無法開始。原因請見 Loader 記錄檔。"
   },
 
+  "saves": {
+    "earlier": "歷史存檔",
+    "restore": "還原",
+    "restoreTitle": "還原 {when} 的存檔？",
+    "restoreBody": "世界將回到當時的狀態。現在的狀態會作為歷史存檔保留，因此之後仍可改回。",
+    "damagedBody": "此存檔未通過檢查，可能無法載入。其損壞的檔案會另外保存。如要照原樣嘗試，請再次選擇「繼續」。",
+    "refusedBody": "遊戲無法載入此存檔。其目前內容會作為歷史存檔保留。如要照原樣嘗試，請再次選擇「繼續」。",
+    "restoring": "正在還原……",
+    "restored": "已還原 {when} 的存檔。",
+    "restoreFailed": "無法還原該存檔。原因請見 Loader 記錄檔。",
+    "listFailed": "無法讀取歷史存檔。原因請見 Loader 記錄檔。",
+    "reading": "正在讀取歷史存檔……",
+    "none": "這個世界還沒有歷史存檔。每次儲存時都會保留一份副本。",
+    "count": { "other": "{count} 個歷史存檔" },
+    "day": "第 {days} 天",
+    "size": "{size:N1} MB",
+    "damaged": "已損壞",
+    "didNotLoad": "未能載入",
+    "reason": {
+      "restore": "還原前保留",
+      "load": "世界載入時的狀態",
+      "gameBackup": "遊戲內建的備份"
+    },
+    "damagedToast": "這個世界的最新存檔似乎已損壞。歷史存檔都還在，可在標題畫面還原。",
+    "refusedToast": "無法載入這個世界的存檔。退出至標題畫面即可還原歷史存檔。",
+    "clientDamagedToast": "你在此伺服器上的存檔似乎已損壞。先前的副本都還在。",
+    "clientRefusedToast": "無法載入你在此伺服器上的存檔。先前的副本都還在。",
+    "checking": "正在檢查此存檔……",
+    "noOther": "沒有與此存檔不同的歷史存檔。如要照原樣嘗試，請再次選擇「繼續」。"
+  },
+
   "options": {
     "title": "選項",
     "reset": "預設",
@@ -847,6 +878,18 @@
 
   "voice": {
     "radio": "對講機"
+  },
+
+  "net": {
+    "hud": {
+      "highPing": "高延遲 · {ms} ms",
+      "loss": "封包遺失 · {percent}%",
+      "interrupted": "連線中斷"
+    },
+    "rejoin": {
+      "title": "重新加入 {server}",
+      "otherWorld": "{server} 在你離開後開始了另一個世界。請從伺服器列表加入以在那裡遊玩。"
+    }
   },
 
   "console": {

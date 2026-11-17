@@ -59,6 +59,37 @@
     "startFailed": "Bu başlatılamadı. Nedeni Loader günlüğünde yazıyor."
   },
 
+  "saves": {
+    "earlier": "Önceki kayıtlar",
+    "restore": "Geri yükle",
+    "restoreTitle": "{when} tarihli kayıt geri yüklensin mi?",
+    "restoreBody": "Dünya o anki hâline döner. Şimdiki hâli önceki bir kayıt olarak saklanır, yani bunu geri alabilirsiniz.",
+    "damagedBody": "Bu kayıt bir denetimi geçemedi ve yüklenmeyebilir. Hasarlı dosyaları ayrı tutulur. Olduğu gibi denemek için Devam et’i yeniden seçin.",
+    "refusedBody": "Oyun bu kaydı yükleyemedi. Şimdiki hâli önceki bir kayıt olarak saklanır. Olduğu gibi denemek için Devam et’i yeniden seçin.",
+    "restoring": "Geri yükleniyor…",
+    "restored": "{when} tarihli kayıt geri yüklendi.",
+    "restoreFailed": "Bu kayıt geri yüklenemedi. Nedeni Loader günlüğünde yazıyor.",
+    "listFailed": "Önceki kayıtlar okunamadı. Nedeni Loader günlüğünde yazıyor.",
+    "reading": "Önceki kayıtlar okunuyor…",
+    "none": "Bu dünyanın henüz önceki kaydı yok. Her kayıtta bir kopya saklanır.",
+    "count": { "one": "{count} önceki kayıt", "other": "{count} önceki kayıt" },
+    "day": "{days}. gün",
+    "size": "{size:N1} MB",
+    "damaged": "Hasarlı",
+    "didNotLoad": "Yüklenmedi",
+    "reason": {
+      "restore": "Geri yüklemeden önce saklandı",
+      "load": "Dünya yüklendiği andaki hâli",
+      "gameBackup": "Oyunun kendi yedeği"
+    },
+    "damagedToast": "Bu dünyanın son kaydı hasarlı görünüyor. Önceki kayıtlar saklanıyor: giriş menüsünden birini geri yükleyin.",
+    "refusedToast": "Bu dünyanın kaydı yüklenemedi. Önceki bir kaydı geri yüklemek için giriş menüsüne dönün.",
+    "clientDamagedToast": "Bu sunucudaki kaydınız hasarlı görünüyor. Önceki kopyaları saklanıyor.",
+    "clientRefusedToast": "Bu sunucudaki kaydınız yüklenemedi. Önceki kopyaları saklanıyor.",
+    "checking": "Bu kayıt denetleniyor…",
+    "noOther": "Önceki kopyaların hiçbiri bu kayıttan farklı değil. Olduğu gibi denemek için Devam et’i yeniden seçin."
+  },
+
   "options": {
     "title": "Seçenekler",
     "reset": "Varsayılan",
@@ -847,6 +878,18 @@
 
   "voice": {
     "radio": "Telsiz"
+  },
+
+  "net": {
+    "hud": {
+      "highPing": "Yüksek ping · {ms} ms",
+      "loss": "Paket kaybı · %{percent}",
+      "interrupted": "Bağlantı kesintiye uğradı"
+    },
+    "rejoin": {
+      "title": "Yeniden katıl: {server}",
+      "otherWorld": "{server}, siz ayrıldıktan sonra başka bir dünya başlattı. Orada oynamak için sunucu listesinden katılın."
+    }
   },
 
   "console": {

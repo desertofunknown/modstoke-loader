@@ -59,6 +59,37 @@
     "startFailed": "Spuštění se nezdařilo. Důvod najdete v protokolu programu Loader."
   },
 
+  "saves": {
+    "earlier": "Dřívější uložení",
+    "restore": "Obnovit",
+    "restoreTitle": "Obnovit uložení z {when}?",
+    "restoreBody": "Svět se vrátí do tehdejšího stavu. Současný stav se zachová jako dřívější uložení, takže to lze vrátit zpět.",
+    "damagedBody": "Toto uložení neprošlo kontrolou a nemusí se načíst. Jeho poškozené soubory se uchovají zvlášť. Zvolte znovu Pokračovat a zkuste ho načíst tak, jak je.",
+    "refusedBody": "Hra toto uložení nedokázala načíst. Jeho současný stav se zachová jako dřívější uložení. Zvolte znovu Pokračovat a zkuste ho načíst tak, jak je.",
+    "restoring": "Obnovuje se…",
+    "restored": "Uložení z {when} bylo obnoveno.",
+    "restoreFailed": "Uložení se nepodařilo obnovit. Důvod najdete v protokolu programu Loader.",
+    "listFailed": "Dřívější uložení se nepodařilo načíst. Důvod najdete v protokolu programu Loader.",
+    "reading": "Načítají se dřívější uložení…",
+    "none": "Tento svět zatím nemá žádná dřívější uložení. Při každém uložení se zachová kopie.",
+    "count": { "one": "{count} dřívější uložení", "few": "{count} dřívější uložení", "other": "{count} dřívějších uložení" },
+    "day": "Den {days}",
+    "size": "{size:N1} MB",
+    "damaged": "Poškozené",
+    "didNotLoad": "Nenačetlo se",
+    "reason": {
+      "restore": "Zachováno před obnovením",
+      "load": "Stav při načtení světa",
+      "gameBackup": "Záloha samotné hry"
+    },
+    "damagedToast": "Poslední uložení tohoto světa vypadá poškozeně. Dřívější uložení zůstávají: obnovte jedno z hlavní obrazovky.",
+    "refusedToast": "Uložení tohoto světa se nepodařilo načíst. Odejděte na hlavní obrazovku a obnovte dřívější uložení.",
+    "clientDamagedToast": "Vaše uložení na tomto serveru vypadá poškozeně. Jeho dřívější kopie zůstávají.",
+    "clientRefusedToast": "Vaše uložení na tomto serveru se nepodařilo načíst. Jeho dřívější kopie zůstávají.",
+    "checking": "Kontroluje se toto uložení…",
+    "noOther": "Žádná dřívější kopie se od tohoto uložení neliší. Zvolte znovu Pokračovat a zkuste ho načíst tak, jak je."
+  },
+
   "options": {
     "title": "Možnosti",
     "reset": "Výchozí",
@@ -847,6 +878,18 @@
 
   "voice": {
     "radio": "Vysílačka"
+  },
+
+  "net": {
+    "hud": {
+      "highPing": "Vysoký ping · {ms} ms",
+      "loss": "Ztráta paketů · {percent} %",
+      "interrupted": "Spojení přerušeno"
+    },
+    "rejoin": {
+      "title": "Zpět: {server}",
+      "otherWorld": "{server} od vašeho odchodu spustil jiný svět. Připojte se ze seznamu serverů, abyste tam mohli hrát."
+    }
   },
 
   "console": {

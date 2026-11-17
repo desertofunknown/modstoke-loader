@@ -654,6 +654,7 @@
     <Compile Include="Sons/Server/Access/ServerIdentity.cs" />
     <Compile Include="Sons/Server/Access/ServerConnectionReads.cs" />
     <Compile Include="Sons/Server/Access/ServerConnectionReads.Clock.cs" />
+    <Compile Include="Sons/Networking/Quality/ConnectionQuality.cs" />
     <Compile Include="Sons/Server/Access/ServerEndpointReads.cs" />
     <Compile Include="Sons/Server/Access/ClientSignals.cs" />
     <Compile Include="Sons/Server/Access/ServerRoles.cs" />
@@ -757,6 +758,7 @@
     <Compile Include="Sons/Networking/Notices/NoticePeers.cs" />
     <Compile Include="Sons/Networking/Notices/NoticeProtocol.cs" />
     <Compile Include="Sons/Networking/Notices/NoticeTracking.cs" />
+    <Compile Include="Sons/Networking/Notices/NoticePings.cs" />
     <Compile Include="Sons/Networking/Commands/ClientCommands.cs" />
     <Compile Include="Sons/Networking/Commands/ClientCommands.Host.cs" />
     <Compile Include="Sons/Networking/Notices/NoticeDisplay.cs" />
@@ -837,6 +839,7 @@
     <Compile Include="Hosting/HostConfig.cs" />
     <Compile Include="Hosting/HostTcp.cs" />
     <Compile Include="Hosting/HostWorld.cs" />
+    <Compile Include="Hosting/HostSaveHistory.cs" />
     <Compile Include="Hosting/HostGame.cs" />
     <Compile Include="Hosting/HostPerf.cs" />
     <Compile Include="Configuration/RuntimePreferences.cs" />
@@ -945,6 +948,7 @@
     <Compile Include="Sons/UI/Multiplayer/MultiplayerTakeover.cs" />
     <Compile Include="Sons/UI/Multiplayer/MultiplayerScreen.cs" />
     <Compile Include="Sons/UI/Multiplayer/MultiplayerScreen.View.cs" />
+    <Compile Include="Sons/UI/Multiplayer/Rejoin.cs" />
     <Compile Include="Sons/UI/FrontEnd/Motion.cs" />
     <Compile Include="Sons/UI/FrontEnd/MenuSound.cs" />
     <Compile Include="Sons/UI/FrontEnd/Glyphs.cs" />
@@ -959,6 +963,7 @@
     <Compile Include="Sons/UI/FrontEnd/SectionNav.cs" />
     <Compile Include="Sons/UI/FrontEnd/TitleScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/SavedGamesScreen.cs" />
+    <Compile Include="Sons/UI/FrontEnd/EarlierSavesScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/OptionsCatalog.cs" />
     <Compile Include="Sons/UI/FrontEnd/ModOptions.cs" />
     <Compile Include="Sons/UI/FrontEnd/SettingsScreen.cs" />
@@ -983,6 +988,7 @@
     <Compile Include="Sons/UI/Voice/MicIndicator.cs" />
     <Compile Include="Sons/UI/Hud/Toast.cs" />
     <Compile Include="Sons/UI/Hud/HudToasts.cs" />
+    <Compile Include="Sons/UI/Hud/ConnectionWarning.cs" />
     <Compile Include="Sons/UI/FrontEnd/ConfirmScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/SystemDialog.cs" />
     <Compile Include="Sons/UI/FrontEnd/DialogScreen.cs" />
@@ -1041,6 +1047,8 @@
     <Compile Include="Sons/Saves/SaveData.cs" />
     <Compile Include="Sons/Saves/SaveLifecycle.cs" />
     <Compile Include="Sons/Saves/SaveRegistry.cs" />
+    <Compile Include="Sons/Saves/SaveHistoryStore.cs" />
+    <Compile Include="Sons/Saves/SaveHistory.cs" />
     <Compile Include="Sons/World/WorldRecords.cs" />
     <Compile Include="Sons/World/WorldRecords.Native.cs" />
     <Compile Include="Sons/World/MapLayers.cs" />

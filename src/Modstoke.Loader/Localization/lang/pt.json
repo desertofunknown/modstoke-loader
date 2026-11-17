@@ -59,6 +59,37 @@
     "startFailed": "Não foi possível iniciar. O log do Loader mostra o motivo."
   },
 
+  "saves": {
+    "earlier": "Jogos salvos anteriores",
+    "restore": "Restaurar",
+    "restoreTitle": "Restaurar o jogo salvo em {when}?",
+    "restoreBody": "O mundo volta a como estava naquele momento. O estado atual é mantido como um jogo salvo anterior, então você pode desfazer.",
+    "damagedBody": "Este jogo salvo não passou em uma verificação e pode não carregar. Os arquivos danificados ficam separados. Escolha Continuar de novo para tentar assim mesmo.",
+    "refusedBody": "O jogo não conseguiu carregar este jogo salvo. O conteúdo atual é mantido como um jogo salvo anterior. Escolha Continuar de novo para tentar assim mesmo.",
+    "restoring": "Restaurando…",
+    "restored": "Jogo salvo em {when} restaurado.",
+    "restoreFailed": "Não foi possível restaurar esse jogo salvo. O log do Loader mostra o motivo.",
+    "listFailed": "Não foi possível ler os jogos salvos anteriores. O log do Loader mostra o motivo.",
+    "reading": "Lendo jogos salvos anteriores…",
+    "none": "Ainda não há jogos salvos anteriores deste mundo. Uma cópia é mantida a cada salvamento.",
+    "count": { "one": "{count} jogo salvo anterior", "other": "{count} jogos salvos anteriores" },
+    "day": "Dia {days}",
+    "size": "{size:N1} MB",
+    "damaged": "Danificado",
+    "didNotLoad": "Não carregou",
+    "reason": {
+      "restore": "Mantido antes de uma restauração",
+      "load": "Como estava ao carregar o mundo",
+      "gameBackup": "Backup do próprio jogo"
+    },
+    "damagedToast": "O último salvamento deste mundo parece danificado. Os jogos salvos anteriores estão guardados: restaure um na tela de título.",
+    "refusedToast": "Não foi possível carregar o jogo salvo deste mundo. Saia para a tela de título para restaurar um anterior.",
+    "clientDamagedToast": "Seu jogo salvo neste servidor parece danificado. As cópias anteriores dele estão guardadas.",
+    "clientRefusedToast": "Não foi possível carregar seu jogo salvo neste servidor. As cópias anteriores dele estão guardadas.",
+    "checking": "Verificando este jogo salvo…",
+    "noOther": "Nenhuma cópia anterior é diferente deste jogo salvo. Escolha Continuar de novo para tentar assim mesmo."
+  },
+
   "options": {
     "title": "Opções",
     "reset": "Padrão",
@@ -847,6 +878,18 @@
 
   "voice": {
     "radio": "Rádio"
+  },
+
+  "net": {
+    "hud": {
+      "highPing": "Ping alto · {ms} ms",
+      "loss": "Perda de pacotes · {percent}%",
+      "interrupted": "Conexão interrompida"
+    },
+    "rejoin": {
+      "title": "Voltar para {server}",
+      "otherWorld": "{server} iniciou outro mundo desde que você saiu. Entre pela lista de servidores para jogar lá."
+    }
   },
 
   "console": {

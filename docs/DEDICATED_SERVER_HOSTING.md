@@ -78,6 +78,8 @@ should be passed through to the operator as is.
 | `save` | `saved`, `at`, `slot`, `day`, `path` (relative to the game folder when the save is inside it), `directory`, `sizeBytes`, `durationMs`. |
 | `stop [--no-save]` | `saved`, `exitCode`, `saveDetail`. Sent before the game quits. |
 | `saves` | `saves` with `id`, `kind` (`multiplayer` or `singleplayer`), `inGameDay`, `lastModified` (UTC ms), `sizeBytes` and `isActive`, newest first; `skipped` slots with a reason. Read-only. |
+| `saves history [<slot>]` | The slot's earlier saves (the running one by default; `1` means `0000000001`): `slot`, `kind`, `entries` newest first with `number`, `id`, `savedAt` (UTC ms), `day`, `sizeBytes`, `reason` (`save`, `load`, `restore` or `game-backup`) and `undo` (the copy a restore kept of what it replaced, whatever its reason), `damaged` copies kept apart with their `problem`, and `staged`, the restore waiting for the next start, or null. |
+| `saves restore <number\|id> [<slot>]` | Stages that earlier save to be put back. A number is a line of the list the last `saves history` of that slot printed, so autosaves in between can't shift it; panels should send the `id`. It is put back when the server next starts, before the world loads; what the slot holds by then is kept as an earlier save first. `slot`, `id`, `savedAt`, `day`, `restored` (false) and `staged`. One restore waits at a time; `saves restore --cancel` drops it (`dropped`). |
 | `broadcast <text>` | Sends one line of chat from the server to every player: `recipients`, `failed`. At most 512 characters, no `<` or `>`. |
 | `perf [--seconds N]` | Times each mod's per-frame work for N seconds (default 10, at most 60) and replies when done: `frames`, `frameMs`, and per mod `msPerFrame`, `maxFrameMs`, `calls`, `share`, `hooks` (game methods it patches) and its top methods. `notCovered` says what is not measured. One session at a time. |
 | `config check` | Each known config file with its path, format, reload mode and whether it parses. |
@@ -86,9 +88,14 @@ should be passed through to the operator as is.
 
 `status` and `mods` without `#<id>` or `--json` print the usual human
 summary. `players`, `save`, `stop`, `saves` and `broadcast` exist only on a
-dedicated server. `save`, `stop`, `reload` and `broadcast` are accepted from
-the server console, the TCP port and the desktop console, not from the in-game
-console.
+dedicated server. `save`, `stop`, `reload`, `broadcast` and `saves restore` are
+accepted from the server console, the TCP port and the desktop console, not from
+the in-game console.
+
+A restore is staged rather than done at once because the running world would
+overwrite it: the next autosave or the save `stop` makes writes the world in memory
+back over the slot. Staged, it lands at start-up before the game reads the slot, and
+the stop save is kept as an earlier save, so nothing played since is lost for good.
 
 A native mod may set `description` and `minLoaderVersion` in its manifest. A
 mod whose `minLoaderVersion` is newer than the Loader is not loaded
@@ -137,6 +144,7 @@ All paths are under the game folder.
 | `Modstoke/Runtime/events.ndjson` | The event stream, one JSON object per line without the prefix. Rotates once to `events.previous.ndjson` at 4 MiB. |
 | `Modstoke/Runtime/crash-yyyyMMddTHHmmssZ.json` | Written when an unhandled exception takes the server down: the exception, the mod it came from if known, recent Unity errors and the last 200 log lines. The newest 10 are kept. |
 | `Modstoke/UserData/map/` | Map layers for the panel's 3D island: `layers.json`, models, placements and terrain patches that mods publish through `MapLayers` (see the [SDK reference](sdk.md#map-layers)). Written 20 s after the world loads, after world saves and after changes, at most every 30 s. An install not yet moved by Bootstrap uses `OpenACAI/UserData/map/`. |
+| `Modstoke/UserData/Saves/History/` | Earlier saves of each slot, taken after every save and when the world loads: the newest 10, one a day for 7 days, at most 512 MB a slot (see the [SDK reference](sdk.md#save-history) for the settings). Damaged copies sit apart in `damaged/`; `restore.json` and `staged/` hold a restore waiting for the next start. The server's own saves stay where the game keeps them, `%USERPROFILE%\AppData\LocalLow\Endnight\SonsOfTheForestDS\Saves\DedicatedServer\Multiplayer\<slot>` unless `-userdatapath` moves them. |
 | `Modstoke/Runtime/server-requirements.json` | The required-mods list built from the installed mods, rewritten each time a dedicated server becomes ready and by `requirements generate`. Admin enforces its own copy (`RequiredModsFile`); this one is for listings and the join flow. |
 
 `state` in the status file is one of `starting`, `loading`, `ready`, `saving`,
@@ -170,6 +178,7 @@ only reports them.
 | `chat` | `channel` (`game`, `command`, or `server` for `broadcast`), `sessionId`, `name`, `steamId`, `text` |
 | `saved` | `slot`, `day`, `sizeBytes`, `durationMs`, `reason` (`autosave`, `command` or `stop`), `path` |
 | `save-failed` | `slot`, `reason`, `error` (`failed`, `timeout`, `refused`), `detail`. Also sent when a game save starts and has not finished after 30 s. |
+| `save-damaged` | `slot`, `reason` (`save`, or `load` for a world loaded from a damaged save), `problem`. The damaged copy is kept apart; `saves history` lists the good ones. |
 | `day` | `slot`, `day`, `at` (UTC ms), when the in-game day advances |
 | `mod-error` | `id`, `name`, `loader`, `error` |
 | `integrity` | `status`, `mismatches` |

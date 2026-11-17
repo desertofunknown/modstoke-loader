@@ -59,6 +59,37 @@
     "startFailed": "Nie udało się tego uruchomić. Przyczynę znajdziesz w dzienniku programu Loader."
   },
 
+  "saves": {
+    "earlier": "Wcześniejsze zapisy",
+    "restore": "Przywróć",
+    "restoreTitle": "Przywrócić zapis z {when}?",
+    "restoreBody": "Świat wróci do stanu z tamtej chwili. Obecny stan zostanie zachowany jako wcześniejszy zapis, więc można to cofnąć.",
+    "damagedBody": "Ten zapis nie przeszedł kontroli i może się nie wczytać. Jego uszkodzone pliki są przechowywane osobno. Wybierz ponownie Kontynuuj, aby spróbować wczytać go takim, jaki jest.",
+    "refusedBody": "Gra nie zdołała wczytać tego zapisu. Jego obecny stan zostanie zachowany jako wcześniejszy zapis. Wybierz ponownie Kontynuuj, aby spróbować wczytać go takim, jaki jest.",
+    "restoring": "Przywracanie…",
+    "restored": "Przywrócono zapis z {when}.",
+    "restoreFailed": "Nie udało się przywrócić tego zapisu. Przyczynę znajdziesz w dzienniku programu Loader.",
+    "listFailed": "Nie udało się odczytać wcześniejszych zapisów. Przyczynę znajdziesz w dzienniku programu Loader.",
+    "reading": "Wczytywanie wcześniejszych zapisów…",
+    "none": "Ten świat nie ma jeszcze wcześniejszych zapisów. Przy każdym zapisie gry zachowywana jest kopia.",
+    "count": { "one": "{count} wcześniejszy zapis", "few": "{count} wcześniejsze zapisy", "many": "{count} wcześniejszych zapisów", "other": "{count} wcześniejszego zapisu" },
+    "day": "Dzień {days}",
+    "size": "{size:N1} MB",
+    "damaged": "Uszkodzony",
+    "didNotLoad": "Nie wczytał się",
+    "reason": {
+      "restore": "Zachowany przed przywróceniem",
+      "load": "Stan z chwili wczytania świata",
+      "gameBackup": "Kopia zapasowa samej gry"
+    },
+    "damagedToast": "Ostatni zapis tego świata wygląda na uszkodzony. Wcześniejsze zapisy są zachowane: przywróć jeden z ekranu tytułowego.",
+    "refusedToast": "Nie udało się wczytać zapisu tego świata. Wyjdź do ekranu tytułowego, aby przywrócić wcześniejszy zapis.",
+    "clientDamagedToast": "Twój zapis na tym serwerze wygląda na uszkodzony. Jego wcześniejsze kopie są zachowane.",
+    "clientRefusedToast": "Nie udało się wczytać twojego zapisu na tym serwerze. Jego wcześniejsze kopie są zachowane.",
+    "checking": "Sprawdzanie tego zapisu…",
+    "noOther": "Żadna wcześniejsza kopia nie różni się od tego zapisu. Wybierz ponownie Kontynuuj, aby spróbować wczytać go takim, jaki jest."
+  },
+
   "options": {
     "title": "Opcje",
     "reset": "Domyślne",
@@ -847,6 +878,18 @@
 
   "voice": {
     "radio": "Krótkofalówka"
+  },
+
+  "net": {
+    "hud": {
+      "highPing": "Wysoki ping · {ms} ms",
+      "loss": "Utrata pakietów · {percent}%",
+      "interrupted": "Połączenie przerwane"
+    },
+    "rejoin": {
+      "title": "Wróć: {server}",
+      "otherWorld": "Od twojego wyjścia {server} uruchomił inny świat. Dołącz z listy serwerów, aby tam grać."
+    }
   },
 
   "console": {

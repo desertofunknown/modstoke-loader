@@ -44,7 +44,7 @@ namespace Modstoke.Loader
     /// picture and role, the banned list for the host, and the multiplayer rules for those allowed to change them.
     /// Choosing a player offers what can be done: their Steam profile, muting them on this PC, and for the host
     /// and admins their role, a kick or a ban, each through the game's own commands. Whoever is talking has the
-    /// voice bars after their name, and a player muted here a Muted tag instead.
+    /// voice bars after their name, and a player muted here a Muted tag instead. Each player's ping ends their name.
     /// </summary>
     internal sealed class PlayersScreen : SettingsScreen
     {
@@ -52,6 +52,7 @@ namespace Modstoke.Loader
         private readonly string[] _tabs;
         private readonly bool _privileged;
         private readonly List<VoiceMark> _voices = new();
+        private readonly List<PingMark> _pings = new();
         private List<PlayerEntry> _players = new();
         private List<PlayerEntry> _banned = new();
         private OptionRow _focused;
@@ -96,6 +97,7 @@ namespace Modstoke.Loader
         {
             // Each build of the list starts here, before its rows are made, so the old rows' marks go with them.
             _voices.Clear();
+            _pings.Clear();
             return id switch
             {
                 "banned" => new OptionTab(id, new[] { OptionsCatalog.Section("banned", _banned.Select(Row).ToArray()) }),
@@ -112,7 +114,10 @@ namespace Modstoke.Loader
 
         protected override void BuildNameMark(OptionRow row, TextMeshProUGUI label)
         {
-            if (row is PlayerRow player && player.Player.Role != PlayersHost.Banned) _voices.Add(new VoiceMark(player, label));
+            if (row is not PlayerRow player || player.Player.Role == PlayersHost.Banned) return;
+            // The ping first: it takes the end of the name's box, which the voice mark then measures.
+            _pings.Add(new PingMark(player, label));
+            _voices.Add(new VoiceMark(player, label));
         }
 
         protected override void FocusChanged(Focusable previous, Focusable current)
@@ -128,8 +133,10 @@ namespace Modstoke.Loader
             var dt = Math.Min(now - _voiceTime, 0.1f);
             _voiceTime = now;
             foreach (var mark in _voices) mark.Paint(now, dt, ReferenceEquals(mark.Row, _focused));
+            foreach (var mark in _pings) mark.Paint(ReferenceEquals(mark.Row, _focused));
             if (Time.unscaledTime < _nextRoster) return;
             _nextRoster = Time.unscaledTime + RefreshSeconds;
+            foreach (var mark in _pings) mark.Read();
             // Someone joined, left, changed role or their picture arrived: the lists are built again.
             ReadRoster();
             var key = RosterKey();
@@ -203,6 +210,70 @@ namespace Modstoke.Loader
                 }
             }
             FrontEnd.Push(new ActionsScreen(player.Name, Text[RoleKey(player)], actions));
+        }
+
+        // A player's ping at the end of their name's room, as the server list draws one: three bars and the round trip,
+        // amber while that player's link is poor. Nothing shows where this PC can't know it, as for the host.
+        private sealed class PingMark
+        {
+            private const float Width = 84;
+            private readonly RectTransform _rect;
+            private readonly Image[] _bars = new Image[3];
+            private readonly TextMeshProUGUI _value;
+            private int _ms = -1, _lit;
+            private bool _plate, _poor, _shown = true;
+
+            internal PingMark(PlayerRow row, TextMeshProUGUI label)
+            {
+                Row = row;
+                // The name's box gives up its end, so a long name ends in its ellipsis before the mark.
+                var name = label.rectTransform;
+                var right = -name.offsetMax.x;
+                name.offsetMax = new Vector2(-(right + FrontEnd.U(Width)), name.offsetMax.y);
+                // A child of the name, as the voice mark is, so it draws over the focus plate, in the room the name gave up.
+                _rect = MenuKit.Box(name, "Ping").Place(1, 0, 1, 1, 0, 0, -FrontEnd.U(Width), 0);
+                for (var b = 0; b < 3; b++)
+                {
+                    var bar = MenuKit.Box(_rect, "Bar " + b);
+                    bar.anchorMin = bar.anchorMax = new Vector2(0, 0.5f);
+                    bar.pivot = Vector2.zero;
+                    bar.anchoredPosition = new Vector2(FrontEnd.U(b * 6), -FrontEnd.U(7));
+                    bar.sizeDelta = new Vector2(FrontEnd.U(4), FrontEnd.U(6 + b * 4));
+                    _bars[b] = MenuKit.Fill(bar, null, MenuKit.BarOff);
+                }
+                _value = MenuKit.Text(_rect, "Value", "", FrontEnd.U(14), false, MenuKit.Muted);
+                _value.rectTransform.Place(0, 0, 1, 1, FrontEnd.U(24), 0, 0, 0);
+                Read();
+            }
+
+            internal PlayerRow Row { get; }
+
+            internal void Read()
+            {
+                var known = PlayersHost.TryLink(Row.Player, out var link);
+                if (known != _shown)
+                {
+                    _shown = known;
+                    _rect.gameObject.SetActive(known);
+                }
+                if (!known || link.RoundTripMs == _ms && link.Poor == _poor) return;
+                _ms = link.RoundTripMs;
+                _poor = link.Poor;
+                // The server list's own steps for its bars.
+                _lit = _ms <= 0 ? 0 : _ms < 60 ? 3 : _ms < 110 ? 2 : 1;
+                _value.text = _ms > 0 ? FrontEnd.Text.Get("multiplayer.details.pingValue", ("ping", _ms)) : "—";
+                Paint(_plate, true);
+            }
+
+            internal void Paint(bool plate, bool force = false)
+            {
+                if (plate == _plate && !force) return;
+                _plate = plate;
+                var lit = plate ? MenuKit.OnPlate : _poor ? MenuKit.Amber : MenuKit.Ink;
+                for (var b = 0; b < 3; b++) _bars[b].color = b < _lit ? lit : plate ? MenuKit.OnPlateTrack : MenuKit.BarOff;
+                // On the plate the muted grey all but vanishes, so the figure takes the row's dark like its name.
+                _value.color = plate ? MenuKit.OnPlate : _poor ? MenuKit.Amber : MenuKit.Muted;
+            }
         }
 
         // A player's voice just after their name: the voice bars while they talk, or a tag while they are muted here.

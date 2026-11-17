@@ -37,6 +37,7 @@ namespace Modstoke.Loader
                     _bound = 0;
                     _classicThisVisit = false;
                     MultiplayerScreen.Close();
+                    Rejoin.ListClosed();
                 }
             }
             catch (Exception error)
@@ -44,6 +45,7 @@ namespace Modstoke.Loader
                 // The screen stays closed for this visit; the game's own browser shows instead.
                 RuntimeEntryPoint.LogSource?.LogWarning("The Modstoke multiplayer screen stopped: " + error);
                 MultiplayerScreen.Close();
+                Rejoin.ListClosed();
             }
         }
 

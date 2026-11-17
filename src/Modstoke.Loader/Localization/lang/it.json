@@ -59,6 +59,37 @@
     "startFailed": "Avvio non riuscito. Il log del Loader ne spiega il motivo."
   },
 
+  "saves": {
+    "earlier": "Salvataggi precedenti",
+    "restore": "Ripristina",
+    "restoreTitle": "Ripristinare il salvataggio del {when}?",
+    "restoreBody": "Il mondo torna com’era allora. Lo stato attuale viene conservato come salvataggio precedente, quindi puoi tornare indietro.",
+    "damagedBody": "Questo salvataggio non ha superato un controllo e potrebbe non caricarsi. I suoi file danneggiati vengono tenuti da parte. Scegli di nuovo Continua per provarlo così com’è.",
+    "refusedBody": "Il gioco non è riuscito a caricare questo salvataggio. Il suo contenuto attuale viene conservato come salvataggio precedente. Scegli di nuovo Continua per provarlo così com’è.",
+    "restoring": "Ripristino…",
+    "restored": "Salvataggio del {when} ripristinato.",
+    "restoreFailed": "Impossibile ripristinare il salvataggio. Il log del Loader ne spiega il motivo.",
+    "listFailed": "Impossibile leggere i salvataggi precedenti. Il log del Loader ne spiega il motivo.",
+    "reading": "Lettura dei salvataggi precedenti…",
+    "none": "Ancora nessun salvataggio precedente di questo mondo. A ogni salvataggio ne viene conservata una copia.",
+    "count": { "one": "{count} salvataggio precedente", "other": "{count} salvataggi precedenti" },
+    "day": "Giorno {days}",
+    "size": "{size:N1} MB",
+    "damaged": "Danneggiato",
+    "didNotLoad": "Non caricato",
+    "reason": {
+      "restore": "Conservato prima di un ripristino",
+      "load": "Com’era al caricamento del mondo",
+      "gameBackup": "Backup del gioco stesso"
+    },
+    "damagedToast": "L’ultimo salvataggio di questo mondo sembra danneggiato. I salvataggi precedenti sono conservati: ripristinane uno dalla schermata del titolo.",
+    "refusedToast": "Impossibile caricare il salvataggio di questo mondo. Torna alla schermata del titolo per ripristinarne uno precedente.",
+    "clientDamagedToast": "Il tuo salvataggio su questo server sembra danneggiato. Le sue copie precedenti sono conservate.",
+    "clientRefusedToast": "Impossibile caricare il tuo salvataggio su questo server. Le sue copie precedenti sono conservate.",
+    "checking": "Controllo del salvataggio…",
+    "noOther": "Nessuna copia precedente è diversa da questo salvataggio. Scegli di nuovo Continua per provarlo così com’è."
+  },
+
   "options": {
     "title": "Opzioni",
     "reset": "Predefinito",
@@ -847,6 +878,18 @@
 
   "voice": {
     "radio": "Radio"
+  },
+
+  "net": {
+    "hud": {
+      "highPing": "Ping alto · {ms} ms",
+      "loss": "Perdita di pacchetti · {percent}%",
+      "interrupted": "Connessione interrotta"
+    },
+    "rejoin": {
+      "title": "Rientra in {server}",
+      "otherWorld": "{server} ha avviato un altro mondo da quando sei uscito. Entra dall’elenco dei server per giocarci."
+    }
   },
 
   "console": {

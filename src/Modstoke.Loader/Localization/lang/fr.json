@@ -59,6 +59,37 @@
     "startFailed": "Le lancement a échoué. Le journal du Loader en indique la raison."
   },
 
+  "saves": {
+    "earlier": "Sauvegardes précédentes",
+    "restore": "Restaurer",
+    "restoreTitle": "Restaurer la sauvegarde du {when} ?",
+    "restoreBody": "Le monde revient à son état d’alors. Son état actuel est conservé comme sauvegarde précédente, vous pourrez donc revenir en arrière.",
+    "damagedBody": "Cette sauvegarde n’a pas passé une vérification et risque de ne pas se charger. Ses fichiers endommagés sont mis à part. Choisissez de nouveau Continuer pour l’essayer telle quelle.",
+    "refusedBody": "Le jeu n’a pas pu charger cette sauvegarde. Son contenu actuel est conservé comme sauvegarde précédente. Choisissez de nouveau Continuer pour l’essayer telle quelle.",
+    "restoring": "Restauration…",
+    "restored": "Sauvegarde du {when} restaurée.",
+    "restoreFailed": "La sauvegarde n’a pas pu être restaurée. Le journal du Loader en indique la raison.",
+    "listFailed": "Les sauvegardes précédentes n’ont pas pu être lues. Le journal du Loader en indique la raison.",
+    "reading": "Lecture des sauvegardes précédentes…",
+    "none": "Pas encore de sauvegarde précédente de ce monde. Une copie est conservée à chaque sauvegarde.",
+    "count": { "one": "{count} sauvegarde précédente", "other": "{count} sauvegardes précédentes" },
+    "day": "Jour {days}",
+    "size": "{size:N1} Mo",
+    "damaged": "Endommagée",
+    "didNotLoad": "Non chargée",
+    "reason": {
+      "restore": "Conservée avant une restauration",
+      "load": "État au chargement du monde",
+      "gameBackup": "Sauvegarde de secours du jeu"
+    },
+    "damagedToast": "La dernière sauvegarde de ce monde semble endommagée. Les sauvegardes précédentes sont conservées : restaurez-en une depuis l’écran titre.",
+    "refusedToast": "La sauvegarde de ce monde n’a pas pu être chargée. Revenez à l’écran titre pour restaurer une sauvegarde précédente.",
+    "clientDamagedToast": "Votre sauvegarde sur ce serveur semble endommagée. Ses copies précédentes sont conservées.",
+    "clientRefusedToast": "Votre sauvegarde sur ce serveur n’a pas pu être chargée. Ses copies précédentes sont conservées.",
+    "checking": "Vérification de cette sauvegarde…",
+    "noOther": "Aucune copie précédente ne diffère de cette sauvegarde. Choisissez de nouveau Continuer pour l’essayer telle quelle."
+  },
+
   "options": {
     "title": "Options",
     "reset": "Par défaut",
@@ -847,6 +878,18 @@
 
   "voice": {
     "radio": "Radio"
+  },
+
+  "net": {
+    "hud": {
+      "highPing": "Ping élevé · {ms} ms",
+      "loss": "Perte de paquets · {percent} %",
+      "interrupted": "Connexion interrompue"
+    },
+    "rejoin": {
+      "title": "Rejoindre {server}",
+      "otherWorld": "{server} a lancé un autre monde depuis votre départ. Rejoignez-le depuis la liste des serveurs pour y jouer."
+    }
   },
 
   "console": {

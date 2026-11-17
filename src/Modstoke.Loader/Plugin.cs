@@ -389,6 +389,7 @@ namespace Modstoke.Loader
                 InstallHooks("sons-server-notices", ServerNotices.InstallHarmonyPatches);
                 InstallHooks("sons-kick-reason", KickReason.InstallHarmonyPatches);
                 InstallHooks("sons-server-badges", ServerBrowserBadges.InstallHarmonyPatches);
+                InstallHooks("sons-connection", ConnectionQuality.InstallHarmonyPatches, Rejoin.InstallHarmonyPatches);
 
                 TraceCompat("Loading native Modstoke mods");
                 using (Timings.Measure("loader.native", "mod-hosting"))

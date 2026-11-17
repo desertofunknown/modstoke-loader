@@ -22,14 +22,15 @@ namespace Modstoke.Loader
         {
             yield return Listed("version", "Show the Loader, game and runtime versions.");
             if (Host.IsServer)
-                yield return Listed("players", "List connected players and where they are.");
+                yield return Listed("players", "List connected players, their ping and packet loss, and where they are.");
             yield return Listed("requirements", "requirements generate: write server-requirements.json from the installed mods.");
             if (Host.IsServer)
             {
                 yield return Listed("save", "Save the world now.");
                 yield return Listed("stop", "Save the world and shut the server down. stop --no-save skips the save.");
                 yield return Listed("broadcast", "broadcast <text>: send a chat message from the server to every player.");
-                yield return Listed("saves", "List the save slots, their in-game day, size and which one is running.");
+                yield return Listed("saves", "saves | history [<slot>] | restore <number|id> [<slot>] | restore --cancel: list the save slots, "
+                    + "a slot's earlier saves, or put one back when the server next starts.");
             }
             yield return Listed("config", "config check | config get: check the known config files, or show dedicatedserver.cfg.");
             yield return Listed("reload", "Apply config changes that do not need a restart.");
@@ -127,6 +128,12 @@ namespace Modstoke.Loader
                     break;
                 case "broadcast":
                     RunBroadcast(request);
+                    break;
+                case "saves" when first == "history":
+                    HostSaveHistory.RunHistory(request);
+                    break;
+                case "saves" when first == "restore":
+                    HostSaveHistory.RunRestore(request);
                     break;
                 case "saves":
                     HostWorld.RunSaves(request);

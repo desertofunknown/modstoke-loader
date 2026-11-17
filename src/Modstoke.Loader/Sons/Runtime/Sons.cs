@@ -138,6 +138,8 @@ namespace Modstoke.Sons
             SaveData.RegisterMenuProvider();
             SaveLifecycle.Initialize();
             SaveRegistry.Initialize();
+            // After the registry, so a save's sidecar files are written before its copy is taken.
+            SaveHistory.Initialize();
             MapLayers.Initialize();
             SetState(GameState.CreateUnknown());
             MenuBridgeState.Initialize();
@@ -228,6 +230,7 @@ namespace Modstoke.Sons
                     using (Timings.MeasureCapture("Networking.KickReason")) global::Modstoke.Sons.KickReason.Tick();
                     using (Timings.MeasureCapture("Networking.ServerDetails")) global::Modstoke.Sons.ServerDetailsPublisher.Tick();
                     using (Timings.MeasureCapture("Networking.BrowserBadges")) global::Modstoke.Sons.ServerBrowserBadges.Tick();
+                    using (Timings.MeasureCapture("Networking.Quality")) global::Modstoke.Sons.ConnectionQuality.Tick();
                 }
                 LocalizationStartup.Tick();
                 using (Timings.MeasureCapture("Sons.LoadingPerformance")) LoadingPerformance.Tick();
@@ -238,6 +241,8 @@ namespace Modstoke.Sons
                 using (Timings.MeasureCapture("Sons.FrontEnd")) FrontEnd.Tick();
                 // After the front end, which measures the screen the toasts are scaled from.
                 using (Timings.MeasureCapture("Sons.Toasts")) HudToasts.Tick();
+                using (Timings.MeasureCapture("Sons.ConnectionWarning")) ConnectionWarning.Tick();
+                Rejoin.Tick();
                 MultiplayerTakeover.Tick();
                 using (Timings.MeasureCapture("Sons.Voice"))
                 {

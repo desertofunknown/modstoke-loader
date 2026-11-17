@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using Modstoke.Localization;
+using Modstoke.Sons;
 using Sons.Save;
 using TMPro;
 using UnityEngine;
@@ -30,7 +32,10 @@ namespace Modstoke.Loader
             internal string Name = "", Mode = "", GameId = "";
             internal int Days, Hours = -1;
             internal DateTime Saved;
-            internal bool Read, Unreadable;
+            internal bool Read, Unreadable, Damaged;
+            internal string Folder;
+            // The damage check, until its answer is taken.
+            internal Task<SaveCheck> Check;
         }
 
         private sealed class RowView
@@ -59,15 +64,21 @@ namespace Modstoke.Loader
         private Glide _rowMark;
         private SectionNav _sections;
         private TextMeshProUGUI _section, _title, _count, _note;
-        private TextMeshProUGUI _saveTitle, _saveLine, _saveWhen, _newTitle, _newHint, _modeAbout, _continueLabel, _deleteLabel;
+        private TextMeshProUGUI _saveTitle, _saveLine, _saveWhen, _newTitle, _newHint, _modeAbout, _continueLabel, _deleteLabel, _earlierLabel;
         private RectTransform _savePane, _newPane, _scrollThumb, _holdFill;
         private RawImage _bigThumbnail;
         private Focusable _delete;
         // Row 0 is the new game; saves follow.
         private int _top, _selected, _lastClickSlot = -1;
         private float _lastClick, _trackHeight, _hold;
-        private string _problem;
+        private string _problem, _notice;
         private bool _listed, _built, _holdingButton, _awaitRelease;
+        // A damaged save, or one the game would not load, is offered its latest good copy once before it is continued.
+        private readonly HashSet<uint> _offered = new();
+        private Save _continuing, _offering, _restoringSave;
+        private Task<SaveHistoryEntry> _offer;
+        private Task _restoring;
+        private SaveHistoryEntry _restoringEntry;
 
         internal SavedGamesScreen(SaveGameType type)
         {
@@ -155,6 +166,12 @@ namespace Modstoke.Loader
             _saveWhen = MenuKit.Text(_savePane, "When", "", U(15), false, MenuKit.Muted);
             _saveWhen.rectTransform.Strip(y + U(66), U(22), 0, 0);
 
+            var earlier = MenuKit.Box(_savePane, "Earlier").Place(0, 0, 1, 0, 0, U(132), 0, -U(172));
+            _earlierLabel = MenuKit.Text(earlier, "Label", "", U(14), true, MenuKit.Muted, TextAlignmentOptions.Center);
+            _earlierLabel.characterSpacing = 12;
+            _earlierLabel.rectTransform.Place(0, 0, 1, 1);
+            Add(earlier, OpenEarlier, focused => _earlierLabel.color = focused ? MenuKit.Ink : MenuKit.Muted);
+
             // Deleting is held, not pressed: a bar fills while the button is down and letting go early cancels.
             var delete = MenuKit.Box(_savePane, "Delete").Place(0, 0, 1, 0, 0, U(86), 0, -U(126));
             _holdFill = MenuKit.Box(delete, "Hold").Place(0, 0, 0, 1);
@@ -217,6 +234,7 @@ namespace Modstoke.Loader
             _newTitle.text = Text["games.newGame"].ToUpper(culture);
             _newHint.text = Text["games.chooseMode"];
             _continueLabel.text = Text["games.continue"].ToUpper(culture);
+            _earlierLabel.text = Text["saves.earlier"].ToUpper(culture);
             foreach (var view in _modes) view.Label.text = Text["mode." + KeyOf(view.Mode)].ToUpper(culture);
             _sections?.Paint(FrontEnd.PadActive);
             Paint();
@@ -243,17 +261,25 @@ namespace Modstoke.Loader
             {
                 var prompts = new List<PromptSpec>
                 {
-                    new(Text["common.back"], "B", "ESC", () => FrontEnd.Pop()),
+                    new(Text["common.back"], "B", "ESC", () => { if (!OnBack()) FrontEnd.Pop(); }),
                     new(Text["common.select"], "A", "ENTER", null)
                 };
-                if (SelectedSave() != null) prompts.Add(new PromptSpec(Text["games.deleteHold"], "X", "DEL", null));
+                if (SelectedSave() != null)
+                {
+                    prompts.Add(new PromptSpec(Text["games.deleteHold"], "X", "DEL", null));
+                    prompts.Add(new PromptSpec(Text["saves.earlier"], "Y", "F2", OpenEarlier));
+                }
                 return prompts;
             }
         }
 
-        // From the choices on the right, Back returns to the list before it leaves the screen.
+        internal override void OnAlt2() => OpenEarlier();
+
+        // From the choices on the right, Back returns to the list before it leaves the screen. A restore under way
+        // finishes here first, so a list opened again never sees the slot half swapped.
         internal override bool OnBack()
         {
+            if (_restoring != null) return true;
             if (Focused == null || SlotOf(Focused) >= 0 || _sections != null && ReferenceEquals(Focused.Rect, _sections.Other))
                 return false;
             MenuSound.Play(MenuCue.Back);
@@ -285,6 +311,7 @@ namespace Modstoke.Loader
             }
             else LoadOneThumbnail();
             TickHold();
+            TickHistory();
             if (FrontInput.Scroll != 0 && Count > _rows.Length)
             {
                 _top = Mathf.Clamp(_top - Math.Sign(FrontInput.Scroll), 0, Count - _rows.Length);
@@ -325,7 +352,8 @@ namespace Modstoke.Loader
         {
             _selected = index;
             _hold = 0;
-            _problem = null;
+            _problem = _notice = null;
+            DropPending();
             PaintHighlights();
             PaintDetails();
             PaintNote();
@@ -356,7 +384,8 @@ namespace Modstoke.Loader
             {
                 foreach (var id in GameMenus.SaveIds(_type))
                 {
-                    var save = new Save { Id = id };
+                    var save = new Save { Id = id, Folder = SaveHistory.SlotDirectory(_type, id) };
+                    if (save.Folder != null) save.Check = SaveHistory.CheckAsync(save.Folder);
                     _saves.Add(save);
                     _unread.Enqueue(save);
                 }
@@ -445,7 +474,122 @@ namespace Modstoke.Loader
         private void ContinueSelected()
         {
             var save = SelectedSave();
-            if (save != null) Start(() => GameMenus.ContinueGame(_type, save.Id), "continue save " + save.Id);
+            if (save == null || _continuing != null || _offer != null || _restoring != null || SaveHistory.Restoring) return;
+            // The check has usually finished long before; if not, it runs now, ahead of the others, and the continue
+            // waits for it rather than load a damaged save.
+            if (save.Check != null)
+            {
+                if (!save.Check.IsCompleted) save.Check = SaveHistory.CheckAsync(save.Folder, true);
+                _continuing = save;
+                PaintNote();
+                return;
+            }
+            if (save.Folder != null && (save.Damaged || save.Unreadable || SaveHistory.LoadFailed(save.Folder)) && !_offered.Contains(save.Id))
+            {
+                _offering = save;
+                _offer = SaveHistory.GoodCopyAsync(save.Folder);
+                PaintNote();
+                return;
+            }
+            Start(() => GameMenus.ContinueGame(_type, save.Id), "continue save " + save.Id);
+        }
+
+        private void OpenEarlier()
+        {
+            var save = SelectedSave();
+            if (save?.Folder == null || _restoring != null || SaveHistory.Restoring) return;
+            DropPending();
+            MenuSound.Play(MenuCue.Forward);
+            FrontEnd.Push(new EarlierSavesScreen(_host, TitleOf(save), save.Folder, entry => Restored(save, entry)));
+        }
+
+        // A continue or offer still waiting belongs to what the player did then; once they move on it is dropped.
+        private void DropPending()
+        {
+            _continuing = _offering = null;
+            _offer = null;
+        }
+
+        // Damage checks coming in, a continue waiting on one, the offer of a good copy, and its restore finishing.
+        private void TickHistory()
+        {
+            var flagged = false;
+            foreach (var save in _saves)
+            {
+                if (save.Check is not { IsCompleted: true } check) continue;
+                save.Check = null;
+                save.Damaged = check.IsCompletedSuccessfully && check.Result.Damaged;
+                flagged |= save.Damaged;
+            }
+            if (flagged) Paint();
+            if (_continuing is { Check: null } waiting)
+            {
+                _continuing = null;
+                PaintNote();
+                if (ReferenceEquals(waiting, SelectedSave())) ContinueSelected();
+            }
+            if (_offer is { IsCompleted: true } offer)
+            {
+                var save = _offering;
+                DropPending();
+                var good = offer.IsCompletedSuccessfully ? offer.Result : null;
+                if (offer.IsFaulted)
+                    RuntimeEntryPoint.LogSource?.LogWarning("Earlier saves of save " + save.Id + " could not be read: "
+                        + offer.Exception.GetBaseException().Message);
+                // Counted as offered only once the player has seen it. Nothing to offer is said plainly; Continue
+                // again then lets the game try the save as it is.
+                _offered.Add(save.Id);
+                if (good == null)
+                {
+                    _notice = Text["saves.noOther"];
+                    PaintNote();
+                }
+                else FrontEnd.Push(new ConfirmScreen("", SaveHistory.LoadFailed(save.Folder) ? "saves.refusedBody" : "saves.damagedBody",
+                    "saves.restore", "common.cancel", () => Restore(save, good),
+                    titleText: Text.Get("saves.restoreTitle", ("when", EarlierSavesScreen.Time(good.Saved)))));
+            }
+            if (_restoring is { IsCompleted: true } restoring)
+            {
+                _restoring = null;
+                if (restoring.IsCompletedSuccessfully) Restored(_restoringSave, _restoringEntry);
+                else
+                {
+                    _notice = null;
+                    _problem = Text["saves.restoreFailed"];
+                    RuntimeEntryPoint.LogSource?.LogWarning("Save " + _restoringSave.Id + " could not be restored: "
+                        + restoring.Exception?.GetBaseException().Message);
+                    PaintNote();
+                }
+            }
+        }
+
+        private void Restore(Save save, SaveHistoryEntry entry)
+        {
+            _restoringSave = save;
+            _restoringEntry = entry;
+            _restoring = SaveHistory.RestoreAsync(save.Folder, entry);
+            _problem = null;
+            _notice = Text["saves.restoring"];
+            PaintNote();
+        }
+
+        // The slot holds an earlier save now: it is read again and the list says so.
+        private void Restored(Save save, SaveHistoryEntry entry)
+        {
+            // A check of the files from before the restore must not flag the restored ones.
+            save.Check = null;
+            save.Read = save.Unreadable = save.Damaged = false;
+            DropPending();
+            ReadSave(save);
+            if (_thumbnails.Remove(save.Id, out var texture) && texture != null && texture) Object.Destroy(texture);
+            var selected = SelectedSave();
+            _saves.Sort((a, b) => b.Saved.CompareTo(a.Saved));
+            if (selected != null) _selected = _saves.IndexOf(selected) + 1;
+            _offered.Remove(save.Id);
+            FocusSelectedRow();
+            _problem = null;
+            _notice = Text.Get("saves.restored", ("when", EarlierSavesScreen.Time(entry.Saved)));
+            PaintNote();
         }
 
         private void StartNew(string mode) => Start(() => GameMenus.NewGame(_type, mode), "start a new " + mode + " game");
@@ -513,7 +657,7 @@ namespace Modstoke.Loader
         private void DeleteNow()
         {
             var save = SelectedSave();
-            if (save == null) return;
+            if (save == null || SaveHistory.Restoring) return;
             MenuSound.Play(MenuCue.Off);
             try
             {
@@ -551,7 +695,8 @@ namespace Modstoke.Loader
         {
             if (!_built) return;
             _note.color = _problem != null ? MenuKit.Red : MenuKit.Muted;
-            _note.text = _problem ?? (_unread.Count > 0 ? Text["games.reading"] : _saves.Count == 0 ? Text["games.none"] : "");
+            _note.text = _problem ?? _notice ?? (_continuing != null || _offer != null ? Text["saves.checking"]
+                : _unread.Count > 0 ? Text["games.reading"] : _saves.Count == 0 ? Text["games.none"] : "");
         }
 
         private void PaintRow(RowView view, int index)
@@ -565,7 +710,7 @@ namespace Modstoke.Loader
             view.Thumbnail.texture = texture;
             view.Thumbnail.color = texture != null ? Color.white : MenuKit.Cell;
             view.Title.text = save == null ? Text["games.newGame"] : TitleOf(save);
-            view.Detail.text = save == null ? Text["games.newGameHint"] : SubtitleOf(save);
+            view.Detail.text = save == null ? Text["games.newGameHint"] : Flagged(save, SubtitleOf(save));
         }
 
         private void PaintHighlights()
@@ -595,7 +740,7 @@ namespace Modstoke.Loader
             _bigThumbnail.texture = texture;
             _bigThumbnail.color = texture != null ? Color.white : MenuKit.Cell;
             _saveTitle.text = TitleOf(save);
-            _saveLine.text = save.Read ? ModeAndDay(save) : "";
+            _saveLine.text = Flagged(save, save.Read ? ModeAndDay(save) : "");
             _saveWhen.text = WhenOf(save);
             PaintDelete();
         }
@@ -619,6 +764,15 @@ namespace Modstoke.Loader
 
         private static string SubtitleOf(Save save)
             => save.Read && save.Name.Length > 0 ? ModeAndDay(save) + " · " + WhenOf(save) : WhenOf(save);
+
+        // A damaged save, or one the game would not load this session, says so first.
+        private static string Flagged(Save save, string text)
+        {
+            var flag = save.Damaged ? Text["saves.damaged"]
+                : save.Folder != null && SaveHistory.LoadFailed(save.Folder) ? Text["saves.didNotLoad"]
+                : null;
+            return flag == null ? text : text.Length == 0 ? flag : flag + " · " + text;
+        }
 
         private static string ModeAndDay(Save save)
             => Text.Get("games.modeAndDay", ("mode", ModeName(save.Mode)), ("days", save.Days));

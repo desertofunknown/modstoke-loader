@@ -59,6 +59,37 @@
     "startFailed": "Det gick inte att starta. Loader-loggen visar varför."
   },
 
+  "saves": {
+    "earlier": "Tidigare sparade spel",
+    "restore": "Återställ",
+    "restoreTitle": "Återställa spelet som sparades {when}?",
+    "restoreBody": "Världen går tillbaka till hur den var då. Hur den är nu behålls som ett tidigare sparat spel, så du kan ångra det.",
+    "damagedBody": "Det här sparade spelet klarade inte en kontroll och kanske inte laddas. Dess skadade filer hålls åt sidan. Välj Fortsätt igen för att prova det som det är.",
+    "refusedBody": "Spelet kunde inte ladda det här sparade spelet. Det som finns nu behålls som ett tidigare sparat spel. Välj Fortsätt igen för att prova det som det är.",
+    "restoring": "Återställer…",
+    "restored": "Spelet som sparades {when} har återställts.",
+    "restoreFailed": "Det sparade spelet gick inte att återställa. Loader-loggen visar varför.",
+    "listFailed": "Tidigare sparade spel gick inte att läsa. Loader-loggen visar varför.",
+    "reading": "Läser tidigare sparade spel…",
+    "none": "Inga tidigare sparade spel av den här världen än. En kopia behålls varje gång den sparas.",
+    "count": { "one": "{count} tidigare sparat spel", "other": "{count} tidigare sparade spel" },
+    "day": "Dag {days}",
+    "size": "{size:N1} MB",
+    "damaged": "Skadat",
+    "didNotLoad": "Laddades inte",
+    "reason": {
+      "restore": "Behölls före en återställning",
+      "load": "Som världen var när den laddades",
+      "gameBackup": "Spelets egen säkerhetskopia"
+    },
+    "damagedToast": "Den här världens senaste sparning ser skadad ut. Tidigare sparade spel finns kvar: återställ ett från huvudmenyn.",
+    "refusedToast": "Den här världens sparade spel kunde inte laddas. Avsluta till huvudmenyn för att återställa ett tidigare.",
+    "clientDamagedToast": "Ditt sparade spel på den här servern ser skadat ut. Tidigare kopior av det finns kvar.",
+    "clientRefusedToast": "Ditt sparade spel på den här servern kunde inte laddas. Tidigare kopior av det finns kvar.",
+    "checking": "Kontrollerar det sparade spelet…",
+    "noOther": "Ingen tidigare kopia skiljer sig från det här sparade spelet. Välj Fortsätt igen för att prova det som det är."
+  },
+
   "options": {
     "title": "Alternativ",
     "reset": "Standard",
@@ -847,6 +878,18 @@
 
   "voice": {
     "radio": "Komradio"
+  },
+
+  "net": {
+    "hud": {
+      "highPing": "Hög ping · {ms} ms",
+      "loss": "Paketförlust · {percent} %",
+      "interrupted": "Anslutningen avbruten"
+    },
+    "rejoin": {
+      "title": "Återanslut till {server}",
+      "otherWorld": "{server} har startat en annan värld sedan du lämnade. Gå med via serverlistan för att spela där."
+    }
   },
 
   "console": {

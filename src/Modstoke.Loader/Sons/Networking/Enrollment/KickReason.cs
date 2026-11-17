@@ -33,6 +33,9 @@ namespace Modstoke.Sons
 
         private static double Now => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
 
+        /// <summary>Goes up each time a reason for leaving a server comes in: one this client expected, or the server's kick text.</summary>
+        internal static int Reasons { get; private set; }
+
         /// <summary>
         /// From a client that already knows why it will be refused: the popup's title, the reason it expects, shown
         /// if the kick's own text never arrives, and a detail line added to whichever reason is shown.
@@ -51,6 +54,7 @@ namespace Modstoke.Sons
             _reasonUntil = _expectedUntil;
             _titleSince = double.MaxValue;
             _logged = false;
+            Reasons++;
         }
 
         // A reason belongs to the connection that expected or received it; the next start never shows it for another
@@ -194,6 +198,7 @@ namespace Modstoke.Sons
                 _reasonUntil = Now + ShowSeconds;
                 _titleSince = double.MaxValue;
                 _logged = false;
+                Reasons++;
                 RuntimeEntryPoint.LogSource?.LogInfo("Kicked by the server" + (written == null ? "" : ": " + written)
                     + (_reason == written ? "" : ". Showing: " + _reason.Replace("\n\n", " ")));
             }

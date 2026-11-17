@@ -59,6 +59,37 @@
     "startFailed": "无法开始。原因见 Loader 日志。"
   },
 
+  "saves": {
+    "earlier": "历史存档",
+    "restore": "恢复",
+    "restoreTitle": "恢复 {when} 的存档？",
+    "restoreBody": "世界将回到当时的状态。现在的状态会作为历史存档保留，因此之后仍可改回。",
+    "damagedBody": "此存档未通过检查，可能无法加载。其损坏的文件会单独保存。如要按原样尝试，请再次选择“继续”。",
+    "refusedBody": "游戏无法加载此存档。其当前内容会作为历史存档保留。如要按原样尝试，请再次选择“继续”。",
+    "restoring": "正在恢复……",
+    "restored": "已恢复 {when} 的存档。",
+    "restoreFailed": "无法恢复该存档。原因见 Loader 日志。",
+    "listFailed": "无法读取历史存档。原因见 Loader 日志。",
+    "reading": "正在读取历史存档……",
+    "none": "这个世界还没有历史存档。每次保存时都会保留一份副本。",
+    "count": { "other": "{count} 个历史存档" },
+    "day": "第 {days} 天",
+    "size": "{size:N1} MB",
+    "damaged": "已损坏",
+    "didNotLoad": "未能加载",
+    "reason": {
+      "restore": "恢复前保留",
+      "load": "世界加载时的状态",
+      "gameBackup": "游戏自带的备份"
+    },
+    "damagedToast": "这个世界的最新存档似乎已损坏。历史存档都还在，可在标题画面恢复。",
+    "refusedToast": "无法加载这个世界的存档。退出至标题画面即可恢复历史存档。",
+    "clientDamagedToast": "你在此服务器上的存档似乎已损坏。之前的副本都还在。",
+    "clientRefusedToast": "无法加载你在此服务器上的存档。之前的副本都还在。",
+    "checking": "正在检查此存档……",
+    "noOther": "没有与此存档不同的历史存档。如要按原样尝试，请再次选择“继续”。"
+  },
+
   "options": {
     "title": "选项",
     "reset": "默认",
@@ -847,6 +878,18 @@
 
   "voice": {
     "radio": "对讲机"
+  },
+
+  "net": {
+    "hud": {
+      "highPing": "高延迟 · {ms} ms",
+      "loss": "丢包 · {percent}%",
+      "interrupted": "连接中断"
+    },
+    "rejoin": {
+      "title": "重新加入 {server}",
+      "otherWorld": "{server} 在你离开后开始了另一个世界。请从服务器列表加入以在那里游玩。"
+    }
   },
 
   "console": {

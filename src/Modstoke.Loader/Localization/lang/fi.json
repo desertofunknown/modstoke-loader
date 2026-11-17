@@ -59,6 +59,37 @@
     "startFailed": "Käynnistäminen ei onnistunut. Syy näkyy Loaderin lokista."
   },
 
+  "saves": {
+    "earlier": "Aiemmat tallennukset",
+    "restore": "Palauta",
+    "restoreTitle": "Palautetaanko tallennus ajalta {when}?",
+    "restoreBody": "Maailma palaa silloiseen tilaansa. Nykyinen tila säilytetään aiempana tallennuksena, joten palautuksen voi perua.",
+    "damagedBody": "Tämä tallennus ei läpäissyt tarkistusta eikä ehkä lataudu. Sen vioittuneet tiedostot pidetään erillään. Valitse Jatka uudelleen, jos haluat kokeilla sitä sellaisenaan.",
+    "refusedBody": "Peli ei pystynyt lataamaan tätä tallennusta. Sen nykyinen tila säilytetään aiempana tallennuksena. Valitse Jatka uudelleen, jos haluat kokeilla sitä sellaisenaan.",
+    "restoring": "Palautetaan…",
+    "restored": "Tallennus ajalta {when} palautettiin.",
+    "restoreFailed": "Tallennusta ei voitu palauttaa. Syy näkyy Loaderin lokista.",
+    "listFailed": "Aiempia tallennuksia ei voitu lukea. Syy näkyy Loaderin lokista.",
+    "reading": "Luetaan aiempia tallennuksia…",
+    "none": "Tästä maailmasta ei ole vielä aiempia tallennuksia. Jokaisesta tallennuksesta säilytetään kopio.",
+    "count": { "one": "{count} aiempi tallennus", "other": "{count} aiempaa tallennusta" },
+    "day": "Päivä {days}",
+    "size": "{size:N1} Mt",
+    "damaged": "Vioittunut",
+    "didNotLoad": "Ei latautunut",
+    "reason": {
+      "restore": "Säilytetty ennen palautusta",
+      "load": "Tila maailman latautuessa",
+      "gameBackup": "Pelin oma varmuuskopio"
+    },
+    "damagedToast": "Tämän maailman viimeisin tallennus näyttää vioittuneelta. Aiemmat tallennukset ovat tallessa: palauta jokin niistä niminäytöstä.",
+    "refusedToast": "Tämän maailman tallennusta ei voitu ladata. Poistu niminäyttöön palauttaaksesi aiemman tallennuksen.",
+    "clientDamagedToast": "Tallennuksesi tällä palvelimella näyttää vioittuneelta. Sen aiemmat kopiot ovat tallessa.",
+    "clientRefusedToast": "Tallennustasi tällä palvelimella ei voitu ladata. Sen aiemmat kopiot ovat tallessa.",
+    "checking": "Tarkistetaan tallennusta…",
+    "noOther": "Mikään aiempi kopio ei poikkea tästä tallennuksesta. Valitse Jatka uudelleen, jos haluat kokeilla sitä sellaisenaan."
+  },
+
   "options": {
     "title": "Asetukset",
     "reset": "Oletus",
@@ -847,6 +878,18 @@
 
   "voice": {
     "radio": "Radiopuhelin"
+  },
+
+  "net": {
+    "hud": {
+      "highPing": "Korkea ping · {ms} ms",
+      "loss": "Pakettihävikki · {percent} %",
+      "interrupted": "Yhteydessä katko"
+    },
+    "rejoin": {
+      "title": "Palaa: {server}",
+      "otherWorld": "{server} on aloittanut toisen maailman lähtösi jälkeen. Liity palvelinlistasta pelataksesi siellä."
+    }
   },
 
   "console": {
