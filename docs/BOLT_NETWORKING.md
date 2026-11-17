@@ -243,6 +243,12 @@ subscription selects are read natively: they are not captured and cannot abandon
 packet. Any subscription still enables the receive guard for every packet. Dispose
 the subscription on the game thread when unloading.
 
+The readers are qualified at startup, but the hooks go on the native state and
+scalar readers only with the first `Receiving` handler or `TrySubscribe`, so a
+client or host with no policy reads every state natively. Subscribe on the game
+thread. `State` stays `Installed` while the hooks are waiting for a subscriber; if
+they then fail to go on, it turns `Failed` and `TrySubscribe` returns false.
+
 Bolt reads a new proxy's first state before attaching its entity, so both forms police
 creation reads too; a client cannot bypass a policy through its create packet.
 

@@ -83,6 +83,7 @@ namespace Modstoke.Loader
                         + "Native captureThread timings run on the loader Update thread; otherThreads timings may overlap it. "
                         + "Native hitch totals are attributed by completion interval, including calls that began earlier. "
                         + "Timings include some detour/interop overhead; captureTickWorkMs excludes native hook accounting. "
+                        + "hookCalls counts entries into hooks on hot game methods, including calls the hook passes straight on. "
                         + "Instrumentation affects this session; timings are diagnostic, not a baseline benchmark. "
                         + "Unity GC Allocated In Frame is game IL2CPP activity, not per-method allocation attribution. "
                         + "Unavailable Unity counters stay unavailable; GC Used/Reserved Memory is heap occupancy, not allocation volume. "
@@ -223,7 +224,7 @@ namespace Modstoke.Loader
                 fixedUpdates = _fixedUpdates, focused = Application.isFocused, timeScale = Time.timeScale,
                 captureTickWorkMs = _captureWorkMs, maxCaptureTickMs = _maxCaptureTickMs, unityCounters = counterValues,
                 gpu = TakeGpu(), nativeMethods = TakeNativeTimings(), callbackTimings = TakeCallbackTimings(),
-                droppedRecords = Volatile.Read(ref _dropped) });
+                hookCalls = TakeHookCalls(), droppedRecords = Volatile.Read(ref _dropped) });
             _lastFlush = now;
             _fixedUpdates = _over33Ms = _over50Ms = 0;
             // Include this flush's collection work in the following window; disk IO runs elsewhere.

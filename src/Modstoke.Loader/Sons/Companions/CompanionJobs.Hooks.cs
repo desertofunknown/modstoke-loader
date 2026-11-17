@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using HarmonyLib;
 using Modstoke.Loader;
@@ -16,9 +17,12 @@ namespace Modstoke.Sons;
 public static partial class CompanionJobs
 {
     private static ServerCompanionState _state = new(CompanionHookStatus.NotAttempted, "Companion queue hooks have not been installed.");
+    private static readonly HookCounter ActorTicks = new("VailActor.Tick");
+    private static (MethodInfo Method, string Prefix, string Postfix, string Finalizer)[] _tickHooks;
     private static int _attempted;
     private static int _thread;
     private static int _reported;
+    private static bool _tickHooksInstalled;
     [ThreadStatic] private static TickScope _tick;
     [ThreadStatic] private static int _performDepth;
     [ThreadStatic] private static int _selectionDepth;
@@ -43,10 +47,15 @@ public static partial class CompanionJobs
         var harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-companion-jobs");
         try
         {
-            Patch(typeof(VailActor), "Tick", new[] { typeof(float), typeof(float), typeof(bool), typeof(int) }, nameof(BeforeTick), null, nameof(FinishTick));
-            Patch(typeof(VailActor), "UpdateActiveAction", Type.EmptyTypes, nameof(BeforeUpdateAction), nameof(AfterUpdateAction), null);
-            Patch(typeof(VailActor), "PerformAction", new[] { typeof(Group), typeof(IStimuli), typeof(Thought), typeof(bool) }, nameof(BeforePerform), null, nameof(FinishPerform));
-            Patch(typeof(VailActor), "ChooseNextAction", new[] { typeof(global::Sons.Ai.Vail.Priority) }, nameof(BeforeSelection), null, nameof(FinishSelection));
+            // Every AI actor runs these each tick, and they matter only while a queue is open, so they go on with
+            // the first queue (InstallTickHooks); here they are only resolved.
+            _tickHooks = new (MethodInfo, string, string, string)[]
+            {
+                (Resolve(typeof(VailActor), "Tick", new[] { typeof(float), typeof(float), typeof(bool), typeof(int) }), nameof(BeforeTick), null, nameof(FinishTick)),
+                (Resolve(typeof(VailActor), "UpdateActiveAction", Type.EmptyTypes), nameof(BeforeUpdateAction), nameof(AfterUpdateAction), null),
+                (Resolve(typeof(VailActor), "PerformAction", new[] { typeof(Group), typeof(IStimuli), typeof(Thought), typeof(bool) }), nameof(BeforePerform), null, nameof(FinishPerform)),
+                (Resolve(typeof(VailActor), "ChooseNextAction", new[] { typeof(global::Sons.Ai.Vail.Priority) }), nameof(BeforeSelection), null, nameof(FinishSelection))
+            };
             foreach (string name in new[] { "OnActorEnabled", "OnDisable", "OnDeath" })
                 Patch(typeof(VailActor), name, Type.EmptyTypes, nameof(RetireActor), null, null);
             Patch(typeof(VailActor), "Deactivate", new[] { typeof(bool) }, nameof(RetireActor), null, null);
@@ -66,12 +75,7 @@ public static partial class CompanionJobs
                 "Native Get queues registered; dispatch and multiplayer behavior still require in-game qualification. Endings do not prove delivery.");
 
             void Patch(Type type, string name, Type[] args, string prefix, string postfix, string finalizer)
-            {
-                var method = AccessTools.Method(type, name, args) ?? throw new MissingMethodException(type.FullName, name);
-                HarmonyMethod Hook(string hook) => hook == null ? null : new HarmonyMethod(typeof(CompanionJobs), hook)
-                    { priority = HarmonyLib.Priority.Last };
-                harmony.Patch(method, prefix: Hook(prefix), postfix: Hook(postfix), finalizer: Hook(finalizer));
-            }
+                => PatchHooks(harmony, Resolve(type, name, args), prefix, postfix, finalizer);
         }
         catch (Exception error)
         {
@@ -79,6 +83,38 @@ public static partial class CompanionJobs
             try { harmony.UnpatchSelf(); }
             catch (Exception) { }
             warning?.Invoke("Companion queue registration failed: " + error);
+        }
+    }
+
+    private static MethodInfo Resolve(Type type, string name, Type[] args)
+        => AccessTools.Method(type, name, args) ?? throw new MissingMethodException(type.FullName, name);
+
+    private static void PatchHooks(HarmonyLib.Harmony harmony, MethodInfo method, string prefix, string postfix, string finalizer)
+    {
+        HarmonyMethod Hook(string hook) => hook == null ? null : new HarmonyMethod(typeof(CompanionJobs), hook)
+            { priority = HarmonyLib.Priority.Last };
+        harmony.Patch(method, prefix: Hook(prefix), postfix: Hook(postfix), finalizer: Hook(finalizer));
+    }
+
+    // Called on the game thread before the first queue opens. A failure takes the whole queue feature down, as a
+    // failed registration at startup would.
+    private static bool InstallTickHooks()
+    {
+        if (_tickHooksInstalled) return true;
+        var harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-companion-jobs");
+        try
+        {
+            foreach (var hook in _tickHooks) PatchHooks(harmony, hook.Method, hook.Prefix, hook.Postfix, hook.Finalizer);
+            _tickHooksInstalled = true;
+            return true;
+        }
+        catch (Exception error)
+        {
+            _state = new(CompanionHookStatus.Failed, "Queue scheduling hooks failed; queues cannot open.");
+            try { harmony.UnpatchSelf(); }
+            catch (Exception) { }
+            Report(error);
+            return false;
         }
     }
 
@@ -93,6 +129,7 @@ public static partial class CompanionJobs
     private static void BeforeTick(VailActor __instance, bool __runOriginal, out TickScope __state)
     {
         __state = null;
+        ActorTicks.Hit();
         if (!__runOriginal || Queues.Count == 0 || !Available()) return;
         __state = new TickScope { Previous = _tick, Actor = __instance };
         _tick = __state;

@@ -159,6 +159,12 @@ namespace Modstoke.Sons
                 || bridge.IsDisposed || rig == null || rig.Consumed || groundModeAllowed == null
                 || !Range(limits.Position, 0.001f, 1) || !Range(limits.Velocity, 0, 10)
                 || !Range(limits.Clearance, 0.001f, 0.1f)) return false;
+            try { InstallRunButton(); }
+            catch (Exception error)
+            {
+                detail = "Run input observation could not be installed (" + error.GetType().Name + ").";
+                return false;
+            }
             _starting = true;
             PlayerClientMovement candidate = null;
             try

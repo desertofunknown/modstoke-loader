@@ -14,7 +14,10 @@ contracts remain unchanged.
 Use the API on the game thread while Bolt is running as the server and
 `State.Status` is `Installed`. Installation requires safe native patch support and
 the companion observation hooks. Hook registration alone does not establish
-working dispatch or multiplayer acceptance.
+working dispatch or multiplayer acceptance. The four per-tick AI hooks
+(`VailActor.Tick`, `UpdateActiveAction`, `PerformAction`, `ChooseNextAction`) go
+on when the first queue opens, not at startup; if they can't, `TryOpen` fails and
+`State` turns `Failed`.
 
 | API | Behavior |
 | --- | --- |

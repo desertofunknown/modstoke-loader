@@ -101,6 +101,7 @@ public static partial class CompanionJobs
             var context = new QueueContext { Handle = handle, World = world, Player = player, Entity = entity,
                 Attachment = attachment, Robby = robby, Actor = actor };
             if (!Current(context)) { problem = "The companion or player context changed."; return false; }
+            if (!InstallTickHooks()) { problem = "Companion queues are unavailable."; return false; }
             Queues.Add(handle, context);
             queue = handle;
             problem = null;

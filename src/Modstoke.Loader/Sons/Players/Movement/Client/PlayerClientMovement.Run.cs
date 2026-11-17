@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Alex Cooper
 
 using System;
+using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
 using GameInput = global::Sons.Input.InputSystem;
@@ -11,6 +12,9 @@ namespace Modstoke.Sons
     public sealed partial class PlayerClientMovement
     {
         [ThreadStatic] private static PlayerClientMovement _runObservation;
+        private static readonly global::Modstoke.Loader.HookCounter ButtonReads = new("InputSystem.GetButtonDown");
+        private static MethodInfo _buttonDown;
+        private static bool _buttonHooked;
         private uint _runPressSequence;
         private int _runPressFrame = -1;
         private bool _runButtonObserved;
@@ -27,8 +31,17 @@ namespace Modstoke.Sons
             harmony.Patch(update,
                 prefix: new HarmonyMethod(typeof(PlayerClientMovement), nameof(BeforeRunInput)) { priority = Priority.Last },
                 finalizer: new HarmonyMethod(typeof(PlayerClientMovement), nameof(FinishRunInput)));
-            harmony.Patch(down,
+            _buttonDown = down;
+        }
+
+        // Weapons, tools, ladders and menus all check presses through GetButtonDown, many times a frame, so the Run
+        // observer goes on with the first retained movement rather than at startup. UpdateRun runs once a frame.
+        private static void InstallRunButton()
+        {
+            if (_buttonHooked) return;
+            new HarmonyLib.Harmony(global::Modstoke.Loader.RuntimeEntryPoint.PluginGuid + ".sons-player-client-movement").Patch(_buttonDown,
                 postfix: new HarmonyMethod(typeof(PlayerClientMovement), nameof(ObserveRunButton)) { priority = Priority.Last });
+            _buttonHooked = true;
         }
 
         private static void BeforeRunInput(FirstPersonCharacter __instance, bool __runOriginal,
@@ -49,6 +62,7 @@ namespace Modstoke.Sons
 
         private static void ObserveRunButton(GameInput.Action __0, bool __result, bool __runOriginal)
         {
+            ButtonReads.Hit();
             var active = _runObservation;
             if (active == null || !__runOriginal || !__result) return;
             try

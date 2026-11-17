@@ -32,11 +32,12 @@ namespace Modstoke.Sons
         // reliable event stream rather than a slow handshake.
         private const double HelloWatchSeconds = 10;
         private const double MaxTickSeconds = 1;
+        private const double SettledRefreshSeconds = 0.25;
         private static readonly Dictionary<Guid, Enrollment> Entries = new();
         private static int _ownerThreadId;
         // Negotiation windows run on this clock, which moves at most MaxTickSeconds per tick: a main-thread stall
         // (a world load, an autosave) must not use up a window while the peer's answer waits in the queue.
-        private static double _clock, _clockReadAt;
+        private static double _clock, _clockReadAt, _nextSettledRefresh;
         // _selected and the capabilities are what plugins asked for; the content check adds to them per start.
         private static bool _selected;
         private static bool _contentSelected;
@@ -218,10 +219,14 @@ namespace Modstoke.Sons
 
                 // Lifecycle notifications are bounded, so reconcile the current handles as well.
                 foreach (var peer in ControlTransport.GetPeers())
-                    Observe(peer);
+                    if (!Entries.ContainsKey(peer.PeerId)) Observe(peer);
+                // A settled connection's transport is rechecked a few times a second, like the transport's own
+                // pruning; one still negotiating every frame, since its windows and the gate run on it.
+                var settledDue = now >= _nextSettledRefresh;
+                if (settledDue) _nextSettledRefresh = now + SettledRefreshSeconds;
                 foreach (var entry in Entries.Values)
                 {
-                    Refresh(entry);
+                    if (settledDue || Negotiating(entry)) Refresh(entry);
                     Advance(entry);
                 }
             }
@@ -233,6 +238,16 @@ namespace Modstoke.Sons
                     Retire(entry, EnrollmentEndReason.TransportUnavailable);
                 NetworkFailures.Report("Modstoke client enrollment", error);
             }
+        }
+
+        private static bool Negotiating(Enrollment entry) => entry.State == EnrollmentState.Pending
+            || (entry.State == EnrollmentState.Enrolled && !entry.Admitted);
+
+        /// <summary>Whether this peer's negotiation is still open: not yet observed, pending, or enrolled but not admitted.</summary>
+        internal static bool IsNegotiating(ControlPeer peer)
+        {
+            if (!OnOwnerThread || !Selected || _faulted || peer == null) return false;
+            return !Entries.TryGetValue(peer.PeerId, out var entry) || (ReferenceEquals(entry.Peer, peer) && Negotiating(entry));
         }
 
         private static Enrollment Observe(ControlPeer peer)

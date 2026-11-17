@@ -16,6 +16,7 @@ namespace Modstoke.Sons
         private ItemInstanceModuleUpdater _detachedUpdater;
         private IntPtr _detachedUpdateEvent;
         private bool HoldsDetachedModules => _authority != null && _pausedModules.Count != 0;
+        private static readonly global::Modstoke.Loader.HookCounter PerishableUpdates = new("PerishableItemInstanceModule.Update");
         private static IntPtr _perishableWriter;
         private static int _perishableDepth;
         private static bool _perishableUpdating, _perishableUpdateEntered, _perishableStateEntered;
@@ -34,6 +35,7 @@ namespace Modstoke.Sons
             if (item == null) return;
             if (item.WasCollected || item._modules == null || item._modules.WasCollected)
                 throw new InvalidOperationException("Cannot retain an unavailable native module list.");
+            InstallPerishableUpdateHook();
             foreach (var module in item._modules)
             {
                 RequireKnownModule(module);
@@ -153,6 +155,7 @@ namespace Modstoke.Sons
 
         private static bool BeforePerishableUpdate(PerishableItemInstanceModule __instance, bool __runOriginal, out bool __state)
         {
+            PerishableUpdates.Hit();
             EnterWriter(out __state);
             if (!ModulePaused(__instance)) return true;
             if (__runOriginal && __state && _perishableUpdating && !_perishableUpdateEntered

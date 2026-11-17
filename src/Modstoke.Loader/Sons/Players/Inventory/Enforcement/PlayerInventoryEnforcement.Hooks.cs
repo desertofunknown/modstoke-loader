@@ -16,8 +16,9 @@ namespace Modstoke.Sons
 {
     public sealed partial class PlayerInventoryEnforcement
     {
-        private static bool _hookAttempted, _hooksInstalled;
+        private static bool _hookAttempted, _hooksInstalled, _perishableHookInstalled;
         private static int _hookThread, _writerDepth;
+        private static MethodInfo _perishableUpdate;
 
         internal static void InstallHarmonyPatches(HarmonySupportSnapshot support, Action<string> warning)
         {
@@ -83,6 +84,9 @@ namespace Modstoke.Sons
                     "8E8661C75E515307DE7D98B4D93D98A1AC7248618BF1CD08D94BC91ED50D06B5"));
                 harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-player-inventory-authority");
                 foreach (var target in targets)
+                {
+                    // Every perishable item runs Update each frame; its guard goes on with the first module it pauses.
+                    if (target.Prefix == nameof(BeforePerishableUpdate)) { _perishableUpdate = target.Method; continue; }
                     harmony.Patch(target.Method, prefix: new HarmonyMethod(typeof(PlayerInventoryEnforcement), target.Prefix)
                     { priority = Priority.First },
                         finalizer: new HarmonyMethod(typeof(PlayerInventoryEnforcement),
@@ -96,6 +100,7 @@ namespace Modstoke.Sons
                                 or nameof(BeforeConsumptionComplete) or nameof(BeforeConsumptionEdibleComplete)
                                 ? nameof(AfterConsumptionPresentation) : nameof(AfterWriter))
                         { priority = Priority.Last });
+                }
                 harmony.Patch(equipSequence,
                     prefix: new HarmonyMethod(typeof(PlayerInventoryEnforcement), nameof(BeforeEquipSequence)) { priority = Priority.First },
                     finalizer: new HarmonyMethod(typeof(PlayerInventoryEnforcement), nameof(AfterEquipSequence)) { priority = Priority.Last });
@@ -124,6 +129,19 @@ namespace Modstoke.Sons
                 catch (Exception cleanup) { rollback = " Patch rollback is unconfirmed: " + cleanup.GetType().Name + "."; }
                 warning?.Invoke("Inventory enforcement hooks unavailable: " + error.Message + rollback);
             }
+        }
+
+        // Qualified with the rest of the boundary set at startup and patched under the same owner.
+        private static void InstallPerishableUpdateHook()
+        {
+            if (_perishableHookInstalled) return;
+            if (!_hooksInstalled || _perishableUpdate == null || Environment.CurrentManagedThreadId != _hookThread)
+                throw new InvalidOperationException("Perishable update suppression is unavailable.");
+            var harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-player-inventory-authority");
+            harmony.Patch(_perishableUpdate,
+                prefix: new HarmonyMethod(typeof(PlayerInventoryEnforcement), nameof(BeforePerishableUpdate)) { priority = Priority.First },
+                finalizer: new HarmonyMethod(typeof(PlayerInventoryEnforcement), nameof(AfterWriter)) { priority = Priority.Last });
+            _perishableHookInstalled = true;
         }
 
         private static void RollbackInventoryHooks(HarmonyLib.Harmony harmony)

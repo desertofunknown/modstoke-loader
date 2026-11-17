@@ -423,15 +423,16 @@ namespace Modstoke.Sons
                     BeforeShutdown();
                 else
                 {
-                    // With nothing negotiating, a peer only answers a hello, and Send revalidates it; a few checks a
-                    // second keep closed ones pruned without walking every connection each frame.
-                    if (ClientEnrollment.Selected || Environment.TickCount64 >= _nextRevalidation)
-                    {
-                        _nextRevalidation = Environment.TickCount64 + RevalidationMilliseconds;
+                    // A peer still negotiating is checked every frame, so a gated join never waits on a dead one. Once
+                    // admitted it only answers what Send revalidates anyway, and a few checks a second keep closed ones
+                    // pruned without resolving every connection each frame.
+                    var due = Environment.TickCount64 >= _nextRevalidation;
+                    if (due) _nextRevalidation = Environment.TickCount64 + RevalidationMilliseconds;
+                    if (due || ClientEnrollment.Selected)
                         // A peer held by paused session tracking is checked again on a later frame.
                         foreach (var peer in GetPeers())
-                            if (Resolve(peer, out var held) == null && !held) FailPeer(peer);
-                    }
+                            if ((due || ClientEnrollment.IsNegotiating(peer)) && Resolve(peer, out var held) == null && !held)
+                                FailPeer(peer);
                     BindDeferred(run);
                 }
             }

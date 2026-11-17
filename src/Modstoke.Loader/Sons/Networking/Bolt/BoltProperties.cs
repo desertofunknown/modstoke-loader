@@ -22,8 +22,14 @@ namespace Modstoke.Sons
         private static BoltPropertyHookState _state = new(BoltEventHookStatus.NotAttempted,
             "Scalar property policy has not been registered.");
         private static readonly object SubscriptionSync = new();
+        private static readonly HookCounter StateReads = new("Bolt.NetworkState.Read");
+        private static readonly HookCounter PropertyReads = new("Bolt.NetworkProperty.Read");
         private static Subscription[] _subscriptions = Array.Empty<Subscription>();
+        private static Action<BoltPropertyRequest> _receiving;
+        private static MethodInfo _stateRead;
+        private static MethodInfo[] _readers;
         private static int _attempted;
+        private static int _patched;
         private static int _reported;
         [ThreadStatic] private static ReadScope _current;
         [ThreadStatic] private static bool _deciding;
@@ -35,11 +41,23 @@ namespace Modstoke.Sons
         /// correction to the owner. Policies must not re-enter Bolt, mutate native state, or
         /// detach entities. Unsubscribe on unload. No subscriber means no property snapshots.
         /// </summary>
-        /// <remarks>Every received scalar of every state reaches this event. Prefer TrySubscribe for one property.</remarks>
-        public static event Action<BoltPropertyRequest> Receiving;
+        /// <remarks>Every received scalar of every state reaches this event. Prefer TrySubscribe for one property.
+        /// The first subscriber puts the hooks on the native readers, so subscribe on the game thread.</remarks>
+        public static event Action<BoltPropertyRequest> Receiving
+        {
+            add
+            {
+                EnsurePatched();
+                lock (SubscriptionSync) _receiving += value;
+            }
+            remove
+            {
+                lock (SubscriptionSync) _receiving -= value;
+            }
+        }
 
         public static BoltPropertyHookState State => Volatile.Read(ref _state);
-        internal static bool HasSubscribers => (Receiving != null || Volatile.Read(ref _subscriptions).Length != 0)
+        internal static bool HasSubscribers => (Volatile.Read(ref _receiving) != null || Volatile.Read(ref _subscriptions).Length != 0)
             && State.Status == BoltEventHookStatus.Installed;
 
         /// <summary>
@@ -48,13 +66,16 @@ namespace Modstoke.Sons
         /// abandon a packet on this subscriber's behalf.
         /// </summary>
         /// <remarks>Receiving's callback rules apply. Receiving handlers run first, and a rollback stops later
-        /// policies. Any subscription turns on the receive guard for every packet. Dispose the subscription on
-        /// the game thread when unloading; disposed from another thread, the handler can run once more.</remarks>
+        /// policies. Any subscription turns on the receive guard for every packet. Subscribe, and dispose the
+        /// subscription when unloading, on the game thread; disposed from another thread, the handler can run once
+        /// more.</remarks>
         public static bool TrySubscribe(BoltPropertySelector selector, Action<BoltPropertyRequest> handler,
             out IDisposable subscription)
         {
             subscription = null;
-            if (handler == null || !selector.IsValid || State.Status != BoltEventHookStatus.Installed) return false;
+            if (handler == null || !selector.IsValid) return false;
+            EnsurePatched();
+            if (State.Status != BoltEventHookStatus.Installed) return false;
             var created = new Subscription(selector, handler);
             lock (SubscriptionSync)
             {
@@ -132,10 +153,11 @@ namespace Modstoke.Sons
             }
         }
 
+        // Startup only qualifies the readers. The hooks themselves go on with the first subscriber: every state and
+        // scalar a peer receives passes through them, and only a server policy (Admin, while it hosts) uses them.
         internal static void InstallHarmonyPatches(HarmonySupportSnapshot support, Action<string> warning)
         {
             if (Interlocked.Exchange(ref _attempted, 1) != 0) return;
-            HarmonyLib.Harmony harmony = null;
             try
             {
                 BoltReceiveGuard.Install(support, warning);
@@ -145,41 +167,60 @@ namespace Modstoke.Sons
                     return;
                 }
                 RequireLayout();
-                harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-bolt-properties");
-                var read = AccessTools.DeclaredMethod(typeof(NetworkState), nameof(NetworkState.Bolt_IEntitySerializer_Read),
+                _stateRead = AccessTools.DeclaredMethod(typeof(NetworkState), nameof(NetworkState.Bolt_IEntitySerializer_Read),
                     new[] { typeof(BoltConnection), typeof(UdpPacket), typeof(int) })
                     ?? throw new MissingMethodException("NetworkState.Read");
-                harmony.Patch(read,
-                    prefix: new HarmonyMethod(typeof(BoltProperties), nameof(BeforeState))
-                    { priority = HarmonyLib.Priority.First + 100 },
-                    postfix: new HarmonyMethod(typeof(BoltProperties), nameof(AfterState))
-                    { priority = HarmonyLib.Priority.First + 100 },
-                    finalizer: new HarmonyMethod(typeof(BoltProperties), nameof(FinishState)));
-                InstallReader<NetworkProperty_Integer>();
-                InstallReader<NetworkProperty_Bool>();
-                InstallReader<NetworkProperty_Float>();
+                _readers = new[] { Reader<NetworkProperty_Integer>(), Reader<NetworkProperty_Bool>(), Reader<NetworkProperty_Float>() };
                 SetState(BoltEventHookStatus.Installed,
                     "Boolean, Int32 and Single state rollback/server-value policy registered; multiplayer acceptance pending. Other property kinds are not covered.");
 
-                void InstallReader<T>() where T : NetworkProperty
+                static MethodInfo Reader<T>() where T : NetworkProperty
                 {
                     RuntimeHelpers.RunClassConstructor(typeof(T).TypeHandle);
                     var target = AccessTools.DeclaredMethod(typeof(T), nameof(NetworkProperty.Read),
                         new[] { typeof(BoltConnection), typeof(NetworkObj), typeof(NetworkStorage), typeof(UdpPacket) })
                         ?? throw new MissingMethodException(typeof(T).FullName, "Read");
                     if (target.ReturnType != typeof(void)) throw new InvalidOperationException("Unsupported scalar reader.");
-                    harmony.Patch(target,
-                        prefix: new HarmonyMethod(typeof(BoltProperties), nameof(BeforeProperty))
-                        { priority = HarmonyLib.Priority.Last },
-                        postfix: new HarmonyMethod(typeof(BoltProperties), nameof(AfterProperty))
-                        { priority = HarmonyLib.Priority.First });
+                    return target;
                 }
             }
             catch (Exception error)
             {
                 SetState(BoltEventHookStatus.Failed, "Scalar property policy registration failed; callbacks are inactive.");
-                try { harmony?.UnpatchSelf(); } catch (Exception cleanup) { Report(cleanup); }
                 try { warning?.Invoke("Scalar property policy registration failed: " + error); } catch (Exception) { }
+            }
+        }
+
+        private static void EnsurePatched()
+        {
+            if (Volatile.Read(ref _patched) != 0) return;
+            lock (SubscriptionSync)
+            {
+                if (_patched != 0 || State.Status != BoltEventHookStatus.Installed) return;
+                var harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-bolt-properties");
+                try
+                {
+                    harmony.Patch(_stateRead,
+                        prefix: new HarmonyMethod(typeof(BoltProperties), nameof(BeforeState))
+                        { priority = HarmonyLib.Priority.First + 100 },
+                        postfix: new HarmonyMethod(typeof(BoltProperties), nameof(AfterState))
+                        { priority = HarmonyLib.Priority.First + 100 },
+                        finalizer: new HarmonyMethod(typeof(BoltProperties), nameof(FinishState)));
+                    foreach (var reader in _readers)
+                        harmony.Patch(reader,
+                            prefix: new HarmonyMethod(typeof(BoltProperties), nameof(BeforeProperty))
+                            { priority = HarmonyLib.Priority.Last },
+                            postfix: new HarmonyMethod(typeof(BoltProperties), nameof(AfterProperty))
+                            { priority = HarmonyLib.Priority.First });
+                    Volatile.Write(ref _patched, 1);
+                }
+                catch (Exception error)
+                {
+                    SetState(BoltEventHookStatus.Failed, "Scalar property policy registration failed; callbacks are inactive.");
+                    try { harmony.UnpatchSelf(); } catch (Exception cleanup) { Report(cleanup); }
+                    try { RuntimeEntryPoint.LogSource?.LogWarning("Scalar property policy registration failed: " + error); }
+                    catch (Exception) { }
+                }
             }
         }
 
@@ -187,9 +228,10 @@ namespace Modstoke.Sons
             int __2, bool __runOriginal, out ReadScope __state)
         {
             __state = null;
+            StateReads.Hit();
             if (!__runOriginal) return false;
             if (!BoltReceiveGuard.CanAbort(__1, __0)) return true;
-            var handlers = Receiving;
+            var handlers = Volatile.Read(ref _receiving);
             var selected = Volatile.Read(ref _subscriptions);
             if ((handlers == null && selected.Length == 0) || State.Status != BoltEventHookStatus.Installed) return true;
             // Without a Receiving handler, only states with a selected property are policed.
@@ -243,6 +285,7 @@ namespace Modstoke.Sons
             NetworkStorage __2, UdpPacket __3, bool __runOriginal, out PropertyRead __state)
         {
             __state = default;
+            PropertyReads.Hit();
             if (!__runOriginal) return false;
             var scope = _current;
             if (scope == null) return true;

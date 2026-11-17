@@ -31,10 +31,32 @@ namespace Modstoke.Loader
         }
     }
 
+    /// <summary>Counts calls into one hook on a hot game method, per capture window, and nothing while no capture runs.</summary>
+    internal sealed class HookCounter
+    {
+        private long _calls;
+
+        internal HookCounter(string name)
+        {
+            Name = name;
+            global::Modstoke.Loader.PerformanceCapture.Register(this);
+        }
+
+        internal string Name { get; }
+
+        internal void Hit()
+        {
+            if (global::Modstoke.Loader.PerformanceCapture.Active) Interlocked.Increment(ref _calls);
+        }
+
+        internal long Take() => Interlocked.Exchange(ref _calls, 0);
+    }
+
     internal static partial class PerformanceCapture
     {
         private const int MaxCallbackNames = 256;
         private const int MaxHitchesPerWindow = 8;
+        private static readonly List<HookCounter> HookCounters = new();
         private static readonly Dictionary<string, CallbackTiming> CallbackTimings = new(StringComparer.Ordinal);
         private static readonly Dictionary<(string, MethodInfo), string> CallbackNames = new();
         private static int _captureThread, _hitchesEmitted, _hitchesOmitted, _callbackNamesOmitted;
@@ -110,6 +132,24 @@ namespace Modstoke.Loader
             _callbackInterval++;
             _intervalStartUnityFrame = frame;
             _intervalGc = gc;
+        }
+
+        // Counters register from their owners' static initializers, on whichever thread first touches the owner.
+        internal static void Register(HookCounter counter)
+        {
+            lock (HookCounters) HookCounters.Add(counter);
+        }
+
+        private static object TakeHookCalls()
+        {
+            var calls = new List<object>();
+            lock (HookCounters)
+                foreach (var counter in HookCounters)
+                {
+                    long count = counter.Take();
+                    if (count != 0) calls.Add(new { name = counter.Name, calls = count });
+                }
+            return calls;
         }
 
         private static object TakeCallbackTimings()

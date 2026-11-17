@@ -33,6 +33,7 @@ namespace Modstoke.Sons
         private static readonly Dictionary<IntPtr, ServerSession> Current = new();
         private static readonly HashSet<IntPtr> Tombstones = new();
         private static readonly HashSet<ServerSession> DisconnectAttempts = new();
+        private static readonly HookCounter ClientWalks = new("ServerSessions.ClientWalk");
         private static ServerSessionState _state = new(ServerSessionHookStatus.NotAttempted,
             "Server session hooks have not been installed.");
         private static IReadOnlyList<ServerSession> _sessions = Array.Empty<ServerSession>();
@@ -237,6 +238,12 @@ namespace Modstoke.Sons
                 var id = connection.ConnectionId;
                 if (Tombstones.Contains(pointer))
                     return null;
+                // A registered connection is answered from the registry, which the connect and disconnect hooks and
+                // the once-a-second scan keep current. Only one still waiting for its registration walks the native
+                // list on every packet, so its registration is picked up the moment it lands.
+                if (Current.TryGetValue(pointer, out var known) && known.ConnectionId == id && known.ClosedAt == null
+                    && known.RegisteredSteamId != null)
+                    return known;
 
                 var found = FindClient(pointer, id);
                 if (found == null)
@@ -306,6 +313,12 @@ namespace Modstoke.Sons
                 if (pointer == IntPtr.Zero || Tombstones.Contains(pointer)
                     || !Current.TryGetValue(pointer, out var current) || !ReferenceEquals(current, session))
                     return null;
+                // The held wrapper keeps the native connection from being freed, so its address can't be reused by
+                // another client while the session is open; disconnects retire the session before Bolt drops it.
+                var held = session.Connection;
+                if (held != null && session.RegisteredSteamId != null && !held.WasCollected && held.Pointer == pointer
+                    && held.ConnectionId == session.ConnectionId)
+                    return held;
 
                 var connection = FindClient(pointer, session.ConnectionId);
                 if (connection == null)
@@ -314,6 +327,7 @@ namespace Modstoke.Sons
                     Publish();
                     return null;
                 }
+                session.Connection = connection;
                 return HooksInstalled && session.IsCurrent ? connection : null;
             }
             catch (Exception error)
@@ -356,6 +370,7 @@ namespace Modstoke.Sons
 
         private static BoltConnection FindClient(IntPtr pointer, uint connectionId)
         {
+            ClientWalks.Hit();
             // BoltNetwork.clients filters this live list by the transport's server-side role.
             var connections = BoltCore._connections;
             var count = connections.count;
@@ -701,7 +716,7 @@ namespace Modstoke.Sons
             ulong? registeredSteamId = null;
             if (GameServerManager.GetRegisteredClient(connection, out var steamId) && steamId.m_SteamID != 0)
                 registeredSteamId = steamId.m_SteamID;
-            return new Observation(connection.Pointer, connection.ConnectionId, registeredSteamId);
+            return new Observation(connection, connection.Pointer, connection.ConnectionId, registeredSteamId);
         }
 
         private static void RefreshRegistry(Dictionary<IntPtr, Observation> live)
@@ -732,11 +747,15 @@ namespace Modstoke.Sons
         {
             if (Current.TryGetValue(observation.Pointer, out var session))
             {
+                session.Connection ??= observation.Connection;
                 if (session.RefreshRegistration(observation.RegisteredSteamId))
                     Enqueue(EventKind.RegistrationChanged, session);
                 return;
             }
-            session = new ServerSession(observation.Pointer, observation.ConnectionId, observation.RegisteredSteamId);
+            session = new ServerSession(observation.Pointer, observation.ConnectionId, observation.RegisteredSteamId)
+            {
+                Connection = observation.Connection
+            };
             Current.Add(observation.Pointer, session);
             Enqueue(EventKind.Opened, session);
         }
@@ -881,7 +900,8 @@ namespace Modstoke.Sons
 
         private enum EventKind { Opened, Closed, RegistrationChanged, PlayerJoined, PlayerLeft }
         private readonly record struct PendingEvent(EventKind Kind, ServerSession Session, ServerPlayer Player);
-        private readonly record struct Observation(IntPtr Pointer, uint ConnectionId, ulong? RegisteredSteamId);
+        private readonly record struct Observation(BoltConnection Connection, IntPtr Pointer, uint ConnectionId,
+            ulong? RegisteredSteamId);
     }
 
     public enum ServerSessionHookStatus
@@ -977,6 +997,10 @@ namespace Modstoke.Sons
         // Game thread. Set only when the native disconnect callback retired this handle.
         internal SessionDeparture Departure { get; set; }
 
+        // Game thread. The connection this handle was observed on, held until it closes so ResolveCurrent needs no
+        // walk of the native list; released then, so a departed client's connection is not pinned by mods' handles.
+        internal BoltConnection Connection { get; set; }
+
         internal void Join(ServerPlayer player) => Volatile.Write(ref _player, player);
 
         internal bool RefreshRegistration(ulong? registeredSteamId)
@@ -990,6 +1014,7 @@ namespace Modstoke.Sons
 
         internal void Close()
         {
+            Connection = null;
             var previous = Volatile.Read(ref _metadata);
             if (previous.ClosedAt == null)
                 Volatile.Write(ref _metadata, new Metadata(previous.RegisteredSteamId, DateTimeOffset.UtcNow));

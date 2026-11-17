@@ -13,10 +13,14 @@ namespace Modstoke.Sons
     public static partial class ServerVoice
     {
         [ThreadStatic] private static bool _forwarding;
+        // Reused for every forwarded block: forwarding cannot re-enter while its recipients are being sent to.
+        private static readonly List<VoiceParticipant> Recipients = new();
+        private static readonly global::Modstoke.Loader.HookCounter Forwards = new("VoiceChatBoltListener.ForwardVoiceData");
 
         private static bool BeforeForward(VoiceChatBoltListener __instance, Il2CppStructArray<byte> __0,
             int __1, Bolt.NetworkId __2, bool __3, bool __runOriginal)
         {
+            Forwards.Hit();
             if (!__runOriginal) return false;
             if (!PolicyActive) return true;
             if (!OnOwnerThread()) return false;
@@ -65,10 +69,10 @@ namespace Modstoke.Sons
                 _outgoing = outgoing;
                 try
                 {
+                    // Both participants were just captured current; Authorize checks them again right before the
+                    // handlers decide, so the send loop doesn't validate them a second time.
                     foreach (var recipient in recipients)
                     {
-                        if (!source.IsCurrent) break;
-                        if (!recipient.IsCurrent) continue;
                         var connection = ServerSessions.ResolveCurrent(recipient.Session);
                         if (connection == null) continue;
                         outgoing.Recipient = recipient;
@@ -94,8 +98,8 @@ namespace Modstoke.Sons
             if (ServerWorld.TryCaptureLocalPlayerBinding(out var localBinding, out _)
                 && ServerWorld.TryReadPlayerBinding(localBinding, out var local, out _))
                 localController = local.ControllerSession;
-            var recipients = new List<VoiceParticipant>();
-            var sessions = new HashSet<Guid>();
+            var recipients = Recipients;
+            recipients.Clear();
             int visited = 0;
             var enumerator = candidates.GetEnumerator();
             try
@@ -109,15 +113,37 @@ namespace Modstoke.Sons
                     var entity = candidate.GetComponentInParent<BoltEntity>();
                     if (entity == null || !entity) entity = candidate.GetComponent<BoltEntity>();
                     if (entity == null || entity.WasCollected || !entity || !entity.isAttached || entity.networkId.PackedValue == source.NetworkId) continue;
-                    var recipient = CaptureRemote(entity.source);
+                    var recipient = CaptureJoined(entity);
                     if (recipient == null || recipient.Binding.Player.Pointer != entity.Pointer
                         || ReferenceEquals(recipient.Session, localController) || ReferenceEquals(recipient.Session, source.Session)
-                        || !sessions.Add(recipient.Session.SessionId)) continue;
+                        || Listed(recipients, recipient.Session)) continue;
                     recipients.Add(recipient);
                 }
             }
             finally { enumerator.Cast<Il2CppSystem.IDisposable>().Dispose(); }
             return recipients;
+        }
+
+        // A joined player's own character uses the binding session tracking already holds, revalidated here; only a
+        // replaced character or one that hasn't joined yet is captured from its connection again.
+        private static VoiceParticipant CaptureJoined(BoltEntity entity)
+        {
+            foreach (var player in ServerSessions.Players)
+            {
+                var binding = player.Binding;
+                if (binding.IsRetired || binding.Player == null || binding.Player.Pointer != entity.Pointer) continue;
+                var joined = new VoiceParticipant(binding, null);
+                if (joined.IsCurrent) return joined;
+                break;
+            }
+            return CaptureRemote(entity.source);
+        }
+
+        private static bool Listed(List<VoiceParticipant> recipients, ServerSession session)
+        {
+            foreach (var recipient in recipients)
+                if (ReferenceEquals(recipient.Session, session)) return true;
+            return false;
         }
 
         private static bool BeforeSend(VoiceChatBoltListener __instance, Il2CppStructArray<byte> __0,
