@@ -755,6 +755,7 @@
       "running": "Běží",
       "ready": "Připraveno",
       "missing": "Chybí",
+      "failed": "Selhal",
       "check": "Zkontrolovat",
       "off": "Vypnuto",
       "found": "Nalezeno"
@@ -764,6 +765,7 @@
       "running": "Běží přes Modstoke.",
       "ready": "Nainstalováno a připraveno.",
       "missing": "Chybí něco, co potřebuje.",
+      "failed": "Zastavil se kvůli chybě.",
       "check": "Nainstalováno, ale něco v něm je třeba zkontrolovat.",
       "off": "Vypnuto.",
       "found": "Nalezeno na tomto PC."
@@ -801,6 +803,7 @@
     "unnamed": "Hráč {number}",
     "mute": "Ztlumit",
     "unmute": "Zrušit ztlumení",
+    "muted": "Ztlumeno",
     "unban": "Odblokovat",
     "makeGuest": "Nastavit jako hosta",
     "makeTrusted": "Nastavit jako důvěryhodného",
@@ -840,6 +843,10 @@
       "playerAbout": "V této hře. Server jeho profil Steam nesdílí.",
       "bannedAbout": "Zablokovaný v této hře."
     }
+  },
+
+  "voice": {
+    "radio": "Vysílačka"
   },
 
   "console": {
@@ -912,9 +919,36 @@
   },
 
   "modpage": {
-    "opensMenu": "Otevře se v nabídce Mody, která pro to má editor.",
+    "live": "Otevře vlastní panel modu. Po jeho zavření se vrátíte sem.",
+    "liveUnavailable": "Panel tohoto modu teď nelze otevřít.",
     "run": "Výběrem se hned spustí.",
     "last": "Poslední výsledek: {status}"
+  },
+
+  "config": {
+    "heading": "Konfigurační soubor",
+    "save": "Uložit",
+    "unsaved": "Změny zatím nejsou uložené",
+    "saved": "Uloženo. Některé mody změny použijí až po restartu.",
+    "saveFailed": "Soubor se nepodařilo uložit. Důvod najdete v protokolu programu Loader.",
+    "unreadable": "Tento soubor se nepodařilo přečíst, proto ho tu nelze měnit.",
+    "empty": "Tento soubor nemá žádná jednoduchá nastavení, která by tu šlo vypsat.",
+    "textEditor": "Upravit jako text",
+    "textEditorAbout": "Otevře celý soubor v klasickém textovém editoru. Zpět se odtud vrátíte sem.",
+    "saveFirst": "Nejprve změny uložte, nebo je vraťte.",
+    "unsavedTitle": "Zahodit změny?",
+    "unsavedBody": "Změny v tomto konfiguračním souboru ještě nejsou uložené.",
+    "discard": "Zahodit",
+    "keepEditing": "Dál upravovat",
+
+    "fact": {
+      "key": "Klíč",
+      "saved": "Uložená hodnota"
+    },
+
+    "section": {
+      "file": "Soubor"
+    }
   },
 
   "confirm": {
@@ -932,6 +966,13 @@
     "hungTitle": "DirectX 12 přestal reagovat",
     "hungBody": "Grafická karta minule v DirectX 12 přestala reagovat a hra se zavřela. Od dalšího spuštění hra opět používá DirectX 11, jak byla vydána.",
     "quit": "Ukončit"
+  },
+
+  "dialog": {
+    "ok": "OK",
+    "type": "Napsat",
+    "restartTitle": "Je potřeba restartovat hru",
+    "restartBody": "Změny se projeví po dalším spuštění hry."
   },
 
   "multiplayer": {

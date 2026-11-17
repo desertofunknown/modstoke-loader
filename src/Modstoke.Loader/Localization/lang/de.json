@@ -755,6 +755,7 @@
       "running": "Läuft",
       "ready": "Bereit",
       "missing": "Fehlt",
+      "failed": "Fehler",
       "check": "Prüfen",
       "off": "Aus",
       "found": "Gefunden"
@@ -764,6 +765,7 @@
       "running": "Läuft über Modstoke.",
       "ready": "Installiert und bereit.",
       "missing": "Es fehlt etwas, das benötigt wird.",
+      "failed": "Wegen eines Fehlers angehalten.",
       "check": "Installiert, aber etwas daran sollte geprüft werden.",
       "off": "Ausgeschaltet.",
       "found": "Auf diesem PC gefunden."
@@ -801,6 +803,7 @@
     "unnamed": "Spieler {number}",
     "mute": "Stummschalten",
     "unmute": "Stummschaltung aufheben",
+    "muted": "Stumm",
     "unban": "Entsperren",
     "makeGuest": "Zum Gast machen",
     "makeTrusted": "Als vertraut markieren",
@@ -840,6 +843,10 @@
       "playerAbout": "In diesem Spiel. Der Server teilt kein Steam-Profil dazu.",
       "bannedAbout": "Für dieses Spiel gesperrt."
     }
+  },
+
+  "voice": {
+    "radio": "Funk"
   },
 
   "console": {
@@ -912,9 +919,36 @@
   },
 
   "modpage": {
-    "opensMenu": "Öffnet sich im Mods-Menü, das den passenden Editor hat.",
+    "live": "Öffnet das eigene Fenster des Mods. Wenn du es schließt, kommst du hierher zurück.",
+    "liveUnavailable": "Das Fenster dieses Mods lässt sich gerade nicht öffnen.",
     "run": "Beim Auswählen wird es sofort ausgeführt.",
     "last": "Letztes Ergebnis: {status}"
+  },
+
+  "config": {
+    "heading": "Konfigurationsdatei",
+    "save": "Speichern",
+    "unsaved": "Änderungen noch nicht gespeichert",
+    "saved": "Gespeichert. Manche Mods übernehmen Änderungen erst nach einem Neustart.",
+    "saveFailed": "Die Datei konnte nicht gespeichert werden. Im Loader-Protokoll steht, warum.",
+    "unreadable": "Diese Datei konnte nicht gelesen werden und lässt sich hier daher nicht ändern.",
+    "empty": "Diese Datei enthält keine einfachen Einstellungen, die sich hier auflisten lassen.",
+    "textEditor": "Als Text bearbeiten",
+    "textEditorAbout": "Öffnet die ganze Datei im klassischen Texteditor. Mit Zurück kommst du wieder hierher.",
+    "saveFirst": "Speichere deine Änderungen zuerst oder setze sie zurück.",
+    "unsavedTitle": "Änderungen verwerfen?",
+    "unsavedBody": "Deine Änderungen an dieser Konfigurationsdatei sind noch nicht gespeichert.",
+    "discard": "Verwerfen",
+    "keepEditing": "Weiter bearbeiten",
+
+    "fact": {
+      "key": "Schlüssel",
+      "saved": "Gespeicherter Wert"
+    },
+
+    "section": {
+      "file": "Datei"
+    }
   },
 
   "confirm": {
@@ -932,6 +966,13 @@
     "hungTitle": "DirectX 12 hat nicht mehr reagiert",
     "hungBody": "Die Grafikkarte hat beim letzten Mal unter DirectX 12 nicht mehr reagiert, und das Spiel wurde beendet. Ab dem nächsten Start läuft das Spiel wieder mit DirectX 11, wie ausgeliefert.",
     "quit": "Beenden"
+  },
+
+  "dialog": {
+    "ok": "OK",
+    "type": "Eingeben",
+    "restartTitle": "Neustart nötig",
+    "restartBody": "Die Änderungen werden beim nächsten Spielstart wirksam."
   },
 
   "multiplayer": {

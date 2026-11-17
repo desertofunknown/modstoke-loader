@@ -125,8 +125,11 @@ namespace Modstoke.Loader
             {
                 RunSettingsStep(() =>
                 {
-                    GenericModalDialog.ShowDialog("Restart", "You need to restart the game for the changes to take effect.")
-                        .SetOption1("Ok", () => { });
+                    var text = LocalizationStartup.Text;
+                    // A notice in the front end's design where it draws; the SonsSdk dialog otherwise, as before.
+                    if (!SystemDialogs.Notify(text.Get("dialog.restartTitle"), text.Get("dialog.restartBody"), DialogTone.Plain))
+                        GenericModalDialog.ShowDialog(text.Get("dialog.restartTitle"), text.Get("dialog.restartBody"))
+                            .SetOption1(text.Get("dialog.ok"), () => { });
                 }, ref failure);
             }
 

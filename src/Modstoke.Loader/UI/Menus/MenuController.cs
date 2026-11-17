@@ -11,13 +11,14 @@ namespace Modstoke.Loader
 {
     internal static partial class MenuController
     {
-        private const int MaxConfigEditorBytes = 262144;
+        internal const int MaxConfigEditorBytes = 262144;
         private static bool _visible;
         private static object _liveControlsSession;
         private static Action _closeLiveControls;
         private static bool _openingLiveControls;
         private static bool _resumeAfterLiveControls;
         private static bool _liveControlsFromNative;
+        private static bool _liveControlsFromFrontEnd;
         private static int _liveControlsSceneHandle;
         private static int _liveControlsClosedFrame;
         // The page a screen host resumes on, in place of the live controls' config entry.
@@ -25,14 +26,17 @@ namespace Modstoke.Loader
 
         internal static bool IsVisible => MenuDispatcher.IsVisible(_visible);
 
+        /// <summary>Whether a mod's live settings or actions are open.</summary>
+        internal static bool LiveControlsOpen => _liveControlsSession != null;
+
         internal static void SetInventory(ModInventoryState inventory)
         {
             MenuState.SetInventory(inventory);
         }
 
         /// <summary>
-        /// Opens the Mods screen where Modstoke's menus are showing (the title and the pause menu), and this menu's own
-        /// home elsewhere.
+        /// Opens the Mods screen where Modstoke's menus are on: at the title, in the pause menu, and from the world over
+        /// the pause menu it brings up. This menu's own home opens where they are off, or the pause menu can't open.
         /// </summary>
         internal static void Show()
         {
@@ -50,6 +54,16 @@ namespace Modstoke.Loader
         {
             MenuState.OpenHandedOver(pageKey);
             ShowNative();
+        }
+
+        /// <summary>
+        /// Shows a mod's config file in this menu's text editor, handed over from the Mods screen's config page, for a file
+        /// that page can't list; Back from the editor returns there.
+        /// </summary>
+        internal static void ShowConfigText(ModInventoryEntry entry)
+        {
+            ShowHandedOver(MenuKeys.Mod(entry));
+            if (MenuRenderer.IsVisible) MenuRenderer.EditConfigText(entry);
         }
 
         private static void ShowNative()
@@ -190,6 +204,42 @@ namespace Modstoke.Loader
         }
 
         /// <summary>
+        /// Opens a mod's live settings or actions over the Mods screen, which stays as it is underneath and shows again
+        /// once they close; false when the mod has none to open now.
+        /// </summary>
+        internal static bool OpenLiveControlsOverFrontEnd(string entryId, bool settings)
+        {
+            var entry = MenuState.FindEntry(entryId);
+            if (entry == null)
+            {
+                return false;
+            }
+
+            // They open for the config entry, as from this menu's own pages.
+            MenuState.CloseConfig();
+            MenuState.OpenConfig(entry, MaxConfigEditorBytes);
+            _liveControlsFromFrontEnd = true;
+            try
+            {
+                if (settings)
+                {
+                    OpenLiveSettings();
+                }
+                else
+                {
+                    OpenModActions();
+                }
+
+                return _liveControlsSession != null;
+            }
+            finally
+            {
+                _liveControlsFromFrontEnd = false;
+                MenuState.CloseConfig();
+            }
+        }
+
+        /// <summary>
         /// Hides the menu for a screen host opened from one of its pages; false when it is not showing or live controls
         /// own it. <paramref name="resumePage"/> is the page to hand back to <see cref="ResumeAfterScreen"/>.
         /// </summary>
@@ -256,6 +306,7 @@ namespace Modstoke.Loader
 
             var session = new object();
             var opened = false;
+            var fromFrontEnd = _liveControlsFromFrontEnd;
             _openingLiveControls = true;
             _liveControlsSession = session;
             _closeLiveControls = close;
@@ -275,7 +326,8 @@ namespace Modstoke.Loader
 
                     _liveControlsSession = null;
                     _closeLiveControls = null;
-                    _resumeAfterLiveControls = returnToOwner && opened;
+                    // The Mods screen never left, so nothing has to be shown again for it.
+                    _resumeAfterLiveControls = returnToOwner && opened && !fromFrontEnd;
                     _liveControlsClosedFrame = Time.frameCount;
                     UiState.MarkHidden(UiSurfaceIds.ModConfig, title, "sonssdk", "closed", title + " are closed.");
                     if (_resumeAfterLiveControls)
@@ -296,7 +348,11 @@ namespace Modstoke.Loader
                     return;
                 }
 
-                Hide();
+                if (!fromFrontEnd)
+                {
+                    Hide();
+                }
+
                 UiState.MarkVisible(UiSurfaceIds.ModConfig, title, "sonssdk", "live:" + entry.Id, title + " are visible.");
                 opened = true;
             }

@@ -210,25 +210,29 @@ namespace Modstoke.Loader
                 return;
             }
             if (_rebuild || _layout != FrontEnd.LayoutVersion) Rebuild();
-            // The game's lobby and its dialogs are drawn under this layer, which steps aside for them. The loading screen
-            // covers it from the moment a join's load starts arriving; it stays drawn under the fade, then goes.
+            // The game's lobby and its dialogs are drawn under this layer, which steps aside for them; a dialog drawn in
+            // Modstoke's design sits over it instead, with the input. The loading screen covers it from the moment a
+            // join's load starts arriving; it stays drawn under the fade, then goes.
+            var dialog = SystemDialogs.Open;
             var away = _lobbyDialog != null && _lobbyDialog && _lobbyDialog.gameObject.activeInHierarchy
-                || !_gui.gameObject.activeInHierarchy || GameDialogOpen();
+                || !_gui.gameObject.activeInHierarchy || GameDialogOpen() && !dialog;
             var covered = LoadingScreen.Covering;
             var hidden = away || LoadingScreen.Opaque;
             if (_rootObject.activeSelf == hidden) _rootObject.SetActive(!hidden);
+            // The dialog shows prompts of its own on the same line.
+            if (_footer != null && _footer && _footer.gameObject.activeSelf == dialog) _footer.gameObject.SetActive(!dialog);
             // The press that closes a lobby or a dialog must not also act on this screen.
             var now = Time.unscaledTime;
             // The console and the mods menu draw over this screen and take the keyboard while open.
-            if (away || covered || ConsoleOverlay.IsVisible || MenuController.IsVisible) _resumeInputAt = now + InputPauseSeconds;
+            if (away || covered || dialog || ConsoleOverlay.IsVisible || MenuController.IsVisible) _resumeInputAt = now + InputPauseSeconds;
             _acting = now >= _resumeInputAt;
-            if (covered)
+            if (covered || dialog)
             {
                 // Nor may the game's own Back take the player to the title under it.
                 PauseBacks(true);
                 _backResumeAt = now + InputPauseSeconds;
             }
-            if (away || covered)
+            if (away || covered || dialog)
             {
                 ReadDevice("gamepad", ReadPad);
                 return;

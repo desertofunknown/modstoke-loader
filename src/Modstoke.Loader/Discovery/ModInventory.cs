@@ -669,6 +669,7 @@ namespace Modstoke.Loader
 
         private static void ApplyStatus(IReadOnlyCollection<ModInventoryEntry> entries)
         {
+            var native = ModRuntime.State.Mods;
             var duplicateRedLoaderIds = entries
                 .Where(entry => IsRedLoader(entry.LoaderType) && !string.IsNullOrWhiteSpace(entry.Id))
                 .GroupBy(entry => entry.Id, StringComparer.OrdinalIgnoreCase)
@@ -718,6 +719,23 @@ namespace Modstoke.Loader
                     continue;
                 }
 
+                // What a native mod did when it ran outweighs what its files say: one that failed at startup or later is
+                // a fault, with the reason the runtime gave.
+                var run = IsOpenAcai(entry.LoaderType) ? native.FirstOrDefault(mod => SameMod(mod, entry)) : null;
+                if (run is { Failed: true })
+                {
+                    entry.Status = "failed";
+                    entry.IssueCode = "mod-failed";
+                    entry.Issue = "Failed during " + run.Reason;
+                    continue;
+                }
+
+                if (run is { Active: true })
+                {
+                    entry.Status = "running";
+                    continue;
+                }
+
                 if (entry.HostedByOpenAcai)
                 {
                     entry.Status = "hosted";
@@ -727,6 +745,11 @@ namespace Modstoke.Loader
                 entry.Status = entry.Hostable ? "ready" : "available";
             }
         }
+
+        // The runtime keeps the discovered paths of each package it started, as ModRuntime.IsLoaded compares them.
+        private static bool SameMod(ModRuntimeEntry mod, ModInventoryEntry entry)
+            => string.Equals(mod.AssemblyPath, entry.AssemblyPath, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(mod.ManifestPath, entry.ManifestPath, StringComparison.OrdinalIgnoreCase);
 
         private static bool IsDisabledPath(string path)
         {

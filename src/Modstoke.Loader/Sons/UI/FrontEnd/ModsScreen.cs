@@ -49,17 +49,21 @@ namespace Modstoke.Loader
 
     /// <summary>
     /// The installed mods, in place of the Mods menu's home: a tab for each kind with its count, mods that need
-    /// attention first, a search, and a column that says what each mod is and what is wrong with it. A mod's own
-    /// settings and pages open in the Mods menu, and Back from there comes back here.
+    /// attention first, a search, and a column that says what each mod is and what is wrong with it. Each mod opens on
+    /// a page of its own. Opened with the Mods key in the world, the screen stands over the game's pause menu, and
+    /// leaving it returns to play.
     /// </summary>
     internal sealed class ModsScreen : SettingsScreen
     {
         private static int _lastTab;
         private static string _search = "";
         private readonly string[] _tabs = MenuViewBuilder.FilterChips;
+        private ModInventoryState _listed;
 
-        internal ModsScreen() : base(_lastTab)
+        /// <param name="fromWorld">Opened with the Mods key in the world, over the pause menu the key brought up.</param>
+        internal ModsScreen(bool fromWorld = false) : base(_lastTab)
         {
+            FromWorld = fromWorld;
             try
             {
                 MenuState.Refresh(out _);
@@ -68,6 +72,42 @@ namespace Modstoke.Loader
             {
                 RuntimeEntryPoint.LogSource?.LogWarning("The mod list could not be refreshed: " + error.Message);
             }
+        }
+
+        internal bool FromWorld { get; }
+
+        internal override bool OnBack()
+        {
+            if (!FromWorld) return false;
+            MenuSound.Play(MenuCue.Back);
+            PauseHost.Resume();
+            return true;
+        }
+
+        internal override IReadOnlyList<PromptSpec> Prompts => new[]
+        {
+            new PromptSpec(Text[FromWorld ? "pause.resume" : "common.back"], "B", "ESC", () => { if (!OnBack()) FrontEnd.Pop(); }),
+            new PromptSpec(Text["common.refresh"], "X", "F5", Rescan)
+        };
+
+        internal override void OnAlt1() => Rescan();
+
+        // The mods are looked for again, as after one was added or removed with the game running.
+        private void Rescan()
+        {
+            MenuSound.Play(MenuCue.Activate);
+            if (!MenuState.Refresh(out var result)) RuntimeEntryPoint.LogSource?.LogWarning("The mod list could not be refreshed: " + result);
+            Retext();
+            Rebuild();
+        }
+
+        // A mod that fails while the list is open is published as a new inventory, which the list then shows.
+        internal override void Tick()
+        {
+            base.Tick();
+            if (ReferenceEquals(MenuState.Inventory, _listed)) return;
+            Retext();
+            Rebuild();
         }
 
         protected override IReadOnlyList<string> TabIds => _tabs;
@@ -124,6 +164,7 @@ namespace Modstoke.Loader
                 _search = text ?? "";
                 return true;
             }, "", 40) { Placeholder = Text["mods.searchHint"] };
+            _listed = MenuState.Inventory;
             var shown = Entries(id).Where(Matches).ToArray();
             var attention = shown.Where(NeedsAttention).Select(Row).ToArray();
             var rest = shown.Where(entry => !NeedsAttention(entry)).Select(Row).ToArray();
@@ -264,10 +305,11 @@ namespace Modstoke.Loader
 
         internal static string StatusName(ModInventoryEntry entry) => (entry?.Status ?? "").ToLowerInvariant() switch
         {
-            "hosted" => "running",
+            "hosted" or "running" => "running",
             "ready" => "ready",
+            "failed" => "failed",
             "missing" => "missing",
-            "warning" => "check",
+            "warning" or "check" => "check",
             "disabled" => "off",
             _ => "found"
         };

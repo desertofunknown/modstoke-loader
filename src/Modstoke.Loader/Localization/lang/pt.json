@@ -755,6 +755,7 @@
       "running": "Rodando",
       "ready": "Pronto",
       "missing": "Faltando",
+      "failed": "Falhou",
       "check": "Verificar",
       "off": "Desligado",
       "found": "Encontrado"
@@ -764,6 +765,7 @@
       "running": "Rodando pelo Modstoke.",
       "ready": "Instalado e pronto.",
       "missing": "Falta algo de que ele precisa.",
+      "failed": "Parou por causa de um erro.",
       "check": "Instalado, mas algo nele precisa ser verificado.",
       "off": "Desligado.",
       "found": "Encontrado neste PC."
@@ -801,6 +803,7 @@
     "unnamed": "Jogador {number}",
     "mute": "Silenciar",
     "unmute": "Ativar som",
+    "muted": "Silenciado",
     "unban": "Desbanir",
     "makeGuest": "Tornar convidado",
     "makeTrusted": "Tornar confiável",
@@ -840,6 +843,10 @@
       "playerAbout": "Nesta partida. O servidor não compartilha o perfil da Steam deste jogador.",
       "bannedAbout": "Banido desta partida."
     }
+  },
+
+  "voice": {
+    "radio": "Rádio"
   },
 
   "console": {
@@ -912,9 +919,36 @@
   },
 
   "modpage": {
-    "opensMenu": "Abre no menu Mods, que tem o editor para isso.",
+    "live": "Abre o painel próprio do mod. Ao fechá-lo, você volta para cá.",
+    "liveUnavailable": "O painel deste mod não pode ser aberto agora.",
     "run": "Ao selecionar, ele é executado na hora.",
     "last": "Último resultado: {status}"
+  },
+
+  "config": {
+    "heading": "Arquivo de configuração",
+    "save": "Salvar",
+    "unsaved": "Alterações ainda não salvas",
+    "saved": "Salvo. Alguns mods só aplicam as alterações depois de reiniciar.",
+    "saveFailed": "Não foi possível salvar o arquivo. O log do Loader mostra o motivo.",
+    "unreadable": "Não foi possível ler este arquivo, então ele não pode ser alterado aqui.",
+    "empty": "Este arquivo não tem configurações simples para listar aqui.",
+    "textEditor": "Editar como texto",
+    "textEditorAbout": "Abre o arquivo inteiro no editor de texto clássico. Voltar de lá traz você para cá.",
+    "saveFirst": "Salve ou reverta suas alterações primeiro.",
+    "unsavedTitle": "Descartar as alterações?",
+    "unsavedBody": "Suas alterações neste arquivo de configuração ainda não foram salvas.",
+    "discard": "Descartar",
+    "keepEditing": "Continuar editando",
+
+    "fact": {
+      "key": "Chave",
+      "saved": "Valor salvo"
+    },
+
+    "section": {
+      "file": "Arquivo"
+    }
   },
 
   "confirm": {
@@ -932,6 +966,13 @@
     "hungTitle": "O DirectX 12 parou de responder",
     "hungBody": "A placa de vídeo parou de responder no DirectX 12 da última vez e o jogo fechou. A partir do próximo início, o jogo volta a usar o DirectX 11, como vem de fábrica.",
     "quit": "Sair"
+  },
+
+  "dialog": {
+    "ok": "OK",
+    "type": "Digitar",
+    "restartTitle": "É preciso reiniciar",
+    "restartBody": "Estas alterações entram em vigor quando o jogo iniciar de novo."
   },
 
   "multiplayer": {

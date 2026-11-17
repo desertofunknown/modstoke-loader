@@ -100,6 +100,8 @@ namespace Modstoke.Loader
         private static bool _visible;
         private static GameObject _returnSelection;
         private static int _ownerSceneHandle;
+        // The config editor was handed over on its own, so Back from it closes the menu rather than showing the mod's page.
+        private static bool _configAlone;
 
         internal static bool IsVisible => _visible;
 
@@ -119,6 +121,7 @@ namespace Modstoke.Loader
                     }
 
                     CloseConfigEditor();
+                    _configAlone = false;
                     // The last page, filter and scroll position carry over from the previous open.
                     MenuState.Open(MenuState.ViewState.LastPage);
                     Present();
@@ -157,6 +160,7 @@ namespace Modstoke.Loader
                 SaveScroll();
                 _renderedPageKey = null;
                 _visible = false;
+                _configAlone = false;
                 _restorePending = false;
                 _lastSelected = null;
                 _selectedInput = null;
@@ -290,6 +294,14 @@ namespace Modstoke.Loader
             }
         }
 
+        /// <summary>Opens a mod's config file in the text editor, for the Mods screen's config page handing it over.</summary>
+        internal static void EditConfigText(ModInventoryEntry entry)
+        {
+            OpenConfig(entry);
+            SetFriendlyMode(false);
+            _configAlone = true;
+        }
+
         internal static void OnSceneUnloaded(int handle)
         {
             if (handle != _ownerSceneHandle)
@@ -391,7 +403,12 @@ namespace Modstoke.Loader
 
         private static void NavigateBack()
         {
-            if (MenuState.IsConfigOpen)
+            if (MenuState.IsConfigOpen && _configAlone)
+            {
+                CloseConfigEditor();
+                Hide();
+            }
+            else if (MenuState.IsConfigOpen)
             {
                 CloseConfigEditor();
                 _result = null;

@@ -755,6 +755,7 @@
       "running": "Çalışıyor",
       "ready": "Hazır",
       "missing": "Eksik",
+      "failed": "Hata",
       "check": "İncele",
       "off": "Kapalı",
       "found": "Bulundu"
@@ -764,6 +765,7 @@
       "running": "Modstoke üzerinden çalışıyor.",
       "ready": "Yüklü ve hazır.",
       "missing": "İhtiyaç duyduğu bir şey eksik.",
+      "failed": "Bir hata nedeniyle durdu.",
       "check": "Yüklü, ancak bir şeyinin incelenmesi gerekiyor.",
       "off": "Kapatıldı.",
       "found": "Bu bilgisayarda bulundu."
@@ -801,6 +803,7 @@
     "unnamed": "Oyuncu {number}",
     "mute": "Sustur",
     "unmute": "Sesi aç",
+    "muted": "Susturuldu",
     "unban": "Yasağı kaldır",
     "makeGuest": "Misafir yap",
     "makeTrusted": "Güvenilir yap",
@@ -840,6 +843,10 @@
       "playerAbout": "Bu oyunda. Sunucu bu oyuncunun Steam profilini paylaşmıyor.",
       "bannedAbout": "Bu oyundan yasaklı."
     }
+  },
+
+  "voice": {
+    "radio": "Telsiz"
   },
 
   "console": {
@@ -912,9 +919,36 @@
   },
 
   "modpage": {
-    "opensMenu": "Bunun düzenleyicisinin bulunduğu Modlar menüsünde açılır.",
+    "live": "Modun kendi panelini açar. Kapattığınızda buraya dönersiniz.",
+    "liveUnavailable": "Bu modun paneli şu anda açılamıyor.",
     "run": "Seçildiğinde hemen çalışır.",
     "last": "Son sonuç: {status}"
+  },
+
+  "config": {
+    "heading": "Yapılandırma dosyası",
+    "save": "Kaydet",
+    "unsaved": "Değişiklikler henüz kaydedilmedi",
+    "saved": "Kaydedildi. Bazı modlar değişiklikleri ancak yeniden başlatınca uygular.",
+    "saveFailed": "Dosya kaydedilemedi. Nedeni Loader günlüğünde yazıyor.",
+    "unreadable": "Bu dosya okunamadı, bu yüzden burada değiştirilemez.",
+    "empty": "Bu dosyada burada listelenebilecek basit bir ayar yok.",
+    "textEditor": "Metin olarak düzenle",
+    "textEditorAbout": "Dosyanın tamamını klasik metin düzenleyicide açar. Oradan Geri ile buraya dönersiniz.",
+    "saveFirst": "Önce değişikliklerinizi kaydedin veya geri alın.",
+    "unsavedTitle": "Değişiklikler atılsın mı?",
+    "unsavedBody": "Bu yapılandırma dosyasındaki değişiklikleriniz henüz kaydedilmedi.",
+    "discard": "Kaydetme",
+    "keepEditing": "Düzenlemeye dön",
+
+    "fact": {
+      "key": "Anahtar",
+      "saved": "Kayıtlı değer"
+    },
+
+    "section": {
+      "file": "Dosya"
+    }
   },
 
   "confirm": {
@@ -932,6 +966,13 @@
     "hungTitle": "DirectX 12 yanıt vermeyi durdurdu",
     "hungBody": "Ekran kartı geçen sefer DirectX 12’de yanıt vermeyi durdurdu ve oyun kapandı. Bir sonraki açılıştan itibaren oyun, çıktığı gibi yeniden DirectX 11 kullanır.",
     "quit": "Çık"
+  },
+
+  "dialog": {
+    "ok": "Tamam",
+    "type": "Yaz",
+    "restartTitle": "Yeniden başlatma gerekli",
+    "restartBody": "Değişiklikler, oyun yeniden başladığında devreye girer."
   },
 
   "multiplayer": {

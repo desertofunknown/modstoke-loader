@@ -99,6 +99,19 @@ namespace Modstoke.Loader
                 case "debug" when rest.Length > 0:
                     SendToDebugConsole(request, rest);
                     break;
+                case "hint":
+                    Hint(request, rest);
+                    break;
+                case "message" when rest.Length > 0:
+                    if (!HudGui.HasInstance)
+                    {
+                        HostCommands.Respond(request, false, "There is no HUD in a world.", error: "not-ready");
+                        break;
+                    }
+                    // The SDK's own call, as a mod shows a line.
+                    SonsSdk.SonsTools.ShowMessage(rest, 4f);
+                    HostCommands.Respond(request, true, "Showed \"" + rest + "\" on the HUD.");
+                    break;
                 case "join" when rest.Length > 0:
                     Join(request, rest);
                     break;
@@ -109,7 +122,8 @@ namespace Modstoke.Loader
                     HostCommands.Respond(request, false, "Usage: game continue [latest|<slot>] | game new <"
                         + string.Join("|", Modes) + "> | game join <LAN server name> | game leave | game inventory open|close | game gearpage on|off"
                         + " | game equip <item id> | game toggle <item id> | game unequip left|right | game held [animator]"
-                        + " | game give <item id> [count] | game remove <item id> | game debug <command> | game quit",
+                        + " | game give <item id> [count] | game remove <item id> | game debug <command>"
+                        + " | game hint <" + string.Join("|", Hints) + "> [off|done] | game message <text> | game quit",
                         error: "invalid-arguments");
                     break;
             }
@@ -173,6 +187,44 @@ namespace Modstoke.Loader
             console.SendCommand(command);
             HostCommands.Respond(request, true, "Sent \"" + command + "\" to the game's debug console.");
         }
+
+        // The game's own tutorial hints, shown and taken down through its own calls, so each can be seen without waiting
+        // for its moment in play. The game strikes most of them out when they go; reload and zoom leave it to the caller,
+        // and "done" asks for the strike there.
+        private static void Hint(ConsoleSubmission request, string arguments)
+        {
+            var parts = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var name = parts.Length > 0 ? parts[0] : "";
+            var done = parts.Length == 2 && parts[1] == "done";
+            if (Array.IndexOf(Hints, name) < 0 || parts.Length > 2 || parts.Length == 2 && !done && parts[1] != "off")
+            {
+                HostCommands.Respond(request, false, "Usage: game hint <" + string.Join("|", Hints) + "> [off|done]", error: "invalid-arguments");
+                return;
+            }
+            var tutorials = HudGui.HasInstance ? HudGui.Tutorials : null;
+            if (tutorials == null)
+            {
+                HostCommands.Respond(request, false, "There is no HUD in a world.", error: "not-ready");
+                return;
+            }
+            var show = parts.Length == 1;
+            switch (name)
+            {
+                case "gps": tutorials.ShowEquipGpsTrackerTutorial(show); break;
+                case "light": tutorials.ShowEquipLighterTutorial(show); break;
+                case "build": tutorials.ShowOpenBuildingTutorialBook(show); break;
+                case "inventory": tutorials.ShowOpenInventoryTutorial(show); break;
+                case "reload": tutorials.ShowReloadingTutorial(show, done); break;
+                case "zoom": tutorials.ShowGpsZoomTutorial(show, done); break;
+                case "hungry": tutorials.ShowHungryTutorial(show); break;
+                // Timed: the game slides it out by itself.
+                case "axe": tutorials.ShowAxeTutorial(show, show ? 8f : 0f); break;
+            }
+            HostCommands.Respond(request, true, (show ? "Showed" : "Took down") + " the game's " + name + " hint"
+                + (show && !PlayerTutorials.CanShowTutorial ? ", but the game shows no hints right now" : "") + ".");
+        }
+
+        private static readonly string[] Hints = { "gps", "light", "build", "inventory", "reload", "zoom", "hungry", "axe" };
 
         // Host and single player only: a client's inventory belongs to its server.
         private static void Give(ConsoleSubmission request, string arguments)

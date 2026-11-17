@@ -188,6 +188,9 @@ namespace Modstoke.Loader
         /// <summary>Left or right on a row with a control of its own; true when the row took it.</summary>
         protected virtual bool AdjustControl(OptionRow row, int direction) => false;
 
+        /// <summary>Adds a live mark just after a row's name, such as a player's voice; the screen keeps it painted.</summary>
+        protected virtual void BuildNameMark(OptionRow row, TextMeshProUGUI label) { }
+
         /// <summary>The height of a strip over the list, such as column names; none by default.</summary>
         protected virtual float ListHeaderHeight => 0;
 
@@ -464,6 +467,7 @@ namespace Modstoke.Loader
                 view.Detail.rectTransform.Place(0, 0, 1, 0.5f, labelLeft, U(8), labelRight, U(1));
             }
             else view.Label.rectTransform.Place(0, 0, 1, 1, labelLeft, 0, labelRight, 0);
+            BuildNameMark(row, view.Label);
             view.Control = wide
                 ? MenuKit.Box(view.Rect, "Control").Place(0, 0, 1, 1, U(12), 0, U(12), 0)
                 : MenuKit.Box(view.Rect, "Control").Place(1, 0, 1, 1, -U(_layout.ControlWidth + 12), 0, U(12), 0);
@@ -613,7 +617,8 @@ namespace Modstoke.Loader
         {
             get
             {
-                var prompts = new List<PromptSpec> { new(Text["common.back"], "B", "ESC", () => FrontEnd.Pop()) };
+                // A click on Back does what the key does, for a screen that asks first or leaves somewhere else.
+                var prompts = new List<PromptSpec> { new(Text["common.back"], "B", "ESC", () => { if (!OnBack()) FrontEnd.Pop(); }) };
                 if (CanReset) prompts.Add(new PromptSpec(Text["options.reset"], "X", "DEL", ResetFocused));
                 if (PrimaryLabel != null) prompts.Add(new PromptSpec(PrimaryLabel, "Y", "F2", RunPrimary));
                 return prompts;
@@ -860,6 +865,9 @@ namespace Modstoke.Loader
             var view = _rows.FirstOrDefault(row => row.Row.Id == id);
             if (view != null) Focus(view.Focus);
         }
+
+        /// <summary>Keeps text still being typed, as Enter would, for a screen about to act on what its rows hold.</summary>
+        protected void CommitEdit() => EndEdit(true);
 
         // Editing text: the keyboard types into the row, Enter keeps it and Escape puts the old text back. On a
         // controller Steam's on-screen keyboard opens where Steam offers one.

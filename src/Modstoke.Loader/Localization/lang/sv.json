@@ -755,6 +755,7 @@
       "running": "Körs",
       "ready": "Redo",
       "missing": "Saknas",
+      "failed": "Fel",
       "check": "Kontrollera",
       "off": "Av",
       "found": "Hittad"
@@ -764,6 +765,7 @@
       "running": "Körs via Modstoke.",
       "ready": "Installerad och redo.",
       "missing": "Något som den behöver saknas.",
+      "failed": "Stoppades av ett fel.",
       "check": "Installerad, men något med den behöver ses över.",
       "off": "Avstängd.",
       "found": "Hittad på den här datorn."
@@ -801,6 +803,7 @@
     "unnamed": "Spelare {number}",
     "mute": "Tysta",
     "unmute": "Häv tystning",
+    "muted": "Tystad",
     "unban": "Häv bann",
     "makeGuest": "Gör till gäst",
     "makeTrusted": "Gör pålitlig",
@@ -840,6 +843,10 @@
       "playerAbout": "I det här spelet. Servern delar inte spelarens Steam-profil.",
       "bannedAbout": "Bannad från det här spelet."
     }
+  },
+
+  "voice": {
+    "radio": "Komradio"
   },
 
   "console": {
@@ -912,9 +919,36 @@
   },
 
   "modpage": {
-    "opensMenu": "Öppnas i Moddar-menyn, som har redigeraren för det.",
+    "live": "Öppnar moddens egen panel. När du stänger den kommer du tillbaka hit.",
+    "liveUnavailable": "Den här moddens panel kan inte öppnas just nu.",
     "run": "Att välja den kör den direkt.",
     "last": "Senaste resultat: {status}"
+  },
+
+  "config": {
+    "heading": "Konfigurationsfil",
+    "save": "Spara",
+    "unsaved": "Ändringarna är inte sparade än",
+    "saved": "Sparat. Vissa moddar använder ändringar först efter en omstart.",
+    "saveFailed": "Filen kunde inte sparas. Loader-loggen visar varför.",
+    "unreadable": "Filen kunde inte läsas, så den går inte att ändra här.",
+    "empty": "Filen har inga enkla inställningar att visa här.",
+    "textEditor": "Redigera som text",
+    "textEditorAbout": "Öppnar hela filen i den klassiska textredigeraren. Tillbaka därifrån tar dig hit igen.",
+    "saveFirst": "Spara eller återställ dina ändringar först.",
+    "unsavedTitle": "Slänga ändringarna?",
+    "unsavedBody": "Dina ändringar i den här konfigurationsfilen är inte sparade än.",
+    "discard": "Släng",
+    "keepEditing": "Fortsätt redigera",
+
+    "fact": {
+      "key": "Nyckel",
+      "saved": "Sparat värde"
+    },
+
+    "section": {
+      "file": "Fil"
+    }
   },
 
   "confirm": {
@@ -932,6 +966,13 @@
     "hungTitle": "DirectX 12 slutade svara",
     "hungBody": "Grafikkortet slutade svara med DirectX 12 förra gången och spelet stängdes. Från nästa start använder spelet DirectX 11 igen, som det levereras.",
     "quit": "Avsluta"
+  },
+
+  "dialog": {
+    "ok": "OK",
+    "type": "Skriv",
+    "restartTitle": "Omstart krävs",
+    "restartBody": "Ändringarna börjar gälla när spelet startar igen."
   },
 
   "multiplayer": {

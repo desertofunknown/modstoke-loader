@@ -288,6 +288,25 @@ pictures are decoded on workers and uploaded only while the menu is idle. Any
 exception turns the game's own loading screen back on. Options > Modstoke >
 Menus has `loadingScreen` and `loadingArt`.
 
+The game's message list at the bottom left (`HudGui._taskMessagesContainer`:
+tutorial hints, pickups, "can't carry" lines and every `DisplayGeneralMessage`,
+so mods' `SonsTools.ShowMessage` and server notices too) is drawn by
+`Sons/UI/Hud` as toasts on a canvas at sort order 120. The game keeps deciding
+what shows, for how long and in what order: hooks on
+`AnimateSidebarElement.OnEnable` and `SlideIn` (an entry slid back in while
+still on, as another pickup of the same item does) hide its list under a
+CanvasGroup of Modstoke's before an entry first draws, and each toast follows
+one entry, in at the entry's arrival, out when its `_isActive` drops (struck
+through first when the game strikes it out; a faded toast stays parked until the
+game puts its entry away), its text from the entry's label and its key from the
+entry's `DynamicInputIcon` action through `GameBindings`, so the device in use
+and rebinds show. A frame with no toast and no new entry does nothing. Toasts
+hide with the list (the game's HUD and Tutorials switches act on it) and under
+photo mode, the pause and mods menus and dialogs. With classicMenus, a failed
+front end or any exception, the CanvasGroup goes and the game's own list shows.
+`game hint <name> [off|done]` and `game message <text>` on the desktop console
+show each kind through the game's own calls.
+
 ## Next UI Refactor Slices
 
 1. Done: `UI/Menus/ModMenuDispatcher.cs` owns native/fallback renderer

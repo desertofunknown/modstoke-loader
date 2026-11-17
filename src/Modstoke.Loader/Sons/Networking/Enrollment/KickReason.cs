@@ -16,12 +16,14 @@ namespace Modstoke.Sons
     internal enum KickTitle { ModsDontMatch, CouldNotJoin }
 
     /// <summary>
-    /// Shows the reason a server wrote into a kick. The game receives it in the kick token, but its kick popup on
-    /// the title screen and the server browser's status bar only show a generic localized line.
+    /// Shows why the game left a server: the reason a server wrote into a kick, or the one this game had when it left a
+    /// join on its own. The game receives a kick's reason in the kick token, but its kick popup on the title screen and
+    /// the server browser's status bar only show a generic localized line, and it reports a disconnect of its own as
+    /// the server shutting down, or with no popup at all.
     /// </summary>
     internal static class KickReason
     {
-        private const double ShowSeconds = 120;
+        private const double ShowSeconds = 120, TitleWaitSeconds = 1.5;
         private static string _expected, _detail, _title, _reason;
         private static bool _expectedWins;
         private static double _expectedUntil, _reasonUntil;
@@ -47,6 +49,7 @@ namespace Modstoke.Sons
             _expectedUntil = Now + ShowSeconds;
             _reason = Join(reason, detail);
             _reasonUntil = _expectedUntil;
+            _titleSince = double.MaxValue;
             _logged = false;
         }
 
@@ -58,20 +61,23 @@ namespace Modstoke.Sons
             _expected = _detail = _title = _reason = null;
             _expectedWins = false;
             _kickedAt = double.MinValue;
+            _titleSince = double.MaxValue;
         }
 
         private static string Join(string reason, string detail) => detail == null ? reason : reason + "\n\n" + detail;
 
         private static double _kickedAt = double.MinValue;
 
+        // With the Loader's other hooks at start-up: patching on the first title frame made that frame 100 ms longer.
+        internal static void InstallHarmonyPatches(HarmonySupportSnapshot support, Action<string> warning)
+        {
+            if (_hooked || Host.IsServer) return;
+            _hooked = true;
+            Hook();
+        }
+
         internal static void Tick()
         {
-            if (!_hooked)
-            {
-                _hooked = true;
-                if (!Host.IsServer) Hook();
-                return;
-            }
             if (_reason == null) return;
             try
             {
@@ -81,13 +87,14 @@ namespace Modstoke.Sons
                     if (Now >= _reasonUntil || Now < _nextLook) return;
                     _nextLook = Now + 0.2;
                     var manager = ModalDialogManager._instance;
-                    if (manager == null || !manager) return;
-                    foreach (var popup in new[] { manager.KickedFromGameDialog, manager.BannedFromGameDialog })
-                        if (popup != null && popup && popup.gameObject.activeInHierarchy)
-                        {
-                            AfterDialog(popup);
-                            break;
-                        }
+                    if (manager != null && manager)
+                        foreach (var popup in new[] { manager.KickedFromGameDialog, manager.BannedFromGameDialog, manager.ServerShutdownDialog })
+                            if (popup != null && popup && popup.gameObject.activeInHierarchy && Carries(manager, popup))
+                            {
+                                AfterDialog(popup);
+                                return;
+                            }
+                    NoticeAtTitle();
                     return;
                 }
                 if (!_dialog || !_dialog.gameObject.activeInHierarchy || Now >= _reasonUntil)
@@ -99,7 +106,7 @@ namespace Modstoke.Sons
                 {
                     // Localization can finish after the popup opens and write its generic lines again.
                     if (_dialog._gui.ContentText is { } text && text && text.text != _reason) text.text = _reason;
-                    if (_title != null && TitleText(_dialog._gui) is { } title && title.text != _title) title.text = _title;
+                    if (_title != null && TitleText(_dialog._gui) is { } title && title._textValue != _title) title.SetText(_title);
                 }
             }
             catch (Exception)
@@ -108,7 +115,29 @@ namespace Modstoke.Sons
             }
         }
 
-        private static double _nextLook;
+        private static double _nextLook, _titleSince = double.MaxValue;
+
+        // The popups a reason belongs on: a kick or ban, and the disconnect that follows a refusal this game saw coming
+        // and left on its own, which the game reports as the server shutting down.
+        private static bool Carries(ModalDialogManager manager, DynamicModalDialogController dialog)
+            => Same(dialog, manager.KickedFromGameDialog) || Same(dialog, manager.BannedFromGameDialog)
+                || _expected != null && Same(dialog, manager.ServerShutdownDialog);
+
+        // Some disconnects bring the game back to the title with no popup at all, as one before the world loaded. The
+        // reason then shows on its own, once the title has been up long enough for the game's popup to have come.
+        private static void NoticeAtTitle()
+        {
+            if (!FrontEnd.AtTitle || GameMenus.OtherSceneOpen || LoadingScreen.Covering || FrontEnd.ModalShowing)
+            {
+                _titleSince = double.MaxValue;
+                return;
+            }
+            if (_titleSince == double.MaxValue) _titleSince = Now;
+            if (Now - _titleSince < TitleWaitSeconds) return;
+            if (!SystemDialogs.Notify(_title ?? LocalizationStartup.Text.Get("kick.title.couldNotJoin"), _reason, DialogTone.Problem)) return;
+            RuntimeEntryPoint.LogSource?.LogInfo("Showing why the game left the server: " + _reason.Replace("\n\n", " "));
+            _reason = null;
+        }
 
         private static void Hook()
         {
@@ -163,6 +192,7 @@ namespace Modstoke.Sons
                 _expected = _detail = null;
                 _kickedAt = Now;
                 _reasonUntil = Now + ShowSeconds;
+                _titleSince = double.MaxValue;
                 _logged = false;
                 RuntimeEntryPoint.LogSource?.LogInfo("Kicked by the server" + (written == null ? "" : ": " + written)
                     + (_reason == written ? "" : ". Showing: " + _reason.Replace("\n\n", " ")));
@@ -188,8 +218,7 @@ namespace Modstoke.Sons
             {
                 if (_reason == null || Now >= _reasonUntil || __result == null || !__result) return;
                 var manager = ModalDialogManager._instance;
-                if (manager == null || !Same(__result, manager.KickedFromGameDialog) && !Same(__result, manager.BannedFromGameDialog))
-                    return;
+                if (manager == null || !Carries(manager, __result)) return;
                 var gui = __result._gui;
                 if (gui == null || !gui || gui.ContentText == null || !gui.ContentText) return;
                 Release();
@@ -204,7 +233,7 @@ namespace Modstoke.Sons
                 {
                     gui.TitleTextString.enabled = false;
                     _pausedTitle = gui.TitleTextString;
-                    title.text = _title;
+                    title.SetText(_title);
                 }
                 _dialog = __result;
                 gui.ContentText.text = _reason;
@@ -249,8 +278,9 @@ namespace Modstoke.Sons
             _dialog = null;
         }
 
-        private static TMP_Text TitleText(DynamicModalDialogGui gui)
-            => gui.TitleTextString is { } localized && localized && localized.GetComponent<TMP_Text>() is { } text && text
+        // The title is lettered by a LinkTextGui into its hologram copies; it holds no text component of its own.
+        private static LinkTextGui TitleText(DynamicModalDialogGui gui)
+            => gui.TitleTextString is { } localized && localized && localized.GetComponent<LinkTextGui>() is { } text && text
                 ? text : null;
 
         private static bool Same(DynamicModalDialogController a, DynamicModalDialogController b)

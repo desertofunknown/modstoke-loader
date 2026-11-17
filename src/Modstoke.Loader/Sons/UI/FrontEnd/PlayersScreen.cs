@@ -4,8 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Modstoke.Localization;
+using Modstoke.Sons;
 using Sons.Gameplay.GameSetup;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Modstoke.Loader
 {
@@ -39,17 +43,20 @@ namespace Modstoke.Loader
     /// The players of a multiplayer game, in place of the game's own page: everyone in it with their Steam
     /// picture and role, the banned list for the host, and the multiplayer rules for those allowed to change them.
     /// Choosing a player offers what can be done: their Steam profile, muting them on this PC, and for the host
-    /// and admins their role, a kick or a ban, each through the game's own commands.
+    /// and admins their role, a kick or a ban, each through the game's own commands. Whoever is talking has the
+    /// voice bars after their name, and a player muted here a Muted tag instead.
     /// </summary>
     internal sealed class PlayersScreen : SettingsScreen
     {
         private const float RefreshSeconds = 1f;
         private readonly string[] _tabs;
         private readonly bool _privileged;
+        private readonly List<VoiceMark> _voices = new();
         private List<PlayerEntry> _players = new();
         private List<PlayerEntry> _banned = new();
+        private OptionRow _focused;
         private string _shown = "";
-        private float _nextRoster;
+        private float _nextRoster, _voiceTime;
 
         internal PlayersScreen()
         {
@@ -85,22 +92,42 @@ namespace Modstoke.Loader
             return string.Join("\n\n", lines);
         }
 
-        protected override OptionTab BuildTab(string id) => id switch
+        protected override OptionTab BuildTab(string id)
         {
-            "banned" => new OptionTab(id, new[] { OptionsCatalog.Section("banned", _banned.Select(Row).ToArray()) }),
-            "rules" => new OptionTab(id, new[]
+            // Each build of the list starts here, before its rows are made, so the old rows' marks go with them.
+            _voices.Clear();
+            return id switch
             {
-                OptionsCatalog.Section("rules",
-                    OptionsCatalog.Make("cheats", () => new SwitchRow("cheats", () => PlayersHost.Cheats, PlayersHost.SetCheats,
-                        GameSetupManager.DefaultMultiplayerCheatsSettingValue)),
-                    OptionsCatalog.Make("pvpDamage", PvpRow))
-            }),
-            _ => new OptionTab(id, new[] { OptionsCatalog.Section("online", _players.Select(Row).ToArray()) })
-        };
+                "banned" => new OptionTab(id, new[] { OptionsCatalog.Section("banned", _banned.Select(Row).ToArray()) }),
+                "rules" => new OptionTab(id, new[]
+                {
+                    OptionsCatalog.Section("rules",
+                        OptionsCatalog.Make("cheats", () => new SwitchRow("cheats", () => PlayersHost.Cheats, PlayersHost.SetCheats,
+                            GameSetupManager.DefaultMultiplayerCheatsSettingValue)),
+                        OptionsCatalog.Make("pvpDamage", PvpRow))
+                }),
+                _ => new OptionTab(id, new[] { OptionsCatalog.Section("online", _players.Select(Row).ToArray()) })
+            };
+        }
+
+        protected override void BuildNameMark(OptionRow row, TextMeshProUGUI label)
+        {
+            if (row is PlayerRow player && player.Player.Role != PlayersHost.Banned) _voices.Add(new VoiceMark(player, label));
+        }
+
+        protected override void FocusChanged(Focusable previous, Focusable current)
+        {
+            base.FocusChanged(previous, current);
+            _focused = FocusedRow;
+        }
 
         internal override void Tick()
         {
             base.Tick();
+            var now = PlayerVoice.Now;
+            var dt = Math.Min(now - _voiceTime, 0.1f);
+            _voiceTime = now;
+            foreach (var mark in _voices) mark.Paint(now, dt, ReferenceEquals(mark.Row, _focused));
             if (Time.unscaledTime < _nextRoster) return;
             _nextRoster = Time.unscaledTime + RefreshSeconds;
             // Someone joined, left, changed role or their picture arrived: the lists are built again.
@@ -176,6 +203,83 @@ namespace Modstoke.Loader
                 }
             }
             FrontEnd.Push(new ActionsScreen(player.Name, Text[RoleKey(player)], actions));
+        }
+
+        // A player's voice just after their name: the voice bars while they talk, or a tag while they are muted here.
+        // On the focus plate both turn dark with the rest of the row. Your own row talks while your voice goes out.
+        private sealed class VoiceMark
+        {
+            private const float MuteSeconds = 0.5f;
+            private readonly VoiceBars _bars;
+            private readonly CanvasGroup _group;
+            private readonly RectTransform _tag;
+            private readonly Image _tagFill;
+            private readonly TextMeshProUGUI _tagText;
+            private float _level, _nextMute;
+            private int _muteVersion = -1;
+            private bool _muted, _plate, _talking;
+
+            internal VoiceMark(PlayerRow row, TextMeshProUGUI label)
+            {
+                Row = row;
+                var rect = label.rectTransform;
+                // After the name as drawn, kept clear of the ellipsis a very long name ends in.
+                var name = label.GetPreferredValues(label.text).x;
+                var room = rect.rect.width - FrontEnd.U(70);
+                var x = (room > 0 ? Math.Min(name, room) : name) + FrontEnd.U(12);
+                _bars = new VoiceBars(rect, "Voice", FrontEnd.U(13));
+                _bars.Rect.anchorMin = _bars.Rect.anchorMax = _bars.Rect.pivot = new Vector2(0, 0.5f);
+                _bars.Rect.anchoredPosition = new Vector2(x, 0);
+                _bars.Tint(MenuKit.Green);
+                _group = _bars.Rect.gameObject.AddComponent<CanvasGroup>();
+                _bars.Rect.gameObject.SetActive(false);
+                var text = FrontEnd.Text["players.muted"].ToUpper(Languages.CultureOf(Languages.Current));
+                _tag = MenuKit.Box(rect, "Muted");
+                _tagFill = MenuKit.Fill(_tag, null, MenuKit.ChipOff);
+                _tagText = MenuKit.Text(_tag, "Label", text, FrontEnd.U(11), true, MenuKit.Muted, TextAlignmentOptions.Center);
+                _tagText.characterSpacing = 12;
+                _tagText.rectTransform.Place(0, 0, 1, 1);
+                _tag.anchorMin = _tag.anchorMax = _tag.pivot = new Vector2(0, 0.5f);
+                _tag.sizeDelta = new Vector2(_tagText.GetPreferredValues(text).x + FrontEnd.U(14), FrontEnd.U(20));
+                _tag.anchoredPosition = new Vector2(x, 0);
+                _tag.gameObject.SetActive(false);
+            }
+
+            internal PlayerRow Row { get; }
+
+            internal void Paint(float now, float dt, bool plate)
+            {
+                var player = Row.Player;
+                if (!player.Self && player.Id != 0 && (now >= _nextMute || _muteVersion != PlayerVoice.MuteVersion))
+                {
+                    _nextMute = now + MuteSeconds;
+                    _muteVersion = PlayerVoice.MuteVersion;
+                    var muted = PlayersHost.Muted(player.Id);
+                    if (muted != _muted)
+                    {
+                        _muted = muted;
+                        _tag.gameObject.SetActive(muted);
+                    }
+                }
+                if (plate != _plate)
+                {
+                    _plate = plate;
+                    _bars.Tint(plate ? MenuKit.OnPlate : MenuKit.Green);
+                    _tagFill.color = plate ? MenuKit.OnPlateTrack : MenuKit.ChipOff;
+                    _tagText.color = plate ? MenuKit.OnPlate : MenuKit.Muted;
+                }
+                var speaking = !_muted && (player.Self ? PlayerVoice.Transmitting : PlayerVoice.Speaking(player.Id, player.Entity));
+                _level = VoiceBars.Step(_level, speaking ? 1f : 0f, dt / (speaking ? 0.12f : 0.35f));
+                var talking = _level > 0f;
+                if (talking != _talking)
+                {
+                    _talking = talking;
+                    _bars.Rect.gameObject.SetActive(talking);
+                }
+                if (!talking) return;
+                _group.alpha = VoiceBars.Smooth(_level);
+                _bars.Paint(_level, now);
+            }
         }
     }
 }

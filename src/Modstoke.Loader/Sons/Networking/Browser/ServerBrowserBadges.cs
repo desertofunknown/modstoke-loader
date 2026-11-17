@@ -67,14 +67,16 @@ namespace Modstoke.Sons
 
         private static double Now => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
 
+        // With the Loader's other hooks at start-up rather than on the first title frame.
+        internal static void InstallHarmonyPatches(HarmonySupportSnapshot support, Action<string> warning)
+        {
+            if (_hooked || Host.IsServer) return;
+            _hooked = true;
+            Hook();
+        }
+
         internal static void Tick()
         {
-            if (!_hooked)
-            {
-                _hooked = true;
-                if (!Host.IsServer) Hook();
-                return;
-            }
             if (Rows.Count == 0 && _running == 0 && Waiting.Count == 0) return;
             var now = Now;
             while (Answers.TryDequeue(out var answer))

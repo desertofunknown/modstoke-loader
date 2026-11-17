@@ -109,7 +109,7 @@ namespace Modstoke.Loader
                     RuntimeEntryPoint.LogSource?.LogInfo("Photo mode did not open: " + FrontEnd.Text[key]);
                     return;
                 }
-                FrontEnd.WantPhoto();
+                FrontEnd.OverPause(() => PhotoScreen.Open(fromWorld: true));
                 menu.Open();
             }
             catch (Exception error)

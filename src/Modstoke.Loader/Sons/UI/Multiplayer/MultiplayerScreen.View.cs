@@ -76,6 +76,7 @@ namespace Modstoke.Loader
         private static IntPtr _paintedSelection;
         private static RectTransform _listRect, _modsHeader, _progress;
         private static KeyTag _tabLeft, _tabRight;
+        private static RectTransform _footer;
         private static TextMeshProUGUI _status, _empty, _kind, _name, _sub, _noticeTitle, _noticeText, _joinLabel, _searchText;
         private static Image _noticeBox, _noticeBar, _joinFill, _searchBox;
         private static float _bottom, _nextProgress;
@@ -360,7 +361,7 @@ namespace Modstoke.Loader
         // The prompt bar over the game's bottom strip artwork: what each button or key does on this screen.
         private static void BuildFooter(RectTransform root, float pad)
         {
-            var footer = MenuKit.Box(root, "Prompts").Place(0, 0, 1, 0, pad, U(30), pad, -U(30 + FooterHeight));
+            var footer = _footer = MenuKit.Box(root, "Prompts").Place(0, 0, 1, 0, pad, U(30), pad, -U(30 + FooterHeight));
             AddPrompt(footer, "common.back", "B", "ESC", false, () =>
             {
                 MenuSound.Play(MenuCue.Back);

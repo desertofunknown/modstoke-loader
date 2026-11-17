@@ -755,6 +755,7 @@
       "running": "Running",
       "ready": "Ready",
       "missing": "Missing",
+      "failed": "Failed",
       "check": "Check",
       "off": "Off",
       "found": "Found"
@@ -764,6 +765,7 @@
       "running": "Running through Modstoke.",
       "ready": "Installed and ready.",
       "missing": "Something it needs is missing.",
+      "failed": "It stopped with an error.",
       "check": "Installed, but something about it needs a look.",
       "off": "Turned off.",
       "found": "Found on this PC."
@@ -801,6 +803,7 @@
     "unnamed": "Player {number}",
     "mute": "Mute",
     "unmute": "Unmute",
+    "muted": "Muted",
     "unban": "Allow back",
     "makeGuest": "Make guest",
     "makeTrusted": "Make trusted",
@@ -840,6 +843,10 @@
       "playerAbout": "In this game. The server shares no Steam profile for them.",
       "bannedAbout": "Banned from this game."
     }
+  },
+
+  "voice": {
+    "radio": "Radio"
   },
 
   "console": {
@@ -912,9 +919,36 @@
   },
 
   "modpage": {
-    "opensMenu": "Opens in the Mods menu, which has the editor for it.",
+    "live": "Opens the mod's own panel. Closing it brings you back here.",
+    "liveUnavailable": "This mod's panel can't open right now.",
     "run": "Selecting it runs it now.",
     "last": "Last result: {status}"
+  },
+
+  "config": {
+    "heading": "Config file",
+    "save": "Save",
+    "unsaved": "Changes not saved yet",
+    "saved": "Saved. Some mods only pick up changes after a restart.",
+    "saveFailed": "The file couldn't be saved. The Loader log says why.",
+    "unreadable": "This file couldn't be read, so it can't be changed here.",
+    "empty": "This file has no simple settings to list here.",
+    "textEditor": "Edit as text",
+    "textEditorAbout": "Opens the whole file in the classic text editor. Back from there returns here.",
+    "saveFirst": "Save or revert your changes first.",
+    "unsavedTitle": "Discard your changes?",
+    "unsavedBody": "Your changes to this config file aren't saved yet.",
+    "discard": "Discard",
+    "keepEditing": "Keep editing",
+
+    "fact": {
+      "key": "Key",
+      "saved": "Saved value"
+    },
+
+    "section": {
+      "file": "File"
+    }
   },
 
   "confirm": {
@@ -932,6 +966,13 @@
     "hungTitle": "DirectX 12 stopped responding",
     "hungBody": "The graphics card stopped responding on DirectX 12 last time and the game closed. From its next start the game draws with DirectX 11 again, as it ships.",
     "quit": "Quit"
+  },
+
+  "dialog": {
+    "ok": "OK",
+    "type": "Type",
+    "restartTitle": "Restart needed",
+    "restartBody": "These changes take effect when the game starts again."
   },
 
   "multiplayer": {

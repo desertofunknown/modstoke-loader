@@ -325,7 +325,10 @@ namespace Modstoke.Loader
             mod.Status = "Failed";
             var detail = phase + ": " + DescribeFailure(error);
             if (firstFailure)
+            {
                 mod.Detail = detail;
+                mod.Reason = phase + ": " + FailureMessage(error);
+            }
             try { RuntimeEntryPoint.LogSource?.LogError("Native mod '" + mod.Candidate.ModId + "' failed during " + detail); }
             catch { /* A logging listener must not break failure isolation. */ }
         }
@@ -362,7 +365,7 @@ namespace Modstoke.Loader
                     mod.Loaded && !mod.Failed && _executionEnabled && !_stopped,
                     Array.AsReadOnly(mod.Callbacks.OrderBy(pair => pair.Key)
                         .Select(pair => new ModRuntimeHook(pair.Key.ToString().ToLowerInvariant(), pair.Value.Method.Name))
-                        .ToArray()))).ToArray()));
+                        .ToArray())) { Reason = mod.Reason }).ToArray()));
             Volatile.Write(ref _state, snapshot);
             try
             {
@@ -388,6 +391,7 @@ namespace Modstoke.Loader
             internal bool Failed;
             internal string Status = "Pending";
             internal string Detail = "";
+            internal string Reason = "";
         }
     }
 
@@ -456,6 +460,8 @@ namespace Modstoke.Loader
         public bool Active { get; }
         /// <summary>Lifecycle hooks bound at startup, in dispatch order; empty for skipped or deferred mods.</summary>
         public IReadOnlyList<ModRuntimeHook> Hooks { get; }
+        // The first failure in one line, its phase and message without the stack, for the Mods menus.
+        internal string Reason { get; init; } = "";
     }
 
     public sealed class ModRuntimeHook

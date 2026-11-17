@@ -755,6 +755,7 @@
       "running": "Käynnissä",
       "ready": "Valmis",
       "missing": "Puuttuu",
+      "failed": "Virhe",
       "check": "Tarkista",
       "off": "Pois",
       "found": "Löydetty"
@@ -764,6 +765,7 @@
       "running": "Käynnissä Modstoken kautta.",
       "ready": "Asennettu ja valmis.",
       "missing": "Jotain sen tarvitsemaa puuttuu.",
+      "failed": "Pysähtyi virheeseen.",
       "check": "Asennettu, mutta jotain siinä pitää tarkistaa.",
       "off": "Poistettu käytöstä.",
       "found": "Löydetty tältä tietokoneelta."
@@ -801,6 +803,7 @@
     "unnamed": "Pelaaja {number}",
     "mute": "Mykistä",
     "unmute": "Poista mykistys",
+    "muted": "Mykistetty",
     "unban": "Poista porttikielto",
     "makeGuest": "Tee vieraaksi",
     "makeTrusted": "Tee luotetuksi",
@@ -840,6 +843,10 @@
       "playerAbout": "Tässä pelissä. Palvelin ei jaa hänen Steam-profiiliaan.",
       "bannedAbout": "Porttikielto tähän peliin."
     }
+  },
+
+  "voice": {
+    "radio": "Radiopuhelin"
   },
 
   "console": {
@@ -912,9 +919,36 @@
   },
 
   "modpage": {
-    "opensMenu": "Avautuu Modit-valikossa, jossa on sitä varten muokkain.",
+    "live": "Avaa modin oman paneelin. Kun suljet sen, palaat tänne.",
+    "liveUnavailable": "Tämän modin paneelia ei voi avata juuri nyt.",
     "run": "Valitseminen suorittaa sen heti.",
     "last": "Viimeisin tulos: {status}"
+  },
+
+  "config": {
+    "heading": "Asetustiedosto",
+    "save": "Tallenna",
+    "unsaved": "Muutoksia ei ole vielä tallennettu",
+    "saved": "Tallennettu. Jotkin modit ottavat muutokset käyttöön vasta uudelleenkäynnistyksen jälkeen.",
+    "saveFailed": "Tiedostoa ei voitu tallentaa. Syy näkyy Loaderin lokista.",
+    "unreadable": "Tiedostoa ei voitu lukea, joten sitä ei voi muuttaa täällä.",
+    "empty": "Tiedostossa ei ole yksinkertaisia asetuksia, joita voisi näyttää tässä.",
+    "textEditor": "Muokkaa tekstinä",
+    "textEditorAbout": "Avaa koko tiedoston perinteisessä tekstimuokkaimessa. Takaisin-painikkeella palaat sieltä tänne.",
+    "saveFirst": "Tallenna tai palauta muutoksesi ensin.",
+    "unsavedTitle": "Hylätäänkö muutokset?",
+    "unsavedBody": "Tämän asetustiedoston muutoksia ei ole vielä tallennettu.",
+    "discard": "Hylkää",
+    "keepEditing": "Jatka muokkausta",
+
+    "fact": {
+      "key": "Avain",
+      "saved": "Tallennettu arvo"
+    },
+
+    "section": {
+      "file": "Tiedosto"
+    }
   },
 
   "confirm": {
@@ -932,6 +966,13 @@
     "hungTitle": "DirectX 12 lakkasi vastaamasta",
     "hungBody": "Näytönohjain lakkasi vastaamasta DirectX 12:lla viime kerralla, ja peli sulkeutui. Seuraavasta käynnistyksestä alkaen peli käyttää taas DirectX 11:tä, kuten se on julkaistu.",
     "quit": "Lopeta"
+  },
+
+  "dialog": {
+    "ok": "OK",
+    "type": "Kirjoita",
+    "restartTitle": "Uudelleenkäynnistys tarvitaan",
+    "restartBody": "Muutokset otetaan käyttöön, kun peli käynnistyy uudelleen."
   },
 
   "multiplayer": {

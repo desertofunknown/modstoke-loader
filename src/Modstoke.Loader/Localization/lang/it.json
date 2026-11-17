@@ -755,6 +755,7 @@
       "running": "Attiva",
       "ready": "Pronta",
       "missing": "Mancante",
+      "failed": "Errore",
       "check": "Da verificare",
       "off": "Disattivata",
       "found": "Rilevata"
@@ -764,6 +765,7 @@
       "running": "In esecuzione tramite Modstoke.",
       "ready": "Installata e pronta.",
       "missing": "Manca qualcosa di cui ha bisogno.",
+      "failed": "Si è fermata per un errore.",
       "check": "Installata, ma qualcosa va controllato.",
       "off": "Disattivata.",
       "found": "Rilevata su questo PC."
@@ -801,6 +803,7 @@
     "unnamed": "Giocatore {number}",
     "mute": "Silenzia",
     "unmute": "Riattiva audio",
+    "muted": "Silenziato",
     "unban": "Riammetti",
     "makeGuest": "Rendi ospite",
     "makeTrusted": "Rendi di fiducia",
@@ -840,6 +843,10 @@
       "playerAbout": "In questa partita. Il server non condivide il suo profilo Steam.",
       "bannedAbout": "Bannato da questa partita."
     }
+  },
+
+  "voice": {
+    "radio": "Radio"
   },
 
   "console": {
@@ -912,9 +919,36 @@
   },
 
   "modpage": {
-    "opensMenu": "Si apre nel menu Mod, che ha l’editor adatto.",
+    "live": "Apre il pannello della mod. Chiudendolo torni qui.",
+    "liveUnavailable": "Il pannello di questa mod non si può aprire ora.",
     "run": "Selezionandolo viene eseguito subito.",
     "last": "Ultimo risultato: {status}"
+  },
+
+  "config": {
+    "heading": "File di configurazione",
+    "save": "Salva",
+    "unsaved": "Modifiche non ancora salvate",
+    "saved": "Salvato. Alcune mod applicano le modifiche solo dopo un riavvio.",
+    "saveFailed": "Impossibile salvare il file. Il log del Loader ne spiega il motivo.",
+    "unreadable": "Impossibile leggere questo file, quindi non si può modificare qui.",
+    "empty": "Questo file non contiene impostazioni semplici da elencare qui.",
+    "textEditor": "Modifica come testo",
+    "textEditorAbout": "Apre l’intero file nell’editor di testo classico. Con Indietro torni qui.",
+    "saveFirst": "Prima salva o ripristina le modifiche.",
+    "unsavedTitle": "Scartare le modifiche?",
+    "unsavedBody": "Le modifiche a questo file di configurazione non sono ancora salvate.",
+    "discard": "Scarta",
+    "keepEditing": "Continua a modificare",
+
+    "fact": {
+      "key": "Chiave",
+      "saved": "Valore salvato"
+    },
+
+    "section": {
+      "file": "File"
+    }
   },
 
   "confirm": {
@@ -932,6 +966,13 @@
     "hungTitle": "DirectX 12 ha smesso di rispondere",
     "hungBody": "L’ultima volta la scheda grafica ha smesso di rispondere con DirectX 12 e il gioco si è chiuso. Dal prossimo avvio il gioco torna a usare DirectX 11, come in origine.",
     "quit": "Esci"
+  },
+
+  "dialog": {
+    "ok": "OK",
+    "type": "Scrivi",
+    "restartTitle": "Riavvio necessario",
+    "restartBody": "Queste modifiche avranno effetto al prossimo avvio del gioco."
   },
 
   "multiplayer": {

@@ -41,7 +41,8 @@ namespace Modstoke.Loader
                 if (!Live(canvas) || !canvas.enabled || !canvas.isRootCanvas || canvas.renderMode == RenderMode.WorldSpace) continue;
                 var transform = canvas.transform;
                 if (transform.Pointer == own.Pointer || canvas.sortingOrder > topOrder) continue;
-                if (modal != null && modal && modal.IsChildOf(transform)) continue;
+                // The dialogs' own canvas sits under the manager; a canvas holding the manager would hold them too.
+                if (modal != null && modal && (transform.IsChildOf(modal) || modal.IsChildOf(transform))) continue;
                 canvas.enabled = false;
                 hidden(canvas);
             }

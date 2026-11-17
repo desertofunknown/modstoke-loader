@@ -53,9 +53,10 @@ namespace Modstoke.Sons
                     if (!LocalPlayer.IsInWorld && !GameRuntime.IsWorldStarting || Time.unscaledTime < _matBindAt) return;
                     _matInventory = inventory;
                 }
-                // At most one model is built a frame; four together cost about 90 ms in one frame.
+                // At most one model is built a frame, as four together cost about 90 ms in one frame; all of them while
+                // the loading screen still covers a new world, which waits for them.
                 var built = false;
-                foreach (var model in MatModels) built |= model.Update(inventory, !built);
+                foreach (var model in MatModels) built |= model.Update(inventory, !built || WorldReveal.Covered);
             }
             catch (Exception error)
             {
@@ -64,6 +65,20 @@ namespace Modstoke.Sons
                 if (_matFailureLogged) return;
                 _matFailureLogged = true;
                 RuntimeEntryPoint.LogSource?.LogWarning("Modeled items could not be shown on the inventory mat: " + error);
+            }
+        }
+
+        // A new world is shown once every modeled item has its place on the new inventory's mat, built or waiting with a
+        // reason, so their builds stay under the loading screen.
+        private static bool ItemModelsSettled
+        {
+            get
+            {
+                if (MatModels.Count == 0) return true;
+                if (_matInventory is null) return false;
+                foreach (var model in MatModels)
+                    if (!model.Settled) return false;
+                return true;
             }
         }
 
@@ -91,6 +106,8 @@ namespace Modstoke.Sons
 
             private ItemMatAction Action => _model.MatAction == ItemMatAction.Drop && !_item._canBeSpawned
                 ? ItemMatAction.None : _model.MatAction;
+
+            internal bool Settled => _layout != null || _status != null || !InventoryLayout.Published(_item);
 
             // The game only drops held items, so a drop click closes the inventory and drops one once the player is
             // back in the world view. An equip click equips with the inventory open, as the game's own mat does.

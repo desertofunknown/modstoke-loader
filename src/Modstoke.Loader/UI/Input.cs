@@ -98,6 +98,14 @@ namespace Modstoke.Loader
 
         private static bool IsFocusAllowed(string id, out string blockedReason)
         {
+            // A system dialog is modal over every surface, the mods menu's lease included, through the frame its answer
+            // was pressed in; only the console still opens.
+            if (SystemDialogs.Holding && !string.Equals(id, ConsoleOverlay.KeybindId, StringComparison.OrdinalIgnoreCase))
+            {
+                blockedReason = "A dialog is open.";
+                return false;
+            }
+
             lock (SyncRoot)
             {
                 if (IsFocusReleaseFrameNoLock())

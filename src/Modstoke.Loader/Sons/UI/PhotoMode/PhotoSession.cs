@@ -465,7 +465,7 @@ namespace Modstoke.Loader
                     var menu = PauseHost.Current;
                     if (menu == null) return "There is no pause menu here to open photo mode in.";
                     if (!FrontEnd.Enabled) return "Photo mode needs Modstoke's menus; classicMenus is on.";
-                    FrontEnd.WantPhoto();
+                    FrontEnd.OverPause(() => PhotoScreen.Open(fromWorld: true));
                     menu.Open();
                     return "Opening the pause menu with photo mode over it.";
                 case "close":

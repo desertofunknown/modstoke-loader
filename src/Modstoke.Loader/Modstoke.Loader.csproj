@@ -33,6 +33,7 @@
     <Compile Include="Sons/Runtime/GameLifecycleFixes.cs" />
     <Compile Include="Sons/Runtime/GatheringLifecycleFix.cs" />
     <Compile Include="Sons/Runtime/LoadingPerformance.cs" />
+    <Compile Include="Sons/Runtime/WorldReveal.cs" />
     <Compile Include="Sons/Runtime/EngineBootConfig.cs" />
     <Compile Include="Sons/Runtime/GcWriteBarrierPatch.cs" />
     <Compile Include="Sons/Runtime/AsyncComputeSwitch.cs" />
@@ -611,6 +612,7 @@
     <Compile Include="Sons/Server/Communication/ServerVoice.cs" />
     <Compile Include="Sons/Server/Communication/ServerVoice.Routing.cs" />
     <Compile Include="Sons/Server/Communication/ServerVoice.Requests.cs" />
+    <Compile Include="Sons/Players/PlayerVoice.cs" />
     <Compile Include="Sons/Server/Building/ServerPrinters.cs" />
     <Compile Include="Sons/Crafting/PrinterDevices.cs" />
     <Compile Include="Sons/Crafting/PrinterDevices.Models.cs" />
@@ -972,10 +974,19 @@
     <Compile Include="Sons/UI/FrontEnd/PauseScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/ModsScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/ModPageScreen.cs" />
+    <Compile Include="Sons/UI/FrontEnd/ConfigScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/ActionsScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/PlayersHost.cs" />
     <Compile Include="Sons/UI/FrontEnd/PlayersScreen.cs" />
+    <Compile Include="Sons/UI/Voice/VoiceBars.cs" />
+    <Compile Include="Sons/UI/Voice/VoicePresence.cs" />
+    <Compile Include="Sons/UI/Voice/MicIndicator.cs" />
+    <Compile Include="Sons/UI/Hud/Toast.cs" />
+    <Compile Include="Sons/UI/Hud/HudToasts.cs" />
     <Compile Include="Sons/UI/FrontEnd/ConfirmScreen.cs" />
+    <Compile Include="Sons/UI/FrontEnd/SystemDialog.cs" />
+    <Compile Include="Sons/UI/FrontEnd/DialogScreen.cs" />
+    <Compile Include="Sons/UI/FrontEnd/SystemDialogs.cs" />
     <Compile Include="Sons/UI/Loading/LoadingIntent.cs" />
     <Compile Include="Sons/UI/Loading/SaveSeason.cs" />
     <Compile Include="Sons/UI/Loading/ControlGlyphs.cs" />

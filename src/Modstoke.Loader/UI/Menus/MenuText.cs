@@ -72,9 +72,12 @@ namespace Modstoke.Loader
             }
 
             if (string.Equals(entry.Status, "hosted", StringComparison.OrdinalIgnoreCase)) return "HOSTED";
+            if (string.Equals(entry.Status, "running", StringComparison.OrdinalIgnoreCase)) return "RUNNING";
             if (string.Equals(entry.Status, "ready", StringComparison.OrdinalIgnoreCase)) return "READY";
+            if (string.Equals(entry.Status, "failed", StringComparison.OrdinalIgnoreCase)) return "FAILED";
             if (string.Equals(entry.Status, "missing", StringComparison.OrdinalIgnoreCase)) return "MISSING";
-            if (string.Equals(entry.Status, "warning", StringComparison.OrdinalIgnoreCase)) return "CHECK";
+            if (string.Equals(entry.Status, "warning", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(entry.Status, "check", StringComparison.OrdinalIgnoreCase)) return "CHECK";
             if (string.Equals(entry.Status, "disabled", StringComparison.OrdinalIgnoreCase)) return "OFF";
             return "INFO";
         }
@@ -83,9 +86,12 @@ namespace Modstoke.Loader
         {
             var status = entry?.Status ?? "";
             if (string.Equals(status, "hosted", StringComparison.OrdinalIgnoreCase)) return MenuTone.Info;
-            if (string.Equals(status, "ready", StringComparison.OrdinalIgnoreCase)) return MenuTone.Good;
-            if (string.Equals(status, "missing", StringComparison.OrdinalIgnoreCase)) return MenuTone.Bad;
-            if (string.Equals(status, "warning", StringComparison.OrdinalIgnoreCase)) return MenuTone.Warn;
+            if (string.Equals(status, "ready", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(status, "running", StringComparison.OrdinalIgnoreCase)) return MenuTone.Good;
+            if (string.Equals(status, "missing", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(status, "failed", StringComparison.OrdinalIgnoreCase)) return MenuTone.Bad;
+            if (string.Equals(status, "warning", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(status, "check", StringComparison.OrdinalIgnoreCase)) return MenuTone.Warn;
             return MenuTone.Neutral;
         }
 

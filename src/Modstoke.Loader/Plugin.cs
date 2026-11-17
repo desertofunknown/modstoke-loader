@@ -344,6 +344,7 @@ namespace Modstoke.Loader
                     BoltStreams.InstallHarmonyPatches);
                 InstallHooks("sons-server-chat", ServerChat.InstallHarmonyPatches, Commands.InstallHostHarmonyPatch);
                 InstallHooks("sons-server-voice", ServerVoice.InstallHarmonyPatches);
+                InstallHooks("sons-player-voice", PlayerVoice.InstallHarmonyPatches);
                 InstallHooks("sons-server-printers", ServerPrinters.InstallHarmonyPatches);
                 InstallHooks("sons-server-named-states", ServerNamedStates.InstallHarmonyPatches);
                 InstallHooks("sons-server-companions",
@@ -374,6 +375,7 @@ namespace Modstoke.Loader
                 InstallHooks("sons-game-lifecycle", GameLifecycleFixes.InstallHarmonyPatches, GatheringLifecycleFix.InstallHarmonyPatches);
                 InstallHooks("sons-construction-dirty-cache", ConstructionDirtyPatch.InstallHarmonyPatch);
                 InstallHooks("sons-photo-mode", PhotoPatches.InstallHarmonyPatch);
+                InstallHooks("sons-hud-toasts", HudToasts.InstallHarmonyPatch);
                 PerformanceCapture.Initialize(_harmonySupportState);
                 InstallHooks("sons-loading-capture", LoadingPerformance.InstallCaptureHooks);
                 InstallHooks("sons-server-player-spawns", ServerPlayerSpawns.InstallHarmonyPatches);
@@ -385,6 +387,8 @@ namespace Modstoke.Loader
                 InstallHooks("sons-server-melee-impacts", ServerMeleeImpacts.InstallHarmonyPatches);
                 InstallHooks("sons-server-dismember-hits", ServerDismemberHits.InstallHarmonyPatches);
                 InstallHooks("sons-server-notices", ServerNotices.InstallHarmonyPatches);
+                InstallHooks("sons-kick-reason", KickReason.InstallHarmonyPatches);
+                InstallHooks("sons-server-badges", ServerBrowserBadges.InstallHarmonyPatches);
 
                 TraceCompat("Loading native Modstoke mods");
                 using (Timings.Measure("loader.native", "mod-hosting"))

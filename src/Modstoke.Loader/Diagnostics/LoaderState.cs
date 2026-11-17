@@ -33,6 +33,8 @@ namespace Modstoke.Loader
         private static long _environmentRevision;
         private static long _capturedEnvironmentRevision = -1;
         private static long _nextStateRefreshTick;
+        private const long TitleSettleMs = 2000;
+        private static long _titleSince = -1;
         private static string _pendingRefreshReason;
         private static bool _pendingFileIntegrityRefresh;
         private static bool _lastNativeUnitySupportActive;
@@ -78,7 +80,10 @@ namespace Modstoke.Loader
                 {
                     var effectiveHostedMods = hostedMods ?? Array.Empty<ModBase>();
                     _hostedRedLoaderMods = effectiveHostedMods;
-                    var il2CppNativeHooks = IL2CPPHookState.Load(Paths.PluginPath, Paths.GameRootPath);
+                    // Named parts for performance captures; the rest of a refresh is the snapshot below.
+                    IL2CPPHookStateSnapshot il2CppNativeHooks;
+                    using (Timings.MeasureCapture("LoaderState.Hooks"))
+                        il2CppNativeHooks = IL2CPPHookState.Load(Paths.PluginPath, Paths.GameRootPath);
                     var modInventory = CaptureModInventory(refreshDiscovery);
                     RefreshEnvironment(refreshDiscovery);
                     // Scene callbacks already refresh the catalog. Routine state exports
@@ -87,15 +92,30 @@ namespace Modstoke.Loader
                     if (refreshItemCatalog || !sonsItems.Ready)
                         sonsItems = ItemCatalog.Refresh();
                     var sonsAssets = Assets.State;
-                    var sonsItemRegistration = ItemRegistration.Refresh();
-                    var sonsInventory = Inventory.Refresh();
-                    var sonsCrafting = Crafting.Refresh();
-                    var sonsBuilding = Building.Refresh();
-                    var sonsNetworking = Networking.Refresh();
-                    var bepinExPluginCompatibility = BepInExPluginCompatibility.Refresh(modInventory);
-                    var nativeModHost = ModHost.Refresh(modInventory);
-                    var fileIntegrity = refreshFileIntegrity ? FileIntegrity.Refresh() : FileIntegrity.Snapshot;
-                    var runtimeAttestation = RuntimeAttestation.Refresh();
+                    ItemRegistrationSnapshot sonsItemRegistration;
+                    InventorySnapshot sonsInventory;
+                    CraftingSnapshot sonsCrafting;
+                    BuildingSnapshot sonsBuilding;
+                    NetworkingSnapshot sonsNetworking;
+                    using (Timings.MeasureCapture("LoaderState.Sons"))
+                    {
+                        sonsItemRegistration = ItemRegistration.Refresh();
+                        sonsInventory = Inventory.Refresh();
+                        sonsCrafting = Crafting.Refresh();
+                        sonsBuilding = Building.Refresh();
+                        sonsNetworking = Networking.Refresh();
+                    }
+                    BepInExPluginCompatibilitySnapshot bepinExPluginCompatibility;
+                    ModHostSnapshot nativeModHost;
+                    FileIntegritySnapshot fileIntegrity;
+                    RuntimeAttestationSnapshot runtimeAttestation;
+                    using (Timings.MeasureCapture("LoaderState.Mods"))
+                    {
+                        bepinExPluginCompatibility = BepInExPluginCompatibility.Refresh(modInventory);
+                        nativeModHost = ModHost.Refresh(modInventory);
+                        fileIntegrity = refreshFileIntegrity ? FileIntegrity.Refresh() : FileIntegrity.Snapshot;
+                        runtimeAttestation = RuntimeAttestation.Refresh();
+                    }
                     var serverPolicy = ServerPolicy.Refresh();
                     var loadedModsStatus = LoadedMods.TryCapture(out var loadedMods);
                     var sonsSdkUiReady = !LoaderEnvironment.IsDedicatedServer && startupError == null
@@ -271,7 +291,7 @@ namespace Modstoke.Loader
                     if (!force && !_pendingFileIntegrityRefresh && !Idle())
                     {
                         // The open Mods menu lists the mod inventory, so a change to it still reaches the menu.
-                        if (_capturedInventoryRevision == _inventoryRevision || !MenuController.IsVisible)
+                        if (_capturedInventoryRevision == _inventoryRevision || !MenuController.IsVisible && !FrontEnd.ModsOpen)
                             return;
                         publishOnly = true;
                     }
@@ -321,7 +341,9 @@ namespace Modstoke.Loader
             }
         }
 
-        // The title screen with no load under way, or a dedicated server nobody is connected to.
+        // The title screen with no load under way, or a dedicated server nobody is connected to. At the title the export
+        // waits out the title's first seconds, while its menus come up, and then for the menus to stand still, so its
+        // long frame never lands in an animation.
         private static bool Idle()
         {
             try
@@ -329,7 +351,14 @@ namespace Modstoke.Loader
                 if (LoaderEnvironment.IsDedicatedServer)
                     return global::Modstoke.Sons.ServerSessions.HooksInstalled
                         && global::Modstoke.Sons.ServerSessions.Sessions.Count == 0;
-                return global::Modstoke.Sons.GameRuntime.IsTitleScene && !global::Sons.Loading.LoadScene._isLoading;
+                if (!global::Modstoke.Sons.GameRuntime.IsTitleScene || global::Sons.Loading.LoadScene._isLoading)
+                {
+                    _titleSince = -1;
+                    return false;
+                }
+                var now = Environment.TickCount64;
+                if (_titleSince < 0) _titleSince = now;
+                return now - _titleSince >= TitleSettleMs && Moving.Idle;
             }
             catch (Exception)
             {

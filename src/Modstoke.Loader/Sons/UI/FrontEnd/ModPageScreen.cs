@@ -176,8 +176,8 @@ namespace Modstoke.Loader
     /// <summary>
     /// A mod's own page, or one of the pages it registers, in place of the Mods menu's: its settings, config values,
     /// forms, commands and links laid out like every other Modstoke screen. The page is the one the Mods menu builds for
-    /// the same key, and every change goes through the Mods menu's own handlers. A config file editor and a mod's live
-    /// settings and actions still open in the Mods menu, which has the editors for them.
+    /// the same key, and every change goes through the Mods menu's own handlers. A config file opens on a screen of its
+    /// own, and a mod's live settings and actions in the mod's own panel, which hands back here when it closes.
     /// </summary>
     internal sealed class ModPageScreen : SettingsScreen
     {
@@ -187,6 +187,8 @@ namespace Modstoke.Loader
         private readonly Dictionary<string, string> _sections = new(StringComparer.Ordinal);
         private readonly string _trail;
         private string _key, _shape;
+        // Why a mod's panel did not open, until another row is chosen.
+        private string _notice;
         private MenuPage _page;
         private float _nextRefresh;
         private bool _reload;
@@ -227,6 +229,7 @@ namespace Modstoke.Loader
         {
             var source = SourceOf(row);
             var lines = new List<string>();
+            if (_notice != null) lines.Add("<color=" + MenuKit.Html(MenuKit.Red) + ">" + _notice + "</color>");
             if (source != null)
             {
                 if (!string.IsNullOrWhiteSpace(source.Detail)) lines.Add(source.Detail.Trim());
@@ -236,8 +239,8 @@ namespace Modstoke.Loader
                     lines.Add("<color=" + MenuKit.Html(source.Tone == MenuTone.Bad ? MenuKit.Red : MenuKit.Amber) + ">" + source.Status + "</color>");
                 switch (source.Intent?.Kind)
                 {
-                    case MenuIntentKind.OpenConfigFile or MenuIntentKind.OpenLiveSettings or MenuIntentKind.OpenModActions:
-                        lines.Add(Text["modpage.opensMenu"]);
+                    case MenuIntentKind.OpenLiveSettings or MenuIntentKind.OpenModActions:
+                        lines.Add(Text["modpage.live"]);
                         break;
                     case MenuIntentKind.RunCommand when !row.ReadOnly:
                         lines.Add(Text["modpage.run"]);
@@ -346,11 +349,12 @@ namespace Modstoke.Loader
             return applied;
         }
 
-        /// <summary>Follows a link, runs a command, or hands a dedicated editor over to the Mods menu.</summary>
+        /// <summary>Follows a link, runs a command, or opens a config file or the mod's own panel.</summary>
         internal void Activate(Slot slot)
         {
             var row = slot.Row;
             var intent = row.Intent ?? MenuIntent.None;
+            _notice = null;
             try
             {
                 switch (intent.Kind)
@@ -369,9 +373,15 @@ namespace Modstoke.Loader
                         _reload = true;
                         break;
                     case MenuIntentKind.OpenConfigFile:
+                        if (MenuState.FindEntry(intent.EntryId) is { } entry) FrontEnd.Push(new ConfigScreen(entry));
+                        break;
                     case MenuIntentKind.OpenLiveSettings:
                     case MenuIntentKind.OpenModActions:
-                        MenuController.ShowHandedOver(_key);
+                        if (!MenuController.OpenLiveControlsOverFrontEnd(intent.EntryId, intent.Kind == MenuIntentKind.OpenLiveSettings))
+                        {
+                            _notice = Text["modpage.liveUnavailable"];
+                            Refresh();
+                        }
                         break;
                 }
             }

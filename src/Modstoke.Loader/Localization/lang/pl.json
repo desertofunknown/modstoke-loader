@@ -755,6 +755,7 @@
       "running": "Działa",
       "ready": "Gotowy",
       "missing": "Brak",
+      "failed": "Błąd",
       "check": "Sprawdź",
       "off": "Wyłączony",
       "found": "Znaleziony"
@@ -764,6 +765,7 @@
       "running": "Uruchomiony przez Modstoke.",
       "ready": "Zainstalowany i gotowy.",
       "missing": "Brakuje czegoś, czego potrzebuje.",
+      "failed": "Zatrzymał się z powodu błędu.",
       "check": "Zainstalowany, ale coś w nim wymaga sprawdzenia.",
       "off": "Wyłączony.",
       "found": "Znaleziony na tym komputerze."
@@ -801,6 +803,7 @@
     "unnamed": "Gracz {number}",
     "mute": "Wycisz",
     "unmute": "Cofnij wyciszenie",
+    "muted": "Wyciszony",
     "unban": "Odbanuj",
     "makeGuest": "Ustaw jako gościa",
     "makeTrusted": "Ustaw jako zaufanego",
@@ -840,6 +843,10 @@
       "playerAbout": "W tej grze. Serwer nie udostępnia jego profilu Steam.",
       "bannedAbout": "Ma bana w tej grze."
     }
+  },
+
+  "voice": {
+    "radio": "Krótkofalówka"
   },
 
   "console": {
@@ -912,9 +919,36 @@
   },
 
   "modpage": {
-    "opensMenu": "Otwiera się w menu Mody, które ma do tego edytor.",
+    "live": "Otwiera własny panel moda. Po jego zamknięciu wrócisz tutaj.",
+    "liveUnavailable": "Panelu tego moda nie można teraz otworzyć.",
     "run": "Wybranie od razu to uruchamia.",
     "last": "Ostatni wynik: {status}"
+  },
+
+  "config": {
+    "heading": "Plik konfiguracyjny",
+    "save": "Zapisz",
+    "unsaved": "Zmiany nie są jeszcze zapisane",
+    "saved": "Zapisano. Niektóre mody stosują zmiany dopiero po ponownym uruchomieniu.",
+    "saveFailed": "Nie udało się zapisać pliku. Przyczynę znajdziesz w dzienniku programu Loader.",
+    "unreadable": "Nie udało się odczytać tego pliku, więc nie można go tu zmienić.",
+    "empty": "Ten plik nie ma prostych ustawień, które można tu wyświetlić.",
+    "textEditor": "Edytuj jako tekst",
+    "textEditorAbout": "Otwiera cały plik w klasycznym edytorze tekstu. Wstecz przenosi cię stamtąd z powrotem tutaj.",
+    "saveFirst": "Najpierw zapisz lub przywróć zmiany.",
+    "unsavedTitle": "Odrzucić zmiany?",
+    "unsavedBody": "Zmiany w tym pliku konfiguracyjnym nie są jeszcze zapisane.",
+    "discard": "Odrzuć",
+    "keepEditing": "Edytuj dalej",
+
+    "fact": {
+      "key": "Klucz",
+      "saved": "Zapisana wartość"
+    },
+
+    "section": {
+      "file": "Plik"
+    }
   },
 
   "confirm": {
@@ -932,6 +966,13 @@
     "hungTitle": "DirectX 12 przestał odpowiadać",
     "hungBody": "Ostatnim razem karta graficzna przestała odpowiadać w DirectX 12 i gra została zamknięta. Od następnego uruchomienia gra znów korzysta z DirectX 11, tak jak w oryginale.",
     "quit": "Wyjdź"
+  },
+
+  "dialog": {
+    "ok": "OK",
+    "type": "Wpisz",
+    "restartTitle": "Wymagane ponowne uruchomienie",
+    "restartBody": "Zmiany zaczną działać po ponownym uruchomieniu gry."
   },
 
   "multiplayer": {

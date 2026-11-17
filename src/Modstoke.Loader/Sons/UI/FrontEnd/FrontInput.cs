@@ -51,6 +51,12 @@ namespace Modstoke.Loader
         /// <summary>Whether a screen is waiting for a key or button to bind; every menu input stays quiet meanwhile.</summary>
         internal static bool Listening { get; set; }
 
+        /// <summary>
+        /// A system dialog has the input: pauses the screens under it ask for are ignored until it lets go, and the
+        /// stick and Space work as menu controls whatever those screens set.
+        /// </summary>
+        internal static bool Captured { get; set; }
+
         /// <summary>Whether a controller is the device in use, by the game's own flag.</summary>
         internal static bool PadActive
         {
@@ -62,7 +68,10 @@ namespace Modstoke.Loader
         }
 
         /// <summary>Ignores presses for a moment, so the press that opened a screen does not also act on it.</summary>
-        internal static void Pause(float seconds = 0.25f) => _resumeAt = Mathf.Max(_resumeAt, Time.unscaledTime + seconds);
+        internal static void Pause(float seconds = 0.25f)
+        {
+            if (!Captured) _resumeAt = Mathf.Max(_resumeAt, Time.unscaledTime + seconds);
+        }
 
         /// <summary>
         /// Ignores presses until nothing the menus read is held, so a key or button pressed for something else, as
@@ -93,8 +102,9 @@ namespace Modstoke.Loader
             var mouse = UnityEngine.Input.GetMouseButton(0);
             // Index 0 and 2 of the pad's tracked buttons are its confirm and X buttons, held or not.
             var alt1Held = UnityEngine.Input.GetKey(KeyCode.Delete) || PadDown[2];
+            var space = SpaceConfirms || Captured;
             var confirmHeld = UnityEngine.Input.GetKey(KeyCode.Return) || UnityEngine.Input.GetKey(KeyCode.KeypadEnter)
-                || SpaceConfirms && UnityEngine.Input.GetKey(KeyCode.Space) || PadDown[0];
+                || space && UnityEngine.Input.GetKey(KeyCode.Space) || PadDown[0];
             if (_awaitRelease && held == Vector2Int.zero && !mouse && !alt1Held && !confirmHeld && Array.IndexOf(PadDown, true) < 0)
                 _awaitRelease = false;
             var acting = !Listening && !_awaitRelease && Time.unscaledTime >= _resumeAt;
@@ -116,7 +126,7 @@ namespace Modstoke.Loader
             if (!acting) return;
 
             Confirm = confirm || UnityEngine.Input.GetKeyDown(KeyCode.Return) || UnityEngine.Input.GetKeyDown(KeyCode.KeypadEnter)
-                || SpaceConfirms && UnityEngine.Input.GetKeyDown(KeyCode.Space);
+                || space && UnityEngine.Input.GetKeyDown(KeyCode.Space);
             Back = back || UnityEngine.Input.GetKeyDown(KeyCode.Escape);
             Alt1 = alt1 || UnityEngine.Input.GetKeyDown(KeyCode.F5) || UnityEngine.Input.GetKeyDown(KeyCode.Delete);
             Alt2 = alt2 || UnityEngine.Input.GetKeyDown(KeyCode.F2);
@@ -138,7 +148,7 @@ namespace Modstoke.Loader
             {
                 var pad = Gamepad.current;
                 if (pad == null) return;
-                var stick = StickNavigates;
+                var stick = StickNavigates || Captured;
                 if (pad.dpad.right.isPressed || stick && pad.leftStick.right.isPressed) held.x = 1;
                 else if (pad.dpad.left.isPressed || stick && pad.leftStick.left.isPressed) held.x = -1;
                 if (pad.dpad.down.isPressed || stick && pad.leftStick.down.isPressed) held.y = 1;

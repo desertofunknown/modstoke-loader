@@ -1395,6 +1395,36 @@ the inspected server relay and its playback, not other applications or arbitrary
 networking installed by peers. Private channels, proximity behavior and dedicated
 operation still require multiplayer qualification before relying on them.
 
+## Voice presence
+
+`PlayerVoice.IsTalking(entity)`, or the same with the entity's packed network ID,
+is true while that player's voice is reaching this PC, with a short hold over the
+gaps between Steam's voice bursts. It reads false for a player muted on this PC,
+and for one the game plays silent because it can't tell who they are. A listen
+host plays every client wherever they are, so it counts positional voice only
+inside the game's voice range, as a client would hear it. On a dedicated server
+it follows the voice the server relays, through the game's own talking monitor,
+which lets go about a second after someone stops. The local player reads
+`Transmitting`.
+
+`PlayerVoice.MicOpen` is true while the game is recording the local microphone
+in a world: push to talk held, the always-on microphone, or a radio in hand. It
+records whether or not anyone is near. `Transmitting` is true while that voice
+is going out to another player. The game sends nothing while nobody is in voice
+range, so an open microphone with nobody near reads false. The Loader logs the
+first time the microphone opens and closes in each world, and warns once if
+always-on is chosen but the game isn't recording it.
+
+```csharp
+// A walkie-talkie screen that lights while its holder talks.
+screen.SetActive(PlayerVoice.IsTalking(holder));
+```
+
+Read these on the game thread. They drive presentation, as the Loader's own
+voice marks do (bars beside a talking player's name tag and in the Players list,
+and the microphone on the HUD); a client decides what it sends, so they are never
+evidence about a player.
+
 ## Incoming Chat Policy
 
 `ServerChat.Receiving` handles game chat and negotiated client
@@ -2007,6 +2037,26 @@ inventory-mat models and the Client's devices and character body use it. The
 player's camera only exists in the fade's last part, so setup that needs it keeps
 retrying until it does. `IsInWorld` stays false throughout, so anything the player
 interacts with still waits for the world.
+
+The Modstoke loading screen lifts as soon as frames settle, part way into this
+window, so setup that starts late in it can still land in a frame the player
+sees. To keep it under the loading screen, hold the reveal.
+
+## World reveal
+
+`WorldReveal.HoldUntil(owner, ready, limitSeconds)` keeps every new world behind
+the loading screen until `ready` returns true, or for at most `limitSeconds` (10 by
+default) after the world has loaded. Register it once at start-up and dispose the
+result when the mod stops. `ready` runs on the game thread each frame while
+`WorldReveal.Covered` is true, from the world's scenes being in until the game
+starts its fade in; return true when this world needs nothing from the mod, and
+never wait on something that only happens once the player can see, such as
+`IsInWorld` or the player's camera. A hold that runs out is logged with its owner,
+and the reveal goes ahead. While `Covered` holds a long frame only pauses the
+loading bar, so one-time setup can take a bigger share of each frame. The
+Loader's inventory-mat models, Spacecraft's saved ship, Terraforming's saved
+ground and Field Devices' tablet screen and inventory devices hold the reveal this
+way. A dedicated server has no loading screen and never asks.
 
 ## World lifetime
 

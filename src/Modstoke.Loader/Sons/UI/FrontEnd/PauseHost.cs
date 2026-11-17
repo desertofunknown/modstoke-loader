@@ -130,6 +130,27 @@ namespace Modstoke.Loader
             }
         }
 
+        /// <summary>
+        /// Opens the pause menu from the world through the game's own check for its pause key; false where that key would
+        /// not open it now, as in a cutscene or while a seat, a device or the inventory holds the game's controls.
+        /// </summary>
+        internal static bool TryOpen()
+        {
+            var menu = Menu;
+            if (menu == null) return false;
+            try
+            {
+                if (!menu.CanBeOpened()) return false;
+                menu.Open();
+                return true;
+            }
+            catch (Exception error)
+            {
+                RuntimeEntryPoint.LogSource?.LogWarning("The pause menu could not be opened: " + error.Message);
+                return false;
+            }
+        }
+
         internal static void Resume()
         {
             HoldEscape(false);

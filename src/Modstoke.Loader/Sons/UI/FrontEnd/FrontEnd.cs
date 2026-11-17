@@ -42,11 +42,12 @@ namespace Modstoke.Loader
         private static GameObject _root;
         private static RectTransform _rect, _prompts;
         private static int _width, _height, _stackLayout;
-        private static bool _failed, _pad, _retext, _subscribed, _promptsDirty, _shown, _hostWanted, _photoWanted;
+        private static bool _failed, _pad, _retext, _subscribed, _promptsDirty, _shown, _hostWanted;
         private static long _nextSettingRead;
         private static bool _classic, _plainFonts;
-        private static float _asideUntil, _hostWantedAt, _photoWantedAt, _fontWaitStart = -1;
+        private static float _asideUntil, _hostWantedAt, _overPauseAt, _fontWaitStart = -1;
         private static PromptView _hoverPrompt;
+        private static Action _overPause;
 
         internal static float S { get; private set; } = 1f;
         internal static float U(float design) => design * S;
@@ -214,17 +215,21 @@ namespace Modstoke.Loader
         internal static void CancelHost() => _hostWanted = false;
 
         /// <summary>
-        /// Opens photo mode straight over the pause menu the photo key is opening, in the same frame, so the pause
-        /// screen itself is never seen. A request the pause menu never picks up lapses after a second.
+        /// Opens a screen straight over the pause menu a key is opening from the world, as photo mode and the Mods screen
+        /// do, in the same frame, so the pause screen itself is never seen. A request the pause menu never picks up
+        /// lapses after a second.
         /// </summary>
-        internal static void WantPhoto()
+        internal static void OverPause(Action open)
         {
-            _photoWanted = true;
-            _photoWantedAt = Time.unscaledTime;
+            _overPause = open;
+            _overPauseAt = Time.unscaledTime;
         }
 
         /// <summary>Whether one of the game's own dialogs is up.</summary>
         internal static bool ModalShowing => ModalOpen();
+
+        /// <summary>Whether the Mods screen, or a page opened from it, is showing.</summary>
+        internal static bool ModsOpen => _shown && Stack.Exists(screen => screen is ModsScreen);
 
         /// <summary>
         /// A scene just loaded, before its first frame is drawn: a game menu that Modstoke replaces is made
@@ -237,21 +242,51 @@ namespace Modstoke.Loader
         }
 
         /// <summary>
-        /// Opens the Mods screen over the title or the pause menu, or closes it when it is already in front, as the
-        /// Mods hotkey toggles; false where these menus are not showing, for the Mods menu to open on its own.
+        /// Opens the Mods screen over the title or the pause menu, or closes it with everything opened from it, as the
+        /// Mods hotkey toggles. In the world it opens over the game's pause menu, brought up as the game's pause key
+        /// would: the game then pauses in single player, puts its HUD away and frees the cursor, and online play
+        /// carries on. False where none of that can happen, for the Mods menu to open on its own.
         /// </summary>
         internal static bool OpenModsScreen()
         {
-            if (_failed || !_shown || Stack.Count == 0 || _place != Place.Title && _place != Place.Pause) return false;
-            // Photo mode keeps the screen to itself; the key does nothing there.
-            if (Stack[Stack.Count - 1] is PhotoScreen) return true;
-            if (Stack[Stack.Count - 1] is ModsScreen) Pop();
-            else
+            if (_failed || !Enabled) return false;
+            if (_place == Place.None)
+            {
+                OverPause(() =>
+                {
+                    MenuSound.Play(MenuCue.Forward);
+                    Push(new ModsScreen(fromWorld: true));
+                });
+                if (PauseHost.TryOpen()) return true;
+                _overPause = null;
+                return false;
+            }
+            if (!_shown || Stack.Count == 0 || _place != Place.Title && _place != Place.Pause) return false;
+            var top = Stack[Stack.Count - 1];
+            // Photo mode keeps the screen to itself and a question waits for its answer; the key does nothing there.
+            if (top is PhotoScreen || top.Overlay) return true;
+            var mods = Stack.FindIndex(screen => screen is ModsScreen);
+            if (mods < 0)
             {
                 MenuSound.Play(MenuCue.Forward);
                 Push(new ModsScreen());
             }
+            else if (top is ConfigScreen config) config.Leave(() => CloseMods(mods));
+            else CloseMods(mods);
             return true;
+        }
+
+        // Back to play for a Mods screen opened from the world, otherwise to the screen it was opened over.
+        private static void CloseMods(int index)
+        {
+            if (Stack[index] is ModsScreen { FromWorld: true })
+            {
+                MenuSound.Play(MenuCue.Back);
+                PauseHost.Resume();
+                return;
+            }
+            for (var i = Stack.Count - 1; i > index; i--) Remove(i);
+            Pop();
         }
 
         /// <summary>The game's pause menu was created; its button bar is made invisible before it is ever opened.</summary>
@@ -319,6 +354,7 @@ namespace Modstoke.Loader
             if (!Enabled)
             {
                 if (Stack.Count > 0 || _shown) Shutdown();
+                SystemDialogs.Release();
                 return;
             }
             if (!_subscribed)
@@ -328,6 +364,8 @@ namespace Modstoke.Loader
             }
             Measure();
             _fontsSettled = FontsSettled();
+            // Before the screens, which stand still under a dialog this frame rather than take its input.
+            SystemDialogs.Tick(_fontsSettled);
             // A lobby can open while the title scene is still loaded underneath, and comes first.
             var place = LobbyHost.Open ? Place.Lobby : title ? Place.Title : PauseHost.Open ? Place.Pause : Place.None;
             if (place != _place)
@@ -402,10 +440,10 @@ namespace Modstoke.Loader
         // Away from the title, the layer shows for the lobby and while the game is paused.
         private static void RunElsewhere(Place place)
         {
-            // Over the pause screen, Escape steps back to it rather than closing the game's whole menu.
-            if (place == Place.Pause) PauseHost.HoldEscape(Stack.Count > 1);
+            // Over the pause screen, Escape steps back to it, or answers a dialog, rather than closing the game's whole menu.
+            if (place == Place.Pause) PauseHost.HoldEscape(Stack.Count > 1 || SystemDialogs.Holding);
             if (UnderLoadingScreen()) return;
-            if (ModalOpen() || Time.unscaledTime < _asideUntil)
+            if (SystemDialogs.GameStyleOpen || Time.unscaledTime < _asideUntil)
             {
                 Show(false);
                 FrontInput.Pause();
@@ -415,11 +453,17 @@ namespace Modstoke.Loader
             Canvas();
             if (Stack.Count > 0 && _stackLayout != LayoutVersion) Rebuild();
             if (Stack.Count == 0) Push(place == Place.Lobby ? new LobbyScreen() : new PauseScreen());
-            if (_photoWanted && place == Place.Pause)
+            if (_overPause != null && place == Place.Pause)
             {
-                var fresh = Time.unscaledTime - _photoWantedAt < 1f;
-                _photoWanted = false;
-                if (fresh && Stack.Count == 1) PhotoScreen.Open(fromWorld: true);
+                var open = _overPause;
+                var fresh = Time.unscaledTime - _overPauseAt < 1f;
+                _overPause = null;
+                if (fresh && Stack.Count == 1)
+                {
+                    open();
+                    // From this first frame Escape steps back on the new screen, not out of the game's whole menu.
+                    if (Stack.Count > 1) PauseHost.HoldEscape(true);
+                }
             }
             if (place == Place.Lobby) LobbyHost.HideNative();
             else PauseHost.HideNative();
@@ -437,8 +481,9 @@ namespace Modstoke.Loader
             TakePages();
             GameMenus.CloseReplaced();
             if (UnderLoadingScreen()) return;
-            // The game's own pages and dialogs are under this layer, so it steps aside while one is up.
-            if (GameMenus.DialogOpen || ModalOpen() || GameMenus.OtherSceneOpen || Time.unscaledTime < _asideUntil)
+            // The game's own pages are under this layer, so it steps aside while one is up; its dialogs show over it in
+            // Modstoke's design, unless one has to keep the game's.
+            if (GameMenus.DialogOpen || SystemDialogs.GameStyleOpen || GameMenus.OtherSceneOpen || Time.unscaledTime < _asideUntil)
             {
                 Show(false);
                 FrontInput.Pause();
@@ -478,11 +523,11 @@ namespace Modstoke.Loader
             return true;
         }
 
-        // The mods menu and a mod's own screen (opened from its page, as a character editor is) have a veil of their
-        // own; behind them the world shows, blurred, rather than these screens.
+        // The mods menu, a mod's own screen (opened from its page, as a character editor is) and a mod's live settings
+        // or actions have a veil of their own; behind them the world shows, blurred, rather than these screens.
         private static bool CoveredByModsMenu()
         {
-            if (!MenuController.IsVisible && !ScreenHost.IsOpen) return false;
+            if (!MenuController.IsVisible && !ScreenHost.IsOpen && !MenuController.LiveControlsOpen) return false;
             Show(false);
             WorldBlur.Want(true);
             FrontInput.Pause();
@@ -508,15 +553,16 @@ namespace Modstoke.Loader
                 _promptsDirty = true;
             }
             if (_promptsDirty) BuildPrompts(top);
-            if (_prompts != null && _prompts && _prompts.gameObject.activeSelf != (_shown && top.ShowsPrompts))
-                _prompts.gameObject.SetActive(_shown && top.ShowsPrompts);
+            // A dialog over the screen shows prompts of its own.
+            var prompts = _shown && top.ShowsPrompts && !SystemDialogs.Open;
+            if (_prompts != null && _prompts && _prompts.gameObject.activeSelf != prompts) _prompts.gameObject.SetActive(prompts);
             top.Animate();
             // The lobby has its own blurred backdrop and the pause menu its own volume; the title's world is blurred here.
-            WorldBlur.Want(top.Blurs && _place == Place.Title);
+            WorldBlur.Want((top.Blurs || SystemDialogs.Open) && _place == Place.Title);
             GameMenus.FadeLogo(top.ShowsLogo, Time.unscaledDeltaTime);
 
-            // The console draws over this layer and takes input while open.
-            if (ConsoleOverlay.IsVisible)
+            // The console draws over this layer and takes input while open, and so does a dialog over it.
+            if (ConsoleOverlay.IsVisible || SystemDialogs.Open)
             {
                 FrontInput.Pause();
                 return;
@@ -606,11 +652,15 @@ namespace Modstoke.Loader
 
         private static void Shutdown()
         {
+            // First and on its own, so a hidden game dialog always comes back.
+            SystemDialogs.Release();
             try
             {
                 PhotoSession.Shutdown();
                 Clear();
                 _shown = false;
+                // After a failure nothing ticks its fade out.
+                WorldBlur.Off();
                 if (_busy != null && _busy) _busy.gameObject.SetActive(false);
                 GameMenus.HideBar(false);
                 GameMenus.FadeLogo(true, 1f);

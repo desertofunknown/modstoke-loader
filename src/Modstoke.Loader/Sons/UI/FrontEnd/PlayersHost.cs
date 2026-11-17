@@ -118,7 +118,11 @@ namespace Modstoke.Loader
 
         internal static bool Muted(ulong id) => Safe(() => CoopSteamVoicePlayer.IsPlayerSteamIdMuted(id), false);
 
-        internal static void SetMuted(ulong id, bool muted) => CoopSteamVoicePlayer.SetPlayerSteamIdMuted(id, muted);
+        internal static void SetMuted(ulong id, bool muted)
+        {
+            CoopSteamVoicePlayer.SetPlayerSteamIdMuted(id, muted);
+            global::Modstoke.Sons.PlayerVoice.MuteChanged();
+        }
 
         internal static void Kick(ulong id) => CoopAdminCommand.Send(CoopAdminCommand.Command_playerkick, id);
 

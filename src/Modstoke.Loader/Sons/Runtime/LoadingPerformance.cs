@@ -20,7 +20,8 @@ namespace Modstoke.Sons
     /// keeps its small slices.
     /// Frame caps: the game's frame limiter holds the menus and the world's loading screen at 30 fps. The menus get
     /// 60 fps; while a world loads, 240 fps, because Unity's uploads and scene integration advance once per frame.
-    /// The new world is revealed as soon as frames settle instead of after the game's fixed black-screen wait.
+    /// The new world is revealed as soon as frames settle and no mod holds it (<see cref="WorldReveal"/>), instead of
+    /// after the game's fixed black-screen wait.
     /// During a performance capture each loading step is marked on the timeline.
     /// </summary>
     internal static class LoadingPerformance
@@ -36,9 +37,11 @@ namespace Modstoke.Sons
         private const float SettledSeconds = 0.15f;
         private static float _smoothSeconds;
         private static global::Sons.Utils.MainSceneLoadingTrigger _reveal;
-        private static float _nextRevealSearch;
+        private static float _nextRevealSearch, _gameWait, _coveredAt = -1, _heldAt = -1;
         private static int _smoothFrames;
-        private static bool _revealHandled;
+        private static bool _revealHandled, _revealFound, _revealDone;
+        private static string _holder;
+        private static readonly List<string> Holders = new();
         private static (int Slice, int Buffer, bool Persistent)? _gameUpload;
         private static readonly Dictionary<IntPtr, (FpsLimiterOverride Override, int Fps)> RaisedOverrides = new();
         private static FpsLimiter _limiter;
@@ -87,6 +90,7 @@ namespace Modstoke.Sons
             {
                 // A changed game build must not take frame pacing or loading with it.
                 _failed = true;
+                WorldReveal.Covered = false;
                 RestoreMenuCaps();
                 RestorePriority();
                 RuntimeEntryPoint.LogSource?.LogWarning("Loading performance corrections stopped: " + error.Message);
@@ -127,7 +131,12 @@ namespace Modstoke.Sons
             _playerView = null;
             _reveal = null;
             _nextRevealSearch = 0;
-            _revealHandled = false;
+            _revealHandled = _revealFound = _revealDone = false;
+            _coveredAt = _heldAt = -1;
+            _holder = null;
+            Holders.Clear();
+            WorldReveal.Covered = false;
+            WorldReveal.BeginLoad();
         }
 
         // Loaders live in the scenes being loaded, so each newly current scene is searched once.
@@ -265,41 +274,88 @@ namespace Modstoke.Sons
         // _completeWaitTrigger has passed (3 s of game time in this build, stretched further by the long frames right
         // after loading) and PlayerActivationDependencies are all done. Captures show frames running steadily for the
         // last 2.5 s of that wait with nothing left to do. Once frames have settled the fixed part is dropped, and the
-        // game's own dependency check still decides when the fade starts.
+        // game's own dependency check still decides when the fade starts. While a mod's WorldReveal hold is open the wait
+        // is kept from running out, so its one-time setup finishes under the loading screen.
         private static void RevealWhenSettled()
         {
-            if (_revealHandled || !LoadScene._isMainSceneLoadComplete) return;
+            if (_revealDone || !LoadScene._isMainSceneLoadComplete) return;
             if (!_reveal)
             {
+                // The trigger destroys itself the frame after it fires.
+                if (_revealFound)
+                {
+                    Uncover();
+                    return;
+                }
                 if (Time.unscaledTime < _nextRevealSearch) return;
                 _nextRevealSearch = Time.unscaledTime + 0.25f;
                 _reveal = UnityEngine.Object.FindObjectOfType<global::Sons.Utils.MainSceneLoadingTrigger>();
                 _smoothFrames = 0;
                 _smoothSeconds = 0;
                 if (!_reveal) return;
+                _revealFound = true;
+                _gameWait = _reveal._completeWaitTrigger;
+            }
+            if (_reveal._triggered)
+            {
+                Uncover();
+                return;
             }
             // A negative completion time means the loader has not reported completion yet.
             if (_reveal._completedTime < 0) return;
-            var wait = _reveal._completeWaitTrigger;
+            var now = Time.unscaledTime;
+            if (_coveredAt < 0) _coveredAt = now;
+            WorldReveal.Covered = true;
+            var delta = Time.unscaledDeltaTime;
+            _smoothFrames = delta < SettledFrameSeconds ? _smoothFrames + 1 : 0;
+            _smoothSeconds = _smoothFrames == 0 ? 0 : _smoothSeconds + delta;
+            if (_revealHandled) return;
             var waited = Time.time - _reveal._completedTime;
-            if (_reveal._triggered || waited >= wait)
+            if (HeldByMods(now, waited)) return;
+            if (waited >= _reveal._completeWaitTrigger)
             {
                 _revealHandled = true;
                 return;
             }
-            var delta = Time.unscaledDeltaTime;
-            _smoothFrames = delta < SettledFrameSeconds ? _smoothFrames + 1 : 0;
-            _smoothSeconds = _smoothFrames == 0 ? 0 : _smoothSeconds + delta;
             if (_smoothFrames < SettledFrames || _smoothSeconds < SettledSeconds) return;
             _revealHandled = true;
             _reveal._completeWaitTrigger = 0;
-            RuntimeEntryPoint.LogSource?.LogInfo($"World fade in no longer waits: frames settled {waited:0.0} s into the game's fixed {wait:0.#} s wait.");
-            PerformanceCapture.Mark("world-reveal", new { fixedWait = wait, waited });
+            RuntimeEntryPoint.LogSource?.LogInfo($"World fade in no longer waits: frames settled {waited:0.0} s into the game's fixed {_gameWait:0.#} s wait.");
+            PerformanceCapture.Mark("world-reveal", new { fixedWait = _gameWait, waited });
+        }
+
+        // The game's wait is kept a second ahead while a hold is open, so it still runs out soon should these checks stop.
+        // Once the last hold lets go the game's own wait starts over, in case frames never settle.
+        private static bool HeldByMods(float now, float waited)
+        {
+            var holder = WorldReveal.Holder(now - _coveredAt);
+            if (holder != _holder)
+            {
+                PerformanceCapture.Mark("reveal-hold", new { owner = holder, covered = now - _coveredAt });
+                if (holder != null && !Holders.Contains(holder)) Holders.Add(holder);
+                if (holder == null)
+                {
+                    _reveal._completeWaitTrigger = waited + _gameWait;
+                    RuntimeEntryPoint.LogSource?.LogInfo($"World fade in waited {now - _heldAt:0.0} s for mod setup ({string.Join(", ", Holders)}).");
+                }
+                else if (_holder == null) _heldAt = now;
+                _holder = holder;
+            }
+            if (holder == null) return false;
+            _reveal._completeWaitTrigger = waited + 1f;
+            return true;
+        }
+
+        private static void Uncover()
+        {
+            _revealDone = _revealHandled = true;
+            WorldReveal.Covered = false;
         }
 
         private static void End(string where)
         {
             _loading = false;
+            WorldReveal.Covered = false;
             RestoreMenuCaps();
             RestorePriority();
             Watched.Clear();

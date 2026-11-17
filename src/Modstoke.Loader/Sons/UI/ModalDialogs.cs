@@ -41,6 +41,9 @@ namespace Modstoke.Loader
             dialog.ClearCallbacks();
             dialog.ResetGui();
             dialog.SetData(title, message);
+            // The front end draws it in its own design; this game-styled copy then stays hidden, holding the callbacks.
+            if (SystemDialogs.ShowMod(dialog, title, message))
+                return;
             dialog.gameObject.SetActive(true);
             dialog._canvas.overrideSorting = true;
         }
@@ -49,6 +52,7 @@ namespace Modstoke.Loader
         {
             dialog.ClearCallbacks();
             dialog.gameObject.SetActive(false);
+            SystemDialogs.CloseMod(dialog);
         }
 
         public void Complete(Dialog dialog, Action callback)
@@ -63,6 +67,7 @@ namespace Modstoke.Loader
             dialog._option1TextObject.SetText(text);
             dialog._option1Button.gameObject.SetActive(true);
             dialog.OnOption1 += action;
+            SystemDialogs.ModOption(dialog, 0, text);
         }
 
         public void SetOption2(Dialog dialog, string text, Action action)
@@ -70,6 +75,7 @@ namespace Modstoke.Loader
             dialog._option2TextObject.SetText(text);
             dialog._option2Button.gameObject.SetActive(true);
             dialog.OnOption2 += action;
+            SystemDialogs.ModOption(dialog, 1, text);
         }
 
         public void SetOption3(Dialog dialog, string text, Action action)
@@ -77,6 +83,7 @@ namespace Modstoke.Loader
             dialog._option3TextObject.SetText(text);
             dialog._option3Button.gameObject.SetActive(true);
             dialog.OnOption3 += action;
+            SystemDialogs.ModOption(dialog, 2, text);
         }
 
         public void SetCancel(Dialog dialog, Action action)
@@ -153,6 +160,14 @@ namespace Modstoke.Loader
                     Object.DestroyImmediate(eventSystem);
                 }
                 dialog._canvas = newGui.GetComponent<Canvas>();
+                // A copy of the game's dialog taken while the front end hides it would come out hidden as well.
+                dialog._canvas.enabled = true;
+                var group = newGui.GetComponent<CanvasGroup>();
+                if (group)
+                {
+                    group.alpha = 1f;
+                    group.interactable = group.blocksRaycasts = true;
+                }
                 newGui.transform.localScale = Vector3.one;
 
                 var rect = newGui.GetComponent<RectTransform>();

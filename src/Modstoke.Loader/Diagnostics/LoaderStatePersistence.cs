@@ -30,7 +30,9 @@ namespace Modstoke.Loader
         {
             // Evaluate every getter and enumerate every collection on the owner thread.
             // Only detached read-only containers and scalar values reach the writer.
-            var request = new WriteRequest(Capture(state, 0), Path.GetFullPath(primaryPath), Path.GetFullPath(mirrorPath));
+            object captured;
+            using (Timings.MeasureCapture("LoaderState.Capture")) captured = Capture(state, 0);
+            var request = new WriteRequest(captured, Path.GetFullPath(primaryPath), Path.GetFullPath(mirrorPath));
             lock (Sync)
             {
                 _pending = request;

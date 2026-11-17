@@ -755,6 +755,7 @@
       "running": "執行中",
       "ready": "就緒",
       "missing": "缺少",
+      "failed": "失敗",
       "check": "需檢查",
       "off": "已關閉",
       "found": "已找到"
@@ -764,6 +765,7 @@
       "running": "正在透過 Modstoke 執行。",
       "ready": "已安裝，可以使用。",
       "missing": "缺少它執行所需的內容。",
+      "failed": "因發生錯誤而停止。",
       "check": "已安裝，但有地方需要檢查。",
       "off": "已關閉。",
       "found": "在這台電腦上找到。"
@@ -801,6 +803,7 @@
     "unnamed": "玩家 {number}",
     "mute": "靜音",
     "unmute": "取消靜音",
+    "muted": "已靜音",
     "unban": "解除封禁",
     "makeGuest": "設為訪客",
     "makeTrusted": "設為可信",
@@ -840,6 +843,10 @@
       "playerAbout": "在這局遊戲中。伺服器未提供此玩家的 Steam 個人檔案。",
       "bannedAbout": "已被禁止加入這場遊戲。"
     }
+  },
+
+  "voice": {
+    "radio": "對講機"
   },
 
   "console": {
@@ -912,9 +919,36 @@
   },
 
   "modpage": {
-    "opensMenu": "將在模組選單中開啟，對應的編輯器在那裡。",
+    "live": "開啟該模組自己的面板。關閉後會回到這裡。",
+    "liveUnavailable": "該模組的面板現在無法開啟。",
     "run": "選擇後會立即執行。",
     "last": "上次結果：{status}"
+  },
+
+  "config": {
+    "heading": "設定檔",
+    "save": "儲存",
+    "unsaved": "有尚未儲存的變更",
+    "saved": "已儲存。部分模組需要重新啟動後才會套用變更。",
+    "saveFailed": "無法儲存檔案。原因請見 Loader 記錄檔。",
+    "unreadable": "無法讀取此檔案，因此無法在這裡修改。",
+    "empty": "此檔案中沒有可在這裡列出的簡單設定。",
+    "textEditor": "以文字編輯",
+    "textEditorAbout": "在經典文字編輯器中開啟整個檔案。從那裡返回即可回到這裡。",
+    "saveFirst": "請先儲存或還原你的變更。",
+    "unsavedTitle": "放棄變更？",
+    "unsavedBody": "你對此設定檔的變更尚未儲存。",
+    "discard": "放棄",
+    "keepEditing": "繼續編輯",
+
+    "fact": {
+      "key": "鍵",
+      "saved": "已儲存的值"
+    },
+
+    "section": {
+      "file": "檔案"
+    }
   },
 
   "confirm": {
@@ -932,6 +966,13 @@
     "hungTitle": "DirectX 12 停止回應",
     "hungBody": "上次顯示卡在 DirectX 12 下停止回應，遊戲已關閉。從下次啟動起，遊戲將重新使用其預設的 DirectX 11。",
     "quit": "離開"
+  },
+
+  "dialog": {
+    "ok": "確定",
+    "type": "輸入",
+    "restartTitle": "需要重新啟動",
+    "restartBody": "這些變更會在遊戲重新啟動後生效。"
   },
 
   "multiplayer": {

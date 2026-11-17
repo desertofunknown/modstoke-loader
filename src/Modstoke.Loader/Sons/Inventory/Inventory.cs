@@ -227,6 +227,7 @@ namespace Modstoke.Sons
             _initialized = true;
             GameRuntime.SceneChanged += _ => Refresh();
             GameRuntime.WorldChanged += _ => Refresh();
+            WorldReveal.HoldUntil("Inventory mat models", () => ItemModelsSettled);
             Publish(InventorySnapshot.CreateUnknown());
             if (!MenuRegistry.RegisterOrUpdateBuiltInProvider(new Provider()))
             {

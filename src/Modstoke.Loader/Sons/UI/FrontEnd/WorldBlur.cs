@@ -27,6 +27,15 @@ namespace Modstoke.Loader
         /// <summary>Whether a menu wants the world behind it blurred this frame.</summary>
         internal static void Want(bool blurred) => _goal = blurred ? 1f : 0f;
 
+        /// <summary>Clears the blur at once, for menus that stop and will not tick its fade out.</summary>
+        internal static void Off()
+        {
+            _goal = _weight = 0f;
+            if (_volume == null || !_volume) return;
+            _volume.weight = 0f;
+            _volume.enabled = false;
+        }
+
         internal static void Tick()
         {
             if (_failed) return;

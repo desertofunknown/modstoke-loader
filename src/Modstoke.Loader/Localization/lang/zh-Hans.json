@@ -755,6 +755,7 @@
       "running": "运行中",
       "ready": "就绪",
       "missing": "缺少",
+      "failed": "失败",
       "check": "需检查",
       "off": "已关闭",
       "found": "已找到"
@@ -764,6 +765,7 @@
       "running": "正在通过 Modstoke 运行。",
       "ready": "已安装，可以使用。",
       "missing": "缺少它运行所需的内容。",
+      "failed": "因出错而停止。",
       "check": "已安装，但有地方需要检查。",
       "off": "已关闭。",
       "found": "在这台电脑上找到。"
@@ -801,6 +803,7 @@
     "unnamed": "玩家 {number}",
     "mute": "静音",
     "unmute": "取消静音",
+    "muted": "已静音",
     "unban": "解除封禁",
     "makeGuest": "设为访客",
     "makeTrusted": "设为可信",
@@ -840,6 +843,10 @@
       "playerAbout": "在这局游戏中。服务器未提供此玩家的 Steam 个人资料。",
       "bannedAbout": "已被禁止加入这局游戏。"
     }
+  },
+
+  "voice": {
+    "radio": "对讲机"
   },
 
   "console": {
@@ -912,9 +919,36 @@
   },
 
   "modpage": {
-    "opensMenu": "将在模组菜单中打开，对应的编辑器在那里。",
+    "live": "打开该模组自己的面板。关闭后会回到这里。",
+    "liveUnavailable": "该模组的面板现在无法打开。",
     "run": "选择后会立即运行。",
     "last": "上次结果：{status}"
+  },
+
+  "config": {
+    "heading": "配置文件",
+    "save": "保存",
+    "unsaved": "有尚未保存的更改",
+    "saved": "已保存。部分模组需要重启后才会应用更改。",
+    "saveFailed": "无法保存文件。原因见 Loader 日志。",
+    "unreadable": "无法读取此文件，因此无法在这里修改。",
+    "empty": "此文件中没有可在这里列出的简单设置。",
+    "textEditor": "以文本编辑",
+    "textEditorAbout": "在经典文本编辑器中打开整个文件。从那里返回即可回到这里。",
+    "saveFirst": "请先保存或还原你的更改。",
+    "unsavedTitle": "放弃更改？",
+    "unsavedBody": "你对此配置文件的更改尚未保存。",
+    "discard": "放弃",
+    "keepEditing": "继续编辑",
+
+    "fact": {
+      "key": "键",
+      "saved": "已保存的值"
+    },
+
+    "section": {
+      "file": "文件"
+    }
   },
 
   "confirm": {
@@ -932,6 +966,13 @@
     "hungTitle": "DirectX 12 停止响应",
     "hungBody": "上次显卡在 DirectX 12 下停止响应，游戏已关闭。从下次启动起，游戏将重新使用其默认的 DirectX 11。",
     "quit": "退出"
+  },
+
+  "dialog": {
+    "ok": "确定",
+    "type": "输入",
+    "restartTitle": "需要重启",
+    "restartBody": "这些更改将在游戏重新启动后生效。"
   },
 
   "multiplayer": {

@@ -224,19 +224,26 @@ namespace Modstoke.Sons
                 using (Timings.MeasureCapture("Sons.WeaponAttachments")) global::Modstoke.Sons.WeaponAttachments.Tick();
                 using (Timings.MeasureCapture("Sons.Networking"))
                 {
-                    global::Modstoke.Sons.ContentAgreement.LabelHostedLobby();
-                    global::Modstoke.Sons.KickReason.Tick();
-                    global::Modstoke.Sons.ServerDetailsPublisher.Tick();
-                    global::Modstoke.Sons.ServerBrowserBadges.Tick();
+                    using (Timings.MeasureCapture("Networking.LobbyLabel")) global::Modstoke.Sons.ContentAgreement.LabelHostedLobby();
+                    using (Timings.MeasureCapture("Networking.KickReason")) global::Modstoke.Sons.KickReason.Tick();
+                    using (Timings.MeasureCapture("Networking.ServerDetails")) global::Modstoke.Sons.ServerDetailsPublisher.Tick();
+                    using (Timings.MeasureCapture("Networking.BrowserBadges")) global::Modstoke.Sons.ServerBrowserBadges.Tick();
                 }
                 LocalizationStartup.Tick();
-                LoadingPerformance.Tick();
+                using (Timings.MeasureCapture("Sons.LoadingPerformance")) LoadingPerformance.Tick();
                 // Before the front end, which hides its screen once the loading screen covers it.
                 using (Timings.MeasureCapture("Sons.LoadingScreen")) LoadingScreen.Tick();
                 using (Timings.MeasureCapture("Sons.ContentCatalog")) ContentCatalog.Tick();
                 using (Timings.MeasureCapture("Sons.CraftingRecipes")) CraftingRecipeRegistration.Tick();
                 using (Timings.MeasureCapture("Sons.FrontEnd")) FrontEnd.Tick();
+                // After the front end, which measures the screen the toasts are scaled from.
+                using (Timings.MeasureCapture("Sons.Toasts")) HudToasts.Tick();
                 MultiplayerTakeover.Tick();
+                using (Timings.MeasureCapture("Sons.Voice"))
+                {
+                    PlayerVoice.Tick();
+                    VoicePresence.Tick();
+                }
             }
             finally
             {

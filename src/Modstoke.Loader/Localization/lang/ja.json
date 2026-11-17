@@ -755,6 +755,7 @@
       "running": "動作中",
       "ready": "準備完了",
       "missing": "不足",
+      "failed": "エラー",
       "check": "要確認",
       "off": "オフ",
       "found": "検出"
@@ -764,6 +765,7 @@
       "running": "Modstokeで動作しています。",
       "ready": "導入済みで、すぐに使えます。",
       "missing": "動作に必要なものが不足しています。",
+      "failed": "エラーで停止しました。",
       "check": "導入済みですが、確認が必要な点があります。",
       "off": "オフになっています。",
       "found": "このPCで見つかりました。"
@@ -801,6 +803,7 @@
     "unnamed": "プレイヤー {number}",
     "mute": "ミュート",
     "unmute": "ミュート解除",
+    "muted": "ミュート中",
     "unban": "BAN解除",
     "makeGuest": "ゲストにする",
     "makeTrusted": "信頼済みにする",
@@ -840,6 +843,10 @@
       "playerAbout": "このゲームに参加中です。サーバーはこのプレイヤーのSteamプロフィールを共有していません。",
       "bannedAbout": "このゲームからBANされています。"
     }
+  },
+
+  "voice": {
+    "radio": "無線"
   },
 
   "console": {
@@ -912,9 +919,36 @@
   },
 
   "modpage": {
-    "opensMenu": "MODメニューで開きます。専用のエディターはそちらにあります。",
+    "live": "MOD専用のパネルを開きます。閉じるとここに戻ります。",
+    "liveUnavailable": "このMODのパネルは今は開けません。",
     "run": "選択するとすぐに実行されます。",
     "last": "前回の結果：{status}"
+  },
+
+  "config": {
+    "heading": "設定ファイル",
+    "save": "保存",
+    "unsaved": "未保存の変更があります",
+    "saved": "保存しました。MODによっては再起動後に変更が反映されます。",
+    "saveFailed": "ファイルを保存できませんでした。原因はLoaderのログに記録されています。",
+    "unreadable": "このファイルを読み込めなかったため、ここでは変更できません。",
+    "empty": "このファイルには、ここに表示できる簡単な設定がありません。",
+    "textEditor": "テキストとして編集",
+    "textEditorAbout": "ファイル全体をクラシックなテキストエディターで開きます。そこから戻るとここに戻ります。",
+    "saveFirst": "先に変更を保存するか、元に戻してください。",
+    "unsavedTitle": "変更を破棄しますか？",
+    "unsavedBody": "この設定ファイルへの変更はまだ保存されていません。",
+    "discard": "破棄",
+    "keepEditing": "編集を続ける",
+
+    "fact": {
+      "key": "キー",
+      "saved": "保存された値"
+    },
+
+    "section": {
+      "file": "ファイル"
+    }
   },
 
   "confirm": {
@@ -932,6 +966,13 @@
     "hungTitle": "DirectX 12が応答しなくなりました",
     "hungBody": "前回、DirectX 12でグラフィックカードが応答しなくなり、ゲームが終了しました。次回の起動から、ゲームは標準のDirectX 11で描画します。",
     "quit": "終了"
+  },
+
+  "dialog": {
+    "ok": "OK",
+    "type": "入力",
+    "restartTitle": "再起動が必要です",
+    "restartBody": "変更はゲームの再起動後に反映されます。"
   },
 
   "multiplayer": {
