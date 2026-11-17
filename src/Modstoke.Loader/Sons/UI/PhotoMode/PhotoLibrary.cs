@@ -124,7 +124,7 @@ namespace Modstoke.Loader
                     // PngTextures' mip chain doubles as the downscale for photos larger than Steam's copy.
                     var mipmaps = Math.Max(written.Width, written.Height) > JpegLongEdge;
                     var path = written.Path;
-                    Conversions.Add(new Conversion(written, Task.Run(() => PngTextures.Decode(File.ReadAllBytes(path), mipmaps))));
+                    Conversions.Add(new Conversion(written, Task.Run(() => PngTextures.DecodePooled(path, mipmaps))));
                     written = null;
                 }
             }
@@ -144,7 +144,7 @@ namespace Modstoke.Loader
             try
             {
                 var written = conversion.Written;
-                var image = conversion.Decode.GetAwaiter().GetResult();
+                using var image = conversion.Decode.GetAwaiter().GetResult();
                 int width = image.Width, height = image.Height;
                 var offset = 0L;
                 for (var level = 1; level < image.Mips && Math.Max(width, height) > JpegLongEdge; level++)

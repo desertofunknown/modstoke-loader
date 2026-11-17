@@ -507,9 +507,10 @@ namespace Modstoke.Loader
         private static int LevelSize(int width, int height) => Math.Max(1, (width + 3) / 4) * Math.Max(1, (height + 3) / 4) * 16;
 
         // At most as many lines as the screen shows, between 1080 and 1440, box-filtered in linear light and graded.
+        // The full-size pixels are only read by the filter, so they come from the pool and go back to it.
         private static Decoded DecodePhoto(string path, int screenHeight)
         {
-            var image = PngTextures.Decode(File.ReadAllBytes(path), false);
+            using var image = PngTextures.DecodePooled(path, false);
             var lines = Math.Min(image.Height, Math.Max(1080, Math.Min(1440, screenHeight)));
             var width = Math.Max(1, (int)Math.Round(image.Width * (double)lines / image.Height));
             return new Decoded(Shrink(image.Data, image.Width, image.Height, width, lines), width, lines, false, false);

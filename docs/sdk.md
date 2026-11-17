@@ -2038,6 +2038,17 @@ texture per frame when several finish together.
 texture yourself if a later step fails. `Image.Data` holds every level's RGBA32
 pixels, for a caller that compresses them on its worker and uploads blocks instead.
 
+`Decode` also takes a `Stream`, so pass the file or the embedded resource stream
+itself rather than reading it into a byte array first; the decoder reads the image
+data in place and never holds a second copy of the file. `DecodePooled` (a stream or
+a file path) decodes into an array rented from `ArrayPool<byte>.Shared`. Dispose the
+image once `Load` has copied it or your worker has compressed it, and don't touch
+`Data` after that; the next decode of a similar size reuses the array. A pooled
+`Data` is usually longer than the image, so take the size from `Image.Length`.
+Pooling pays off for a run of decodes (a texture set, a few atlases); for one image
+kept until it is uploaded, plain `Decode` is leaner, as the pool rounds sizes up to
+the next power of two.
+
 ## Photo mode
 
 Photo mode is a free camera inside the pause menu (pause > Photo mode, or F10 in the

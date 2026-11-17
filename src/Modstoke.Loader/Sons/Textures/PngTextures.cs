@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Alex Cooper
 
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.IO;
 using System.IO.Compression;
@@ -23,14 +24,19 @@ namespace Modstoke.Sons
         private static ReadOnlySpan<byte> Signature => new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 };
 
         /// <summary>A decoded image as RGBA32 rows, bottom row first, with its mip chain after the full-size level.</summary>
-        public sealed class Image
+        public sealed class Image : IDisposable
         {
-            internal Image(int width, int height, int mips, byte[] data)
+            private readonly bool _pooled;
+            private byte[] _data;
+
+            internal Image(int width, int height, int mips, byte[] data, int length, bool pooled)
             {
                 Width = width;
                 Height = height;
                 Mips = mips;
-                Data = data;
+                _data = data;
+                Length = length;
+                _pooled = pooled;
             }
 
             public int Width { get; }
@@ -38,7 +44,19 @@ namespace Modstoke.Sons
             public int Mips { get; }
 
             /// <summary>The RGBA32 pixels of every level, for callers that finish the texture themselves.</summary>
-            public byte[] Data { get; }
+            /// <remarks>A pooled image's array is usually longer than <see cref="Length"/>.</remarks>
+            public byte[] Data => _data ?? throw new ObjectDisposedException(nameof(Image));
+
+            /// <summary>Bytes of pixel data at the start of <see cref="Data"/>.</summary>
+            public int Length { get; }
+
+            /// <summary>Gives a pooled image's array back to the pool; other images are left as they are.</summary>
+            public void Dispose()
+            {
+                if (!_pooled || _data == null) return;
+                ArrayPool<byte>.Shared.Return(_data);
+                _data = null;
+            }
         }
 
         /// <summary>Rewrites full-size RGBA32 pixels in place before the mip chain is built, such as a packed normal map layout.</summary>
@@ -54,29 +72,41 @@ namespace Modstoke.Sons
         public static Image Decode(byte[] png, bool mipmaps, PixelTransform transform)
         {
             ArgumentNullException.ThrowIfNull(png);
-            if (png.Length < 8 || !png.AsSpan(0, 8).SequenceEqual(Signature)) throw new InvalidDataException("Not a PNG image.");
-            int width = 0, height = 0, channels = 0;
-            using var compressed = new MemoryStream(png.Length);
-            var offset = 8;
-            while (offset + 8 <= png.Length)
-            {
-                var length = BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(offset));
-                var type = png.AsSpan(offset + 4, 4);
-                var start = offset + 8;
-                if (length < 0 || start + length + 4 > png.Length) throw new InvalidDataException("A PNG chunk runs past the end of the file.");
-                if (type.SequenceEqual("IHDR"u8))
-                {
-                    width = BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(start));
-                    height = BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(start + 4));
-                    if (png[start + 8] != 8 || png[start + 12] != 0) throw new NotSupportedException("Only 8-bit, non-interlaced PNG images are decoded here.");
-                    channels = png[start + 9] switch { 0 => 1, 4 => 2, 2 => 3, 6 => 4, _ => throw new NotSupportedException("Palette PNG images are not decoded here.") };
-                    if (width < 1 || height < 1 || width > 16384 || height > 16384) throw new InvalidDataException("Unsupported PNG size.");
-                }
-                else if (type.SequenceEqual("IDAT"u8)) compressed.Write(png, start, length);
-                else if (type.SequenceEqual("IEND"u8)) break;
-                offset = start + length + 4;
-            }
-            if (channels == 0) throw new InvalidDataException("The PNG image has no header.");
+            using var stream = new MemoryStream(png, false);
+            return Decode(stream, mipmaps, transform, false);
+        }
+
+        /// <summary>Decodes straight from a stream, such as a file or an embedded resource, on the calling thread.</summary>
+        public static Image Decode(Stream png, bool mipmaps = true, PixelTransform transform = null) => Decode(png, mipmaps, transform, false);
+
+        /// <summary>Decodes like <see cref="Decode(Stream, bool, PixelTransform)"/> into an array rented from the shared pool.</summary>
+        /// <remarks>
+        /// Dispose the image once its pixels are uploaded or compressed, and don't touch <see cref="Image.Data"/>
+        /// after that. An image that is dropped instead is only collected, never handed out twice.
+        /// </remarks>
+        public static Image DecodePooled(Stream png, bool mipmaps = true, PixelTransform transform = null) => Decode(png, mipmaps, transform, true);
+
+        /// <summary>Reads and decodes a PNG file into a pooled image, without loading the file into memory first.</summary>
+        public static Image DecodePooled(string path, bool mipmaps = true, PixelTransform transform = null)
+        {
+            using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, FileOptions.SequentialScan);
+            return Decode(file, mipmaps, transform, true);
+        }
+
+        private static Image Decode(Stream png, bool mipmaps, PixelTransform transform, bool pooled)
+        {
+            ArgumentNullException.ThrowIfNull(png);
+            // The signature, then IHDR, which PNG requires to come first.
+            Span<byte> head = stackalloc byte[33];
+            if (png.ReadAtLeast(head, head.Length, false) < head.Length || !head[..8].SequenceEqual(Signature))
+                throw new InvalidDataException("Not a PNG image.");
+            if (BinaryPrimitives.ReadInt32BigEndian(head[8..]) != 13 || !head.Slice(12, 4).SequenceEqual("IHDR"u8))
+                throw new InvalidDataException("The PNG image has no header.");
+            var width = BinaryPrimitives.ReadInt32BigEndian(head[16..]);
+            var height = BinaryPrimitives.ReadInt32BigEndian(head[20..]);
+            if (head[24] != 8 || head[28] != 0) throw new NotSupportedException("Only 8-bit, non-interlaced PNG images are decoded here.");
+            var channels = head[25] switch { 0 => 1, 4 => 2, 2 => 3, 6 => 4, _ => throw new NotSupportedException("Palette PNG images are not decoded here.") };
+            if (width < 1 || height < 1 || width > 16384 || height > 16384) throw new InvalidDataException("Unsupported PNG size.");
 
             var mips = mipmaps ? 1 + (int)Math.Log2(Math.Max(width, height)) : 1;
             long total = 0;
@@ -84,13 +114,20 @@ namespace Modstoke.Sons
                 total += (long)w * h * 4;
             if (total > Array.MaxLength) throw new NotSupportedException("The PNG image is too large to decode here.");
             // Every byte is written below, so the array is not cleared first.
-            var data = GC.AllocateUninitializedArray<byte>((int)total);
-            compressed.Position = 0;
-            using (var inflate = new ZLibStream(compressed, CompressionMode.Decompress))
-                Unfilter(inflate, width, height, channels, data);
-            transform?.Invoke(data.AsSpan(0, width * height * 4));
-            if (mips > 1) Downsample(data, width, height, mips);
-            return new Image(width, height, mips, data);
+            var data = pooled ? ArrayPool<byte>.Shared.Rent((int)total) : GC.AllocateUninitializedArray<byte>((int)total);
+            try
+            {
+                using (var inflate = new ZLibStream(new ImageData(png), CompressionMode.Decompress))
+                    Unfilter(inflate, width, height, channels, data);
+                transform?.Invoke(data.AsSpan(0, width * height * 4));
+                if (mips > 1) Downsample(data, width, height, mips);
+                return new Image(width, height, mips, data, (int)total, pooled);
+            }
+            catch
+            {
+                if (pooled) ArrayPool<byte>.Shared.Return(data);
+                throw;
+            }
         }
 
         /// <summary>Hands a decoded image to the GPU as a new texture; call on the game thread. The texture is not readable.</summary>
@@ -123,12 +160,13 @@ namespace Modstoke.Sons
         }
 
         /// <summary>Copies the image into a texture from <see cref="CreateEmpty"/>; it stays readable until applied.</summary>
+        /// <remarks>The texture keeps its own copy, so a pooled image can be disposed straight after.</remarks>
         public static void Load(Texture2D texture, Image image)
         {
             ArgumentNullException.ThrowIfNull(texture);
             ArgumentNullException.ThrowIfNull(image);
             var pin = GCHandle.Alloc(image.Data, GCHandleType.Pinned);
-            try { texture.LoadRawTextureData(pin.AddrOfPinnedObject(), image.Data.Length); }
+            try { texture.LoadRawTextureData(pin.AddrOfPinnedObject(), image.Length); }
             finally { pin.Free(); }
         }
 
@@ -222,6 +260,84 @@ namespace Modstoke.Sons
                 w = nw;
                 h = nh;
             }
+        }
+
+        // The zlib stream split over the IDAT chunks after the header, read in place: chunks before the first IDAT
+        // are skipped, CRCs are not checked, and the data ends at the first chunk after the IDAT run.
+        private sealed class ImageData : Stream
+        {
+            private readonly Stream _png;
+            private int _left;
+            private bool _started, _ended;
+
+            internal ImageData(Stream png) => _png = png;
+
+            public override bool CanRead => true;
+            public override bool CanSeek => false;
+            public override bool CanWrite => false;
+            public override long Length => throw new NotSupportedException();
+            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+            public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
+
+            public override int Read(Span<byte> buffer)
+            {
+                if (buffer.IsEmpty) return 0;
+                while (_left == 0)
+                    if (_ended || !NextChunk()) return 0;
+                var read = _png.Read(buffer[..Math.Min(buffer.Length, _left)]);
+                if (read == 0) throw new InvalidDataException("A PNG chunk runs past the end of the file.");
+                _left -= read;
+                return read;
+            }
+
+            // Moves to the next IDAT payload; false once the run has ended.
+            private bool NextChunk()
+            {
+                Span<byte> header = stackalloc byte[8];
+                // The CRC of the IDAT just finished.
+                if (_started) Skip(4);
+                while (true)
+                {
+                    if (_png.ReadAtLeast(header, header.Length, false) < header.Length)
+                        throw new InvalidDataException("A PNG chunk runs past the end of the file.");
+                    var length = BinaryPrimitives.ReadInt32BigEndian(header);
+                    if (length < 0) throw new InvalidDataException("A PNG chunk runs past the end of the file.");
+                    if (header[4..].SequenceEqual("IDAT"u8))
+                    {
+                        _started = true;
+                        _left = length;
+                        return true;
+                    }
+                    if (_started || header[4..].SequenceEqual("IEND"u8))
+                    {
+                        _ended = true;
+                        return false;
+                    }
+                    Skip(length + 4L);
+                }
+            }
+
+            private void Skip(long count)
+            {
+                if (_png.CanSeek)
+                {
+                    _png.Seek(count, SeekOrigin.Current);
+                    return;
+                }
+                Span<byte> discard = stackalloc byte[512];
+                while (count > 0)
+                {
+                    var read = _png.Read(discard[..(int)Math.Min(count, discard.Length)]);
+                    if (read == 0) throw new InvalidDataException("A PNG chunk runs past the end of the file.");
+                    count -= read;
+                }
+            }
+
+            public override void Flush() { }
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
+            public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
         }
     }
 }
