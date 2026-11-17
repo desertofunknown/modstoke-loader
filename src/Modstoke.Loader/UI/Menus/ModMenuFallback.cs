@@ -524,6 +524,12 @@ namespace Modstoke.Loader
                         Invoke(row, null);
                     }
 
+                    // A content row with a command keeps its value beside the button, as a binding's keys do.
+                    if (!string.IsNullOrEmpty(row.Value))
+                    {
+                        GUILayout.Label(Shorten(row.Value, 24), _valueStyle, GUILayout.Height(28f));
+                    }
+
                     GUILayout.FlexibleSpace();
                     break;
                 case MenuControlKind.Open:

@@ -139,6 +139,7 @@ namespace Modstoke.Loader
         private static void FailPresent()
         {
             _visible = false;
+            MenuHudHold.End();
             if (_root != null)
             {
                 _root.SetActive(false);
@@ -167,6 +168,7 @@ namespace Modstoke.Loader
                 {
                     _root.SetActive(false);
                 }
+                MenuHudHold.End();
                 RestoreSelection();
                 EventSystemLease.Release();
                 UiState.SetTooltip(MenuText.DefaultTooltip);
@@ -183,6 +185,7 @@ namespace Modstoke.Loader
             }
 
             var now = Time.unscaledTime;
+            MenuHudHold.Tick();
             MenuScroll.Tick(_pendingLeave != null);
             _page.Tick(now);
             if (_restorePending)
@@ -303,6 +306,8 @@ namespace Modstoke.Loader
             ApplyGeometry();
             _root.SetActive(true);
             _visible = true;
+            // The game's HUD would read through the veil, so it is put away until the menu closes.
+            MenuHudHold.Begin();
             _result = null;
             _hints.Set(KeyHints());
             Render(true);

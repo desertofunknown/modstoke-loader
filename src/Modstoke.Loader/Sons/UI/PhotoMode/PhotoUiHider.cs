@@ -19,8 +19,6 @@ namespace Modstoke.Loader
     internal sealed class PhotoUiHider
     {
         private const float FadeSeconds = 0.3f, SweepSeconds = 0.5f;
-        // The front end draws at 4500; anything above (the mods menu, the console) keeps its own say.
-        private const int TopOrder = 4500;
         private readonly PhotoUndo _undo;
         private readonly List<Volume> _tints = new();
         private Volume _pauseBlur;
@@ -107,32 +105,15 @@ namespace Modstoke.Loader
         private void Sweep()
         {
             _nextSweep = Time.unscaledTime + SweepSeconds;
-            var own = FrontEnd.Canvas();
-            Transform modal = null;
-            try
-            {
-                var manager = ModalDialogManager._instance;
-                if (manager != null && manager) modal = manager.transform;
-            }
-            catch (Exception)
-            {
-                // Then no dialog needs keeping.
-            }
             var names = _logged ? null : new List<string>();
-            foreach (var canvas in Object.FindObjectsOfType<Canvas>())
+            ScreenCanvases.HideBelow(ScreenCanvases.FrontEndOrder, canvas =>
             {
-                if (!Live(canvas) || !canvas.enabled || !canvas.isRootCanvas || canvas.renderMode == RenderMode.WorldSpace) continue;
-                var transform = canvas.transform;
-                if (transform.Pointer == own.Pointer || canvas.sortingOrder > TopOrder) continue;
-                if (modal != null && modal && modal.IsChildOf(transform)) continue;
-                canvas.enabled = false;
                 names?.Add(canvas.name);
-                var held = canvas;
                 _undo.Add("the " + canvas.name + " canvas", () =>
                 {
-                    if (Live(held) && !held.enabled) held.enabled = true;
+                    if (Live(canvas) && !canvas.enabled) canvas.enabled = true;
                 });
-            }
+            });
             if (names == null) return;
             _logged = true;
             RuntimeEntryPoint.LogSource?.LogInfo("Photo mode put away " + names.Count + " screen canvas(es): " + string.Join(", ", names) + ".");

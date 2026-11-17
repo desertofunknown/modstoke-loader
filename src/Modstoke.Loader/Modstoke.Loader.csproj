@@ -1000,6 +1000,7 @@
     <Compile Include="Sons/UI/PhotoMode/PhotoLook.cs" />
     <Compile Include="Sons/UI/PhotoMode/PhotoWorld.cs" />
     <Compile Include="Sons/UI/PhotoMode/PhotoUiHider.cs" />
+    <Compile Include="Sons/UI/ScreenCanvases.cs" />
     <Compile Include="Sons/UI/PhotoMode/PhotoOverlay.cs" />
     <Compile Include="Sons/UI/PhotoMode/PhotoCatalog.cs" />
     <Compile Include="Sons/UI/PhotoMode/PhotoScreen.cs" />
