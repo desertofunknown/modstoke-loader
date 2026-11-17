@@ -63,10 +63,10 @@ namespace Modstoke.Loader
 
         internal virtual bool Secret => false;
 
-        internal virtual void Type(string text) { }
+        /// <summary>The most characters the field takes, or 0 for no limit.</summary>
+        internal virtual int MaxLength => 0;
 
-        /// <summary>Opens Steam's on-screen keyboard for the field, where Steam offers one.</summary>
-        internal virtual void OpenKeyboard() { }
+        internal virtual void Type(string text) { }
     }
 
     /// <summary>
@@ -173,16 +173,12 @@ namespace Modstoke.Loader
 
         internal override bool Secret => Live(_field) && _field.m_InputType == TMP_InputField.InputType.Password;
 
+        internal override int MaxLength => Live(_field) ? _field.m_CharacterLimit : 0;
+
         // Through the field's own setter, as the game fills it, so its character limit and validation still apply.
         internal override void Type(string text)
         {
             if (Live(_field)) _field.SetText(text, true);
-        }
-
-        internal override void OpenKeyboard()
-        {
-            var keyboard = _gui.InputFieldVirtualKeyboard;
-            if (Live(keyboard)) keyboard.TryShowVirtualKeyboard();
         }
 
         // Which dialog this is decides its mark and where focus starts; the manager holds one controller per dialog.

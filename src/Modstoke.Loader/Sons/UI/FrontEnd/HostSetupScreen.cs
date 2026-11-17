@@ -28,7 +28,7 @@ namespace Modstoke.Loader
         {
             (_world, _about) = Describe();
             var name = OptionsCatalog.Make("serverName", () => new TextRow("serverName", MultiplayerUtilities.GetServerName, SetName,
-                MultiplayerUtilities.GetDefaultServerName(), NameLength) { PadKeyboard = GameMenus.NameKeyboard });
+                MultiplayerUtilities.GetDefaultServerName(), NameLength));
             _tab = new OptionTab("server", new[] { OptionsCatalog.Section("server", name, Players(), Visibility()) });
         }
 

@@ -759,6 +759,7 @@
   "mods": {
     "search": "Hledat",
     "searchAbout": "Psaním vyhledáte mod podle názvu, ID nebo autora. Enter hledání ponechá a Escape vrátí to předchozí.",
+    "searchAboutPad": "Otevřete pole a na klávesnici na obrazovce napište název, ID nebo autora modu. Hotovo hledání ponechá a Zrušit vrátí to předchozí.",
     "searchHint": "Hledat podle názvu, autora nebo ID",
     "by": "autor: {author}",
     "count": { "one": "{count} mod", "few": "{count} mody", "other": "{count} modů" },
@@ -978,6 +979,7 @@
     "empty": "Tento soubor nemá žádná jednoduchá nastavení, která by tu šlo vypsat.",
     "textEditor": "Upravit jako text",
     "textEditorAbout": "Otevře celý soubor v klasickém textovém editoru. Zpět se odtud vrátíte sem.",
+    "textEditorAboutPad": "Otevře celý soubor v klasickém textovém editoru, kde k psaní potřebujete klávesnici. Zpět se odtud vrátíte sem.",
     "saveFirst": "Nejprve změny uložte, nebo je vraťte.",
     "unsavedTitle": "Zahodit změny?",
     "unsavedBody": "Změny v tomto konfiguračním souboru ještě nejsou uložené.",
@@ -1016,6 +1018,11 @@
     "type": "Napsat",
     "restartTitle": "Je potřeba restartovat hru",
     "restartBody": "Změny se projeví po dalším spuštění hry."
+  },
+
+  "keyboard": {
+    "done": "Hotovo",
+    "cjk": "Čínština, japonština a korejština vyžadují klávesnici Steamu: režim Big Picture nebo Steam Deck."
   },
 
   "multiplayer": {

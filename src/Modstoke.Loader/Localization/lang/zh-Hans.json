@@ -759,6 +759,7 @@
   "mods": {
     "search": "搜索",
     "searchAbout": "输入名称、ID 或作者来查找模组。按 Enter 保留搜索，按 Esc 恢复上一次的搜索。",
+    "searchAboutPad": "打开搜索框，用屏幕键盘输入模组的名称、ID 或作者。“完成”保留搜索，“取消”恢复上一次的搜索。",
     "searchHint": "按名称、作者或 ID 搜索",
     "by": "作者：{author}",
     "count": { "other": "{count} 个模组" },
@@ -978,6 +979,7 @@
     "empty": "此文件中没有可在这里列出的简单设置。",
     "textEditor": "以文本编辑",
     "textEditorAbout": "在经典文本编辑器中打开整个文件。从那里返回即可回到这里。",
+    "textEditorAboutPad": "在经典文本编辑器中打开整个文件，在那里输入需要键盘。从那里返回即可回到这里。",
     "saveFirst": "请先保存或还原你的更改。",
     "unsavedTitle": "放弃更改？",
     "unsavedBody": "你对此配置文件的更改尚未保存。",
@@ -1016,6 +1018,11 @@
     "type": "输入",
     "restartTitle": "需要重启",
     "restartBody": "这些更改将在游戏重新启动后生效。"
+  },
+
+  "keyboard": {
+    "done": "完成",
+    "cjk": "输入中文、日文和韩文需要 Steam 键盘（大屏幕模式或 Steam Deck）。"
   },
 
   "multiplayer": {

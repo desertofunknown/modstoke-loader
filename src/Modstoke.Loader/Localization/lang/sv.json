@@ -759,6 +759,7 @@
   "mods": {
     "search": "Sök",
     "searchAbout": "Skriv för att hitta en modd efter namn, ID eller skapare. Enter behåller sökningen och Escape tar tillbaka den förra.",
+    "searchAboutPad": "Öppna rutan för att skriva en modds namn, ID eller skapare på skärmtangentbordet. Klar behåller sökningen och Avbryt tar tillbaka den förra.",
     "searchHint": "Sök efter namn, skapare eller ID",
     "by": "av {author}",
     "count": { "one": "{count} modd", "other": "{count} moddar" },
@@ -978,6 +979,7 @@
     "empty": "Filen har inga enkla inställningar att visa här.",
     "textEditor": "Redigera som text",
     "textEditorAbout": "Öppnar hela filen i den klassiska textredigeraren. Tillbaka därifrån tar dig hit igen.",
+    "textEditorAboutPad": "Öppnar hela filen i den klassiska textredigeraren, där du behöver ett tangentbord för att skriva. Tillbaka därifrån tar dig hit igen.",
     "saveFirst": "Spara eller återställ dina ändringar först.",
     "unsavedTitle": "Slänga ändringarna?",
     "unsavedBody": "Dina ändringar i den här konfigurationsfilen är inte sparade än.",
@@ -1016,6 +1018,11 @@
     "type": "Skriv",
     "restartTitle": "Omstart krävs",
     "restartBody": "Ändringarna börjar gälla när spelet startar igen."
+  },
+
+  "keyboard": {
+    "done": "Klar",
+    "cjk": "Kinesiska, japanska och koreanska kräver Steams tangentbord: Big Picture-läge eller Steam Deck."
   },
 
   "multiplayer": {

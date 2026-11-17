@@ -74,13 +74,13 @@ namespace Modstoke.Loader
         private static Glide _tabMark, _rowMark;
         private static Tab _paintedTab = (Tab)(-1);
         private static IntPtr _paintedSelection;
-        private static RectTransform _listRect, _modsHeader, _progress;
+        private static RectTransform _listRect, _modsHeader, _progress, _searchRect;
         private static KeyTag _tabLeft, _tabRight;
         private static RectTransform _footer;
         private static TextMeshProUGUI _status, _empty, _kind, _name, _sub, _noticeTitle, _noticeText, _joinLabel, _searchText;
-        private static Image _noticeBox, _noticeBar, _joinFill, _searchBox;
+        private static Image _noticeBox, _noticeBar, _joinFill, _searchBox, _searchFocus;
         private static float _bottom, _nextProgress;
-        private static int _modstokeCount;
+        private static int _modstokeCount, _searchCaret;
         private static bool _caretOn;
 
         private static float U(float design) => FrontEnd.U(design);
@@ -171,10 +171,13 @@ namespace Modstoke.Loader
             _tabRight = new KeyTag(panel, "NextTab", U(TagHeight));
             _tabMark = new Glide(panel, true);
 
-            var search = MenuKit.Box(panel, "Search").AtRight(U(28), U(20), U(300), U(40));
+            var search = _searchRect = MenuKit.Box(panel, "Search").AtRight(U(28), U(20), U(300), U(40));
             _searchBox = MenuKit.Fill(search, null, MenuKit.Field);
             _searchText = MenuKit.Text(search, "Text", "", U(16), false, MenuKit.Faint, TextAlignmentOptions.MidlineLeft, true);
+            _searchText.richText = false;
             _searchText.rectTransform.Place(0, 0, 1, 1, U(14), 0, U(14), 0);
+            // The controller's mark, as the filters and column headers have.
+            _searchFocus = MenuKit.Fill(MenuKit.Box(search, "Focus").Place(0, 0, 1, 0, 0, 0, 0, -Mathf.Max(2f, U(3))), null, MenuKit.Ink);
             _searchHot = Add(search, () => FocusSearch(true));
 
             var rule = MenuKit.Box(panel, "Rule").Strip(U(70), U(2), U(28), U(28));
@@ -541,14 +544,18 @@ namespace Modstoke.Loader
         {
             if (_searchText == null || !_searchText) return;
             _searchBox.color = _searching ? MenuKit.RowSelected : MenuKit.Field;
+            _searchFocus.enabled = _zone == Zone.Search;
             var empty = _search.Length == 0 && !_searching;
             _searchText.color = empty ? MenuKit.Faint : MenuKit.Ink;
-            _searchText.text = empty ? T["multiplayer.searchPlaceholder"] : _search + (_searching && _caretOn ? "|" : "");
+            // The on-screen keyboard's caret can stand mid-word, so it holds still there rather than blink the text about.
+            var caret = _searchCaret = _typing != null ? Mathf.Clamp(_typing.Caret, 0, _search.Length) : _search.Length;
+            _searchText.text = empty ? T["multiplayer.searchPlaceholder"]
+                : _searching && (_caretOn || _typing != null) ? _search.Insert(caret, "|") : _search;
         }
 
         private static void PaintCaret()
         {
-            if (!_searching) return;
+            if (!_searching || _typing != null) return;
             var on = (int)(Time.unscaledTime * 2f) % 2 == 0;
             if (on == _caretOn) return;
             _caretOn = on;

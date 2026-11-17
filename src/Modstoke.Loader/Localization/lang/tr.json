@@ -759,6 +759,7 @@
   "mods": {
     "search": "Ara",
     "searchAbout": "Bir modu adına, ID’sine veya yazarına göre bulmak için yazın. Enter aramayı korur, Escape ise bir önceki aramayı geri getirir.",
+    "searchAboutPad": "Bir modun adını, ID’sini veya yazarını ekran klavyesiyle yazmak için kutuyu açın. Bitti aramayı korur, İptal ise bir önceki aramayı geri getirir.",
     "searchHint": "Ada, yapımcıya veya kimliğe göre ara",
     "by": "{author} tarafından",
     "count": { "one": "{count} mod", "other": "{count} mod" },
@@ -978,6 +979,7 @@
     "empty": "Bu dosyada burada listelenebilecek basit bir ayar yok.",
     "textEditor": "Metin olarak düzenle",
     "textEditorAbout": "Dosyanın tamamını klasik metin düzenleyicide açar. Oradan Geri ile buraya dönersiniz.",
+    "textEditorAboutPad": "Dosyanın tamamını klasik metin düzenleyicide açar; orada yazmak için klavye gerekir. Oradan Geri ile buraya dönersiniz.",
     "saveFirst": "Önce değişikliklerinizi kaydedin veya geri alın.",
     "unsavedTitle": "Değişiklikler atılsın mı?",
     "unsavedBody": "Bu yapılandırma dosyasındaki değişiklikleriniz henüz kaydedilmedi.",
@@ -1016,6 +1018,11 @@
     "type": "Yaz",
     "restartTitle": "Yeniden başlatma gerekli",
     "restartBody": "Değişiklikler, oyun yeniden başladığında devreye girer."
+  },
+
+  "keyboard": {
+    "done": "Bitti",
+    "cjk": "Çince, Japonca ve Korece için Steam klavyesi gerekir: Big Picture modu veya Steam Deck."
   },
 
   "multiplayer": {

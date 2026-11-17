@@ -37,6 +37,7 @@ namespace Modstoke.Sons
             if (_ownerThreadId == 0 || Environment.CurrentManagedThreadId != _ownerThreadId) return;
             // The gear page also carries layouts mods build themselves, so it follows the inventory either way.
             TickGearPage();
+            TickPrimaryActions();
             if (MatModels.Count == 0) return;
             try
             {
@@ -121,7 +122,10 @@ namespace Modstoke.Sons
                         highlighted = true;
                         break;
                     }
-                if (!highlighted || inventory._itemInstanceManager.GetItemCount(_item._id) < 1) return;
+                if (!highlighted) return;
+                var count = inventory._itemInstanceManager.GetItemCount(_item._id);
+                RuntimeEntryPoint.LogSource?.LogInfo("Item " + _item._id + " clicked on the mat: " + count + " carried, action " + Action + ".");
+                if (count < 1) return;
                 _clickFrame = Time.frameCount;
                 if (Action == ItemMatAction.Attach)
                 {
@@ -133,8 +137,8 @@ namespace Modstoke.Sons
                 }
                 if (Action == ItemMatAction.Equip)
                 {
-                    if (!HeldItems.TryEquip(_item._id, out var equip))
-                        RuntimeEntryPoint.LogSource?.LogInfo("Item " + _item._id + " was not equipped: " + equip);
+                    var equipped = HeldItems.TryEquip(_item._id, out var equip);
+                    RuntimeEntryPoint.LogSource?.LogInfo("Item " + _item._id + (equipped ? " equip: " : " was not equipped: ") + equip);
                     return;
                 }
                 _dropRequested = true;

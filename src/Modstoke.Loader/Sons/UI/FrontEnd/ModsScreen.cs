@@ -123,7 +123,7 @@ namespace Modstoke.Loader
 
         protected override string ItemAbout(OptionRow row)
         {
-            if (row is not ModRow mod) return Text["mods.searchAbout"];
+            if (row is not ModRow mod) return Text[FrontEnd.PadActive ? "mods.searchAboutPad" : "mods.searchAbout"];
             var entry = mod.Entry;
             var lines = new List<string>();
             // What is wrong comes first and stands out; otherwise how the mod is running.

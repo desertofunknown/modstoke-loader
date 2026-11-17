@@ -759,6 +759,7 @@
   "mods": {
     "search": "Suchen",
     "searchAbout": "Tippe, um Mods nach Name, ID oder Autor zu finden. Mit Enter übernimmst du die Suche, mit Esc kehrt die vorherige zurück.",
+    "searchAboutPad": "Öffne das Feld, um Name, ID oder Autor eines Mods auf der Bildschirmtastatur einzugeben. Fertig übernimmt die Suche, Abbrechen holt die vorherige zurück.",
     "searchHint": "Nach Name, Autor oder ID suchen",
     "by": "von {author}",
     "count": { "one": "{count} Mod", "other": "{count} Mods" },
@@ -978,6 +979,7 @@
     "empty": "Diese Datei enthält keine einfachen Einstellungen, die sich hier auflisten lassen.",
     "textEditor": "Als Text bearbeiten",
     "textEditorAbout": "Öffnet die ganze Datei im klassischen Texteditor. Mit Zurück kommst du wieder hierher.",
+    "textEditorAboutPad": "Öffnet die ganze Datei im klassischen Texteditor; zum Schreiben brauchst du dort eine Tastatur. Mit Zurück kommst du wieder hierher.",
     "saveFirst": "Speichere deine Änderungen zuerst oder setze sie zurück.",
     "unsavedTitle": "Änderungen verwerfen?",
     "unsavedBody": "Deine Änderungen an dieser Konfigurationsdatei sind noch nicht gespeichert.",
@@ -1016,6 +1018,11 @@
     "type": "Eingeben",
     "restartTitle": "Neustart nötig",
     "restartBody": "Die Änderungen werden beim nächsten Spielstart wirksam."
+  },
+
+  "keyboard": {
+    "done": "Fertig",
+    "cjk": "Chinesisch, Japanisch und Koreanisch brauchen die Steam-Tastatur: Big-Picture-Modus oder Steam Deck."
   },
 
   "multiplayer": {

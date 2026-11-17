@@ -759,6 +759,7 @@
   "mods": {
     "search": "Hae",
     "searchAbout": "Kirjoita, niin löydät modin sen nimen, ID:n tai tekijän perusteella. Enter säilyttää haun ja Escape palauttaa edellisen.",
+    "searchAboutPad": "Avaa kenttä ja kirjoita modin nimi, ID tai tekijä näyttönäppäimistöllä. Valmis säilyttää haun ja Peruuta palauttaa edellisen.",
     "searchHint": "Hae nimellä, tekijällä tai tunnuksella",
     "by": "tekijä: {author}",
     "count": { "one": "{count} modi", "other": "{count} modia" },
@@ -978,6 +979,7 @@
     "empty": "Tiedostossa ei ole yksinkertaisia asetuksia, joita voisi näyttää tässä.",
     "textEditor": "Muokkaa tekstinä",
     "textEditorAbout": "Avaa koko tiedoston perinteisessä tekstimuokkaimessa. Takaisin-painikkeella palaat sieltä tänne.",
+    "textEditorAboutPad": "Avaa koko tiedoston perinteisessä tekstimuokkaimessa, jossa kirjoittamiseen tarvitaan näppäimistö. Takaisin-painikkeella palaat sieltä tänne.",
     "saveFirst": "Tallenna tai palauta muutoksesi ensin.",
     "unsavedTitle": "Hylätäänkö muutokset?",
     "unsavedBody": "Tämän asetustiedoston muutoksia ei ole vielä tallennettu.",
@@ -1016,6 +1018,11 @@
     "type": "Kirjoita",
     "restartTitle": "Uudelleenkäynnistys tarvitaan",
     "restartBody": "Muutokset otetaan käyttöön, kun peli käynnistyy uudelleen."
+  },
+
+  "keyboard": {
+    "done": "Valmis",
+    "cjk": "Kiina, japani ja korea vaativat Steamin näppäimistön: Big Picture -tila tai Steam Deck."
   },
 
   "multiplayer": {

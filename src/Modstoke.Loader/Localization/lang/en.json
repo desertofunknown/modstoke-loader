@@ -759,6 +759,7 @@
   "mods": {
     "search": "Search",
     "searchAbout": "Type to find a mod by its name, ID or author. Enter keeps the search and Escape puts the last one back.",
+    "searchAboutPad": "Open the box to type a mod's name, ID or author on the on-screen keyboard. Done keeps the search and Cancel puts the last one back.",
     "searchHint": "Search by name, author or ID",
     "by": "by {author}",
     "count": { "one": "{count} mod", "other": "{count} mods" },
@@ -978,6 +979,7 @@
     "empty": "This file has no simple settings to list here.",
     "textEditor": "Edit as text",
     "textEditorAbout": "Opens the whole file in the classic text editor. Back from there returns here.",
+    "textEditorAboutPad": "Opens the whole file in the classic text editor, where typing needs a keyboard. Back from there returns here.",
     "saveFirst": "Save or revert your changes first.",
     "unsavedTitle": "Discard your changes?",
     "unsavedBody": "Your changes to this config file aren't saved yet.",
@@ -1016,6 +1018,11 @@
     "type": "Type",
     "restartTitle": "Restart needed",
     "restartBody": "These changes take effect when the game starts again."
+  },
+
+  "keyboard": {
+    "done": "Done",
+    "cjk": "Chinese, Japanese and Korean need Steam's keyboard: Big Picture mode or a Steam Deck."
   },
 
   "multiplayer": {

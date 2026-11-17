@@ -759,6 +759,7 @@
   "mods": {
     "search": "搜尋",
     "searchAbout": "輸入名稱、ID 或作者來尋找模組。按 Enter 保留搜尋，按 Esc 恢復上一次的搜尋。",
+    "searchAboutPad": "開啟搜尋框，用螢幕鍵盤輸入模組的名稱、ID 或作者。「完成」保留搜尋，「取消」恢復上一次的搜尋。",
     "searchHint": "依名稱、作者或 ID 搜尋",
     "by": "作者：{author}",
     "count": { "other": "{count} 個模組" },
@@ -978,6 +979,7 @@
     "empty": "此檔案中沒有可在這裡列出的簡單設定。",
     "textEditor": "以文字編輯",
     "textEditorAbout": "在經典文字編輯器中開啟整個檔案。從那裡返回即可回到這裡。",
+    "textEditorAboutPad": "在經典文字編輯器中開啟整個檔案，在那裡輸入需要鍵盤。從那裡返回即可回到這裡。",
     "saveFirst": "請先儲存或還原你的變更。",
     "unsavedTitle": "放棄變更？",
     "unsavedBody": "你對此設定檔的變更尚未儲存。",
@@ -1016,6 +1018,11 @@
     "type": "輸入",
     "restartTitle": "需要重新啟動",
     "restartBody": "這些變更會在遊戲重新啟動後生效。"
+  },
+
+  "keyboard": {
+    "done": "完成",
+    "cjk": "輸入中文、日文和韓文需要 Steam 鍵盤（大螢幕模式或 Steam Deck）。"
   },
 
   "multiplayer": {

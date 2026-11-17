@@ -198,8 +198,6 @@ namespace Modstoke.Loader
         }
 
         internal int MaxLength { get; }
-        /// <summary>Opens Steam's on-screen keyboard for a controller and returns the field it types into, or null.</summary>
-        internal Func<string, TMPro.TMP_InputField> PadKeyboard { get; set; }
         /// <summary>A search box: the field runs the row's whole width, with this hint in it while it is empty.</summary>
         internal string Placeholder { get; set; }
         internal override string Value => _read() ?? "";

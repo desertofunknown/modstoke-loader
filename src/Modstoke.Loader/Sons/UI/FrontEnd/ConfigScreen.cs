@@ -94,7 +94,7 @@ namespace Modstoke.Loader
             else
             {
                 if (MenuState.FriendlySettings.Length == 0) lines.Add(Text["config.empty"]);
-                lines.Add(Text["config.textEditorAbout"]);
+                lines.Add(Text[FrontEnd.PadActive ? "config.textEditorAboutPad" : "config.textEditorAbout"]);
             }
             if (!string.IsNullOrWhiteSpace(_entry.ConfigPath))
                 lines.Add("<size=80%><color=" + MenuKit.Html(MenuKit.Faint) + ">" + _entry.ConfigPath + "</color></size>");

@@ -10,8 +10,6 @@ using Sons.Gui;
 using Sons.Gui.Options;
 using Sons.Multiplayer;
 using Sons.Save;
-using Steam.VirtualKeyboard;
-using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -184,20 +182,6 @@ namespace Modstoke.Loader
             {
                 if (page.activeSelf) page.SetActive(false);
             }
-        }
-
-        /// <summary>
-        /// Opens Steam's on-screen keyboard for the server name the way the game's own name field does, and
-        /// returns that field, which receives the text; null when the game's field is not there.
-        /// </summary>
-        internal static TMP_InputField NameKeyboard(string current)
-        {
-            var keyboard = Page(HostPage)?.GetComponentInChildren<VirtualKeyboardField>(true);
-            var field = keyboard != null ? keyboard._field : null;
-            if (field == null) return null;
-            field.SetTextWithoutNotify(current ?? "");
-            keyboard.TryShowVirtualKeyboard();
-            return field;
         }
 
         /// <summary>Hides the game's button bar while the front end shows its own, or gives it back.</summary>

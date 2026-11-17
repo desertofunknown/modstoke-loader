@@ -8,6 +8,7 @@ using Modstoke.Loader;
 using global::Sons.Inventory;
 using global::Sons.Items.Core;
 using TheForest.Items.Inventory;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Modstoke.Sons
@@ -17,6 +18,46 @@ namespace Modstoke.Sons
         private static readonly Dictionary<IntPtr, InventoryPrimaryActionBinding> PrimaryActionBindings = new();
         private static bool _primaryActionHookAttempted, _primaryActionHookInstalled;
         private static string _primaryActionHookFailure = "";
+        // Frames the game's own per-group call gets to arrive after a press before the Loader hands the press on itself.
+        private const int GameCallFrames = 2;
+        private static int _pressFrame = -1;
+        private static bool _interactUnreadable;
+
+        // The game hands each press of its InteractWithItem (the left button, or the left trigger on a pad, as the player
+        // binds it) to every group through a per-group call, and the bindings answer that call. A pad's trigger was seen
+        // not to arrive that way on the gear page, so presses are also read here: one that no binding answered through the
+        // game's call within a couple of frames is handed to each bound group as the game would have.
+        private static void TickPrimaryActions()
+        {
+            if (PrimaryActionBindings.Count == 0 || _interactUnreadable) return;
+            var frame = Time.frameCount;
+            try
+            {
+                if (global::Sons.Input.InputSystem.InputMapping is { } mapping && mapping.Inventory.InteractWithItem is { } action
+                    && action.WasPressedThisFrame())
+                {
+                    _pressFrame = frame;
+                    var live = 0;
+                    foreach (var binding in PrimaryActionBindings.Values) live += binding.Answerable ? 1 : 0;
+                    if (live > 0) RuntimeEntryPoint.LogSource?.LogInfo("Inventory interact pressed with " + live + " bound mod items live.");
+                }
+            }
+            catch (Exception error)
+            {
+                _interactUnreadable = true;
+                RuntimeEntryPoint.LogSource?.LogWarning("Inventory primary actions answer only the game's own call: " + error.Message);
+                return;
+            }
+            if (_pressFrame < 0 || frame - _pressFrame < GameCallFrames) return;
+            var pressFrame = _pressFrame;
+            _pressFrame = -1;
+            var handed = 0;
+            foreach (var binding in new List<InventoryPrimaryActionBinding>(PrimaryActionBindings.Values))
+                handed += binding.TakeUnansweredPress(pressFrame) ? 1 : 0;
+            if (handed > 0)
+                RuntimeEntryPoint.LogSource?.LogInfo("Inventory interact press reached no bound item through the game's call; "
+                    + "handed it to " + handed + ".");
+        }
 
         /// <summary>Replaces primary input for one caller-owned inventory group on the Unity lifecycle thread.</summary>
         /// <remarks>
@@ -133,6 +174,7 @@ namespace Modstoke.Sons
         private readonly IntPtr _key;
         private readonly int _instanceId, _threadId;
         private Action<InventoryLayoutItemGroup> _callback;
+        private int _answeredFrame = -1;
         private bool _failureReported;
 
         internal InventoryPrimaryActionBinding(PlayerInventory inventory, InventoryLayoutItemGroup group,
@@ -175,29 +217,58 @@ namespace Modstoke.Sons
 
         internal bool BeforeInteract(InventoryLayoutItemGroup group, InputAction.CallbackContext context, bool runOriginal)
         {
+            if (!Live(_group) || !Live(group) || group.GetInstanceID() != _instanceId) return true;
             try
             {
-                if (!Live(_group) || !Live(group) || group.GetInstanceID() != _instanceId) return true;
-                if (Environment.CurrentManagedThreadId != _threadId || _callback == null) return false;
-                if (!Inventory.PrimaryActionInventoryCurrent(this))
-                {
-                    _callback = null;
-                    return false;
-                }
-                if (runOriginal && context.performed && _group.isActiveAndEnabled) _callback(_group);
+                // The game also calls this with an empty context every quarter second while the button stays down; only
+                // the press counts.
+                if (runOriginal && context.performed && Environment.CurrentManagedThreadId == _threadId) Answer();
             }
             catch (Exception error)
             {
                 // A failed callback must never fall through into native use of a custom item.
-                _callback = null;
-                if (!_failureReported)
-                {
-                    _failureReported = true;
-                    RuntimeEntryPoint.LogSource?.LogWarning("Inventory primary action failed for item " + ItemId
-                        + "; the binding now suppresses input until released.\n" + error);
-                }
+                Fail(error);
             }
             return false;
+        }
+
+        internal bool Answerable => _callback != null && Live(_group) && _group.isActiveAndEnabled;
+
+        // A press the game's call didn't bring here: answered unless this binding answered since just before it.
+        internal bool TakeUnansweredPress(int pressFrame)
+        {
+            if (_answeredFrame >= pressFrame - 1 || !Answerable) return false;
+            Answer();
+            return true;
+        }
+
+        private void Answer()
+        {
+            if (_callback == null) return;
+            try
+            {
+                if (!Live(_group) || !_group.isActiveAndEnabled) return;
+                if (!Inventory.PrimaryActionInventoryCurrent(this))
+                {
+                    _callback = null;
+                    return;
+                }
+                _answeredFrame = Time.frameCount;
+                _callback(_group);
+            }
+            catch (Exception error)
+            {
+                Fail(error);
+            }
+        }
+
+        private void Fail(Exception error)
+        {
+            _callback = null;
+            if (_failureReported) return;
+            _failureReported = true;
+            RuntimeEntryPoint.LogSource?.LogWarning("Inventory primary action failed for item " + ItemId
+                + "; the binding now suppresses input until released.\n" + error);
         }
 
         /// <summary>

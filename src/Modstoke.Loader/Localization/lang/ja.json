@@ -759,6 +759,7 @@
   "mods": {
     "search": "検索",
     "searchAbout": "名前、ID、作者名を入力してMODを探します。Enterで検索を確定し、Escで直前の検索に戻します。",
+    "searchAboutPad": "欄を開き、画面キーボードでMODの名前、ID、作者名を入力します。「完了」で検索を確定し、「キャンセル」で直前の検索に戻します。",
     "searchHint": "名前・作者・IDで検索",
     "by": "作者：{author}",
     "count": { "other": "{count}個のMOD" },
@@ -978,6 +979,7 @@
     "empty": "このファイルには、ここに表示できる簡単な設定がありません。",
     "textEditor": "テキストとして編集",
     "textEditorAbout": "ファイル全体をクラシックなテキストエディターで開きます。そこから戻るとここに戻ります。",
+    "textEditorAboutPad": "ファイル全体をクラシックなテキストエディターで開きます。入力にはキーボードが必要です。そこから戻るとここに戻ります。",
     "saveFirst": "先に変更を保存するか、元に戻してください。",
     "unsavedTitle": "変更を破棄しますか？",
     "unsavedBody": "この設定ファイルへの変更はまだ保存されていません。",
@@ -1016,6 +1018,11 @@
     "type": "入力",
     "restartTitle": "再起動が必要です",
     "restartBody": "変更はゲームの再起動後に反映されます。"
+  },
+
+  "keyboard": {
+    "done": "完了",
+    "cjk": "中国語・日本語・韓国語の入力には Steam キーボード（Big Picture モードまたは Steam Deck）が必要です。"
   },
 
   "multiplayer": {

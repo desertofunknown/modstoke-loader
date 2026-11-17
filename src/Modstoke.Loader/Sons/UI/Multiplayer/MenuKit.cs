@@ -39,9 +39,9 @@ namespace Modstoke.Loader
         internal static readonly Color Field = Faded(0.07f);
         internal static readonly Color Disabled = Faded(0.14f);
         internal static readonly Color Scrim = Hex(0x050606, 0.76f);
-        // The band a question sits on. The screen layer blends in linear light, so at 0.92 a third of the screen
-        // underneath still showed through, enough for its keycaps to run into the choices; this leaves a trace.
-        internal static readonly Color Band = Hex(0x050606, 0.985f);
+        // The band a question or the on-screen keyboard sits on. The screen layer blends in linear light, so at 0.92 a
+        // third of the screen underneath still showed through, and even at 0.985 a list behind could be read; it is solid.
+        internal static readonly Color Band = Hex(0x050606);
         // What holds focus sits on a bone plate edged in the logo's red, with its text dark on it.
         internal static readonly Color Plate = Hex(0xE9E7E1, 0.97f);
         internal static readonly Color Accent = Hex(0xD9262C);
@@ -233,6 +233,13 @@ namespace Modstoke.Loader
             label.raycastTarget = false;
             return label;
         }
+
+        /// <summary>
+        /// Where a caret before character <paramref name="index"/> of <paramref name="line"/> sits in <paramref name="text"/>.
+        /// Measured against a closing mark, since a text's own width leaves out the spaces at its end.
+        /// </summary>
+        internal static float Advance(TextMeshProUGUI text, string line, int index)
+            => index <= 0 ? 0 : text.GetPreferredValues(line.Substring(0, index) + "|").x - text.GetPreferredValues("|").x;
 
         /// <summary>The width of a key's tag: its name's width with some room, never narrower than it is tall.</summary>
         internal static float TagWidth(TextMeshProUGUI text, string label, float height)

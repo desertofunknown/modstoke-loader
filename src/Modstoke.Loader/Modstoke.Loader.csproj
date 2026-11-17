@@ -957,6 +957,9 @@
     <Compile Include="Sons/UI/FrontEnd/LobbyHost.cs" />
     <Compile Include="Sons/UI/FrontEnd/PauseHost.cs" />
     <Compile Include="Sons/UI/FrontEnd/FrontInput.cs" />
+    <Compile Include="Sons/UI/FrontEnd/SteamKeyboard.cs" />
+    <Compile Include="Sons/UI/FrontEnd/PadKeyboard.cs" />
+    <Compile Include="Sons/UI/FrontEnd/PadKeyboard.Layers.cs" />
     <Compile Include="Sons/UI/FrontEnd/FrontScreen.cs" />
     <Compile Include="Sons/UI/FrontEnd/GameMenus.cs" />
     <Compile Include="Sons/UI/FrontEnd/FrontEnd.cs" />

@@ -759,6 +759,7 @@
   "mods": {
     "search": "Rechercher",
     "searchAbout": "Saisissez du texte pour trouver un mod par son nom, son identifiant ou son auteur. Entrée valide la recherche et Échap rétablit la précédente.",
+    "searchAboutPad": "Ouvrez le champ pour saisir le nom, l'identifiant ou l'auteur d'un mod sur le clavier à l'écran. Terminé valide la recherche et Annuler rétablit la précédente.",
     "searchHint": "Rechercher par nom, auteur ou ID",
     "by": "par {author}",
     "count": { "one": "{count} mod", "other": "{count} mods" },
@@ -978,6 +979,7 @@
     "empty": "Ce fichier ne contient aucun paramètre simple à afficher ici.",
     "textEditor": "Modifier en texte",
     "textEditorAbout": "Ouvre tout le fichier dans l’éditeur de texte classique. Retour vous ramène ici.",
+    "textEditorAboutPad": "Ouvre tout le fichier dans l’éditeur de texte classique, où la saisie demande un clavier. Retour vous ramène ici.",
     "saveFirst": "Enregistrez ou rétablissez d’abord vos modifications.",
     "unsavedTitle": "Abandonner les modifications ?",
     "unsavedBody": "Vos modifications de ce fichier de configuration ne sont pas encore enregistrées.",
@@ -1016,6 +1018,11 @@
     "type": "Saisir",
     "restartTitle": "Redémarrage nécessaire",
     "restartBody": "Ces modifications prendront effet au prochain démarrage du jeu."
+  },
+
+  "keyboard": {
+    "done": "Terminé",
+    "cjk": "Le chinois, le japonais et le coréen nécessitent le clavier Steam : mode Big Picture ou Steam Deck."
   },
 
   "multiplayer": {

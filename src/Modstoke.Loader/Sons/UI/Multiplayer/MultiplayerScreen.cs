@@ -35,7 +35,7 @@ namespace Modstoke.Loader
     {
         private enum Tab { All, Hosted, Dedicated, Lan }
 
-        private enum Zone { List, Headers, Chips }
+        private enum Zone { List, Headers, Chips, Search }
 
         private enum SortKey { None, Name, Mods, Players, Ping }
 
@@ -94,7 +94,8 @@ namespace Modstoke.Loader
         private static readonly Dictionary<string, string> ModeNames = new(StringComparer.OrdinalIgnoreCase);
         private static readonly bool[] PadDown = new bool[9];
         private static Hot _hover, _searchHot;
-        private static string _search = "", _mine = "", _steerDevice;
+        private static PadKeyboard _typing;
+        private static string _search = "", _searchBefore = "", _mine = "", _steerDevice;
         private static int _selected, _top, _tool, _hoverRow = -1, _repeatDir, _lastClickRow = -1, _scan, _layout;
         private static long _listedHash;
         private static IntPtr _selectedId;
@@ -155,6 +156,8 @@ namespace Modstoke.Loader
         {
             ServerBrowserBadges.Answered -= OnAnswered;
             Languages.Changed -= OnLanguageChanged;
+            _typing?.Close();
+            _typing = null;
             try
             {
                 Show(_gameList);
@@ -219,8 +222,9 @@ namespace Modstoke.Loader
             var covered = LoadingScreen.Covering;
             var hidden = away || LoadingScreen.Opaque;
             if (_rootObject.activeSelf == hidden) _rootObject.SetActive(!hidden);
-            // The dialog shows prompts of its own on the same line.
-            if (_footer != null && _footer && _footer.gameObject.activeSelf == dialog) _footer.gameObject.SetActive(!dialog);
+            // A dialog shows prompts of its own on the same line, and the on-screen keyboard has a legend of its own.
+            var footer = !dialog && _typing == null;
+            if (_footer != null && _footer && _footer.gameObject.activeSelf != footer) _footer.gameObject.SetActive(footer);
             // The press that closes a lobby or a dialog must not also act on this screen.
             var now = Time.unscaledTime;
             // The console and the mods menu draw over this screen and take the keyboard while open.
@@ -245,12 +249,16 @@ namespace Modstoke.Loader
             if (pad != _pad)
             {
                 _pad = pad;
-                if (pad) FocusSearch(false);
+                // Typing on a keyboard ends when the controller takes over; the on-screen keyboard takes both.
+                if (pad && _typing == null) FocusSearch(false);
                 PaintHints();
             }
             ReadDevice("gamepad", ReadPad);
             ReadDevice("keyboard", ReadKeys);
             ReadDevice("mouse", ReadMouse);
+            // After the screen's own reading, which tracks the buttons the keyboard takes, so the press that closes it
+            // is not read again as a press on the screen. The console and the mods menu hold it as they hold the screen.
+            if (_typing != null && _acting) Type();
 
             if (_dirty || _backlog || now >= _nextScan)
             {
@@ -366,6 +374,8 @@ namespace Modstoke.Loader
         private static void Rebuild()
         {
             _rebuild = false;
+            // The keyboard stands on the layout going away; what was typed so far stays in the search.
+            if (_typing != null) StopTyping();
             if (_rootObject != null && _rootObject) Object.Destroy(_rootObject);
             _hover = null;
             _hoverRow = -1;
@@ -479,7 +489,7 @@ namespace Modstoke.Loader
             bool left = Pressed(6, pad.dpad.left.isPressed || pad.leftStick.left.isPressed);
             bool right = Pressed(7, pad.dpad.right.isPressed || pad.leftStick.right.isPressed);
             var back = Pressed(8, pad.buttonEast.isPressed);
-            if (!_acting) return;
+            if (!_acting || _typing != null) return;
             // The game's own Back handler leaves the screen on B; the sound is Modstoke's.
             if (back) MenuSound.Play(MenuCue.Back);
             Steer("pad", pad.dpad.up.isPressed || pad.leftStick.up.isPressed, pad.dpad.down.isPressed || pad.leftStick.down.isPressed);
@@ -502,7 +512,7 @@ namespace Modstoke.Loader
 
         private static void ReadKeys()
         {
-            if (!_acting) return;
+            if (!_acting || _typing != null) return;
             if (_searching)
             {
                 TypeSearch();
@@ -545,6 +555,50 @@ namespace Modstoke.Loader
             _filterDirty = true;
         }
 
+        // A controller types into the search box on the on-screen keyboard, the list filtering as it goes.
+        private static void TypeOnPad()
+        {
+            FocusSearch(true);
+            _zone = Zone.Search;
+            _searchBefore = _search;
+            _typing = PadKeyboard.Open(_rootObject.GetComponent<RectTransform>(), _searchRect, _search, MaxSearchLength,
+                T["multiplayer.searchPlaceholder"]);
+            MenuSound.Play(MenuCue.Forward);
+            PaintSearch();
+        }
+
+        // Done keeps the search and B puts back the one from before.
+        private static void Type()
+        {
+            var result = _typing.Step();
+            var typed = _typing.Text != _search;
+            if (typed)
+            {
+                _search = _typing.Text;
+                _filterDirty = true;
+            }
+            if (result == KeyboardResult.Typing)
+            {
+                // The box at once; the list follows when it next repaints, which waits while servers pour in.
+                if (typed || _typing.Caret != _searchCaret) PaintSearch();
+                return;
+            }
+            if (result == KeyboardResult.Cancelled)
+            {
+                _search = _searchBefore;
+                _filterDirty = true;
+            }
+            MenuSound.Play(result == KeyboardResult.Done ? MenuCue.Forward : MenuCue.Back);
+            StopTyping();
+        }
+
+        private static void StopTyping()
+        {
+            _typing.Close();
+            _typing = null;
+            FocusSearch(false);
+        }
+
         private static void FocusSearch(bool on)
         {
             if (_searching == on) return;
@@ -585,7 +639,7 @@ namespace Modstoke.Loader
 
         private static void ReadMouse()
         {
-            if (!_acting) return;
+            if (!_acting || _typing != null) return;
             var position = UnityEngine.Input.mousePosition;
             var pointer = new Vector2(position.x, position.y);
             Hot over = null;
@@ -741,6 +795,8 @@ namespace Modstoke.Loader
         {
             if (_zone == Zone.Headers) ToggleSort((SortKey)(_tool + 1));
             else if (_zone == Zone.Chips) ToggleChip(_tool);
+            else if (_zone == Zone.Search && FrontInput.PadActive) TypeOnPad();
+            else if (_zone == Zone.Search) FocusSearch(true);
             else Join();
         }
 
@@ -780,15 +836,19 @@ namespace Modstoke.Loader
                 case Zone.Headers:
                     SetZone(step < 0 ? Zone.Chips : Zone.List);
                     break;
-                case Zone.Chips when step > 0:
-                    SetZone(Zone.Headers);
+                // The search box sits over the filters, at the top right of the list.
+                case Zone.Chips:
+                    SetZone(step < 0 ? Zone.Search : Zone.Headers);
+                    break;
+                case Zone.Search when step > 0:
+                    SetZone(Zone.Chips);
                     break;
             }
         }
 
         private static void Sideways(int step)
         {
-            if (_zone == Zone.List) return;
+            if (_zone is Zone.List or Zone.Search) return;
             var tool = Mathf.Clamp(_tool + step, 0, 3);
             if (tool != _tool) MenuSound.Play(MenuCue.Move);
             _tool = tool;

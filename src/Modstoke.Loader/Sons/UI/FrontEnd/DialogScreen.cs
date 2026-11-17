@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using Modstoke.Localization;
-using TheForest.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -48,9 +47,11 @@ namespace Modstoke.Loader
         private Focusable _fieldItem;
         private Glide _plate;
         private PromptView _hover;
-        private string _painted;
+        private PadKeyboard _keyboard;
+        private string _painted, _before;
         private float _opened, _typedAt;
-        private bool _done, _keyboard;
+        private int _paintedCaret, _reopenAt = -1;
+        private bool _done;
 
         internal DialogScreen(SystemDialog dialog) => _dialog = dialog;
 
@@ -61,6 +62,14 @@ namespace Modstoke.Loader
 
         protected override void Build()
         {
+            // Built again for a new screen size or shape, the grid goes with the old layout. What it typed is in the
+            // game's field already, and it opens again on the new one with the caret where it was.
+            if (_keyboard != null && !_keyboard.OnSteam)
+            {
+                _reopenAt = _keyboard.Caret;
+                _keyboard.Close();
+                _keyboard = null;
+            }
             Shape = _dialog.Shape;
             _choices.Clear();
             _prompts.Clear();
@@ -158,6 +167,9 @@ namespace Modstoke.Loader
             _opened = Time.unscaledTime;
             var back = _choices.Find(view => view.Choice.Back);
             Focus(_fieldItem ?? (_dialog.Cautious && back != null && back.Item.Usable ? back.Item : First()));
+            // The grid a rebuild took down opens again; a dialog that lost its field keeps what was typed, as Done would.
+            if (_reopenAt >= 0 && _fieldItem != null) OpenKeyboard(_reopenAt);
+            _reopenAt = -1;
         }
 
         internal override void DeviceChanged()
@@ -176,6 +188,8 @@ namespace Modstoke.Loader
         {
             get
             {
+                // The on-screen keyboard has a legend of its own.
+                if (_keyboard != null) return Array.Empty<PromptSpec>();
                 var prompts = new List<PromptSpec>(2);
                 var back = BackAnswer();
                 if (back != null) prompts.Add(new PromptSpec(back.Label, "B", "ESC", () => Choose(back)));
@@ -204,9 +218,21 @@ namespace Modstoke.Loader
 
         protected override bool CaptureInput()
         {
+            if (_keyboard != null)
+            {
+                var result = _keyboard.Step();
+                if (_keyboard.Text != (_dialog.Typed ?? ""))
+                {
+                    _dialog.Type(_keyboard.Text);
+                    // The game's field may refuse some of it, as an address takes no letters.
+                    _keyboard.Set(_dialog.Typed);
+                    _typedAt = Time.unscaledTime;
+                }
+                if (result != KeyboardResult.Typing) CloseKeyboard(result == KeyboardResult.Done);
+                else if (_dialog.Typed != _painted || _keyboard.Caret != _paintedCaret) PaintField();
+                return true;
+            }
             if (_fieldItem == null) return false;
-            // Steam's on-screen keyboard has the controller until it closes; its text arrives in the field.
-            if (KeyboardOpen()) return true;
             var typed = _dialog.Typed ?? "";
             var text = typed;
             var consumed = false;
@@ -239,14 +265,8 @@ namespace Modstoke.Loader
             return consumed;
         }
 
-        private static bool KeyboardOpen()
-        {
-            try { return global::Sons.Input.InputSystem.GetState(InputState.VirtualKeyboard); }
-            catch (Exception) { return false; }
-        }
-
         // A click only puts focus in the field. Enter answers with the dialog's first answer, its OK; a controller's
-        // confirm opens Steam's keyboard.
+        // confirm opens an on-screen keyboard, and B there puts back what the field held.
         private void Submit()
         {
             if (FromPointer)
@@ -256,12 +276,39 @@ namespace Modstoke.Loader
             }
             if (FrontInput.PadActive)
             {
-                _keyboard = true;
-                _dialog.OpenKeyboard();
+                _before = _dialog.Typed ?? "";
+                OpenKeyboard(-1);
                 return;
             }
             var answer = Primary();
             if (answer != null) Choose(answer.Choice);
+        }
+
+        private void OpenKeyboard(int caret)
+        {
+            var title = string.IsNullOrEmpty(_dialog.FieldLabel) ? _dialog.Title : _dialog.FieldLabel;
+            _keyboard = PadKeyboard.Open(Root, _field, _dialog.Typed ?? "", _dialog.MaxLength, title, _dialog.Secret, caret);
+            PaintField();
+            BuildPrompts();
+        }
+
+        // Once the text is kept, the answer is a press away.
+        private void CloseKeyboard(bool keep)
+        {
+            _keyboard.Close();
+            _keyboard = null;
+            if (keep)
+            {
+                MenuSound.Play(MenuCue.Forward);
+                if (Primary() is { } answer) Focus(answer.Item);
+            }
+            else
+            {
+                _dialog.Type(_before);
+                MenuSound.Play(MenuCue.Back);
+            }
+            PaintField();
+            BuildPrompts();
         }
 
         private ChoiceView Primary() => _choices.Find(view => !view.Choice.Back && view.Item.Usable);
@@ -286,16 +333,10 @@ namespace Modstoke.Loader
             }
             if (_fieldItem != null)
             {
-                // Steam's keyboard writes into the field without passing through here; once it has, focus moves on to
-                // the answer, a press away.
-                if (_dialog.Typed != _painted)
-                {
-                    PaintField();
-                    if (_keyboard && !KeyboardOpen() && Primary() is { } answer) Focus(answer.Item);
-                    _keyboard = false;
-                }
-                var shown = ReferenceEquals(Focused, _fieldItem) && !FrontInput.PadActive
-                    && (Time.unscaledTime - _typedAt) % (CaretBlink * 2) < CaretBlink;
+                // The field is the game's, which may set its text too.
+                if (_dialog.Typed != _painted) PaintField();
+                var typing = _keyboard != null ? !_keyboard.OnSteam : ReferenceEquals(Focused, _fieldItem) && !FrontInput.PadActive;
+                var shown = typing && (Time.unscaledTime - _typedAt) % (CaretBlink * 2) < CaretBlink;
                 if (_caret.gameObject.activeSelf != shown) _caret.gameObject.SetActive(shown);
             }
             // The game can switch an answer on or off while its dialog is up, as one waiting for the field.
@@ -316,12 +357,17 @@ namespace Modstoke.Loader
             var typed = _painted ?? "";
             var shown = _dialog.Secret ? new string('•', typed.Length) : typed;
             _fieldText.text = shown;
-            _fieldLine.color = ReferenceEquals(Focused, _fieldItem) ? MenuKit.Ink : MenuKit.Rule;
-            // A long entry keeps its end, where the caret is, in view.
+            _fieldLine.color = ReferenceEquals(Focused, _fieldItem) || _keyboard != null ? MenuKit.Ink : MenuKit.Rule;
+            // A long entry keeps its end in view, and the caret moves back with it.
             var width = _fieldText.GetPreferredValues(shown).x;
             var box = _fieldText.rectTransform.rect.width;
-            _fieldText.alignment = width + U(4) > box ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
-            _caret.anchoredPosition = new Vector2(Mathf.Min(width, box) + U(2), 0);
+            var right = width + U(4) > box;
+            _fieldText.alignment = right ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft;
+            _paintedCaret = _keyboard?.Caret ?? -1;
+            var caret = _keyboard != null ? Mathf.Clamp(_keyboard.Caret, 0, shown.Length) : shown.Length;
+            var x = MenuKit.Advance(_fieldText, shown, caret);
+            if (right) x += box - MenuKit.Advance(_fieldText, shown, shown.Length);
+            _caret.anchoredPosition = new Vector2(Mathf.Clamp(x, 0, box) + U(2), 0);
         }
 
         // Top to bottom: title, text, field, the busy line, then the answers; the band grows to fit and stays centred.
@@ -426,6 +472,8 @@ namespace Modstoke.Loader
             var bottom = middle - U(PromptHeight) / 2;
             var top = bottom + U(PromptHeight + 12);
             _bar = MenuKit.Box(Root, "Prompts").Place(0, 0, 1, 0, 0, 0, 0, -(top + U(FootFade)));
+            // Made after the keyboard, its foot would draw over the grid's lower edge.
+            _bar.gameObject.SetActive(_keyboard == null);
             MenuKit.Fill(MenuKit.Box(_bar, "Foot").Place(0, 0, 1, 0, 0, 0, 0, -top), null, MenuKit.Band);
             // The fade ramp is solid at its top; turned over, it is solid where it meets the foot.
             var edge = MenuKit.Box(_bar, "Foot edge").Place(0, 0, 1, 0, 0, top, 0, -(top + U(FootFade)));

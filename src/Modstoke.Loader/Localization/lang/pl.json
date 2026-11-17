@@ -759,6 +759,7 @@
   "mods": {
     "search": "Szukaj",
     "searchAbout": "Wpisz nazwę, ID lub autora moda, aby go znaleźć. Enter zachowuje wyszukiwanie, a Escape przywraca poprzednie.",
+    "searchAboutPad": "Otwórz pole, aby wpisać nazwę, ID lub autora moda na klawiaturze ekranowej. Gotowe zachowuje wyszukiwanie, a Anuluj przywraca poprzednie.",
     "searchHint": "Szukaj po nazwie, autorze lub ID",
     "by": "autor: {author}",
     "count": { "one": "{count} mod", "few": "{count} mody", "many": "{count} modów", "other": "{count} moda" },
@@ -978,6 +979,7 @@
     "empty": "Ten plik nie ma prostych ustawień, które można tu wyświetlić.",
     "textEditor": "Edytuj jako tekst",
     "textEditorAbout": "Otwiera cały plik w klasycznym edytorze tekstu. Wstecz przenosi cię stamtąd z powrotem tutaj.",
+    "textEditorAboutPad": "Otwiera cały plik w klasycznym edytorze tekstu, w którym do pisania potrzebna jest klawiatura. Wstecz przenosi cię stamtąd z powrotem tutaj.",
     "saveFirst": "Najpierw zapisz lub przywróć zmiany.",
     "unsavedTitle": "Odrzucić zmiany?",
     "unsavedBody": "Zmiany w tym pliku konfiguracyjnym nie są jeszcze zapisane.",
@@ -1016,6 +1018,11 @@
     "type": "Wpisz",
     "restartTitle": "Wymagane ponowne uruchomienie",
     "restartBody": "Zmiany zaczną działać po ponownym uruchomieniu gry."
+  },
+
+  "keyboard": {
+    "done": "Gotowe",
+    "cjk": "Chiński, japoński i koreański wymagają klawiatury Steam: tryb Big Picture lub Steam Deck."
   },
 
   "multiplayer": {

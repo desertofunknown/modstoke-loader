@@ -103,9 +103,10 @@ namespace Modstoke.Loader
         private Focusable _primary;
         private Image _primaryFill;
         private RowView _drag, _editing;
-        private TMP_InputField _padField;
-        private string _draft, _padText, _problem;
+        private PadKeyboard _keyboard;
+        private string _draft, _problem;
         private float _nextRefresh, _contentHeight, _editStart, _foot;
+        private int _caret;
         private bool _built, _paged;
 
         protected SettingsScreen(int tab = 0) => _tab = tab;
@@ -240,6 +241,9 @@ namespace Modstoke.Loader
             _primaryFill = null;
             _primaryLabel = _note = null;
             _editing = _drag = null;
+            // Built again for a new screen size: the grid went with the old layout, and the edit with it.
+            _keyboard?.Close();
+            _keyboard = null;
             _pips.Clear();
             _tabBar = null;
             _layout = Layout ?? SettingsLayout.Full;
@@ -553,6 +557,8 @@ namespace Modstoke.Loader
             }
             var inset = U(wide ? 18 : 10);
             view.Value = MenuKit.Text(view.Control, "Value", "", U(17), !wide, MenuKit.Ink, TextAlignmentOptions.MidlineLeft, true);
+            // What the player types is shown as typed, never read as markup.
+            view.Value.richText = false;
             view.Value.rectTransform.Place(0, 0, 1, 1, inset, U(4), inset, 0);
             view.Underline = MenuKit.Fill(MenuKit.Box(view.Control, "Rule").Place(0, 0, 1, 0, U(wide ? 0 : 10), U(wide ? 6 : 7), U(wide ? 0 : 10),
                 -(U(wide ? 6 : 7) + Mathf.Max(1f, U(1.5f)))), null, MenuKit.Rule);
@@ -598,7 +604,15 @@ namespace Modstoke.Loader
             PaintDetails();
         }
 
-        internal override void DeviceChanged() => LayoutTabs();
+        // What a row says can name the keys or buttons that work it.
+        internal override void DeviceChanged()
+        {
+            LayoutTabs();
+            PaintDetails();
+        }
+
+        // The on-screen keyboard has a legend of its own, and the bar's buttons type while it is up.
+        internal override bool ShowsPrompts => _keyboard == null;
 
         internal override void Opened()
         {
@@ -662,7 +676,7 @@ namespace Modstoke.Loader
             if (_scroll.Step(dt)) ApplyScroll();
             foreach (var view in _rows)
                 if (view.Track != null && view.Slide.Step(dt)) PlaceThumb(view);
-            if (_editing != null) PaintCaret(_editing);
+            if (_editing != null) Blink(_editing);
         }
 
         protected override void FocusChanged(Focusable previous, Focusable current)
@@ -869,26 +883,18 @@ namespace Modstoke.Loader
         /// <summary>Keeps text still being typed, as Enter would, for a screen about to act on what its rows hold.</summary>
         protected void CommitEdit() => EndEdit(true);
 
-        // Editing text: the keyboard types into the row, Enter keeps it and Escape puts the old text back. On a
-        // controller Steam's on-screen keyboard opens where Steam offers one.
+        // Editing text: the keyboard types into the row, Enter keeps it and Escape puts the old text back. Opened from a
+        // controller, an on-screen keyboard does the typing and the row shows it.
         private void BeginEdit(RowView view, TextRow row)
         {
             if (!row.Available) return;
             _editing = view;
             _draft = row.Value;
             _editStart = Time.unscaledTime;
-            _padField = null;
-            if (FrontEnd.PadActive && row.PadKeyboard != null)
+            if (FrontEnd.PadActive && !FromPointer)
             {
-                try
-                {
-                    _padField = row.PadKeyboard(_draft);
-                    _padText = _padField != null ? _padField.text : null;
-                }
-                catch (Exception error)
-                {
-                    RuntimeEntryPoint.LogSource?.LogWarning("Steam's on-screen keyboard could not open: " + error.Message);
-                }
+                _keyboard = PadKeyboard.Open(Root, view.Control, _draft, row.MaxLength, ItemName(row));
+                _caret = _keyboard.Caret;
             }
             MenuSound.Play(MenuCue.Forward);
             PaintRow(view, true);
@@ -898,6 +904,25 @@ namespace Modstoke.Loader
         {
             var view = _editing;
             var row = (TextRow)view.Row;
+            if (_keyboard != null)
+            {
+                var result = _keyboard.Step();
+                if (result != KeyboardResult.Typing)
+                {
+                    _draft = _keyboard.Text;
+                    EndEdit(result == KeyboardResult.Done);
+                    if (result == KeyboardResult.Cancelled) MenuSound.Play(MenuCue.Back);
+                }
+                else if (_keyboard.Text != _draft || _keyboard.Caret != _caret)
+                {
+                    _draft = _keyboard.Text;
+                    _caret = _keyboard.Caret;
+                    // The caret holds still while it moves.
+                    _editStart = Time.unscaledTime;
+                    PaintRow(view, true);
+                }
+                return true;
+            }
             if (FrontInput.Back)
             {
                 EndEdit(false);
@@ -911,12 +936,7 @@ namespace Modstoke.Loader
                 EndEdit(true);
                 return true;
             }
-            if (_padField != null && _padField && _padField.text != _padText)
-            {
-                _draft = Clip(_padField.text, row.MaxLength);
-                EndEdit(true);
-                return true;
-            }
+            var before = _draft;
             var paste = (UnityEngine.Input.GetKey(KeyCode.LeftControl) || UnityEngine.Input.GetKey(KeyCode.RightControl))
                 && UnityEngine.Input.GetKeyDown(KeyCode.V);
             if (paste) _draft = Clip(_draft + (GUIUtility.systemCopyBuffer ?? "").Replace('\n', ' ').Replace('\r', ' '), row.MaxLength);
@@ -933,7 +953,7 @@ namespace Modstoke.Loader
                 }
                 else if (!char.IsControl(c) && _draft.Length < row.MaxLength) _draft += c;
             }
-            PaintRow(view, true);
+            if (_draft != before) PaintRow(view, true);
             return true;
         }
 
@@ -944,7 +964,8 @@ namespace Modstoke.Loader
             var view = _editing;
             if (view == null) return;
             _editing = null;
-            _padField = null;
+            _keyboard?.Close();
+            _keyboard = null;
             FrontInput.Pause(0.15f);
             var row = (TextRow)view.Row;
             var typed = (_draft ?? "").Trim();
@@ -1128,14 +1149,26 @@ namespace Modstoke.Loader
                     : plate ? MenuKit.OnPlateTrack : MenuKit.BarOff;
         }
 
-        private void PaintCaret(RowView view)
+        // Where the caret stands is measured when the text changes; its blink runs every frame.
+        private void Blink(RowView view)
         {
             if (view.Caret == null) return;
             var shown = (Time.unscaledTime - _editStart) % (CaretBlink * 2) < CaretBlink;
             if (view.Caret.gameObject.activeSelf != shown) view.Caret.gameObject.SetActive(shown);
+        }
+
+        private void PaintCaret(RowView view)
+        {
+            if (view.Caret == null) return;
+            Blink(view);
+            var draft = _draft ?? "";
+            // Typing on a keyboard always adds at the end; the on-screen one has a caret that moves.
+            var caret = _keyboard != null ? Mathf.Clamp(_caret, 0, draft.Length) : draft.Length;
             var box = view.Value.rectTransform.rect.width;
-            var width = view.Value.GetPreferredValues(_draft ?? "").x;
-            view.Caret.anchoredPosition = new Vector2(Mathf.Min(width, box) + U(2), 0);
+            var x = MenuKit.Advance(view.Value, draft, caret);
+            // A long text is drawn from its end, which carries the caret back with it.
+            if (view.Value.alignment == TextAlignmentOptions.MidlineRight) x += box - MenuKit.Advance(view.Value, draft, draft.Length);
+            view.Caret.anchoredPosition = new Vector2(Mathf.Clamp(x, 0, box) + U(2), 0);
         }
 
         private static bool SafeDefault(OptionRow row)
