@@ -12,8 +12,8 @@
     Pass -p:ModstokeBuildLabel=<label> to tell local builds apart; the SDK appends +<commit>.
   -->
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Modstoke.Loader' Or '$(MSBuildProjectName)' == 'Modstoke.Bootstrap' Or '$(MSBuildProjectName)' == 'Modstoke.Preloader' Or '$(MSBuildProjectName)' == 'Modstoke.Console'">
-    <ModstokeLoaderVersion>0.4.7</ModstokeLoaderVersion>
-    <FileVersion>0.4.7.0</FileVersion>
+    <ModstokeLoaderVersion>0.4.8</ModstokeLoaderVersion>
+    <FileVersion>0.4.8.0</FileVersion>
     <InformationalVersion>$(ModstokeLoaderVersion)</InformationalVersion>
     <!-- A labelled build sorts below its release: 0.4.7-<label>, or <prerelease>.<label> on a prerelease. -->
     <InformationalVersion Condition="'$(ModstokeBuildLabel)' != '' And $(ModstokeLoaderVersion.Contains('-'))">$(ModstokeLoaderVersion).$(ModstokeBuildLabel)</InformationalVersion>
