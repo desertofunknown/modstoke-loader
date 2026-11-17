@@ -797,6 +797,7 @@
     "mutedNote": "Bu oyuncuyu bu bilgisayarda susturdunuz.",
     "noBans": "Yasaklı kimse yok.",
     "nobody": "Henüz burada başka kimse yok.",
+    "unnamed": "Oyuncu {number}",
     "mute": "Sustur",
     "unmute": "Sesi aç",
     "unban": "Yasağı kaldır",
@@ -828,12 +829,14 @@
       "admin": "Yönetici",
       "trusted": "Güvenilir",
       "guest": "Misafir",
+      "player": "Oyuncu",
       "banned": "Yasaklı",
       "hostAbout": "Bu oyunun ev sahibi.",
       "ownerAbout": "Bu sunucunun sahibi.",
       "adminAbout": "Oyuncuları atabilir, yasaklayabilir ve rollerini değiştirebilir.",
       "trustedAbout": "Güvenilir bir oyuncu.",
       "guestAbout": "Bu oyunda misafir.",
+      "playerAbout": "Bu oyunda. Sunucu bu oyuncunun Steam profilini paylaşmıyor.",
       "bannedAbout": "Bu oyundan yasaklı."
     }
   },

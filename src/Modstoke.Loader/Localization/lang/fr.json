@@ -797,6 +797,7 @@
     "mutedNote": "Vous avez coupé le son de ce joueur sur ce PC.",
     "noBans": "Personne n’est banni.",
     "nobody": "Il n’y a encore personne d’autre ici.",
+    "unnamed": "Joueur {number}",
     "mute": "Couper le son",
     "unmute": "Rétablir le son",
     "unban": "Débannir",
@@ -828,12 +829,14 @@
       "admin": "Admin",
       "trusted": "De confiance",
       "guest": "Invité",
+      "player": "Joueur",
       "banned": "Banni",
       "hostAbout": "Héberge cette partie.",
       "ownerAbout": "Propriétaire de ce serveur.",
       "adminAbout": "Peut exclure et bannir des joueurs, et changer leur rôle.",
       "trustedAbout": "Un joueur de confiance.",
       "guestAbout": "Un invité de cette partie.",
+      "playerAbout": "Dans cette partie. Le serveur ne partage pas son profil Steam.",
       "bannedAbout": "Banni de cette partie."
     }
   },

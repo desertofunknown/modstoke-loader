@@ -797,6 +797,7 @@
     "mutedNote": "Du har tystat den här spelaren på den här datorn.",
     "noBans": "Ingen är bannad.",
     "nobody": "Ingen annan är här än.",
+    "unnamed": "Spelare {number}",
     "mute": "Tysta",
     "unmute": "Häv tystning",
     "unban": "Häv bann",
@@ -828,12 +829,14 @@
       "admin": "Admin",
       "trusted": "Pålitlig",
       "guest": "Gäst",
+      "player": "Spelare",
       "banned": "Bannad",
       "hostAbout": "Är värd för det här spelet.",
       "ownerAbout": "Äger den här servern.",
       "adminAbout": "Kan kicka och banna spelare och ändra deras roller.",
       "trustedAbout": "En pålitlig spelare.",
       "guestAbout": "En gäst i det här spelet.",
+      "playerAbout": "I det här spelet. Servern delar inte spelarens Steam-profil.",
       "bannedAbout": "Bannad från det här spelet."
     }
   },

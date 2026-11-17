@@ -12,15 +12,19 @@ namespace Modstoke.Loader
     /// <summary>A player on the Players page: their Steam picture and name, their role as the value.</summary>
     internal sealed class PlayerRow : OptionRow
     {
-        internal PlayerRow(PlayerEntry player, Action<PlayerEntry> open) : base("player:" + player.Id)
+        internal PlayerRow(PlayerEntry player, Action<PlayerEntry> open)
+            : base(player.Id != 0 ? "player:" + player.Id : "entity:" + player.Entity)
         {
             Player = player;
-            Open = () => open(player);
+            // Without a Steam ID there is no profile to show and nothing the game's commands can act on.
+            Open = player.Id != 0 ? () => open(player) : null;
             Ready = true;
         }
 
         internal PlayerEntry Player { get; }
         internal override Action Open { get; }
+        // A row with nothing to open is drawn as a line to read, not as a choice with arrows.
+        internal override bool ReadOnly => Player.Id == 0;
         internal override string Value => Text[PlayersScreen.RoleKey(Player)];
         internal override string DefaultValue => "";
         internal override bool IsDefault => true;
@@ -75,6 +79,7 @@ namespace Modstoke.Loader
             if (row is not PlayerRow player) return Text["custom.item." + row.Id + ".about"];
             var entry = player.Player;
             var lines = new List<string> { Text[RoleKey(entry) + "About"] };
+            if (entry.Id == 0) return lines[0];
             if (!entry.Self && PlayersHost.Muted(entry.Id)) lines.Add(Text["players.mutedNote"]);
             lines.Add(Text["players.openHint"]);
             return string.Join("\n\n", lines);
@@ -108,6 +113,7 @@ namespace Modstoke.Loader
 
         internal static string RoleKey(PlayerEntry player)
         {
+            if (player.Id == 0) return "players.role.player";
             if (player.Host) return "players.role.host";
             if (player.Role >= PlayersHost.Owner) return "players.role.owner";
             if (player.Role >= PlayersHost.Admin) return "players.role.admin";
@@ -123,7 +129,8 @@ namespace Modstoke.Loader
         }
 
         private string RosterKey()
-            => string.Join("|", _players.Concat(_banned).Select(player => player.Id + ":" + player.Role + (player.Avatar != null ? "+" : "-")));
+            => string.Join("|", _players.Concat(_banned).Select(player => player.Id + ":" + player.Entity + ":" + player.Name + ":" + player.Role
+                + (player.Avatar != null ? "+" : "-")));
 
         private OptionRow Row(PlayerEntry player) => new PlayerRow(player, OpenActions);
 

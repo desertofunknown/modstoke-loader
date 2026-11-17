@@ -797,6 +797,7 @@
     "mutedNote": "Você silenciou este jogador neste PC.",
     "noBans": "Ninguém está banido.",
     "nobody": "Ainda não há mais ninguém aqui.",
+    "unnamed": "Jogador {number}",
     "mute": "Silenciar",
     "unmute": "Ativar som",
     "unban": "Desbanir",
@@ -828,12 +829,14 @@
       "admin": "Administrador",
       "trusted": "Confiável",
       "guest": "Convidado",
+      "player": "Jogador",
       "banned": "Banido",
       "hostAbout": "Hospeda esta partida.",
       "ownerAbout": "Dono deste servidor.",
       "adminAbout": "Pode expulsar e banir jogadores e mudar os cargos deles.",
       "trustedAbout": "Um jogador confiável.",
       "guestAbout": "Um convidado nesta partida.",
+      "playerAbout": "Nesta partida. O servidor não compartilha o perfil da Steam deste jogador.",
       "bannedAbout": "Banido desta partida."
     }
   },

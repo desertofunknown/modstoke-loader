@@ -9,12 +9,16 @@ using Sons.Gameplay.GameSetup;
 using Sons.Multiplayer;
 using Sons.MultiplayerLegacy;
 using Steamworks;
+using TheForest.Utils;
 using UnityEngine;
 
 namespace Modstoke.Loader
 {
-    /// <summary>One player in the game, or one on its banned list.</summary>
-    internal sealed record PlayerEntry(ulong Id, string Name, Texture2D Avatar, int Role, bool Host, bool Self);
+    /// <summary>
+    /// One player in the game, or one on its banned list. <see cref="Id"/> is their Steam ID, or 0 for a player
+    /// known only by their replicated entity (<see cref="Entity"/>, its network ID), whose Steam ID this PC never got.
+    /// </summary>
+    internal sealed record PlayerEntry(ulong Id, string Name, Texture2D Avatar, int Role, bool Host, bool Self, ulong Entity = 0);
 
     /// <summary>
     /// Who is in this multiplayer game and what can be done about them, for Modstoke's Players page. The roster
@@ -60,6 +64,9 @@ namespace Modstoke.Loader
             // A client's copy of the server's list can be empty, as on a dedicated server, but the player is still in it.
             if (self != 0 && players.FindIndex(player => player.Id == self) < 0 && Safe(() => BoltNetwork.isRunning, false))
                 players.Add(Entry(self, 0, false, true));
+            // With that list empty and no lobby owner, the others are still in the world as replicated player entities.
+            if (!Server && players.TrueForAll(player => player.Self))
+                AddWorldPlayers(players);
             players.Sort((a, b) => a.Host != b.Host ? (a.Host ? -1 : 1) : b.Role.CompareTo(a.Role) != 0 ? b.Role.CompareTo(a.Role)
                 : string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
             return players;
@@ -138,6 +145,31 @@ namespace Modstoke.Loader
             => Safe(() => GameSetupManager.GetSetting(GameSetupManager.PvpDamageKey, GameSetupManager.DefaultPvpDamageSettingValue), "");
 
         internal static void SetPvpDamage(string value) => CoopAdminCommand.Send(CoopAdminCommand.Command_setpvpdamage, value);
+
+        // Each remote player's entity carries the name they joined with, but no Steam ID, so these rows have no profile,
+        // picture or role and nothing can be done with them; a nameless one is numbered.
+        private static void AddWorldPlayers(List<PlayerEntry> players)
+        {
+            try
+            {
+                var tracker = PlayerTracker._instance;
+                var entities = tracker != null && tracker ? tracker.AllPlayerEntities : null;
+                var local = LocalPlayer.Entity;
+                var unnamed = 0;
+                for (var i = 0; entities != null && i < entities.Count; i++)
+                {
+                    var entity = entities[i];
+                    if (entity == null || !entity || !entity.isAttached || local != null && entity.Pointer == local.Pointer) continue;
+                    var name = entity.GetState<IPlayerState>()?.name;
+                    if (string.IsNullOrWhiteSpace(name)) name = FrontEnd.Text.Get("players.unnamed", ("number", ++unnamed));
+                    players.Add(new PlayerEntry(0, name.Trim(), null, 0, false, false, entity.networkId.PackedValue));
+                }
+            }
+            catch (Exception error)
+            {
+                RuntimeEntryPoint.LogSource?.LogDebug("The players in the world could not be read: " + error.Message);
+            }
+        }
 
         private static PlayerEntry Entry(ulong id, int role, bool host, bool self)
         {

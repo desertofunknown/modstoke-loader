@@ -797,6 +797,7 @@
     "mutedNote": "你已在這台電腦上將其靜音。",
     "noBans": "沒有被封禁的玩家。",
     "nobody": "這裡還沒有其他人。",
+    "unnamed": "玩家 {number}",
     "mute": "靜音",
     "unmute": "取消靜音",
     "unban": "解除封禁",
@@ -828,12 +829,14 @@
       "admin": "管理者",
       "trusted": "可信",
       "guest": "訪客",
+      "player": "玩家",
       "banned": "已封禁",
       "hostAbout": "這場遊戲的房主。",
       "ownerAbout": "這個伺服器的擁有者。",
       "adminAbout": "可以踢出和封禁玩家，並變更他們的身分。",
       "trustedAbout": "可信的玩家。",
       "guestAbout": "這場遊戲的訪客。",
+      "playerAbout": "在這局遊戲中。伺服器未提供此玩家的 Steam 個人檔案。",
       "bannedAbout": "已被禁止加入這場遊戲。"
     }
   },

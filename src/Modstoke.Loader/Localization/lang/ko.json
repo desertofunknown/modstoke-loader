@@ -797,6 +797,7 @@
     "mutedNote": "이 PC에서 이 플레이어를 음소거했습니다.",
     "noBans": "차단된 플레이어가 없습니다.",
     "nobody": "아직 다른 플레이어가 없습니다.",
+    "unnamed": "플레이어 {number}",
     "mute": "음소거",
     "unmute": "음소거 해제",
     "unban": "차단 해제",
@@ -828,12 +829,14 @@
       "admin": "관리자",
       "trusted": "신뢰",
       "guest": "게스트",
+      "player": "플레이어",
       "banned": "차단됨",
       "hostAbout": "이 게임의 호스트입니다.",
       "ownerAbout": "이 서버의 오너입니다.",
       "adminAbout": "플레이어를 추방하거나 차단하고 역할을 바꿀 수 있습니다.",
       "trustedAbout": "신뢰하는 플레이어입니다.",
       "guestAbout": "이 게임의 게스트입니다.",
+      "playerAbout": "이 게임에 참여 중입니다. 서버가 이 플레이어의 Steam 프로필을 공유하지 않습니다.",
       "bannedAbout": "이 게임에서 차단되었습니다."
     }
   },

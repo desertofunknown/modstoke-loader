@@ -797,6 +797,7 @@
     "mutedNote": "Tohoto hráče jste na tomto PC ztlumili.",
     "noBans": "Nikdo není zablokovaný.",
     "nobody": "Zatím tu nikdo další není.",
+    "unnamed": "Hráč {number}",
     "mute": "Ztlumit",
     "unmute": "Zrušit ztlumení",
     "unban": "Odblokovat",
@@ -828,12 +829,14 @@
       "admin": "Správce",
       "trusted": "Důvěryhodný",
       "guest": "Host",
+      "player": "Hráč",
       "banned": "Zablokovaný",
       "hostAbout": "Hostuje tuto hru.",
       "ownerAbout": "Vlastní tento server.",
       "adminAbout": "Může vyhazovat a blokovat hráče a měnit jejich role.",
       "trustedAbout": "Důvěryhodný hráč.",
       "guestAbout": "Host v této hře.",
+      "playerAbout": "V této hře. Server jeho profil Steam nesdílí.",
       "bannedAbout": "Zablokovaný v této hře."
     }
   },

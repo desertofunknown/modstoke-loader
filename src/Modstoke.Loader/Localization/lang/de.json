@@ -797,6 +797,7 @@
     "mutedNote": "Du hast diesen Spieler auf diesem PC stummgeschaltet.",
     "noBans": "Niemand ist gesperrt.",
     "nobody": "Außer dir ist noch niemand hier.",
+    "unnamed": "Spieler {number}",
     "mute": "Stummschalten",
     "unmute": "Stummschaltung aufheben",
     "unban": "Entsperren",
@@ -828,12 +829,14 @@
       "admin": "Admin",
       "trusted": "Vertraut",
       "guest": "Gast",
+      "player": "Spieler",
       "banned": "Gesperrt",
       "hostAbout": "Hostet dieses Spiel.",
       "ownerAbout": "Besitzt diesen Server.",
       "adminAbout": "Kann Spieler rauswerfen, sperren und ihre Rollen ändern.",
       "trustedAbout": "Ein vertrauenswürdiger Spieler.",
       "guestAbout": "Ein Gast in diesem Spiel.",
+      "playerAbout": "In diesem Spiel. Der Server teilt kein Steam-Profil dazu.",
       "bannedAbout": "Für dieses Spiel gesperrt."
     }
   },

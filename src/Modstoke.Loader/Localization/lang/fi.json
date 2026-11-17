@@ -797,6 +797,7 @@
     "mutedNote": "Olet mykistänyt tämän pelaajan tällä tietokoneella.",
     "noBans": "Kenelläkään ei ole porttikieltoa.",
     "nobody": "Täällä ei ole vielä muita.",
+    "unnamed": "Pelaaja {number}",
     "mute": "Mykistä",
     "unmute": "Poista mykistys",
     "unban": "Poista porttikielto",
@@ -828,12 +829,14 @@
       "admin": "Ylläpitäjä",
       "trusted": "Luotettu",
       "guest": "Vieras",
+      "player": "Pelaaja",
       "banned": "Porttikiellossa",
       "hostAbout": "Isännöi tätä peliä.",
       "ownerAbout": "Omistaa tämän palvelimen.",
       "adminAbout": "Voi potkaista pelaajia, antaa porttikieltoja ja vaihtaa pelaajien rooleja.",
       "trustedAbout": "Luotettu pelaaja.",
       "guestAbout": "Vieras tässä pelissä.",
+      "playerAbout": "Tässä pelissä. Palvelin ei jaa hänen Steam-profiiliaan.",
       "bannedAbout": "Porttikielto tähän peliin."
     }
   },

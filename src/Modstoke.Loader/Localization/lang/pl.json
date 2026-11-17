@@ -797,6 +797,7 @@
     "mutedNote": "Ten gracz jest wyciszony na tym komputerze.",
     "noBans": "Nikt nie ma bana.",
     "nobody": "Nikogo innego jeszcze tu nie ma.",
+    "unnamed": "Gracz {number}",
     "mute": "Wycisz",
     "unmute": "Cofnij wyciszenie",
     "unban": "Odbanuj",
@@ -828,12 +829,14 @@
       "admin": "Admin",
       "trusted": "Zaufany",
       "guest": "Gość",
+      "player": "Gracz",
       "banned": "Zbanowany",
       "hostAbout": "Hostuje tę grę.",
       "ownerAbout": "Właściciel tego serwera.",
       "adminAbout": "Może wyrzucać i banować graczy oraz zmieniać ich role.",
       "trustedAbout": "Zaufany gracz.",
       "guestAbout": "Gość w tej grze.",
+      "playerAbout": "W tej grze. Serwer nie udostępnia jego profilu Steam.",
       "bannedAbout": "Ma bana w tej grze."
     }
   },
