@@ -162,6 +162,7 @@
       "sprintToggle": { "name": "Koşmayı aç/kapat", "about": "Düğmeyi basılı tutmak yerine bir basış koşmayı başlatır." },
       "inventorySpeed": { "name": "Envanter imleci hızı", "about": "Kumandayla imlecin envanterinizde ne kadar hızlı hareket ettiği." },
       "bindings": { "name": "Tuşlar ve düğmeler", "about": "Hangi tuş ve düğmenin ne yaptığını değiştirin; klavye ve fare için de, kumanda için de." },
+      "modBindings": { "name": "Mod tuşları ve düğmeleri", "about": "Modstoke ve modları için tuşlar ve kumanda düğmeleri. Birini seçin, ardından ona atamak istediğiniz tuşa veya düğmeye basın." },
       "master": { "name": "Ana ses", "about": "Her şeyin ses seviyesi." },
       "music": { "name": "Müzik", "about": "Müziğin ses seviyesi." },
       "effects": { "name": "Ses efektleri", "about": "Dünyanın ve içindeki her şeyin ses seviyesi." },

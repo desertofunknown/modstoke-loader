@@ -162,6 +162,7 @@
       "sprintToggle": { "name": "Pikajuoksun vaihto", "about": "Yksi painallus aloittaa pikajuoksun, eikä painiketta tarvitse pitää pohjassa." },
       "inventorySpeed": { "name": "Inventaarion kohdistimen nopeus", "about": "Kuinka nopeasti kohdistin liikkuu inventaariossa ohjaimella." },
       "bindings": { "name": "Näppäimet ja painikkeet", "about": "Muuta, mitä näppäimet ja painikkeet tekevät, näppäimistöllä ja hiirellä sekä ohjaimella." },
+      "modBindings": { "name": "Modien näppäimet ja painikkeet", "about": "Modstoken ja sen modien näppäimet ja ohjaimen painikkeet. Valitse yksi ja paina sille haluamaasi näppäintä tai painiketta." },
       "master": { "name": "Pääänenvoimakkuus", "about": "Kaiken äänenvoimakkuus." },
       "music": { "name": "Musiikki", "about": "Musiikin äänenvoimakkuus." },
       "effects": { "name": "Äänitehosteet", "about": "Maailman ja kaiken siinä olevan äänenvoimakkuus." },

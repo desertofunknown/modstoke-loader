@@ -10,15 +10,20 @@ using UnityEngine;
 
 namespace Modstoke.Loader
 {
-    public static class InputBindings
+    public static partial class InputBindings
     {
         public const string ServiceKey = "openacai.loader.input";
+        /// <summary>The longest hold a keybind can ask for.</summary>
+        public const float MaximumHoldSeconds = 10f;
 
         private static readonly object SyncRoot = new();
         private static readonly Dictionary<string, KeybindSnapshot> Keybinds =
             new(StringComparer.OrdinalIgnoreCase);
         private static FocusLease _currentFocus;
         private static int? _focusReleaseFrame;
+
+        /// <summary>Counts every change to the registered keybinds, so a mod caching key names or prompts knows when to read them again.</summary>
+        public static int Revision { get; private set; }
 
         /// <summary>Reports SDK focus, including a release earlier this frame. Main-thread only.</summary>
         public static bool HasFocus
@@ -146,7 +151,9 @@ namespace Modstoke.Loader
                 _currentFocus = null;
                 _focusReleaseFrame = null;
                 Keybinds.Clear();
-                SetKeybindNoLock(KeybindSnapshot.Create(
+                Tracks.Clear();
+                _saved = null;
+                RegisterNoLock(KeybindSnapshot.Create(
                     KeybindIds.ToggleModsMenu,
                     "Toggle Mods Menu",
                     "Modstoke Loader",
@@ -155,7 +162,7 @@ namespace Modstoke.Loader
                     InputContexts.Any,
                     false,
                     "Open or close the Modstoke mods menu."));
-                SetKeybindNoLock(KeybindSnapshot.Create(
+                RegisterNoLock(KeybindSnapshot.Create(
                     KeybindIds.Back,
                     "Back",
                     "Modstoke Loader",
@@ -164,7 +171,7 @@ namespace Modstoke.Loader
                     InputContexts.Any,
                     false,
                     "Return from the current Modstoke menu view."));
-                SetKeybindNoLock(KeybindSnapshot.Create(
+                RegisterNoLock(KeybindSnapshot.Create(
                     KeybindIds.PhotoMode,
                     "Photo Mode",
                     "Modstoke Loader",
@@ -191,7 +198,28 @@ namespace Modstoke.Loader
             bool suppressWhenModstokeUiVisible,
             string tooltip)
         {
-            if (string.IsNullOrWhiteSpace(id))
+            return TryRegisterKeybind(id, displayName, category, key, PadBinding.None, context, suppressWhenModstokeUiVisible, tooltip);
+        }
+
+        /// <summary>Registers a keybind with a key and a controller side; either may be none.</summary>
+        /// <remarks>
+        /// <paramref name="key"/> and <paramref name="pad"/> are the defaults: a player's own choice from the Mods menu is
+        /// saved and applied in their place. With <paramref name="holdSeconds"/> above zero, <see cref="IsPressed"/> waits
+        /// for that long a hold, on either device. Returns false for a taken ID or a hold outside 0 to
+        /// <see cref="MaximumHoldSeconds"/>.
+        /// </remarks>
+        public static bool TryRegisterKeybind(
+            string id,
+            string displayName,
+            string category,
+            KeyCode key,
+            PadBinding pad,
+            string context,
+            bool suppressWhenModstokeUiVisible,
+            string tooltip,
+            float holdSeconds = 0)
+        {
+            if (string.IsNullOrWhiteSpace(id) || !(holdSeconds >= 0 && holdSeconds <= MaximumHoldSeconds))
             {
                 return false;
             }
@@ -203,11 +231,13 @@ namespace Modstoke.Loader
                     return false;
                 }
 
-                SetKeybindNoLock(KeybindSnapshot.Create(
+                RegisterNoLock(KeybindSnapshot.Create(
                     id,
                     displayName,
                     category,
                     key,
+                    pad,
+                    holdSeconds,
                     true,
                     context,
                     suppressWhenModstokeUiVisible,
@@ -242,13 +272,44 @@ namespace Modstoke.Loader
             }
         }
 
-        public static bool SetKey(string id, KeyCode key)
+        /// <summary>Changes the key; the player's binding from then on, saved with the Loader's settings.</summary>
+        public static bool SetKey(string id, KeyCode key) => Rebind(id, key, null);
+
+        /// <summary>Changes the controller side; the player's binding from then on, saved with the Loader's settings.</summary>
+        public static bool SetPad(string id, PadBinding pad) => Rebind(id, null, pad);
+
+        /// <summary>Puts the key and controller side back to the ones the keybind was registered with.</summary>
+        public static bool ResetToDefault(string id)
+        {
+            KeybindSnapshot keybind;
+            lock (SyncRoot)
+            {
+                if (string.IsNullOrWhiteSpace(id) || !Keybinds.TryGetValue(id, out keybind))
+                {
+                    return false;
+                }
+            }
+
+            return Rebind(id, keybind.DefaultKey, keybind.DefaultPad);
+        }
+
+        /// <summary>
+        /// Declares the game actions a keybind deliberately stands in for on the mod's own objects, such as the game's
+        /// Interact on a mod's door, so the keybind is not warned off them.
+        /// </summary>
+        /// <remarks>
+        /// Names are the game's input actions or Keys and buttons rows ("Take", "Interact", "Use"). Clashes with every
+        /// other game action and keybind are still reported. Replaces any earlier list; no names clears it.
+        /// </remarks>
+        public static bool ShareGameActions(string id, params string[] gameActions)
         {
             if (string.IsNullOrWhiteSpace(id))
             {
                 return false;
             }
 
+            var shared = (gameActions ?? Array.Empty<string>()).Where(action => !string.IsNullOrWhiteSpace(action))
+                .Select(action => action.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             lock (SyncRoot)
             {
                 if (!Keybinds.TryGetValue(id, out var existing))
@@ -256,12 +317,7 @@ namespace Modstoke.Loader
                     return false;
                 }
 
-                if (existing.Key == key)
-                {
-                    return true;
-                }
-
-                SetKeybindNoLock(existing.WithKey(key));
+                SetKeybindNoLock(existing.WithSharedGameActions(shared));
                 PublishServiceNoLock();
                 return true;
             }
@@ -281,40 +337,12 @@ namespace Modstoke.Loader
                     return false;
                 }
 
+                Tracks.Remove(id);
                 PublishServiceNoLock();
-                return true;
-            }
-        }
-
-        public static bool IsPressed(string id) => PollKeybind(id, Input.GetKeyDown);
-
-        public static bool IsHeld(string id) => PollKeybind(id, Input.GetKey);
-
-        public static bool IsReleased(string id) => PollKeybind(id, Input.GetKeyUp);
-
-        private static bool PollKeybind(string id, Func<KeyCode, bool> poll)
-        {
-            KeybindSnapshot keybind;
-            lock (SyncRoot)
-            {
-                if (string.IsNullOrWhiteSpace(id) || !Keybinds.TryGetValue(id, out keybind) || !keybind.Enabled || keybind.Key == KeyCode.None)
-                {
-                    return false;
-                }
             }
 
-            try
-            {
-                if (!poll(keybind.Key))
-                    return false;
-            }
-            catch
-            {
-                return false;
-            }
-
-            // Context checks can copy UI state; idle keys need no such work.
-            return IsContextAllowed(keybind, out _);
+            CancelCapture(id, "That binding is no longer registered.");
+            return true;
         }
 
         public static bool IsContextAllowed(string id, out string blockedReason)
@@ -361,8 +389,14 @@ namespace Modstoke.Loader
             Keybinds[snapshot.Id] = snapshot;
         }
 
+        private static void RegisterNoLock(KeybindSnapshot snapshot)
+        {
+            Keybinds[snapshot.Id] = WithSavedNoLock(snapshot);
+        }
+
         private static void PublishServiceNoLock()
         {
+            Revision++;
             Modding.SetService(ServiceKey, CreateStateNoLock());
             global::Modstoke.Loader.RuntimeEntryPoint.RequestLoaderStateRefresh("input-keybinds-changed");
         }
@@ -433,6 +467,20 @@ namespace Modstoke.Loader
                 return false;
             }
 
+            if (string.Equals(context, InputContexts.GameControlsOn, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(context, InputContexts.GameControlsOff, StringComparison.OrdinalIgnoreCase))
+            {
+                var off = string.Equals(context, InputContexts.GameControlsOff, StringComparison.OrdinalIgnoreCase);
+                if (sonsState.IsInWorld && GameControlsOff() == off)
+                {
+                    return true;
+                }
+
+                blockedReason = !sonsState.IsInWorld ? "Sons world is not active."
+                    : off ? "The game's own controls are on." : "The game's own controls are off.";
+                return false;
+            }
+
             if (string.Equals(context, InputContexts.NotInWorld, StringComparison.OrdinalIgnoreCase))
             {
                 if (!sonsState.IsInWorld)
@@ -479,6 +527,19 @@ namespace Modstoke.Loader
 
             blockedReason = "Unknown keybind context '" + keybind.Context + "'.";
             return false;
+        }
+
+        // Seats and full-screen devices hold the game's input in its Console state, which turns its world actions off.
+        private static bool GameControlsOff()
+        {
+            try
+            {
+                return global::Sons.Input.InputSystem.GetState(TheForest.Utils.InputState.Console);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         private static string CurrentContext()
@@ -537,65 +598,6 @@ namespace Modstoke.Loader
                 return false;
             }
         }
-
-        private static MenuContentSnapshot CreateContent()
-        {
-            KeybindSnapshot[] snapshots;
-            lock (SyncRoot)
-            {
-                snapshots = CreateSortedSnapshotNoLock();
-            }
-
-            var uiVisible = IsModstokeUiVisible();
-            return new MenuContentSnapshot(
-                "Input Bindings",
-                "Modstoke keybind registration and context-gating state.",
-                new[]
-                {
-                    new MenuSectionSnapshot(
-                        "Input State",
-                        new[]
-                        {
-                            new MenuRowSnapshot("Service", ServiceKey, "READY", "Public Modstoke keybind registry."),
-                            new MenuRowSnapshot("Registered", snapshots.Length.ToString(), "INFO", "Registered Modstoke keybind count."),
-                            new MenuRowSnapshot("Enabled", snapshots.Count(keybind => keybind.Enabled).ToString(), "INFO", "Enabled Modstoke keybind count."),
-                            new MenuRowSnapshot("Context", CurrentContext(), "INFO", "Current input context derived from Modstoke SDK scene/world state."),
-                            new MenuRowSnapshot("Modstoke UI", uiVisible ? "Visible" : "Hidden", uiVisible ? "INFO" : "READY", "Keybinds can opt into suppression while Modstoke UI is visible.")
-                        }),
-                    new MenuSectionSnapshot(
-                        "Registered Keybinds",
-                        snapshots.Select(CreateKeybindRow).ToArray())
-                });
-        }
-
-        private static MenuRowSnapshot CreateKeybindRow(KeybindSnapshot keybind)
-        {
-            var allowed = IsContextAllowed(keybind, out var blockedReason);
-            var status = !keybind.Enabled ? "DISABLED" : allowed ? "READY" : "GATED";
-            var detail = keybind.Category
-                + " | context "
-                + keybind.Context
-                + (keybind.SuppressWhenModstokeUiVisible ? " | suppresses while Modstoke UI is visible" : "")
-                + (string.IsNullOrWhiteSpace(blockedReason) ? "" : " | " + blockedReason);
-            return new MenuRowSnapshot(keybind.DisplayName, keybind.KeyName, status, detail);
-        }
-
-        private sealed class Provider : IMenuContentProvider
-        {
-            public string Id => MenuProviderIds.InputBindings;
-            public string DisplayName => "Input Bindings";
-            public string Kind => MenuProviderKinds.Status;
-            public int Priority => 320;
-            public string Source => "Modstoke Loader";
-            public string Description => "Show Modstoke keybind registration and context gates.";
-            public bool RequiresAuthorization => false;
-            public bool Enabled => true;
-
-            public MenuContentSnapshot CreateContent()
-            {
-                return InputBindings.CreateContent();
-            }
-        }
     }
 
     public static class KeybindIds
@@ -614,6 +616,13 @@ namespace Modstoke.Loader
         public const string GameScene = "game-scene";
         public const string InWorld = "in-world";
         public const string NotInWorld = "not-in-world";
+        /// <summary>In the world with the game's own controls live: on foot, not in a seat or full-screen device.</summary>
+        public const string GameControlsOn = "game-controls-on";
+        /// <summary>
+        /// In the world while a seat or full-screen device holds the game's input (its Console state). Only the holder
+        /// reads its keybinds then, so they clash with nothing of the game's and with no other mod's held-input keybinds.
+        /// </summary>
+        public const string GameControlsOff = "game-controls-off";
 
         public static IReadOnlyList<string> All { get; } = new[]
         {
@@ -622,7 +631,9 @@ namespace Modstoke.Loader
             Loading,
             GameScene,
             InWorld,
-            NotInWorld
+            NotInWorld,
+            GameControlsOn,
+            GameControlsOff
         };
     }
 
@@ -633,16 +644,26 @@ namespace Modstoke.Loader
             string displayName,
             string category,
             KeyCode key,
+            PadBinding pad,
+            KeyCode defaultKey,
+            PadBinding defaultPad,
+            float holdSeconds,
+            IReadOnlyList<string> sharedGameActions,
             bool enabled,
             string context,
             bool suppressWhenModstokeUiVisible,
             string tooltip)
         {
             Id = id;
+            SharedGameActions = sharedGameActions;
             DisplayName = displayName;
             Category = category;
             Key = key;
             KeyName = key.ToString();
+            Pad = pad;
+            DefaultKey = defaultKey;
+            DefaultPad = defaultPad;
+            HoldSeconds = holdSeconds;
             Enabled = enabled;
             Context = string.IsNullOrWhiteSpace(context) ? InputContexts.Any : context;
             SuppressWhenModstokeUiVisible = suppressWhenModstokeUiVisible;
@@ -654,6 +675,19 @@ namespace Modstoke.Loader
         public string Category { get; }
         public KeyCode Key { get; }
         public string KeyName { get; }
+        [JsonIgnore]
+        public PadBinding Pad { get; }
+        /// <summary><see cref="Pad"/> by its button names, as saved: "None", "South" or "LeftShoulder+RightShoulder".</summary>
+        public string PadName => Pad.ToString();
+        /// <summary>The key the keybind was registered with, which a reset goes back to.</summary>
+        public KeyCode DefaultKey { get; }
+        [JsonIgnore]
+        public PadBinding DefaultPad { get; }
+        /// <summary>How long it must be held before it counts as pressed; 0 for a plain press.</summary>
+        public float HoldSeconds { get; }
+        public bool IsDefault => Key == DefaultKey && Pad == DefaultPad;
+        /// <summary>The game actions it stands in for on purpose, which no clash is reported against; see <see cref="InputBindings.ShareGameActions"/>.</summary>
+        public IReadOnlyList<string> SharedGameActions { get; }
         public bool Enabled { get; }
         public string Context { get; }
         public bool SuppressWhenModstokeUiVisible { get; }
@@ -673,11 +707,31 @@ namespace Modstoke.Loader
             bool suppressWhenModstokeUiVisible,
             string tooltip)
         {
+            return Create(id, displayName, category, key, PadBinding.None, 0, enabled, context, suppressWhenModstokeUiVisible, tooltip);
+        }
+
+        internal static KeybindSnapshot Create(
+            string id,
+            string displayName,
+            string category,
+            KeyCode key,
+            PadBinding pad,
+            float holdSeconds,
+            bool enabled,
+            string context,
+            bool suppressWhenModstokeUiVisible,
+            string tooltip)
+        {
             return new KeybindSnapshot(
                 id,
                 string.IsNullOrWhiteSpace(displayName) ? id : displayName,
                 string.IsNullOrWhiteSpace(category) ? "Modstoke" : category,
                 key,
+                pad,
+                key,
+                pad,
+                holdSeconds,
+                Array.Empty<string>(),
                 enabled,
                 context,
                 suppressWhenModstokeUiVisible,
@@ -686,13 +740,20 @@ namespace Modstoke.Loader
 
         internal KeybindSnapshot WithEnabled(bool enabled)
         {
-            return new KeybindSnapshot(Id, DisplayName, Category, Key, enabled, Context, SuppressWhenModstokeUiVisible, Tooltip);
+            return new KeybindSnapshot(Id, DisplayName, Category, Key, Pad, DefaultKey, DefaultPad, HoldSeconds, SharedGameActions,
+                enabled, Context, SuppressWhenModstokeUiVisible, Tooltip);
         }
 
-        internal KeybindSnapshot WithKey(KeyCode key)
+        internal KeybindSnapshot WithBinding(KeyCode key, PadBinding pad)
         {
-            return new KeybindSnapshot(Id, DisplayName, Category, key, Enabled, Context, SuppressWhenModstokeUiVisible, Tooltip);
+            return new KeybindSnapshot(Id, DisplayName, Category, key, pad, DefaultKey, DefaultPad, HoldSeconds, SharedGameActions,
+                Enabled, Context, SuppressWhenModstokeUiVisible, Tooltip);
+        }
+
+        internal KeybindSnapshot WithSharedGameActions(IReadOnlyList<string> sharedGameActions)
+        {
+            return new KeybindSnapshot(Id, DisplayName, Category, Key, Pad, DefaultKey, DefaultPad, HoldSeconds, sharedGameActions,
+                Enabled, Context, SuppressWhenModstokeUiVisible, Tooltip);
         }
     }
 }
-

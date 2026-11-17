@@ -162,6 +162,7 @@
       "sprintToggle": { "name": "切换冲刺", "about": "按一次开始冲刺，无需按住按钮。" },
       "inventorySpeed": { "name": "物品栏光标速度", "about": "使用手柄时光标在物品栏中移动的速度。" },
       "bindings": { "name": "按键与按钮", "about": "更改各个按键和按钮的功能，键盘鼠标与手柄均可设置。" },
+      "modBindings": { "name": "模组按键与按钮", "about": "Modstoke 及其模组的按键与手柄按钮。选择一项后，按下想为它设置的按键或按钮。" },
       "master": { "name": "主音量", "about": "所有声音的音量。" },
       "music": { "name": "音乐", "about": "音乐的音量。" },
       "effects": { "name": "音效", "about": "世界及其中一切的音量。" },

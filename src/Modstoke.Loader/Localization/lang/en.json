@@ -162,6 +162,7 @@
       "sprintToggle": { "name": "Sprint toggle", "about": "One press starts sprinting, instead of holding the button." },
       "inventorySpeed": { "name": "Inventory cursor speed", "about": "How fast the cursor moves over your inventory with a controller." },
       "bindings": { "name": "Keys and buttons", "about": "Change which keys and buttons do what, for keyboard and mouse and for a controller." },
+      "modBindings": { "name": "Mod keys and buttons", "about": "Keys and controller buttons for Modstoke and its mods. Choose one, then press the key or button you want for it." },
       "master": { "name": "Master volume", "about": "The volume of everything." },
       "music": { "name": "Music", "about": "The volume of the music." },
       "effects": { "name": "Sound effects", "about": "The volume of the world and everything in it." },

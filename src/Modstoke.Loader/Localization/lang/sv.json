@@ -162,6 +162,7 @@
       "sprintToggle": { "name": "Växla sprint", "about": "Ett tryck börjar sprinta, i stället för att hålla in knappen." },
       "inventorySpeed": { "name": "Inventariemarkörens hastighet", "about": "Hur snabbt markören rör sig över din inventarie med en handkontroll." },
       "bindings": { "name": "Tangenter och knappar", "about": "Ändra vad tangenter och knappar gör, för tangentbord och mus och för handkontroll." },
+      "modBindings": { "name": "Tangenter och knappar för moddar", "about": "Tangenter och handkontrollsknappar för Modstoke och dess moddar. Välj en och tryck sedan på den tangent eller knapp du vill använda." },
       "master": { "name": "Huvudvolym", "about": "Volymen för allt." },
       "music": { "name": "Musik", "about": "Volymen för musiken." },
       "effects": { "name": "Ljudeffekter", "about": "Volymen för världen och allt i den." },

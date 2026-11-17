@@ -162,6 +162,7 @@
       "sprintToggle": { "name": "Sprint en bascule", "about": "Une pression lance le sprint, au lieu de maintenir le bouton." },
       "inventorySpeed": { "name": "Vitesse du curseur d’inventaire", "about": "La vitesse à laquelle le curseur se déplace dans votre inventaire avec une manette." },
       "bindings": { "name": "Touches et boutons", "about": "Choisissez l’action de chaque touche et de chaque bouton, au clavier et à la souris comme à la manette." },
+      "modBindings": { "name": "Touches et boutons des mods", "about": "Touches et boutons de manette pour Modstoke et ses mods. Choisissez-en un, puis appuyez sur la touche ou le bouton voulu." },
       "master": { "name": "Volume général", "about": "Le volume de tous les sons." },
       "music": { "name": "Musique", "about": "Le volume de la musique." },
       "effects": { "name": "Effets sonores", "about": "Le volume du monde et de tout ce qu’il contient." },

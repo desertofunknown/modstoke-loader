@@ -46,10 +46,18 @@ namespace Modstoke.Loader
             return new ControlKey(look.Glyph, look.Text);
         }
 
-        /// <summary>A Modstoke keybind's key; keybinds are keyboard only.</summary>
-        internal static ControlKey Keybind(string id)
+        /// <summary>A Modstoke keybind's key, or its controller side; a chord reads as a keycap naming both buttons.</summary>
+        internal static ControlKey Keybind(string id, BindingDevice device = BindingDevice.Keyboard)
         {
-            if (!InputBindings.Snapshot().TryGetValue(id, out var keybind) || !keybind.Enabled || keybind.Key == KeyCode.None) return default;
+            if (!InputBindings.TryGetKeybind(id, out var keybind) || !keybind.Enabled) return default;
+            if (device == BindingDevice.Pad)
+            {
+                if (keybind.Pad.IsNone) return default;
+                if (keybind.Pad.IsChord) return new ControlKey(null, InputGlyphs.Name(keybind.Pad));
+                var button = BindingNames.Look(InputGlyphs.PathOf(keybind.Pad.First.Value));
+                return new ControlKey(button.Glyph, button.Text);
+            }
+            if (keybind.Key == KeyCode.None) return default;
             var path = GameBindings.PathOf(keybind.Key);
             if (path == null) return new ControlKey(null, keybind.Key.ToString());
             var look = BindingNames.Look(path);

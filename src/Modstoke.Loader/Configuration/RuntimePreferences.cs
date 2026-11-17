@@ -253,6 +253,23 @@ namespace Modstoke.Loader
             return fallback;
         }
 
+        /// <summary>Every setting whose key starts with <paramref name="prefix"/>; empty when the file is missing or unreadable.</summary>
+        internal static Dictionary<string, string> ReadSettings(string prefix)
+        {
+            var settings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                foreach (var setting in LoaderConfig.ParseSettings(ReadSettingsText() ?? ""))
+                    if (setting.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        settings[setting.Key] = setting.Value?.Trim() ?? "";
+            }
+            catch (Exception ex)
+            {
+                Warn("Modstoke settings starting " + prefix + " could not be read: " + ex.Message);
+            }
+            return settings;
+        }
+
         /// <summary>
         /// Writes one setting to the loader settings file, replacing its line or adding one, and leaves every
         /// other line as it was. False with the reason when the file could not be written.

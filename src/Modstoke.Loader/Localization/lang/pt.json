@@ -162,6 +162,7 @@
       "sprintToggle": { "name": "Alternar corrida", "about": "Um toque começa a corrida, em vez de segurar o botão." },
       "inventorySpeed": { "name": "Velocidade do cursor do inventário", "about": "A rapidez com que o cursor se move pelo inventário com um controle." },
       "bindings": { "name": "Teclas e botões", "about": "Mude o que cada tecla e botão faz, no teclado e mouse e no controle." },
+      "modBindings": { "name": "Teclas e botões dos mods", "about": "Teclas e botões do controle para o Modstoke e seus mods. Escolha um e pressione a tecla ou o botão que você quer para ele." },
       "master": { "name": "Volume geral", "about": "O volume de tudo." },
       "music": { "name": "Música", "about": "O volume da música." },
       "effects": { "name": "Efeitos sonoros", "about": "O volume do mundo e de tudo o que há nele." },

@@ -162,6 +162,7 @@
       "sprintToggle": { "name": "Přepínání sprintu", "about": "Jedno stisknutí spustí sprint, místo držení tlačítka." },
       "inventorySpeed": { "name": "Rychlost kurzoru v inventáři", "about": "Jak rychle se kurzor pohybuje po inventáři při použití ovladače." },
       "bindings": { "name": "Klávesy a tlačítka", "about": "Změňte, co dělají jednotlivé klávesy a tlačítka, na klávesnici s myší i na ovladači." },
+      "modBindings": { "name": "Klávesy a tlačítka modů", "about": "Klávesy a tlačítka ovladače pro Modstoke a jeho mody. Vyberte položku a stiskněte klávesu nebo tlačítko, které pro ni chcete." },
       "master": { "name": "Celková hlasitost", "about": "Hlasitost všeho." },
       "music": { "name": "Hudba", "about": "Hlasitost hudby." },
       "effects": { "name": "Zvukové efekty", "about": "Hlasitost světa a všeho v něm." },

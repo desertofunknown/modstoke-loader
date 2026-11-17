@@ -162,6 +162,7 @@
       "sprintToggle": { "name": "Sprinten umschalten", "about": "Ein Druck startet den Sprint, statt die Taste zu halten." },
       "inventorySpeed": { "name": "Inventar-Cursorgeschwindigkeit", "about": "Wie schnell sich der Cursor mit einem Controller über dein Inventar bewegt." },
       "bindings": { "name": "Tastenbelegung", "about": "Lege fest, welche Tasten und Knöpfe was tun, für Tastatur und Maus und für den Controller." },
+      "modBindings": { "name": "Tastenbelegung der Mods", "about": "Tasten und Controller-Knöpfe für Modstoke und seine Mods. Wähle einen Eintrag und drücke dann die Taste oder den Knopf dafür." },
       "master": { "name": "Gesamtlautstärke", "about": "Die Lautstärke von allem." },
       "music": { "name": "Musik", "about": "Die Lautstärke der Musik." },
       "effects": { "name": "Soundeffekte", "about": "Die Lautstärke der Welt und von allem darin." },

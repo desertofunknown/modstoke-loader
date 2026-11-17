@@ -516,6 +516,9 @@
     <Compile Include="Runtime/Interop/HarmonySupport.cs" />
     <Compile Include="Runtime/Interop/IL2CPPHookState.cs" />
     <Compile Include="UI/Input.cs" />
+    <Compile Include="UI/Input.Pad.cs" />
+    <Compile Include="UI/Input.Rebind.cs" />
+    <Compile Include="UI/Input.Conflicts.cs" />
     <Compile Include="Compatibility/RedLoader/LegacyLifecycleBridge.cs" />
     <Compile Include="Compatibility/RedLoader/LegacyRedLoaderShim.cs" />
     <Compile Include="Compatibility/RedLoader/RedLoaderModActivation.cs" />
@@ -575,6 +578,7 @@
     <Compile Include="Sons/UI/Input/InputIcons.cs" />
     <Compile Include="Sons/UI/Input/Keybinds.cs" />
     <Compile Include="Sons/UI/Input/GlobalInput.cs" />
+    <Compile Include="Sons/UI/Input/InputGlyphs.cs" />
     <Compile Include="Sons/Settings/SettingsRegistration.cs" />
     <Compile Include="Sons/Settings/SettingsRegistration.Widgets.cs" />
     <Compile Include="Sons/Settings/SettingsRegistration.Panel.cs" />

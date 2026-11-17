@@ -162,6 +162,7 @@
       "sprintToggle": { "name": "Alternar esprint", "about": "Una pulsación empieza el esprint, en lugar de mantener el botón." },
       "inventorySpeed": { "name": "Velocidad del cursor del inventario", "about": "Lo rápido que se mueve el cursor por tu inventario con un mando." },
       "bindings": { "name": "Teclas y botones", "about": "Cambia qué hace cada tecla y cada botón, con teclado y ratón y con mando." },
+      "modBindings": { "name": "Teclas y botones de mods", "about": "Teclas y botones del mando para Modstoke y sus mods. Elige uno y pulsa la tecla o el botón que quieras para él." },
       "master": { "name": "Volumen general", "about": "El volumen de todo." },
       "music": { "name": "Música", "about": "El volumen de la música." },
       "effects": { "name": "Efectos de sonido", "about": "El volumen del mundo y de todo lo que hay en él." },

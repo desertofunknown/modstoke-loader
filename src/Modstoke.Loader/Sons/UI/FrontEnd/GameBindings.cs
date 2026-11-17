@@ -312,7 +312,7 @@ namespace Modstoke.Loader
                 if (slot.DefaultControl.Length > 0 && slot.DefaultControl == other.DefaultControl) continue;
                 clashes.Add(new Clash(action.Label, action.Fixed ? null : other));
             }
-            AddKeybinds(clashes, control);
+            AddKeybinds(clashes, control, slot.Action);
             return clashes;
         }
 
@@ -467,14 +467,20 @@ namespace Modstoke.Loader
             return false;
         }
 
-        // Modstoke's keybinds and SDK mods' are kept out of the screen, but a binding is still warned off them.
-        private static void AddKeybinds(List<Clash> clashes, string control)
+        // Modstoke's keybinds and SDK mods' are kept out of the screen, but a binding is still warned off them; off a
+        // Modstoke keybind only where it can answer while the action's maps are on, as a seat's or device's never does,
+        // and not where it stands in for this very action on purpose, as a mod's own Interact does.
+        private static void AddKeybinds(List<Clash> clashes, string control, BindingAction action)
         {
             foreach (var keybind in InputBindings.Snapshot().Values)
             {
-                if (!keybind.Enabled || keybind.Key == KeyCode.None) continue;
-                var path = PathOf(keybind.Key);
-                if (path != null && Canonical(path) == control) clashes.Add(new Clash(OwnerOf(keybind), null));
+                if (!keybind.Enabled || !InputBindings.LiveWithGameMaps(keybind, action.Maps)
+                    || InputBindings.SharesGameAction(keybind, action)) continue;
+                var path = keybind.Key == KeyCode.None ? null : PathOf(keybind.Key);
+                // A chord is left out: the game's button pressed alone never sets it off.
+                var pad = keybind.Pad.IsChord || keybind.Pad.IsNone ? null : InputGlyphs.PathOf(keybind.Pad.First.Value);
+                if (path != null && Canonical(path) == control || pad != null && Canonical(pad) == control)
+                    clashes.Add(new Clash(OwnerOf(keybind), null));
             }
             foreach (var keybind in ModInputCache.Keybinds.Values)
             {

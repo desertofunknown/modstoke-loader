@@ -204,6 +204,138 @@ false for an unknown ID, can be made from any thread and never calls back into t
 provider; the menu reads fresh snapshots on the game thread as usual. Periodic
 refresh continues for every provider, so calling it is optional.
 
+A content row can run one of its provider's commands: build it with
+`new MenuRowSnapshot(label, value, status, detail, commandId)`. Every Mods menu
+renderer then shows it as a command row and runs `commandId` when it is chosen. The
+provider must also implement `ICommandProvider`, but the command need not be in its
+`GetCommands()` list, so a page can make each row of a list actionable without a
+second list of actions under it.
+
+## Keybinds and controller bindings
+
+An `InputBindings` keybind has a key and a controller side, either of which can be
+empty. Register one with:
+
+```csharp
+InputBindings.TryRegisterKeybind(id, displayName, category, key, pad, context,
+    suppressWhenModstokeUiVisible, tooltip, holdSeconds: 0);
+```
+
+`pad` is a `PadBinding`: one `GamepadButton`, two held together as a chord
+(`new PadBinding(GamepadButton.LeftShoulder, GamepadButton.RightShoulder)`), or
+`PadBinding.None`. `KeyCode.None` leaves the keyboard side empty. A hold of up to
+`MaximumHoldSeconds` (10) applies to both devices. The older overloads still
+register keyboard-only keybinds, and mods built against them keep working.
+
+Reading:
+
+- `IsPressed`, `IsHeld` and `IsReleased` cover both devices and keep their gates:
+  input focus, Modstoke UI suppression and context. For a hold keybind, `IsHeld` is
+  true from the first moment and `HoldProgress(id)` runs from 0 to 1, for a
+  countdown prompt; `IsPressed` fires once, when the hold completes.
+- `ReadState(id)` returns an `InputBindingState` with no focus, context or UI gate.
+  It is for a seat or full-screen device that holds input focus itself, and for
+  safety actions that must work under any focus. It also reports each device on its
+  own (`KeyHeld`, `PadPressed` and so on) for controls that behave differently on
+  each. A disabled keybind reads as nothing, and so does every keybind while the
+  Mods menu waits for a key to bind.
+- Edges are tracked every frame by the runtime driver. A key or button held before a
+  keybind was registered, or before your page opened, does nothing until it is let
+  go.
+- Only buttons are keybinds. Read sticks and triggers from `Gamepad.current`.
+
+Two contexts join the existing ones. `InputContexts.GameControlsOn` is the world on
+foot, with the game's own controls live. `InputContexts.GameControlsOff` is the world
+while a seat or full-screen device holds the game's input in its Console state.
+
+For prompts, `InputBindings.CurrentDevice` follows the game's own keyboard or
+controller flag. `InputGlyphs.Name` names a key in the player's layout and language,
+and a button as the pad in hand prints it ("A" or "Cross", "LB + RB" for a chord).
+`InputGlyphs.Name(id, device)` names one side of a keybind, and
+`InputGlyphs.TryGetIcon(button, out texture)` returns the game's own Xbox or
+PlayStation icon. `InputBindings.Revision` changes with every registration and
+rebind, so cache prompt text by it. `TryGetKeybind(id, out keybind)` reads one
+keybind without copying the registry the way `Snapshot()` does.
+
+Players change keybinds on the Mods menu's Input Bindings page, in the Loader's
+group. Modstoke's Options > Controls > Mod keys and buttons opens the same page, so a
+controller reaches it from the title and the pause menu. It lists every keybind by
+category with both of its sides. Choosing one waits five seconds for a key or
+controller button:
+
+- The first key pressed binds the keyboard side.
+- A button binds when it is let go, or as a chord when a second button is pressed
+  while it is held.
+- Tapping Esc or Start cancels. Holding either clears that device's side, although
+  the Mods menu toggle and Back always keep a key.
+
+While the page waits, everything else is quiet: keybinds, Modstoke's screens, the
+Mods menu's navigation and the game's own action maps (through its InputBinding
+state). Keybinds stay quiet until the press is let go, for a second at most. Reset all bindings puts every
+keybind back to its default. From code, `SetKey`, `SetPad` and `ResetToDefault` do
+the same.
+
+The player's choice is saved in `UserData/openacai-loader.settings.cfg` as
+`keybind.<id>.key = F7` and `keybind.<id>.pad = LeftShoulder+RightShoulder`, and is
+applied when the keybind registers:
+
+- A line is kept only while the binding differs from the registered default; an
+  empty value means the default.
+- `SetKey` and `SetPad` save too, so a mod that mirrors a key in its own settings
+  stays in step. A mod that registers with its own saved key as the default still
+  gets the player's Loader choice on top. Read `KeybindSnapshot.Key` and `Pad`, not
+  your own copy.
+- Older Loaders ignore these lines, and `modsMenuHotkeyEnabled` and
+  `backHotkeyEnabled` keep their meaning.
+- A keybind ID containing `=` is not saved, only kept for the session.
+
+`KeybindSnapshot` adds `Pad`, `PadName`, `DefaultKey`, `DefaultPad`, `HoldSeconds`,
+`IsDefault` and `SharedGameActions`.
+
+`GetConflicts(id)` returns the `InputBindingConflict`s of a keybind's sides:
+
+- The game's default controller map for the keybind's context. In the world on foot
+  that is RT primary, LT aim, Select tertiary, West reload, place and build, South
+  take, interact and use, East back, drop and save, North jump, the left stick run,
+  the right stick crouch, the D-pad book, inventory, lighter and utility, the
+  bumpers rotate and Start pause. While aiming only the bumpers and Select are idle.
+  Outside the world it is the menus' buttons.
+- The game's current keyboard bindings, once the title has read them.
+- Other keybinds whose contexts can answer at the same moment.
+
+A keybind that deliberately acts as one of the game's own controls on the mod's own
+objects can say so. For example, a ship's door works like anything else the game's
+Interact works on:
+
+```csharp
+InputBindings.ShareGameActions(id, "Take", "Interact", "Use");
+```
+
+The names are the game's input actions (the South button's are Take, Interact and
+Use) or the rows of its Keys and buttons screen. Neither `GetConflicts` nor the
+game's Keys and buttons screen reports a clash between the keybind and those
+actions. Clashes with every other game action and keybind are still reported, so
+moving Jump onto the same key is still warned about. The list is in
+`KeybindSnapshot.SharedGameActions`. Calling again replaces it, and no names clears
+it.
+
+Holding both bumpers turns the game's rotate both ways, which cancels, so that chord
+is clean in the world. A chord clashes with a keybind on one of its buttons, but not
+with another chord that only shares a button. `GameControlsOff` keybinds clash with
+nothing of the game's, and with another mod's `GameControlsOff` keybinds only in the
+same category, since one seat or device holds the input at a time. The Input
+Bindings page marks a clash CHECK and names it. The game's Keys and buttons screen
+also warns a controller binding off a keybind's single button.
+
+To move a mod's own controller handling over:
+
+1. Add the pad side to the existing registration call.
+2. Replace raw `Gamepad.current[button]` reads with `IsPressed`, or with `ReadState`
+   when the mod holds focus.
+3. Build prompts from `InputGlyphs` and rebuild them when `Revision` changes.
+4. Drop the mod's own key and button settings. Carry a player's saved values over
+   once with `SetKey` or `SetPad`, while the keybind is still at its default.
+
 ## Console commands and origins
 
 Every provider command is also listed in the console as `<providerId>/<commandId>`.
@@ -479,7 +611,8 @@ writes the list, so treat it as what other players are shown, not proof.
   admits it, up to 32 (the oldest are dropped first), and sends them on
   admission: `Sent N SDK packets held until the server admitted this client,
   X ms after the first`. A host therefore no longer drops a joining client's
-  hellos.
+  hellos. `ClientEnrollment.SendsHeld` is true while this happens, so a mod
+  that gives up on a silent host can leave held requests out of its count.
 - The host sends SDK packets, broadcast and targeted alike, only to clients
   that have shown a loader: enrollment, a notices hello or an SDK packet of
   their own. Until then it keeps that client's latest 32 and sends them once it
@@ -498,7 +631,13 @@ writes the list, so treat it as what other players are shown, not proof.
 - The host gives each client 600 SDK packets a second with bursts of 1200 and
   drops the rest before any mod reads them, logging at most every 10 seconds
   per connection. `ClientTrafficSignals.OverBudgetSdkPackets` counts the drops
-  as evidence only.
+  as evidence only. A packet the host relays costs the sending client one more
+  for each client it goes to. A relay the remaining allowance can't cover goes
+  to no one and counts as one drop, so every recipient sees the same relays.
+- An SDK packet must fit one datagram: the socket's datagram size less the
+  transport's own header. Sending a larger one throws an `ArgumentException`
+  naming both sizes, and nothing is sent, instead of failing inside the native
+  transport.
 
 Server SDK failures (a policy handler that throws, a read or a send that fails)
 now go through the same reporter as the networking layer: the first failure of
@@ -945,7 +1084,10 @@ find an implementation. The main entry points include:
 - Modstoke-native versus legacy compatibility source-family data in mod
   inventory snapshots
 - OpenACAI-owned keybind registration and context gating through `InputBindings`,
-  with pressed/held/released polling, live `SetKey`, and `TryUnregisterKeybind`;
+  with a key and a controller side per keybind (a button, a chord or a hold),
+  pressed/held/released polling across both devices, live and saved `SetKey` and
+  `SetPad`, conflict checks, `InputGlyphs` prompt names and icons, and
+  `TryUnregisterKeybind` (see Keybinds and controller bindings);
   Options > Controls > Keys and buttons holds input focus while it waits for a
   key, so keybinds and SDK `ModKeybind`s stay quiet then, and it names them when a
   game binding would land on the same key
@@ -1327,14 +1469,18 @@ InputBindings.TryRegisterKeybind(
     "Example Quick Action",
     "Example Mod",
     UnityEngine.KeyCode.F8,
+    new PadBinding(GamepadButton.LeftShoulder, GamepadButton.RightShoulder),
     InputContexts.InWorld,
     suppressWhenModstokeUiVisible: true,
     "Run an Example Mod action only while the player is in world.");
 
 if (InputBindings.IsPressed("example.mod.quickAction"))
 {
-    // In-world and UI-suppression gates have already been checked.
+    // F8 or both bumpers; in-world and UI-suppression gates have already been checked.
 }
+
+// "F8" or "LB + RB", whichever the player is using, as they have bound it.
+var prompt = InputGlyphs.Name("example.mod.quickAction", InputBindings.CurrentDevice);
 
 if (Modding.TryGetService("openacai.sons.state", out State state)
     && state.IsInWorld)

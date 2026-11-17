@@ -162,6 +162,7 @@
       "sprintToggle": { "name": "Scatto alternato", "about": "Una pressione avvia lo scatto, invece di tenere premuto il pulsante." },
       "inventorySpeed": { "name": "Velocità cursore inventario", "about": "Quanto velocemente si muove il cursore nell’inventario con un controller." },
       "bindings": { "name": "Tasti e pulsanti", "about": "Cambia cosa fanno tasti e pulsanti, con tastiera e mouse e con il controller." },
+      "modBindings": { "name": "Tasti e pulsanti delle mod", "about": "Tasti e pulsanti del controller per Modstoke e le sue mod. Scegline uno, poi premi il tasto o il pulsante che vuoi assegnargli." },
       "master": { "name": "Volume generale", "about": "Il volume di tutto." },
       "music": { "name": "Musica", "about": "Il volume della musica." },
       "effects": { "name": "Effetti sonori", "about": "Il volume del mondo e di tutto ciò che contiene." },

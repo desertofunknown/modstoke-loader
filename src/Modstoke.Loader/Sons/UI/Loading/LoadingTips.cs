@@ -166,7 +166,7 @@ namespace Modstoke.Loader
 
         private static ControlKey Resolve(Tip tip, bool pad)
         {
-            if (tip.Keybind != null) return pad ? default : ControlGlyphs.Keybind(tip.Keybind);
+            if (tip.Keybind != null) return ControlGlyphs.Keybind(tip.Keybind, pad ? BindingDevice.Pad : BindingDevice.Keyboard);
             if (tip.Control == null) return default;
             if (!pad) return ControlGlyphs.Game(tip.Control, BindingDevice.Keyboard);
             var key = ControlGlyphs.Game(tip.Control, BindingDevice.Pad);

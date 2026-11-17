@@ -2290,11 +2290,16 @@ product names and technical identifiers are retained verbatim.
   forced/disabled states explicit through environment variables.
 - `UI/Input.cs` owns the first OpenACAI input/keybind slice. It publishes
   `openacai.loader.input`, writes `openAcaiInput` into loader state, contributes
-  `capabilities.input`, registers a built-in `Input Bindings` status provider
-  under DIAGNOSTICS, and supports mod-owned keybind registration with explicit
-  title/loading/game-scene/in-world/not-in-world gates plus optional suppression
-  while Modstoke UI is visible. The existing loader Mods-menu toggle and back
-  action remain compatible defaults.
+  `capabilities.input`, and supports mod-owned keybind registration with explicit
+  title/loading/game-scene/in-world/not-in-world/game-controls gates plus optional
+  suppression while Modstoke UI is visible. The existing loader Mods-menu toggle
+  and back action remain compatible defaults. `Input.Pad.cs` adds each keybind's
+  controller side and the per-frame state behind both devices, `Input.Rebind.cs`
+  the saved player bindings, the capture and the `Input Bindings` page (now an
+  editable page in the Loader group rather than a DIAGNOSTICS status page), and
+  `Input.Conflicts.cs` the clash checks against the game's default controller map,
+  its keyboard bindings and other keybinds. `Sons/UI/Input/InputGlyphs.cs` exposes
+  the Loader's key names and the game's controller icons to mods.
 - `Configuration/Config.cs` owns file-backed config validation, simple key/value
   parsing, friendly edit application, and saving for the current native mod
   config UI. It also owns the first structured config-provider slice through

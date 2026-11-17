@@ -788,10 +788,19 @@ namespace Modstoke.Loader
             Detail = detail ?? "";
         }
 
+        /// <summary>A row that runs one of the provider's own commands when chosen.</summary>
+        /// <remarks>The provider must also be an <see cref="ICommandProvider"/>; the command need not be in its list.</remarks>
+        public MenuRowSnapshot(string label, string value, string status, string detail, string commandId)
+            : this(label, value, status, detail)
+        {
+            CommandId = string.IsNullOrWhiteSpace(commandId) ? null : commandId.Trim();
+        }
+
         public string Label { get; }
         public string Value { get; }
         public string Status { get; }
         public string Detail { get; }
+        public string CommandId { get; }
     }
 
     public static class MenuProviderKinds

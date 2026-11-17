@@ -585,7 +585,8 @@ namespace Modstoke.Loader
                     Toggle("sprintToggle", () => new SprintToggleOptionGui()),
                     Slider("inventorySpeed", () => new InventorySpeedSensitivityOptionGui(), OptionFormat.Decimal)),
                 Section("bindings",
-                    new OptionAction("bindings", BindingsScreen.Open, BindingsScreen.Changed))
+                    new OptionAction("bindings", BindingsScreen.Open, BindingsScreen.Changed),
+                    new OptionAction("modBindings", OpenModBindings))
             }),
             "audio" => new OptionTab(id, new[]
             {
@@ -656,6 +657,24 @@ namespace Modstoke.Loader
                 changed();
                 return true;
             }, @default, choices);
+
+        /// <summary>
+        /// The Mods menu's Input Bindings page laid out as a Modstoke screen, where Modstoke's and mods' keybinds are
+        /// changed; the Mods screen lists only mods, so a controller reaches the page from here.
+        /// </summary>
+        private static void OpenModBindings()
+        {
+            var key = MenuKeys.Provider(MenuProviderIds.InputBindings);
+            try
+            {
+                FrontEnd.Push(new ModPageScreen(key, FrontEnd.Text["options.item.modBindings.name"]));
+            }
+            catch (Exception error)
+            {
+                RuntimeEntryPoint.LogSource?.LogWarning("Input Bindings opens in the Mods menu instead: " + error.Message);
+                MenuController.ShowHandedOver(key);
+            }
+        }
 
         /// <summary>
         /// The game's own controls screen, for an install whose bindings the Keys and buttons screen can't read: over the

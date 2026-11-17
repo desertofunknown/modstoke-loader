@@ -162,6 +162,7 @@
       "sprintToggle": { "name": "Przełączany sprint", "about": "Jedno naciśnięcie rozpoczyna sprint, zamiast przytrzymywania przycisku." },
       "inventorySpeed": { "name": "Szybkość kursora ekwipunku", "about": "Jak szybko kursor porusza się po ekwipunku przy użyciu kontrolera." },
       "bindings": { "name": "Klawisze i przyciski", "about": "Zmień, co robią klawisze i przyciski, na klawiaturze z myszą i na kontrolerze." },
+      "modBindings": { "name": "Klawisze i przyciski modów", "about": "Klawisze i przyciski kontrolera dla Modstoke i jego modów. Wybierz pozycję, a potem naciśnij klawisz lub przycisk, który ma ją obsługiwać." },
       "master": { "name": "Głośność główna", "about": "Głośność wszystkiego." },
       "music": { "name": "Muzyka", "about": "Głośność muzyki." },
       "effects": { "name": "Efekty dźwiękowe", "about": "Głośność świata i wszystkiego, co się w nim znajduje." },

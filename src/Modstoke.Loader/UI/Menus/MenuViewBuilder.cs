@@ -489,7 +489,7 @@ namespace Modstoke.Loader
                 {
                     for (var i = 0; i < content.Sections.Count; i++)
                     {
-                        sections.Add(ContentSection(state, pageKey, i, content.Sections[i]));
+                        sections.Add(ContentSection(state, pageKey, provider.Id, i, content.Sections[i]));
                     }
                 }
 
@@ -865,7 +865,7 @@ namespace Modstoke.Loader
             return items.Sum(item => item.Kind == MenuNavKind.Group ? LeafCount(item.Children) : 1);
         }
 
-        private static MenuSection ContentSection(MenuViewState state, string pageKey, int index, MenuSectionSnapshot section)
+        private static MenuSection ContentSection(MenuViewState state, string pageKey, string providerId, int index, MenuSectionSnapshot section)
         {
             var key = pageKey + "/content:" + index;
             var occurrences = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -874,16 +874,21 @@ namespace Modstoke.Loader
             {
                 occurrences.TryGetValue(item.Label, out var occurrence);
                 occurrences[item.Label] = occurrence + 1;
+                // A row with a command of its own is a command row, so every renderer runs it as it runs an action.
+                var command = item.CommandId != null;
                 rows.Add(new MenuRow
                 {
                     Key = MenuKeys.Content(index, section.Title, item.Label, occurrence),
-                    Kind = MenuRowKind.Content,
+                    Kind = command ? MenuRowKind.Command : MenuRowKind.Content,
                     Label = item.Label,
                     Value = item.Value,
                     Status = MenuText.NotableStatus(item.Status),
                     Tone = MenuText.StatusTone(item.Status),
                     Detail = item.Detail,
-                    Tooltip = section.Title + " - " + item.Label
+                    Tooltip = section.Title + " - " + item.Label,
+                    Control = command ? new MenuControl { Kind = MenuControlKind.Run, Editable = true } : MenuControl.None,
+                    Intent = command ? new MenuIntent { Kind = MenuIntentKind.RunCommand, ProviderId = providerId, CommandId = item.CommandId }
+                        : MenuIntent.None
                 });
             }
 
