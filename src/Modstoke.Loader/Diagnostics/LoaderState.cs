@@ -30,6 +30,8 @@ namespace Modstoke.Loader
         }
         private static long _inventoryRevision;
         private static long _capturedInventoryRevision = -1;
+        // The inventory the published plugin compatibility and native mod host snapshots were last built from.
+        private static ModInventoryState _modsInventory;
         private static long _environmentRevision;
         private static long _capturedEnvironmentRevision = -1;
         private static long _nextStateRefreshTick;
@@ -84,13 +86,19 @@ namespace Modstoke.Loader
                     IL2CPPHookStateSnapshot il2CppNativeHooks;
                     using (Timings.MeasureCapture("LoaderState.Hooks"))
                         il2CppNativeHooks = IL2CPPHookState.Load(Paths.PluginPath, Paths.GameRootPath);
-                    var modInventory = CaptureModInventory(refreshDiscovery);
-                    RefreshEnvironment(refreshDiscovery);
-                    // Scene callbacks already refresh the catalog. Routine state exports
-                    // reuse it; startup and explicit refreshes still capture live metadata.
-                    var sonsItems = ItemCatalog.Catalog;
-                    if (refreshItemCatalog || !sonsItems.Ready)
-                        sonsItems = ItemCatalog.Refresh();
+                    ModInventoryState modInventory;
+                    using (Timings.MeasureCapture("LoaderState.Inventory"))
+                        modInventory = CaptureModInventory(refreshDiscovery);
+                    ItemCatalogSnapshot sonsItems;
+                    using (Timings.MeasureCapture("LoaderState.Environment"))
+                    {
+                        RefreshEnvironment(refreshDiscovery);
+                        // Scene callbacks already refresh the catalog. Routine state exports
+                        // reuse it; startup and explicit refreshes still capture live metadata.
+                        sonsItems = ItemCatalog.Catalog;
+                        if (refreshItemCatalog || !sonsItems.Ready)
+                            sonsItems = ItemCatalog.Refresh();
+                    }
                     var sonsAssets = Assets.State;
                     ItemRegistrationSnapshot sonsItemRegistration;
                     InventorySnapshot sonsInventory;
@@ -111,8 +119,18 @@ namespace Modstoke.Loader
                     RuntimeAttestationSnapshot runtimeAttestation;
                     using (Timings.MeasureCapture("LoaderState.Mods"))
                     {
-                        bepinExPluginCompatibility = BepInExPluginCompatibility.Refresh(modInventory);
-                        nativeModHost = ModHost.Refresh(modInventory);
+                        // Startup and requested refreshes read every mod again; a routine export keeps the snapshots
+                        // already published for the inventory it still has.
+                        bool modsCurrent;
+                        lock (RefreshSync)
+                            modsCurrent = ReferenceEquals(modInventory, _modsInventory);
+                        if (refreshFileIntegrity || refreshDiscovery || !modsCurrent)
+                            (bepinExPluginCompatibility, nativeModHost) = RefreshMods(modInventory);
+                        else
+                        {
+                            bepinExPluginCompatibility = BepInExPluginCompatibility.State;
+                            nativeModHost = ModHost.State;
+                        }
                         fileIntegrity = refreshFileIntegrity ? FileIntegrity.Refresh() : FileIntegrity.Snapshot;
                         runtimeAttestation = RuntimeAttestation.Refresh();
                     }
@@ -238,8 +256,7 @@ namespace Modstoke.Loader
             {
                 var inventory = CaptureModInventory(force: true);
                 RequestRefresh("mod-inventory-refreshed");
-                BepInExPluginCompatibility.Refresh(inventory);
-                ModHost.Refresh(inventory);
+                RefreshMods(inventory);
                 return inventory;
             }
         }
@@ -284,14 +301,17 @@ namespace Modstoke.Loader
                     if (_pendingRefreshReason == null || _stateRefreshInProgress
                         || (!force && Environment.TickCount64 < _nextStateRefreshTick))
                         return;
-                    // A full export costs 40 to 70 ms and about 30 MB of garbage on the game thread, and a multiplayer
-                    // world keeps running behind the pause menu. So the file is pulled: a refresh command (the Mods
-                    // menu, the console or the Manager's pipe) writes it at once, and every other change only marks
-                    // it stale until the title screen, an empty dedicated server or quit.
+                    // A full export reads the game's and the loader's state on the game thread, and a multiplayer world
+                    // keeps running behind the pause menu. So the file is pulled: a refresh command (the Mods menu, the
+                    // console or the Manager's pipe) writes it at once, and every other change only marks it stale
+                    // until the title screen, an empty dedicated server or quit.
                     if (!force && !_pendingFileIntegrityRefresh && !Idle())
                     {
-                        // The open Mods menu lists the mod inventory, so a change to it still reaches the menu.
-                        if (_capturedInventoryRevision == _inventoryRevision || !MenuController.IsVisible && !FrontEnd.ModsOpen)
+                        // The open Mods menu lists the mod inventory, so a change to it still reaches the menu. Reading
+                        // the mods again is the slowest part of an export; a load behind the loading screen, where a
+                        // long frame only pauses the bar, does it ahead of the title's export.
+                        if (_capturedInventoryRevision == _inventoryRevision
+                            || !MenuController.IsVisible && !FrontEnd.ModsOpen && !Covered())
                             return;
                         publishOnly = true;
                     }
@@ -308,11 +328,7 @@ namespace Modstoke.Loader
                 try
                 {
                     if (publishOnly)
-                    {
-                        var inventory = CaptureModInventory(false);
-                        BepInExPluginCompatibility.Refresh(inventory);
-                        ModHost.Refresh(inventory);
-                    }
+                        RefreshMods(CaptureModInventory(false));
                     else
                     {
                         Timings.Mark("loader.state", "refresh-requested", reason);
@@ -338,6 +354,18 @@ namespace Modstoke.Loader
                     LoaderStatePersistence.Flush();
                     ReportWriteCompletion();
                 }
+            }
+        }
+
+        private static bool Covered()
+        {
+            try
+            {
+                return global::Sons.Loading.LoadScene._isLoading || global::Modstoke.Sons.WorldReveal.Covered;
+            }
+            catch (Exception)
+            {
+                return false;
             }
         }
 
@@ -386,6 +414,16 @@ namespace Modstoke.Loader
                 _capturedInventoryRevision = revision;
             }
             return inventory;
+        }
+
+        // Plugin compatibility and the native mod host, which read every mod's manifest and assembly metadata.
+        private static (BepInExPluginCompatibilitySnapshot, ModHostSnapshot) RefreshMods(ModInventoryState inventory)
+        {
+            var compatibility = BepInExPluginCompatibility.Refresh(inventory);
+            var host = ModHost.Refresh(inventory);
+            lock (RefreshSync)
+                _modsInventory = inventory;
+            return (compatibility, host);
         }
 
         private static void RefreshEnvironment(bool force)

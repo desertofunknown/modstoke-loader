@@ -54,7 +54,8 @@ namespace Modstoke.Loader
 
     internal static partial class PerformanceCapture
     {
-        private const int MaxCallbackNames = 256;
+        // Sub-scopes for world entry alone pass 400 names; a window only writes the names it saw.
+        private const int MaxCallbackNames = 1024;
         private const int MaxHitchesPerWindow = 8;
         private static readonly List<HookCounter> HookCounters = new();
         private static readonly Dictionary<string, CallbackTiming> CallbackTimings = new(StringComparer.Ordinal);

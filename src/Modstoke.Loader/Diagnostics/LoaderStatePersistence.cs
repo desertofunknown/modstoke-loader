@@ -26,12 +26,22 @@ namespace Modstoke.Loader
         private static string _lastError;
         private static TimeSpan _writeDuration;
 
+        // Snapshots that are complete when published and never change: the writer reads them itself. Together they are
+        // most of the file, and the capabilities section repeats each of them.
+        private static readonly HashSet<Type> Immutable = new HashSet<Type>
+        {
+            typeof(global::Modstoke.Sons.ItemCatalogSnapshot),
+            typeof(ModHostSnapshot),
+            typeof(FileIntegritySnapshot)
+        };
+
         internal static void Queue(object state, string primaryPath, string mirrorPath)
         {
             // Evaluate every getter and enumerate every collection on the owner thread.
-            // Only detached read-only containers and scalar values reach the writer.
+            // Only detached read-only containers, immutable snapshots and scalar values reach the writer.
             object captured;
-            using (Timings.MeasureCapture("LoaderState.Capture")) captured = Capture(state, 0);
+            using (Timings.MeasureCapture("LoaderState.Capture"))
+                captured = Capture(state, 0, new Dictionary<object, object>(ReferenceEqualityComparer.Instance));
             var request = new WriteRequest(captured, Path.GetFullPath(primaryPath), Path.GetFullPath(mirrorPath));
             lock (Sync)
             {
@@ -189,7 +199,8 @@ namespace Modstoke.Loader
             return options;
         }
 
-        private static object Capture(object value, int depth)
+        // An object reached twice, such as a section the capabilities block repeats, is captured once and shared.
+        private static object Capture(object value, int depth, Dictionary<object, object> seen)
         {
             if (value == null)
                 return null;
@@ -198,11 +209,19 @@ namespace Modstoke.Loader
 
             var type = value.GetType();
             if (Type.GetTypeCode(type) != TypeCode.Object || value is Guid || value is DateTimeOffset
-                || value is TimeSpan || value is Uri || value is Version)
+                || value is TimeSpan || value is Uri || value is Version || Immutable.Contains(type))
                 return value;
             if (value is JsonElement element)
                 return element.Clone();
+            if (type.IsValueType)
+                return CaptureContents(value, type, depth, seen);
+            if (!seen.TryGetValue(value, out var captured))
+                seen.Add(value, captured = CaptureContents(value, type, depth, seen));
+            return captured;
+        }
 
+        private static object CaptureContents(object value, Type type, int depth, Dictionary<object, object> seen)
+        {
             var contract = JsonOptions.GetTypeInfo(type);
             if (contract.Kind == JsonTypeInfoKind.Dictionary && value is IDictionary dictionary)
             {
@@ -211,7 +230,7 @@ namespace Modstoke.Loader
                 {
                     if (entry.Key is not string key)
                         throw new InvalidOperationException("Loader state dictionary keys must be strings.");
-                    entries.Add(key, Capture(entry.Value, depth + 1));
+                    entries.Add(key, Capture(entry.Value, depth + 1, seen));
                 }
                 return new ReadOnlyDictionary<string, object>(entries);
             }
@@ -219,7 +238,7 @@ namespace Modstoke.Loader
             {
                 var entries = new List<object>();
                 foreach (var entry in sequence)
-                    entries.Add(Capture(entry, depth + 1));
+                    entries.Add(Capture(entry, depth + 1, seen));
                 return entries.AsReadOnly();
             }
             if (contract.Kind != JsonTypeInfoKind.Object)
@@ -232,7 +251,7 @@ namespace Modstoke.Loader
                     continue;
                 var propertyValue = property.Get(value);
                 if (property.ShouldSerialize == null || property.ShouldSerialize(value, propertyValue))
-                    properties.Add(property.Name, Capture(propertyValue, depth + 1));
+                    properties.Add(property.Name, Capture(propertyValue, depth + 1, seen));
             }
             return new ReadOnlyDictionary<string, object>(properties);
         }
