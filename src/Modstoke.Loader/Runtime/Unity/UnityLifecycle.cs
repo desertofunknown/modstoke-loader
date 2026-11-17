@@ -23,6 +23,8 @@ namespace Modstoke.Loader
         private static bool _sceneLoadedHookInstalled;
         private static bool _sceneUnloadedHookInstalled;
         private static RuntimeDriver _driver;
+        private static GuiDriver _gui;
+        private static bool _guiOn;
 
         internal static void InstallSceneHooks(Action<string> addStartupWarning)
         {
@@ -169,6 +171,50 @@ namespace Modstoke.Loader
                 UnityEngine.Object.Destroy(host);
                 throw;
             }
+
+            AttachGui(host);
+        }
+
+        private static void AttachGui(GameObject host)
+        {
+            try
+            {
+                ClassInjector.RegisterTypeInIl2Cpp<GuiDriver>();
+            }
+            catch (Exception ex)
+            {
+                RuntimeEntryPoint.LogSource.LogWarning("GUI driver type registration warning: " + ex.Message);
+            }
+
+            try
+            {
+                _gui = host.AddComponent<GuiDriver>();
+                if (_gui)
+                    _gui.enabled = false;
+            }
+            catch (Exception ex)
+            {
+                _gui = null;
+                RuntimeEntryPoint.LogSource.LogWarning("The loader GUI driver could not be attached, so mods' OnGUI drawing and the fallback mods menu are unavailable: " + ex.Message);
+            }
+        }
+
+        /// <summary>Turns the IMGUI pass on while something draws and off otherwise; called once a frame after updates.</summary>
+        internal static void SyncGui()
+        {
+            if (_gui is null)
+                return;
+            SetGui(GuiDriver.Wanted);
+        }
+
+        internal static void StopGui() => SetGui(false);
+
+        private static void SetGui(bool on)
+        {
+            if (on == _guiOn || _gui is null || _gui.WasCollected || !_gui)
+                return;
+            _guiOn = on;
+            _gui.enabled = on;
         }
 
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)

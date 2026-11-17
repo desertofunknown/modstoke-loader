@@ -38,6 +38,19 @@ namespace Modstoke.Loader
 
         internal enum Hook { Initialize, Awake, Load, Enable, Start, FixedUpdate, Update, LateUpdate, Gui, Disable, Shutdown, Dispose }
 
+        /// <summary>Whether <see cref="Dispatch"/> would call at least one mod for <paramref name="hook"/> now.</summary>
+        internal static bool Dispatches(Hook hook)
+        {
+            if (!_loadCompleted || !_started || _stopped)
+                return false;
+            foreach (var mod in Mods)
+            {
+                if (mod.Loaded && !mod.Failed && mod.Callbacks.ContainsKey(hook))
+                    return true;
+            }
+            return false;
+        }
+
         internal static void Load(ModInventoryState inventory, bool ownedDriverActive)
         {
             if (_loadAttempted)

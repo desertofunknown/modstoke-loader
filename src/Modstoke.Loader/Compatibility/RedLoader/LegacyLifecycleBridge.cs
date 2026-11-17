@@ -141,6 +141,24 @@ namespace Modstoke.Loader
             GlobalEvents.OnGUI.Invoke();
         }
 
+        private static int _guiRevision = -1;
+        private static bool _guiSubscribed;
+
+        /// <summary>Whether a RedLoader mod listens for OnGUI; read again only after a subscription changes.</summary>
+        internal static bool HasGuiSubscribers
+        {
+            get
+            {
+                var revision = RedLoaderEventDispatcher.Revision;
+                if (revision != _guiRevision)
+                {
+                    _guiRevision = revision;
+                    _guiSubscribed = GlobalEvents.OnGUI.GetSubscribers().Length > 0;
+                }
+                return _guiSubscribed;
+            }
+        }
+
         internal static void PublishApplicationQuit()
         {
             GlobalEvents.OnApplicationQuit.Invoke();

@@ -36,6 +36,7 @@ namespace Modstoke.Loader
                 return;
             UnityLifecycle.InvokeLifecycle("Update.Capture", PerformanceCapture.Tick);
             UnityLifecycle.InvokeLifecycle("Update.Sons", GameRuntime.Tick);
+            UnityLifecycle.InvokeLifecycle("Update.Input", InputBindings.Tick);
             UnityLifecycle.InvokeLifecycle("Update.Console", RuntimeConsole.Update);
             UnityLifecycle.InvokeLifecycle("Update.Host", Host.Tick);
             UnityLifecycle.InvokeLifecycle("Update.ConsoleOverlay", ConsoleOverlay.Update);
@@ -54,6 +55,7 @@ namespace Modstoke.Loader
             UnityLifecycle.InvokeLifecycle("Update.Scenes", UnityLifecycle.PumpSceneInitialized);
             UnityLifecycle.InvokeLifecycle(nameof(Update), LegacyLifecycleBridge.PublishUpdate);
             UnityLifecycle.InvokeLifecycle("Update.NativeMods", () => ModRuntime.Dispatch(ModRuntime.Hook.Update));
+            UnityLifecycle.InvokeLifecycle("Update.Gui", UnityLifecycle.SyncGui);
             UnityLifecycle.InvokeLifecycle("LoaderStateRefresh", () => RuntimeEntryPoint.PumpLoaderStateRefresh());
         }
 
@@ -76,20 +78,12 @@ namespace Modstoke.Loader
             UnityLifecycle.InvokeLifecycle("LateUpdate.PhotoMode", () => PhotoSession.DevelopQueued(false));
         }
 
-        private void OnGUI()
-        {
-            if (_quitting)
-                return;
-            UnityLifecycle.InvokeLifecycle(nameof(OnGUI), LegacyLifecycleBridge.PublishGui);
-            UnityLifecycle.InvokeLifecycle("OnGUI.NativeMods", () => ModRuntime.Dispatch(ModRuntime.Hook.Gui));
-            UnityLifecycle.InvokeLifecycle("OnGUI.ModMenu", MenuController.OnGUI);
-        }
-
         private void OnApplicationQuit()
         {
             if (_quitting)
                 return;
             _quitting = true;
+            UnityLifecycle.InvokeLifecycle("Quit.Gui", UnityLifecycle.StopGui);
             UnityLifecycle.InvokeLifecycle("Quit.ScreenHost", ScreenHost.Shutdown);
             UnityLifecycle.InvokeLifecycle("Quit.PreviewStage", PreviewStage.Shutdown);
             UnityLifecycle.InvokeLifecycle("Quit.PhotoMode", () => PhotoSession.EndCurrent("the game is quitting"));

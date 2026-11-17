@@ -820,6 +820,7 @@
     <Compile Include="Hosting/Runtime.cs" />
     <Compile Include="Hosting/RuntimeCommands.cs" />
     <Compile Include="Hosting/RuntimeDriver.cs" />
+    <Compile Include="Hosting/GuiDriver.cs" />
     <Compile Include="Hosting/Host.cs" />
     <Compile Include="Hosting/HostOutput.cs" />
     <Compile Include="Hosting/HostLine.cs" />

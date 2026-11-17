@@ -7,12 +7,18 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using RedLoader;
 
 namespace Modstoke.Loader
 {
     internal static class RedLoaderEventDispatcher
     {
+        private static int _revision;
+
+        /// <summary>Changes whenever any RedLoader event gains or loses a subscriber.</summary>
+        internal static int Revision => Volatile.Read(ref _revision);
+
         internal static IMelonEventDriver<T> Create<T>(bool oneTimeUse) where T : Delegate
         {
             return new EventDriver<T>(oneTimeUse);
@@ -147,6 +153,7 @@ namespace Modstoke.Loader
             {
                 cachedActionsArray = actions.ToArray();
                 hasOneShotActions = actions.Exists(entry => entry.unsubscribeOnFirstInvocation);
+                Interlocked.Increment(ref _revision);
             }
 
             public MelonEventBase<T>.MelonEventSubscriber[] GetSubscribers()

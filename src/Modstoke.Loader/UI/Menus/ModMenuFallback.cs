@@ -78,6 +78,9 @@ namespace Modstoke.Loader
         private static Texture2D _buttonHoverTex;
         private static Texture2D _buttonSelectedTex;
 
+        /// <summary>Whether the IMGUI fallback is the mods menu on screen.</summary>
+        internal static bool DrawsFallback => MenuDispatcher.ShouldDrawFallback(_visible);
+
         internal static void OnGUI()
         {
             if (!MenuDispatcher.ShouldDrawFallback(_visible))
