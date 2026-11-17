@@ -89,6 +89,9 @@ namespace Modstoke.Sons
             Require(GameBuild.IsRecognized, "Crafting requires the recognized native game build.");
             Require(database != null && !database.WasCollected && database,
                 "The server recipe database is unavailable.");
+            // A dedicated server has no crafting mat of its own to fill this database; mod recipes must sit at the
+            // same positions as on the client before an index is read.
+            CraftingRecipeRegistration.Prepare(database);
             var recipes = database._recipes;
             Require(recipes != null && !recipes.WasCollected && recipes.Count is > 0 and <= 4096
                 && index >= 0 && index < recipes.Count, "The server recipe index is unavailable or out of bounds.");
@@ -97,6 +100,11 @@ namespace Modstoke.Sons
                 && recipe._recipeType is CraftingRecipe.Type.CraftNewItem or CraftingRecipe.Type.ApplyWeaponMod
                     or CraftingRecipe.Type.DismantleWeaponMods or CraftingRecipe.Type.ArrowUpgrade,
                 "Unknown native crafting recipe type.");
+            // Mod loot otherwise joins a table only when it first rolls, which here would be after the variant
+            // definition is hashed, and on one peer but not the other. Both capture through this path.
+            if (recipe._useContainerDataForResultingItems && recipe._containerItemData != null
+                && !recipe._containerItemData.WasCollected)
+                LootTables.Prepare(recipe._containerItemData);
             var ingredients = recipe._ingredients;
             var results = recipe._resultingItems;
             Require(ingredients != null && !ingredients.WasCollected && ingredients.Count is > 0 and <= MaximumRows

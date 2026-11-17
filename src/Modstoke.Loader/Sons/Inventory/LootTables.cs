@@ -3,10 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using Modstoke.Loader;
 using Sons.Gameplay;
 using Sons.Items.Core;
-using UnityEngine;
 
 namespace Modstoke.Sons
 {
@@ -28,13 +28,10 @@ namespace Modstoke.Sons
         public const string StorageCrate = "BasicStorageCrateItems";
         public const string Suitcase = "SuitcaseItems", WoodenCrate = "WoodenCrateItems", Grave = "GraveItems";
 
-        private const int MaximumEntries = 256, Searches = 3;
-        private const float SearchSpacing = 30f;
+        private const int MaximumEntries = 256;
         private static readonly List<Entry> Entries = new();
-        private static readonly List<ContainerItemSpawnerData> Known = new();
-        private static float _nextCheck, _nextSearch;
-        private static int _searches;
-        private static bool _loggedFailure;
+        private static Entry[] _snapshot = Array.Empty<Entry>();
+        private static bool _loggedFailure, _hooked;
 
         private sealed record Entry(string ModId, string Table, int ItemId, int Weight, int MaxCount);
 
@@ -67,55 +64,58 @@ namespace Modstoke.Sons
                     if (order == 0) order = string.CompareOrdinal(a.ModId, b.ModId);
                     return order != 0 ? order : a.ItemId.CompareTo(b.ItemId);
                 });
+                Volatile.Write(ref _snapshot, Entries.ToArray());
             }
+            if (!_hooked) Hook();
             return true;
         }
 
-        // Finding the tables walks every loaded object, so it runs when a world loads and twice more over the next
-        // minute for late loads; after that only a table the game unloaded brings it back. In between, the tables
-        // already found are topped up, which costs a few list reads. A table the game has already rolled from is
-        // unaffected: opened containers are saved as such.
-        internal static void Tick()
+        // Every roll, from a container, a hanging body, a dismantled structure or a crafted bundle, goes through the
+        // table's GetRandomizedContentsInternal, so a table is brought up to date just before it rolls: no search of
+        // the loaded objects, and a table that streams in late is covered all the same. A table the game has already
+        // rolled from is unaffected: opened containers are saved as such.
+        private static void Hook()
         {
-            if (Entries.Count == 0) return;
-            if (!GameRuntime.IsGameScene)
-            {
-                if (_searches != 0) { Known.Clear(); _searches = 0; }
-                return;
-            }
-            if (Time.unscaledTime < _nextCheck) return;
-            _nextCheck = Time.unscaledTime + 2f;
+            _hooked = true;
             try
             {
-                Entry[] entries;
-                lock (Entries) entries = Entries.ToArray();
-                bool lost = Known.RemoveAll(table => table == null || table.WasCollected) > 0;
-                if (lost || (_searches < Searches && Time.unscaledTime >= _nextSearch))
-                {
-                    _searches = Math.Min(_searches + 1, Searches);
-                    _nextSearch = Time.unscaledTime + SearchSpacing;
-                    foreach (var table in Resources.FindObjectsOfTypeAll<ContainerItemSpawnerData>())
-                        if (table != null && table._items != null && !Known.Exists(known => known.Pointer == table.Pointer)
-                            && Array.Exists(entries, entry => entry.Table == table.name)) Known.Add(table);
-                }
-                // A container rolls the same seed on every peer, so mod loot is in the tables only while every player
-                // is known to have the mods; a session that can't promise that takes it out again.
-                var share = ContentAgreement.CanUseNetworkedContent;
-                int changed = 0;
-                foreach (var table in Known)
-                    foreach (var entry in entries)
-                        if (entry.Table == table.name && (share ? Append(table, entry) : Remove(table, entry))) changed++;
-                if (changed > 0)
-                    RuntimeEntryPoint.LogSource?.LogInfo(changed + " mod loot entr" + (changed == 1 ? "y" : "ies")
-                        + (share ? " added to the game's container tables."
-                            : " taken out of the game's container tables (mod content: " + ContentAgreement.Sharing + ")."));
+                var harmony = new HarmonyLib.Harmony(RuntimeEntryPoint.PluginGuid + ".sons-loot-tables");
+                harmony.Patch(HarmonyLib.AccessTools.Method(typeof(ContainerItemSpawnerData),
+                        nameof(ContainerItemSpawnerData.GetRandomizedContentsInternal), new[] { typeof(int) }),
+                    prefix: new HarmonyLib.HarmonyMethod(typeof(LootTables), nameof(BeforeRoll)));
             }
-            catch (Exception error)
-            {
-                if (_loggedFailure) return;
-                _loggedFailure = true;
-                RuntimeEntryPoint.LogSource?.LogWarning("Mod loot could not be added to the container tables: " + error.Message);
-            }
+            catch (Exception error) { Failed(error); }
+        }
+
+        private static void BeforeRoll(ContainerItemSpawnerData __instance)
+        {
+            try { Prepare(__instance); }
+            catch (Exception error) { Failed(error); }
+        }
+
+        /// <summary>Puts the mod entries for this table in, or takes them out while mod content isn't shared.</summary>
+        internal static void Prepare(ContainerItemSpawnerData table)
+        {
+            var entries = Volatile.Read(ref _snapshot);
+            if (entries.Length == 0 || table == null || table._items == null) return;
+            var name = table.name;
+            // A container rolls the same seed on every peer, so mod loot is in the tables only while every player
+            // is known to have the mods; a session that can't promise that takes it out again.
+            bool share = ContentAgreement.CanUseNetworkedContent;
+            int changed = 0;
+            foreach (var entry in entries)
+                if (entry.Table == name && (share ? Append(table, entry) : Remove(table, entry))) changed++;
+            if (changed > 0)
+                RuntimeEntryPoint.LogSource?.LogInfo(changed + " mod loot entr" + (changed == 1 ? "y" : "ies")
+                    + (share ? " added to the game's " + name + " table."
+                        : " taken out of the game's " + name + " table (mod content: " + ContentAgreement.Sharing + ")."));
+        }
+
+        private static void Failed(Exception error)
+        {
+            if (_loggedFailure) return;
+            _loggedFailure = true;
+            RuntimeEntryPoint.LogSource?.LogWarning("Mod loot could not be added to the container tables: " + error.Message);
         }
 
         private static bool Append(ContainerItemSpawnerData table, Entry entry)

@@ -233,10 +233,8 @@ namespace Modstoke.Sons
                 LoadingPerformance.Tick();
                 // Before the front end, which hides its screen once the loading screen covers it.
                 using (Timings.MeasureCapture("Sons.LoadingScreen")) LoadingScreen.Tick();
-                ContentCatalog.Tick();
-                LootTables.Tick();
-                PrinterBlueprints.Tick();
-                CraftingRecipeRegistration.Tick();
+                using (Timings.MeasureCapture("Sons.ContentCatalog")) ContentCatalog.Tick();
+                using (Timings.MeasureCapture("Sons.CraftingRecipes")) CraftingRecipeRegistration.Tick();
                 using (Timings.MeasureCapture("Sons.FrontEnd")) FrontEnd.Tick();
                 MultiplayerTakeover.Tick();
             }

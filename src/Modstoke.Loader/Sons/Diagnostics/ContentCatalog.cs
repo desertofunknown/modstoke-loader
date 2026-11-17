@@ -149,6 +149,8 @@ namespace Modstoke.Sons
             foreach (var table in Resources.FindObjectsOfTypeAll<ContainerItemSpawnerData>())
             {
                 if (table == null) continue;
+                // Mod entries otherwise go in just before a table first rolls.
+                LootTables.Prepare(table);
                 json.WriteStartObject();
                 json.WriteString("name", table.name);
                 var range = table._countRange;

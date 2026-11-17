@@ -4065,7 +4065,11 @@ a native weapon mod for one weapon item, on a slot (`OnTopRail` by default):
 These put registered mod items into the game's own ways of getting things. Each
 one changes a list that every peer must hold identically, so mods register at
 start in every process, clients and dedicated servers alike, and the Loader
-applies the additions once a world is loading, in a fixed order.
+applies the additions in a fixed order. None of them searches the loaded
+objects: a loot table gets its entries just before it rolls, a printer laptop
+its blueprints as it starts, and a crafting recipe database its recipes when the
+local crafting mat loads (checked once a second) or when strict inventory first
+reads a recipe from it, which is how a dedicated server's database is filled.
 
 - `CraftingRecipeRegistration.TryRegister(CraftRecipeSpec)` adds a crafting mat
   recipe that combines ingredients (1 to 8 kinds, counts 1 to 99) into 1 to 4 of
@@ -4096,12 +4100,14 @@ applies the additions once a world is loading, in a fixed order.
   `BasicStorageCrateItems` (storage crates, the game's tech loot). The game's own
   entries weigh 1 to 300; `maxCount` caps how many one container may roll.
   Containers already opened in a save keep what they rolled. In multiplayer the
-  entries stay in the tables only while `ContentAgreement.CanUseNetworkedContent`,
-  since every peer rolls the same seed.
+  entries are in a table when it rolls only while
+  `ContentAgreement.CanUseNetworkedContent`, since every peer rolls the same seed.
 - `PrinterBlueprints.TryRegister(modId, key, itemId, name, resin, seconds, out
   problem)` adds a 3D printer blueprint that prints one item from 1 to 2000
   resin. Its id comes from the mod id and key, so a save printing one finds it
-  again; the laptop shows the item's localized name.
+  again; the laptop shows the item's localized name. A laptop that started
+  before the first blueprint was registered doesn't get it, so register at mod
+  start.
 - All three need the item to have a world pickup, which modeled items registered
   with `canBeSpawned` get.
 - `content-catalog-next-launch.flag` in `Modstoke/UserData` makes the Loader write

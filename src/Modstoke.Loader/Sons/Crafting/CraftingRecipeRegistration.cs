@@ -51,12 +51,10 @@ namespace Modstoke.Sons
     /// </summary>
     public static class CraftingRecipeRegistration
     {
-        private const int MaximumRecipes = 128, MaximumRows = 8, Searches = 3;
-        private const float SearchSpacing = 30f;
+        private const int MaximumRecipes = 128, MaximumRows = 8;
         private static readonly List<Registration> Registrations = new();
         private static readonly List<CraftingRecipeDatabase> Known = new();
-        private static float _nextCheck, _nextSearch;
-        private static int _searches;
+        private static float _nextCheck;
         private static bool _loggedFailure, _loggedNoTemplate, _hooked, _loggedGuardFailure;
         private static IntPtr _lastRefused;
 
@@ -108,58 +106,62 @@ namespace Modstoke.Sons
             return null;
         }
 
-        // Finding every recipe database walks every loaded object, so it runs when a world loads and twice more over
-        // the next minute, or when a database it found was unloaded. The local crafting system's database is checked
-        // every time, at the cost of one field read, so a new player database is filled at once.
+        // The local crafting system's database is checked once a second, at the cost of a few field reads, so a new
+        // player database is filled at once. Any other database, such as the one a dedicated server checks crafts
+        // against, is filled when strict inventory first reads a recipe from it (Prepare), never by a search.
         internal static void Tick()
         {
             if (!GameRuntime.IsGameScene)
             {
-                if (_searches != 0) { Known.Clear(); _searches = 0; }
+                if (Known.Count != 0) Known.Clear();
                 return;
             }
             if (Time.unscaledTime < _nextCheck) return;
             _nextCheck = Time.unscaledTime + 1f;
+            var system = CraftingSystem._Instance_k__BackingField;
+            if (system != null && !system.WasCollected) Prepare(system._recipeDatabase);
+        }
+
+        /// <summary>Adds the weapon attachment and mod recipes to a database before a recipe is read from it by index.</summary>
+        internal static void Prepare(CraftingRecipeDatabase database)
+        {
             try
             {
                 Registration[] registrations;
                 lock (Registrations) registrations = Registrations.ToArray();
+                if (registrations.Length == 0 && !WeaponAttachments.HasRecipes) return;
                 if (registrations.Length > 0) Hook();
-                bool lost = Known.RemoveAll(database => database == null || database.WasCollected) > 0;
-                var system = CraftingSystem._Instance_k__BackingField;
-                if (system != null && !system.WasCollected && system._recipeDatabase != null) Remember(system._recipeDatabase);
-                if (lost || (_searches < Searches && Time.unscaledTime >= _nextSearch))
+                if (database == null || database.WasCollected) return;
+                var list = database._recipes;
+                if (list == null || list.WasCollected) return;
+                // A database is checked for the mat's recipes once, not on every second's check.
+                if (!Known.Exists(known => known.Pointer == database.Pointer))
                 {
-                    _searches = Math.Min(_searches + 1, Searches);
-                    _nextSearch = Time.unscaledTime + SearchSpacing;
-                    foreach (var database in Resources.FindObjectsOfTypeAll<CraftingRecipeDatabase>()) Remember(database);
+                    if (!IsMatDatabase(list)) return;
+                    Known.Add(database);
                 }
-                int attachments = 0, recipes = 0;
-                foreach (var database in Known)
-                {
-                    var list = database._recipes;
-                    if (list == null || list.WasCollected) continue;
-                    attachments += WeaponAttachments.AppendRecipes(list);
-                    recipes += Append(list, registrations);
-                }
-                if (attachments + recipes == 0) return;
-                if (system != null && !system.WasCollected && system._isInitialized) system.RefreshAvailableRecipes(false);
-                RuntimeEntryPoint.LogSource?.LogInfo("Crafting mat: " + attachments + " weapon attachment and " + recipes
-                    + " mod recipe(s) added.");
+                Fill(database, list, registrations);
             }
-            catch (Exception error)
-            {
-                if (_loggedFailure) return;
-                _loggedFailure = true;
-                RuntimeEntryPoint.LogSource?.LogWarning("Mod recipes could not be added to the crafting mat: " + error.Message);
-            }
+            catch (Exception error) { Failed(error); }
         }
 
-        private static void Remember(CraftingRecipeDatabase database)
+        private static void Fill(CraftingRecipeDatabase database, Il2CppSystem.Collections.Generic.List<CraftingRecipe> list,
+            Registration[] registrations)
         {
-            if (database == null || database.WasCollected || Known.Exists(known => known.Pointer == database.Pointer)) return;
-            var list = database._recipes;
-            if (list != null && !list.WasCollected && IsMatDatabase(list)) Known.Add(database);
+            int attachments = WeaponAttachments.AppendRecipes(list), recipes = Append(list, registrations);
+            if (attachments + recipes == 0) return;
+            var system = CraftingSystem._Instance_k__BackingField;
+            if (system != null && !system.WasCollected && system._isInitialized && system._recipeDatabase?.Pointer == database.Pointer)
+                system.RefreshAvailableRecipes(false);
+            RuntimeEntryPoint.LogSource?.LogInfo("Crafting mat: " + attachments + " weapon attachment and " + recipes
+                + " mod recipe(s) added.");
+        }
+
+        private static void Failed(Exception error)
+        {
+            if (_loggedFailure) return;
+            _loggedFailure = true;
+            RuntimeEntryPoint.LogSource?.LogWarning("Mod recipes could not be added to the crafting mat: " + error.Message);
         }
 
         // The crafting mat's database is the one with the game's weapon dismantling; structure recipes live elsewhere.

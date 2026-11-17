@@ -129,6 +129,8 @@ namespace Modstoke.Sons
         private static bool _hooksAttempted, _weaponsOnMat, _listing, _listFailureLogged;
         private static float _recipesAt;
 
+        internal static bool HasRecipes => ByHash.Count != 0;
+
         private sealed class Registration
         {
             internal WeaponAttachmentSpec Spec;

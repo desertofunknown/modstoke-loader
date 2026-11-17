@@ -18,11 +18,8 @@ namespace Modstoke.Sons
     /// </summary>
     public static class PrinterBlueprints
     {
-        private const int FirstId = 1000, IdRange = 30000, MaximumBlueprints = 24, Searches = 3;
-        private const float SearchSpacing = 30f;
+        private const int FirstId = 1000, IdRange = 30000, MaximumBlueprints = 24;
         private static readonly List<Registration> Registrations = new();
-        private static float _nextCheck, _nextSearch;
-        private static int _searches;
         private static bool _loggedFailure, _hooked;
 
         private sealed class Registration
@@ -64,35 +61,12 @@ namespace Modstoke.Sons
                 Registrations.Add(registration);
                 Registrations.Sort((a, b) => a.Id.CompareTo(b.Id));
             }
+            if (!_hooked) Hook();
             return true;
         }
 
         // Laptops come with the bunker and base scenes as they stream in, so each one gets the mod blueprints as it
-        // starts. Laptops that started before the hook are found by a search, which walks every loaded object and so
-        // runs only when a world loads and twice more over the next minute.
-        internal static void Tick()
-        {
-            if (Registrations.Count == 0) return;
-            if (!GameRuntime.IsGameScene)
-            {
-                _searches = 0;
-                return;
-            }
-            if (Time.unscaledTime < _nextCheck) return;
-            _nextCheck = Time.unscaledTime + 2f;
-            if (!_hooked) Hook();
-            if (_searches >= Searches || Time.unscaledTime < _nextSearch) return;
-            _searches++;
-            _nextSearch = Time.unscaledTime + SearchSpacing;
-            try
-            {
-                int added = 0;
-                foreach (var laptop in Resources.FindObjectsOfTypeAll<Resin3dPrinterLaptop>()) added += Fill(laptop);
-                Report(added);
-            }
-            catch (Exception error) { Failed(error); }
-        }
-
+        // starts. Mods register at start, before any world, so the hook is in place before the first laptop starts.
         private static void Hook()
         {
             _hooked = true;
